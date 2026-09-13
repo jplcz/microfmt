@@ -1,0 +1,84 @@
+#include <array>
+#include <cstdint>
+#include <cstdio>
+#include <microfmt/fixed_point.hpp>
+#include <microfmt/microfmt.hpp>
+#include <microfmt/ranges.hpp>
+#include <string_view>
+
+static void terminal_write(void * /*ctx*/, std::string_view sv) noexcept {
+  std::fwrite(sv.data(), 1, sv.size(), stdout);
+}
+
+int main() {
+  microfmt::sink term{nullptr, terminal_write};
+
+  // ------------------------------------------------------------------------
+  // Basic C-Style Arrays & Default vs Custom Delimiters
+  // ------------------------------------------------------------------------
+  microfmt::format_to(term, "=== 1. Basic Arrays & Delimiters ===\n");
+
+  const int32_t pin_numbers[] = {2, 4, 12, 13, 15};
+  microfmt::format_to(term, "Default delimiter : [{}]\n",
+                      microfmt::join(pin_numbers));
+
+  const std::string_view breadcrumbs[] = {"sys", "bus", "i2c", "devices",
+                                          "0-0048"};
+  microfmt::format_to(term, "Custom delimiter  : /{}/\n\n",
+                      microfmt::join(breadcrumbs, "/"));
+
+  // ------------------------------------------------------------------------
+  // Formatting std::array and Memory Spans
+  // ------------------------------------------------------------------------
+  microfmt::format_to(term, "=== 2. Spans & Sub-Ranges ===\n");
+
+  std::array<int16_t, 6> dac_samples{0, 512, 1024, 2048, 3072, 4095};
+
+  // Pass entire container
+  microfmt::format_to(term, "Full DAC buffer   : {}\n",
+                      microfmt::join(dac_samples, " -> "));
+
+  // Sub-span view over memory slice (samples 1 to 4)
+  microfmt::span<const int16_t> sample_slice(dac_samples.data() + 1, 3);
+  microfmt::format_to(term, "Active slice      : [{}]\n\n",
+                      microfmt::join(sample_slice, ", "));
+
+  // ------------------------------------------------------------------------
+  // Raw Iterator Pairs
+  // ------------------------------------------------------------------------
+  microfmt::format_to(term, "=== 3. Iterator Pairs ===\n");
+
+  const char *const sensor_names[] = {"BMP280", "MPU6050", "INA219",
+                                      "MAX31865"};
+  // Join only first 2 elements using iterator pointers
+  microfmt::format_to(term, "Primary sensors   : {}\n\n",
+                      microfmt::join(sensor_names, sensor_names + 2, " & "));
+
+  // ------------------------------------------------------------------------
+  // Formatting Ranges of Complex / Custom Types
+  // ------------------------------------------------------------------------
+  microfmt::format_to(term, "=== 4. Ranges of Custom Formatted Views ===\n");
+
+  // Array of zero-float fixed-point voltage readings (millivolts -> volts)
+  const microfmt::milli_view<int32_t> voltages[] = {
+      microfmt::milli(3305), microfmt::milli(1812), microfmt::milli(1198),
+      microfmt::milli(5004)};
+
+  microfmt::format_to(term, "Rail Voltages (V) : [{}]\n\n",
+                      microfmt::join(voltages, " | "));
+
+  // ------------------------------------------------------------------------
+  // Formatting Directly into Bounded Stack Buffer
+  // ------------------------------------------------------------------------
+  microfmt::format_to(term, "=== 5. Format into Fixed Stack Buffer ===\n");
+
+  const uint8_t mac_addr[] = {0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E};
+  auto msg =
+      microfmt::format<128>("Device MAC: [{}] (Length: {} bytes)",
+                            microfmt::join(mac_addr, ":"), sizeof(mac_addr));
+
+  std::fwrite(msg.view().data(), 1, msg.size(), stdout);
+  microfmt::format_to(term, "\n");
+
+  return 0;
+}
