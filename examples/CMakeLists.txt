@@ -30,10 +30,11 @@ add_microfmt_example(fmt_demo fmt_demo.cpp)
 add_microfmt_example(fmt_bridge_demo fmt_bridge_demo.cpp)
 add_microfmt_example(stdio_demo stdio_demo.cpp)
 add_microfmt_example(binary_demo binary_demo.cpp)
-add_microfmt_example(uuid_demo uuid_demo.cpp)
 add_microfmt_example(ring_buffer_demo ring_buffer_demo.cpp)
 
 if(Boost_FOUND)
+    add_microfmt_example(uuid_demo uuid_demo.cpp)
+
     add_executable(demo_boost_describe describe_demo.cpp)
     target_link_libraries(demo_boost_describe PRIVATE
         microfmt::microfmt
@@ -44,7 +45,7 @@ if(Boost_FOUND)
         FOLDER "Examples"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/examples"
     )
-    message(STATUS "microfmt: Boost found - built demo_boost_describe")
+    message(STATUS "microfmt: Boost found - built UUID and Describe demos")
 else()
-    message(STATUS "microfmt: Boost >= 1.77 not found - skipping demo_boost_describe")
+    message(STATUS "microfmt: Boost >= 1.77 not found - skipping UUID and Describe demos")
 endif()
