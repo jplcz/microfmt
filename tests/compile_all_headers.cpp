@@ -24,6 +24,7 @@
 #include <microfmt/formatters/styled.hpp>
 #include <microfmt/formatters/units.hpp>
 #include <microfmt/formatters/uuid.hpp>
+#include <microfmt/formatters/tuple.hpp>
 #include <microfmt/sinks/ring_buffer_sink.hpp>
 #include <microfmt/sinks/container_sink.hpp>
 #include <microfmt/sinks/pmr_sink.hpp>

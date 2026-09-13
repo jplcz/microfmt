@@ -88,6 +88,7 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/formatters/math.hpp` | `vec`, owning `vec3`, and row-major `mat<T, Rows, Cols>` views |
 | `microfmt/formatters/monad.hpp` | `std::optional` formatting and, in C++23, `std::expected` formatting |
 | `microfmt/formatters/source_location.hpp` | `source_loc`, `source_loc_view`, and direct source-location formatters when a supported source-location API is enabled |
+| `microfmt/formatters/tuple.hpp` | C++17 tuple-like formatting for `std::tuple`, `std::pair`, and compatible types; select `b`, `c`, `n`, or `p` delimiters and forward element specifiers |
 | `microfmt/formatters/bitfield.hpp` | `bit_type`, `bit_field`, `bitfield_view`, `bits`, `MICROFMT_BIT_FLAG`, `MICROFMT_BIT_VALUE_DEC`, `MICROFMT_BIT_VALUE_HEX`, and `MICROFMT_DEFINE_REGISTER_TYPE` |
 | `microfmt/formatters/hexdump.hpp` | `memory_reader_fn_t`, `hexdump`, `hexdump_checked`, and `hexdump_to` |
 | `microfmt/formatters/uuid.hpp` | `uuid` overloads for 16-byte data and, when enabled, `boost::uuids::uuid` |
@@ -223,6 +224,15 @@ microfmt::prefix_sink output{storage.as_sink(), "[telemetry] "};
 microfmt::format_to(output.as_sink(), "id={}\nvoltage={} mV", 3, 3295);
 // [telemetry] id=3
 // [telemetry] voltage=3295 mV
+```
+
+```cpp
+#include <microfmt/formatters/tuple.hpp>
+#include <tuple>
+
+auto registers = std::make_tuple(0x00A1, 0x000F, 0xBEEF);
+auto row = microfmt::format<64>("registers={:b04X}", registers);
+// registers=[00A1, 000F, BEEF]
 ```
 
 To support a custom type, specialize `microfmt::formatter<T>` with `parse` and

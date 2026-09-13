@@ -137,6 +137,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_styled.cpp
         tests/test_styled_sink.cpp
         tests/test_tee_sink.cpp
+        tests/test_tuple.cpp
         tests/test_container_sink.cpp
         tests/test_pmr_sink.cpp
         tests/test_platform_log_sinks.cpp
@@ -228,6 +229,22 @@ if(MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(microfmt_cxx17_cbor_tests
         TEST_PREFIX "Cxx17Cbor.")
+
+    add_executable(microfmt_cxx17_tuple_tests tests/test_tuple.cpp)
+    target_link_libraries(microfmt_cxx17_tuple_tests PRIVATE
+        microfmt GTest::gtest_main)
+    set_target_properties(microfmt_cxx17_tuple_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    target_compile_options(microfmt_cxx17_tuple_tests PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
+        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
+        >
+    )
+    gtest_discover_tests(microfmt_cxx17_tuple_tests
+        TEST_PREFIX "Cxx17Tuple.")
 
     if(MICROFMT_COMPILER_SUPPORTS_CXX23)
         add_executable(microfmt_cxx23_tests tests/test_monad.cpp)
