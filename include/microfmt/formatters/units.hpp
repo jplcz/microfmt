@@ -40,16 +40,14 @@ template <typename T> struct unit_view {
 // ============================================================================
 
 // Auto-scaling SI decimal units (Hz, W, V, etc.)
-template <typename T>
-  requires(std::is_integral_v<T>)
+template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
 [[nodiscard]] constexpr auto auto_si(T val, std::string_view unit,
                                      uint8_t precision = 2) noexcept {
   return auto_unit_view<T>{val, unit, scale_base::decimal, precision};
 }
 
 // Auto-scaling IEC binary units (B / Bytes)
-template <typename T>
-  requires(std::is_integral_v<T>)
+template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
 [[nodiscard]] constexpr auto auto_bytes(T bytes,
                                         uint8_t precision = 2) noexcept {
   return auto_unit_view<T>{bytes, "B", scale_base::binary, precision};
@@ -62,8 +60,7 @@ template <typename T>
 }
 
 // Frequency convenience helper
-template <typename T>
-  requires(std::is_integral_v<T>)
+template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
 [[nodiscard]] constexpr auto hertz(T hz, uint8_t precision = 2) noexcept {
   return auto_unit_view<T>{hz, "Hz", scale_base::decimal, precision};
 }

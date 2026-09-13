@@ -5,6 +5,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+include(CheckCXXCompilerFlag)
+
+find_package(Boost 1.77 CONFIG QUIET)
+
+if(MSVC)
+    check_cxx_compiler_flag("/std:c++latest" MICROFMT_COMPILER_SUPPORTS_CXX23)
+else()
+    check_cxx_compiler_flag("-std=c++23" MICROFMT_COMPILER_SUPPORTS_CXX23)
+endif()
+
 # Header-only interface target
 add_library(microfmt INTERFACE)
 
@@ -18,6 +28,51 @@ add_library(microfmt::microfmt ALIAS microfmt)
 # Optional test runner
 option(MICROFMT_BUILD_TESTS "Build test suite" ON)
 option(MICROFMT_BUILD_EXAMPLES "Build example apps" ON)
+option(MICROFMT_BUILD_HEADER_CHECKS
+    "Compile all public headers under each supported C++ standard" ON)
+
+if(MICROFMT_BUILD_HEADER_CHECKS)
+    function(add_microfmt_header_check STANDARD)
+        add_library(microfmt_headers_cxx${STANDARD} OBJECT
+            tests/compile_all_headers.cpp)
+        target_link_libraries(microfmt_headers_cxx${STANDARD} PRIVATE microfmt)
+        set_target_properties(microfmt_headers_cxx${STANDARD} PROPERTIES
+            CXX_STANDARD ${STANDARD}
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS OFF
+        )
+        target_compile_definitions(microfmt_headers_cxx${STANDARD} PRIVATE
+            MICROFMT_HEADER_CHECK_STANDARD=${STANDARD}
+        )
+
+        if(Boost_FOUND)
+            target_link_libraries(microfmt_headers_cxx${STANDARD} PRIVATE
+                Boost::boost)
+            target_compile_definitions(microfmt_headers_cxx${STANDARD} PRIVATE
+                MICROFMT_COMPILE_WITH_BOOST_DESCRIBE=1
+                MICROFMT_ENABLE_BOOST_UUID=1
+                MICROFMT_ENABLE_BOOST_SOURCE_LOCATION=1)
+        endif()
+    endfunction()
+
+    add_microfmt_header_check(17)
+    add_microfmt_header_check(20)
+
+    set(MICROFMT_HEADER_CHECK_TARGETS
+        microfmt_headers_cxx17
+        microfmt_headers_cxx20
+    )
+    set(MICROFMT_HAS_CXX23_WRAPPER FALSE)
+    if(MICROFMT_COMPILER_SUPPORTS_CXX23)
+        add_microfmt_header_check(23)
+        list(APPEND MICROFMT_HEADER_CHECK_TARGETS microfmt_headers_cxx23)
+        set(MICROFMT_HAS_CXX23_WRAPPER TRUE)
+    endif()
+
+    add_custom_target(check_public_headers
+        DEPENDS ${MICROFMT_HEADER_CHECK_TARGETS}
+    )
+endif()
 
 if(MICROFMT_BUILD_TESTS)
     include(FetchContent)
@@ -45,7 +100,12 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_semver.cpp
         tests/test_units.cpp
         tests/test_chrono.cpp
-        tests/test_ring_buffer.cpp)
+        tests/test_ring_buffer.cpp
+        tests/test_base_views.cpp
+        tests/test_math.cpp
+        tests/test_monad.cpp
+        tests/test_source_location.cpp
+        tests/test_tee_sink.cpp)
     target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main)
 
     target_compile_options(microfmt_tests PRIVATE
@@ -56,6 +116,23 @@ if(MICROFMT_BUILD_TESTS)
 
     include(GoogleTest)
     gtest_discover_tests(microfmt_tests)
+
+    if(MICROFMT_COMPILER_SUPPORTS_CXX23)
+        add_executable(microfmt_cxx23_tests tests/test_monad.cpp)
+        target_link_libraries(microfmt_cxx23_tests PRIVATE
+            microfmt GTest::gtest_main)
+        set_target_properties(microfmt_cxx23_tests PROPERTIES
+            CXX_STANDARD 23
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS OFF
+        )
+        target_compile_options(microfmt_cxx23_tests PRIVATE
+            $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
+            -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
+            >
+        )
+        gtest_discover_tests(microfmt_cxx23_tests)
+    endif()
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
 

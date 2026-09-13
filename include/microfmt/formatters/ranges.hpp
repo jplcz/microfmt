@@ -9,13 +9,15 @@ namespace microfmt {
 
 namespace detail {
 
-// Range detection concept
-template <typename T>
-concept is_range = requires(T &t) {
-  std::begin(t);
-  std::end(t);
-};
+template <typename T, typename = void> struct is_range : std::false_type {};
 
+template <typename T>
+struct is_range<
+    T, std::void_t<decltype(std::begin(std::declval<const T &>())),
+                   decltype(std::end(std::declval<const T &>()))>>
+    : std::true_type {};
+
+#if __cplusplus >= 202002L
 // Fixed string helper for compile-time format string & delimiter NTTPs
 template <size_t N> struct fixed_string {
   char buf[N + 1]{};
@@ -34,6 +36,7 @@ template <size_t N> struct fixed_string {
 };
 
 template <size_t N> fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
+#endif
 
 } // namespace detail
 
@@ -48,6 +51,7 @@ template <typename It, typename Sentinel = It> struct join_view {
   // Custom per-element specifier (e.g. "02x")
 };
 
+#if __cplusplus >= 202002L
 // ============================================================================
 // Zero-Size Specifier join_as_view (Compile-Time NTTPs)
 // ============================================================================
@@ -58,20 +62,23 @@ struct join_as_view {
   It first;
   Sentinel last;
 };
+#endif
 
 // ============================================================================
 // Factory Functions
 // ============================================================================
 
 // Standard join view
-template <typename It, typename Sentinel>
-  requires(!std::is_convertible_v<Sentinel, std::string_view>)
+template <typename It, typename Sentinel,
+          std::enable_if_t<!std::is_convertible_v<Sentinel, std::string_view>,
+                           int> = 0>
 [[nodiscard]] constexpr auto join(It first, Sentinel last,
                                   std::string_view delimiter = ", ") noexcept {
   return join_view<It, Sentinel>{first, last, delimiter};
 }
 
-template <detail::is_range Range>
+template <typename Range,
+          std::enable_if_t<detail::is_range<Range>::value, int> = 0>
 [[nodiscard]] constexpr auto join(const Range &range,
                                   std::string_view delimiter = ", ") noexcept {
   using std::begin;
@@ -80,9 +87,11 @@ template <detail::is_range Range>
       begin(range), end(range), delimiter};
 }
 
+#if __cplusplus >= 202002L
 // Compile-time join_as (zero runtime overhead)
 template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "",
-          detail::is_range Range>
+          typename Range,
+          std::enable_if_t<detail::is_range<Range>::value, int> = 0>
 [[nodiscard]] constexpr auto join_as(const Range &range) noexcept {
   using std::begin;
   using std::end;
@@ -91,11 +100,13 @@ template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "",
 }
 
 template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "",
-          typename It, typename Sentinel>
-  requires(!std::is_convertible_v<Sentinel, std::string_view>)
+          typename It, typename Sentinel,
+          std::enable_if_t<!std::is_convertible_v<Sentinel, std::string_view>,
+                           int> = 0>
 [[nodiscard]] constexpr auto join_as(It first, Sentinel last) noexcept {
   return join_as_view<It, Sentinel, Delim, ElemSpec>{first, last};
 }
+#endif
 
 // ============================================================================
 // Formatter for join_view (Receives element spec from format string {:02x})
@@ -129,6 +140,7 @@ struct formatter<join_view<It, Sentinel>> {
   }
 };
 
+#if __cplusplus >= 202002L
 // ============================================================================
 // Formatter for join_as_view (Zero runtime state overhead)
 // ============================================================================
@@ -165,5 +177,6 @@ struct formatter<join_as_view<It, Sentinel, Delim, ElemSpec>> {
     }
   }
 };
+#endif
 
 } // namespace microfmt

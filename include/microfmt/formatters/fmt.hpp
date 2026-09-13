@@ -51,7 +51,7 @@ public:
   constexpr explicit sink_output_iterator(const microfmt::sink &s) noexcept
       : sink_(&s) {}
 
-  constexpr sink_output_iterator &operator=(char c) noexcept {
+  sink_output_iterator &operator=(char c) noexcept {
     sink_->put(c);
     return *this;
   }
@@ -120,10 +120,12 @@ format_to_n_result<char *> format_to_n(char *out, size_t n,
 // fmt::format_to (Iterator / Pointer overload)
 // ============================================================================
 
-template <typename OutputIt, typename... Args>
-  requires(
-      std::is_pointer_v<OutputIt> &&
-      std::is_same_v<std::remove_cv_t<std::remove_pointer_t<OutputIt>>, char>)
+template <typename OutputIt, typename... Args,
+          std::enable_if_t<
+              std::is_pointer_v<OutputIt> &&
+                  std::is_same_v<
+                      std::remove_cv_t<std::remove_pointer_t<OutputIt>>, char>,
+              int> = 0>
 OutputIt format_to(OutputIt out, std::string_view fmt_str,
                    const Args &...args) noexcept {
   struct PtrSinkState {
@@ -232,20 +234,23 @@ namespace microfmt {
 namespace detail {
 
 // Checks if fmt::formatter<T> has been specialized
+template <typename T, typename = void>
+struct has_fmt_formatter : std::false_type {};
+
 template <typename T>
-concept HasFmtFormatter =
-    requires(fmt::formatter<T> f, fmt::format_parse_context &pctx,
-             fmt::format_context &fctx, const T &val) {
-      { f.parse(pctx) };
-      { f.format(val, fctx) };
-    };
+struct has_fmt_formatter<
+    T, std::void_t<
+           decltype(std::declval<fmt::formatter<T> &>().parse(
+               std::declval<fmt::format_parse_context &>())),
+           decltype(std::declval<fmt::formatter<T> &>().format(
+               std::declval<const T &>(),
+               std::declval<fmt::format_context &>()))>> : std::true_type {};
 
 } // namespace detail
 
 // Automatically forward to fmt::formatter<T> when available
 template <typename T>
-  requires(detail::HasFmtFormatter<T>)
-struct formatter<T> {
+struct formatter<T, std::enable_if_t<detail::has_fmt_formatter<T>::value>> {
   fmt::formatter<T> fmt_impl{};
 
   constexpr void parse(format_parse_context &ctx) noexcept {

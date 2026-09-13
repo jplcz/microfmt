@@ -1,10 +1,10 @@
 #pragma once
 
 #include <algorithm>
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <type_traits>
 
 #if __has_include(<span>) && __cplusplus >= 202002L
 #include <span>

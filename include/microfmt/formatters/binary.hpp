@@ -11,8 +11,9 @@ namespace microfmt {
 // Binary View Configuration
 // ============================================================================
 
-template <typename T>
-  requires(std::is_integral_v<T> && !std::is_same_v<T, bool>)
+template <typename T,
+          typename = std::enable_if_t<std::is_integral_v<T> &&
+                                      !std::is_same_v<T, bool>>>
 struct binary_view {
   T value;
   uint8_t min_bits{sizeof(T) * 8}; // Default to full bit-width (8, 16, 32, 64)
@@ -25,18 +26,28 @@ struct binary_view {
 // ============================================================================
 
 // Fixed width matching type size (e.g., uint8_t -> 8 bits, uint16_t -> 16 bits)
-template <typename T> [[nodiscard]] constexpr auto bin(T val) noexcept {
+template <typename T,
+          std::enable_if_t<std::is_integral_v<T> &&
+                               !std::is_same_v<T, bool>,
+                           int> = 0>
+[[nodiscard]] constexpr auto bin(T val) noexcept {
   return binary_view<T>{val, static_cast<uint8_t>(sizeof(T) * 8), false, false};
 }
 
 // Explicit bit width: microfmt::bin<8>(val)
-template <uint8_t Bits, typename T>
+template <uint8_t Bits, typename T,
+          std::enable_if_t<std::is_integral_v<T> &&
+                               !std::is_same_v<T, bool>,
+                           int> = 0>
 [[nodiscard]] constexpr auto bin(T val) noexcept {
   return binary_view<T>{val, Bits, false, false};
 }
 
 // With '0b' prefix and optional grouping
-template <typename T>
+template <typename T,
+          std::enable_if_t<std::is_integral_v<T> &&
+                               !std::is_same_v<T, bool>,
+                           int> = 0>
 [[nodiscard]] constexpr auto bin_prefixed(T val,
                                           bool group_nibbles = false) noexcept {
   return binary_view<T>{val, static_cast<uint8_t>(sizeof(T) * 8), true,
@@ -44,7 +55,11 @@ template <typename T>
 }
 
 // Grouped nibbles: 0010_1010
-template <typename T> [[nodiscard]] constexpr auto bin_grouped(T val) noexcept {
+template <typename T,
+          std::enable_if_t<std::is_integral_v<T> &&
+                               !std::is_same_v<T, bool>,
+                           int> = 0>
+[[nodiscard]] constexpr auto bin_grouped(T val) noexcept {
   return binary_view<T>{val, static_cast<uint8_t>(sizeof(T) * 8), false, true};
 }
 

@@ -9,7 +9,7 @@ A zero-allocation, deterministic, and low-overhead C++ formatting library engine
 ## Key Features
 
 * **Zero-allocation, `noexcept` formatting:** Formats directly to a sink without heap allocation, exceptions, virtual dispatch, or RTTI. Integer conversion uses a fixed 24-byte scratch buffer.
-* **C++20 header-only core:** Supports sequential `{}` replacement fields, escaped braces (`{{` and `}}`), decimal and hexadecimal (`x`/`X`) integers, and zero-padded widths such as `{:04x}`.
+* **C++17+ header-only core:** Supports sequential `{}` replacement fields, escaped braces (`{{` and `}}`), decimal and hexadecimal (`x`/`X`) integers, and zero-padded widths such as `{:04x}`. C++20 and C++23 features are enabled only when their standard-library APIs are available.
 * **Extensible formatters:** Define `microfmt::formatter<T>` specializations for application types. Built-in formatters cover strings, character arrays, integral values, booleans, pointers, and `nullptr`.
 * **Flexible output sinks:** Stream to a type-erased callback, bounded external buffer (`span_sink`), inline fixed buffer (`buffer_sink`), null-terminated buffer (`c_string_sink`), output iterator, callback, byte counter, or discard sink. `stdio.hpp` adds `FILE*`, stdout/stderr, and POSIX file-descriptor sinks.
 * **Circular trace buffering:** Retain the most recent formatted output in a fixed-size, power-of-two `ring_buffer_sink`, overwriting old data on overflow and dumping retained content chronologically for post-mortem diagnostics.
@@ -36,18 +36,48 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/formatters/ranges.hpp` | `join(range, delimiter)`, `join(first, last, delimiter)`, and compile-time `join_as<Delimiter, ElementSpec>(...)` |
 | `microfmt/formatters/format_helpers.hpp` | `hex`, `bin`, `bytes`, `addr_offset`, `mem_range`, `align`, and `join(span, delimiter)` |
 | `microfmt/formatters/binary.hpp` | `binary_view`, fixed-width `bin`, `bin<Bits>`, `bin_prefixed`, and `bin_grouped` |
+| `microfmt/formatters/base_views.hpp` | `base64` for byte spans and arrays, plus custom-size `bin_grouped(value, group_size, separator)` |
 | `microfmt/formatters/escaped.hpp` | `escaped` overloads for string views, character buffers, byte buffers, and spans |
 | `microfmt/formatters/fixed_point.hpp` | `fixed<Scale, Decimals>`, `milli`, `centi`, `micro`, and the `milli_view`, `centi_view`, and `micro_view` aliases |
 | `microfmt/formatters/semver.hpp` | `semver`, `version`, `from_packed32`, and `from_packed24` |
 | `microfmt/formatters/units.hpp` | `scale_base`, `with_unit`, `auto_si`, `auto_bytes`, and `hertz` |
 | `microfmt/formatters/chrono.hpp` | Formatters for `std::chrono::duration`, system-clock timestamps, and steady-clock uptime values |
+| `microfmt/formatters/math.hpp` | `vec`, owning `vec3`, and row-major `mat<T, Rows, Cols>` views |
+| `microfmt/formatters/monad.hpp` | `std::optional` formatting and, in C++23, `std::expected` formatting |
+| `microfmt/formatters/source_location.hpp` | `source_loc`, `source_loc_view`, and direct source-location formatters when a supported source-location API is enabled |
 | `microfmt/formatters/bitfield.hpp` | `bit_type`, `bit_field`, `bitfield_view`, `bits`, `MICROFMT_BIT_FLAG`, `MICROFMT_BIT_VALUE_DEC`, `MICROFMT_BIT_VALUE_HEX`, and `MICROFMT_DEFINE_REGISTER_TYPE` |
 | `microfmt/formatters/hexdump.hpp` | `memory_reader_fn_t`, `hexdump`, `hexdump_checked`, and `hexdump_to` |
 | `microfmt/formatters/uuid.hpp` | `uuid` overloads for 16-byte data and, when enabled, `boost::uuids::uuid` |
+| `microfmt/formatters/net.hpp` | `mac` for MAC-48/EUI-48 and EUI-64 byte sequences |
 | `microfmt/formatters/ansi.hpp` | `microfmt::ansi::color`, `attribute`, `style`, predefined styles, `styled`, and color helpers such as `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, and `gray` |
 | `microfmt/markdown.hpp` | `microfmt::md::align`, `column`, and fluent `writer` methods for text, headings, lists, block quotes, code blocks, and tables |
 | `microfmt/formatters/fmt.hpp` | `fmt::format`, `fmt::format_to`, `fmt::format_to_n`, `fmt::print`, `fmt::println`, `fmt::join`, and the `fmt::formatter<T>` bridge |
 | `microfmt/formatters/boost_describe.hpp` | Automatic `formatter<T>` support for Boost.Describe reflected enums, structs, and classes |
+| `microfmt/sinks/tee_sink.hpp` | `tee_sink<N>` and `make_tee` for broadcasting output to a fixed number of sinks |
+
+---
+
+## Language Standards and Source Locations
+
+All non-Boost public headers compile in C++17, C++20, and C++23. The
+`join_as` compile-time delimiter adapter is available in C++20 and later, and
+the `std::expected` formatter is available only in C++23 when the standard
+library supplies it.
+
+`microfmt/formatters/source_location.hpp` uses `std::source_location` in
+C++20 and later. In a C++17 build, including that header is harmless but does
+not expose source-location views unless Boost support is explicitly requested.
+Define `MICROFMT_ENABLE_BOOST_SOURCE_LOCATION` before including it to enable
+`boost::source_location` support; this requires
+`<boost/assert/source_location.hpp>`. With that opt-in, pass
+`BOOST_CURRENT_LOCATION` to `microfmt::source_loc(...)`, or format
+`BOOST_CURRENT_LOCATION` directly. Boost is never required for the core
+library.
+
+The default CMake build keeps its C++20 project setting. Its
+`microfmt_headers_cxx17`, `microfmt_headers_cxx20`, and, when supported,
+`microfmt_headers_cxx23` object targets compile every applicable public header.
+Build the `check_public_headers` target to run those compile-only checks.
 
 ---
 
@@ -245,6 +275,12 @@ target_link_libraries(my_embedded_app PRIVATE microfmt::microfmt)
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=MinSizeRel
 cmake --build build --target microfmt_tests
 ./build/tests/microfmt_tests
+```
+
+### Checking Public Headers Across Language Standards
+
+```bash
+cmake --build build --target check_public_headers
 ```
 
 ### Enforcing Stack Budgets

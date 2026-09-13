@@ -1,12 +1,29 @@
 #pragma once
 
 #include "../microfmt.hpp"
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <type_traits>
 
 namespace microfmt {
+
+namespace detail {
+
+template <typename T, typename = void> struct is_mac_container : std::false_type {};
+
+template <typename T>
+struct is_mac_container<
+    T, std::void_t<decltype(std::declval<const T &>().data()),
+                   decltype(std::declval<const T &>().size())>>
+    : std::integral_constant<
+          bool,
+          std::is_convertible_v<decltype(std::declval<const T &>().data()),
+                                const uint8_t *> &&
+              std::is_convertible_v<decltype(std::declval<const T &>().size()),
+                                    size_t>> {};
+
+} // namespace detail
 
 // ============================================================================
 // MAC Address View Adapter
@@ -44,11 +61,9 @@ struct mac_view {
 }
 
 // From std::array or container with .data() and .size()
-template <typename ContainerT>
-  requires(requires(const ContainerT &c) {
-    { c.data() } -> std::convertible_to<const uint8_t *>;
-    { c.size() } -> std::convertible_to<size_t>;
-  })
+template <typename ContainerT,
+          std::enable_if_t<detail::is_mac_container<ContainerT>::value, int> =
+              0>
 [[nodiscard]] constexpr mac_view mac(const ContainerT &c, char separator = ':',
                                      bool uppercase = false) noexcept {
   return mac_view{span<const uint8_t>(c.data(), c.size()), separator,

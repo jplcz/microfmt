@@ -1,6 +1,4 @@
 
-find_package(Boost 1.77 QUIET)
-
 if(Boost_FOUND)
     add_definitions(-DMICROFMT_ENABLE_BOOST_UUID=1)
 endif()
@@ -33,7 +31,12 @@ add_microfmt_example(fmt_demo fmt_demo.cpp)
 add_microfmt_example(fmt_bridge_demo fmt_bridge_demo.cpp)
 add_microfmt_example(stdio_demo stdio_demo.cpp)
 add_microfmt_example(binary_demo binary_demo.cpp)
+add_microfmt_example(base_views_demo base_views_demo.cpp)
+add_microfmt_example(math_demo math_demo.cpp)
+add_microfmt_example(monad_demo monad_demo.cpp)
+add_microfmt_example(source_location_demo source_location_demo.cpp)
 add_microfmt_example(ring_buffer_demo ring_buffer_demo.cpp)
+add_microfmt_example(tee_sink_demo tee_sink_demo.cpp)
 add_microfmt_example(syslog_demo syslog_demo.cpp)
 
 if(Boost_FOUND)

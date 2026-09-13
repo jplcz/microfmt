@@ -1,10 +1,10 @@
 #pragma once
 
 #include "../microfmt.hpp"
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <type_traits>
 
 #if defined(MICROFMT_ENABLE_BOOST_UUID) || defined(BOOST_UUID_UUID_HPP) ||     \
     defined(BOOST_UUID_HPP)
@@ -61,6 +61,20 @@ inline void format_uuid_bytes(const sink &out, span<const uint8_t> bytes,
     out.put('}');
   }
 }
+
+template <typename T, typename = void>
+struct is_uuid_container : std::false_type {};
+
+template <typename T>
+struct is_uuid_container<
+    T, std::void_t<decltype(std::declval<const T &>().data()),
+                   decltype(std::declval<const T &>().size())>>
+    : std::integral_constant<
+          bool,
+          std::is_convertible_v<decltype(std::declval<const T &>().data()),
+                                const uint8_t *> &&
+              std::is_convertible_v<decltype(std::declval<const T &>().size()),
+                                    size_t>> {};
 } // namespace detail
 
 // ============================================================================
@@ -82,11 +96,8 @@ inline void format_uuid_bytes(const sink &out, span<const uint8_t> bytes,
 }
 
 // From 16-byte std::array or contiguous container
-template <typename ArrayT>
-  requires(requires(const ArrayT &a) {
-    { a.data() } -> std::convertible_to<const uint8_t *>;
-    { a.size() } -> std::convertible_to<size_t>;
-  })
+template <typename ArrayT,
+          std::enable_if_t<detail::is_uuid_container<ArrayT>::value, int> = 0>
 [[nodiscard]] constexpr uuid_view
 uuid(const ArrayT &arr, bool uppercase = false, bool braced = false) noexcept {
   return uuid_view{span<const uint8_t>(arr.data(), arr.size()), uppercase,
