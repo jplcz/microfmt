@@ -18,22 +18,21 @@ jobs:
         include:
           - name: x86_64
             compiler: g++
-            packages: ""
+            packages: libboost-dev
           - name: arm32
             compiler: arm-linux-gnueabihf-g++
-            packages: g++-arm-linux-gnueabihf
+            packages: g++-arm-linux-gnueabihf libboost-dev
           - name: aarch64
             compiler: aarch64-linux-gnu-g++
-            packages: g++-aarch64-linux-gnu
+            packages: g++-aarch64-linux-gnu libboost-dev
           - name: riscv64
             compiler: riscv64-linux-gnu-g++
-            packages: g++-riscv64-linux-gnu
+            packages: g++-riscv64-linux-gnu libboost-dev
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install cross compiler
-        if: matrix.packages != ''
+      - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install --yes ${{ matrix.packages }}
