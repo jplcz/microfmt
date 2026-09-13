@@ -12,6 +12,7 @@ A zero-allocation, deterministic, and low-overhead C++ formatting library engine
 * **C++20 header-only core:** Supports sequential `{}` replacement fields, escaped braces (`{{` and `}}`), decimal and hexadecimal (`x`/`X`) integers, and zero-padded widths such as `{:04x}`.
 * **Extensible formatters:** Define `microfmt::formatter<T>` specializations for application types. Built-in formatters cover strings, character arrays, integral values, booleans, pointers, and `nullptr`.
 * **Flexible output sinks:** Stream to a type-erased callback, bounded external buffer (`span_sink`), inline fixed buffer (`buffer_sink`), null-terminated buffer (`c_string_sink`), output iterator, callback, byte counter, or discard sink. `stdio.hpp` adds `FILE*`, stdout/stderr, and POSIX file-descriptor sinks.
+* **Circular trace buffering:** Retain the most recent formatted output in a fixed-size, power-of-two `ring_buffer_sink`, overwriting old data on overflow and dumping retained content chronologically for post-mortem diagnostics.
 * **Span support:** Includes a small C++17-compatible `microfmt::span` and interoperates with `std::span` when it is available.
 * **Range formatting:** Join iterator pairs or ranges with runtime delimiters and element format specifications, or use compile-time `join_as` delimiters and element specs.
 * **Binary and diagnostic views:** Format integers as binary with prefixes, explicit widths, and nibble grouping; render named bitfields and synthesized register types; produce direct or fault-checked hex dumps with ASCII panes.
@@ -29,6 +30,7 @@ Include the headers for the facilities you use. Every API below is in
 | Header | Developer-facing APIs |
 |---|---|
 | `microfmt/microfmt.hpp` | `span<T>`, `sink`, `span_sink`, `buffer_sink<N>`, `c_string_sink<N>`, `iterator_sink<It>`, `counting_sink`, `null_sink`, `callback_sink<F>`, `make_callback_sink`, `format_to`, `vformat_to`, `format<N>`, and the `formatter<T>` customization point |
+| `microfmt/ring_buffer_sink.hpp` | `ring_buffer_sink<Capacity>` for an atomic circular output buffer; `Capacity` must be a non-zero power of two. Use `as_sink`, `view`, `dump_to`, `size`, `capacity`, `empty`, `full`, and `reset` |
 | `microfmt/stdio.hpp` | `file_sink`, `stdout_sink`, `stderr_sink`, POSIX `fd_sink`, plus `print` and `println` overloads for stdout, `FILE*`, and POSIX file descriptors |
 | `microfmt/ranges.hpp` | `join(range, delimiter)`, `join(first, last, delimiter)`, and compile-time `join_as<Delimiter, ElementSpec>(...)` |
 | `microfmt/format_helpers.hpp` | `hex`, `bin`, `bytes`, `addr_offset`, `mem_range`, `align`, and `join(span, delimiter)` |
@@ -72,6 +74,17 @@ char* end = microfmt::format_to(output, "{}", 123);
 microfmt::counting_sink counter;
 microfmt::format_to(counter.as_sink(), "name={}, id={}", "dev0", 7);
 std::size_t required = counter.count();
+```
+
+```cpp
+#include <microfmt/ring_buffer_sink.hpp>
+
+// Keep the latest 256 bytes of formatted trace output. Capacity is a power of two.
+microfmt::ring_buffer_sink<256> trace;
+microfmt::format_to(trace.as_sink(), "[{}] sensor={}\n", 123, 42);
+
+// Emit retained bytes from oldest to newest, even after the buffer wraps.
+trace.dump_to(microfmt::stdout_sink());
 ```
 
 ```cpp
