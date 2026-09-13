@@ -36,7 +36,8 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_bitfield.cpp
         tests/test_fixed_point.cpp
         tests/test_ranges.cpp
-        tests/test_escaped.cpp)
+        tests/test_escaped.cpp
+        tests/test_probes.cpp)
     target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main)
 
     target_compile_options(microfmt_tests PRIVATE
