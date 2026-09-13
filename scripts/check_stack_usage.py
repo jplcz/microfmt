@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-microfmt stack usage analyzer
+microfmt static stack usage analyzer
 Parses GCC `.su` files and Clang `llvm-readelf --stack-sizes` output.
+Enforces stack budgets strictly on microfmt symbols while benchmarking libc sprintf as a reference.
 """
 
 import argparse
 import os
 import re
+import shutil
 import subprocess
 import sys
 from typing import List, Tuple
@@ -16,15 +18,33 @@ COLOR_RED = "\033[31;1m"
 COLOR_YELLOW = "\033[33;1m"
 COLOR_GREEN = "\033[32m"
 COLOR_CYAN = "\033[36m"
+COLOR_BLUE = "\033[34;1m"
 COLOR_RESET = "\033[0m"
 
 
+def demangle_symbol(name: str) -> str:
+    """Demangles C++ Itanium ABI symbols using llvm-cxxfilt or c++filt if installed."""
+    if not name.startswith("_Z"):
+        return name
+    tool = shutil.which("llvm-cxxfilt") or shutil.which("c++filt")
+    if not tool:
+        return name
+    try:
+        proc = subprocess.run(
+            [tool, "-p", name], capture_output=True, text=True, check=True
+        )
+        return proc.stdout.strip()
+    except Exception:
+        return name
+
+
+def is_reference_symbol(func_name: str) -> bool:
+    """Returns True if the function is a libc/snprintf baseline comparison."""
+    lower = func_name.lower()
+    return "probe_libc" in lower or "snprintf" in lower or "sprintf" in lower
+
+
 def parse_gcc_su_file(su_path: str) -> List[Tuple[str, int, str]]:
-    """
-    Parses GCC .su format:
-    <file>:<line>:<col>:<func_name>\t<size>\t<type>
-    Example: tests/stack_probes.cpp:24:6:probe_stack_0_args\t32\tstatic
-    """
     results = []
     if not os.path.exists(su_path):
         return results
@@ -50,9 +70,6 @@ def parse_gcc_su_file(su_path: str) -> List[Tuple[str, int, str]]:
 
 
 def parse_clang_readelf(obj_path: str, readelf_bin: str) -> List[Tuple[str, int, str]]:
-    """
-    Extracts stack sizes using `llvm-readelf --stack-sizes <obj_path>`
-    """
     results = []
     if not os.path.exists(obj_path):
         return results
@@ -68,14 +85,12 @@ def parse_clang_readelf(obj_path: str, readelf_bin: str) -> List[Tuple[str, int,
         print(f"Error running {readelf_bin}: {e}", file=sys.stderr)
         return results
 
-    # Regex matches size and symbol name from llvm-readelf output:
-    # 32 probe_stack_0_args or 0x00000020 probe_stack_0_args
     pattern = re.compile(r"^\s*([0-9a-fA-Fx]+)\s+(.+)$")
     in_table = False
 
     for line in proc.stdout.splitlines():
         line = line.strip()
-        if "Stack Sizes:" in line or "Size" in line and "Function" in line:
+        if "Stack Sizes:" in line or ("Size" in line and "Function" in line):
             in_table = True
             continue
         if not in_table or not line:
@@ -94,12 +109,34 @@ def parse_clang_readelf(obj_path: str, readelf_bin: str) -> List[Tuple[str, int,
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Static Stack Usage Analyzer for microfmt")
-    parser.add_argument("--compiler", choices=["gcc", "clang"], required=True, help="Compiler flavor")
-    parser.add_argument("--input", required=True, help="Path to .su file (GCC) or .o object file (Clang)")
-    parser.add_argument("--readelf", default="llvm-readelf", help="Path to llvm-readelf / readelf binary (Clang only)")
-    parser.add_argument("--budget", type=int, default=256, help="Hard maximum stack frame budget in bytes (default: 256)")
-    parser.add_argument("--warn-budget", type=int, default=192, help="Warning stack threshold in bytes (default: 192)")
+    parser = argparse.ArgumentParser(
+        description="Static Stack Usage Analyzer for microfmt"
+    )
+    parser.add_argument(
+        "--compiler", choices=["gcc", "clang"], required=True, help="Compiler flavor"
+    )
+    parser.add_argument(
+        "--input",
+        required=True,
+        help="Path to .su file (GCC) or .o object file (Clang)",
+    )
+    parser.add_argument(
+        "--readelf",
+        default="llvm-readelf",
+        help="Path to llvm-readelf / readelf binary (Clang only)",
+    )
+    parser.add_argument(
+        "--budget",
+        type=int,
+        default=256,
+        help="Maximum stack frame budget in bytes (default: 256)",
+    )
+    parser.add_argument(
+        "--warn-budget",
+        type=int,
+        default=192,
+        help="Warning stack threshold in bytes (default: 192)",
+    )
 
     args = parser.parse_args()
 
@@ -109,19 +146,28 @@ def main() -> int:
         entries = parse_clang_readelf(args.input, args.readelf)
 
     if not entries:
-        print(f"{COLOR_YELLOW}[WARN] No stack usage records found in: {args.input}{COLOR_RESET}")
+        print(
+            f"{COLOR_YELLOW}[WARN] No stack usage records found in: {args.input}{COLOR_RESET}"
+        )
         return 0
 
     # Sort descending by stack size
     entries.sort(key=lambda x: x[1], reverse=True)
 
-    print(f"\n{COLOR_CYAN}=== Static Stack Usage Report ({args.compiler.upper()}) ==={COLOR_RESET}")
+    print(
+        f"\n{COLOR_CYAN}=== Static Stack Usage Report ({args.compiler.upper()}) ==={COLOR_RESET}"
+    )
     print(f"{'Stack Size':>12} | {'Budget':>8} | {'Status':>8} | Function Name")
-    print("-" * 65)
+    print("-" * 80)
 
     failed = False
-    for func_name, size, _ in entries:
-        if size > args.budget:
+    for raw_name, size, _ in entries:
+        is_ref = is_reference_symbol(raw_name)
+        display_name = demangle_symbol(raw_name)
+
+        if is_ref:
+            status = f"{COLOR_BLUE}REF{COLOR_RESET}"
+        elif size > args.budget:
             status = f"{COLOR_RED}FAIL{COLOR_RESET}"
             failed = True
         elif size > args.warn_budget:
@@ -129,15 +175,19 @@ def main() -> int:
         else:
             status = f"{COLOR_GREEN}PASS{COLOR_RESET}"
 
-        print(f"{size:>10} B | {args.budget:>6} B | {status:>17} | {func_name}")
+        print(f"{size:>10} B | {args.budget:>6} B | {status:>17} | {display_name}")
 
-    print("-" * 65)
+    print("-" * 80)
 
     if failed:
-        print(f"{COLOR_RED}[ERROR] One or more functions exceeded the {args.budget}B stack budget!{COLOR_RESET}\n")
+        print(
+            f"{COLOR_RED}[ERROR] One or more microfmt functions exceeded the {args.budget}B stack budget!{COLOR_RESET}\n"
+        )
         return 1
 
-    print(f"{COLOR_GREEN}[SUCCESS] All probed functions are within the {args.budget}B stack budget.{COLOR_RESET}\n")
+    print(
+        f"{COLOR_GREEN}[SUCCESS] All microfmt functions are within the {args.budget}B stack budget.{COLOR_RESET}\n"
+    )
     return 0
 
 

@@ -623,40 +623,103 @@ make_callback_sink(Callable &fn) noexcept {
 
 namespace detail {
 
-inline void format_unsigned(const sink &out, uint64_t val, uint32_t radix,
-                            bool uppercase, int min_width = 0) noexcept {
-  char buf[32];
+inline constexpr char digit_pairs[201] = "00010203040506070809"
+                                         "10111213141516171819"
+                                         "20212223242526272829"
+                                         "30313233343536373839"
+                                         "40414243444546474849"
+                                         "50515253545556575859"
+                                         "60616263646566676869"
+                                         "70717273747576777879"
+                                         "80818283848586878889"
+                                         "90919293949596979899";
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((always_inline))
+#endif
+inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
+                                uint32_t radix, bool uppercase,
+                                int min_width) noexcept {
+  char buf[24]; // Reclaimed immediately upon leaf exit
   size_t idx = sizeof(buf);
-  const char *digits = uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
 
   if (val == 0) {
     buf[--idx] = '0';
+  } else if (radix == 16) {
+    const char *hex_digits =
+        uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
+    while (val > 0) {
+      buf[--idx] = hex_digits[val & 0xF];
+      val >>= 4;
+    }
+  } else if (radix == 10) {
+    while (val >= 100) {
+      const auto rem = static_cast<uint32_t>(val % 100);
+      val /= 100;
+      idx -= 2;
+      buf[idx] = digit_pairs[rem * 2];
+      buf[idx + 1] = digit_pairs[rem * 2 + 1];
+    }
+    if (val < 10) {
+      buf[--idx] = static_cast<char>('0' + val);
+    } else {
+      const auto rem = static_cast<uint32_t>(val * 2);
+      idx -= 2;
+      buf[idx] = digit_pairs[rem];
+      buf[idx + 1] = digit_pairs[rem + 1];
+    }
   } else {
+    const char *digits = uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
     while (val > 0 && idx > 0) {
       buf[--idx] = digits[val % radix];
       val /= radix;
     }
   }
 
+  // Prepend negative sign directly in the buffer if space allows without width
+  // padding
+  if (is_negative && min_width <= 0) {
+    buf[--idx] = '-';
+  }
+
   const size_t digits_len = sizeof(buf) - idx;
-  if (min_width > 0 && static_cast<size_t>(min_width) > digits_len) {
-    for (size_t pad = 0; pad < static_cast<size_t>(min_width) - digits_len;
-         ++pad) {
-      out.put('0');
+
+  if (min_width > 0) {
+    const size_t total_needed = digits_len + (is_negative ? 1 : 0);
+    if (is_negative) {
+      out.put('-');
+    }
+    if (static_cast<size_t>(min_width) > total_needed) {
+      for (size_t i = 0; i < static_cast<size_t>(min_width) - total_needed;
+           ++i) {
+        out.put('0');
+      }
     }
   }
 
   out.write(std::string_view(&buf[idx], digits_len));
 }
 
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((always_inline))
+#endif
+inline void format_unsigned(const sink &out, uint64_t val, uint32_t radix,
+                            bool uppercase, int min_width = 0) noexcept {
+  format_integer_core(out, val, false, radix, uppercase, min_width);
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((always_inline))
+#endif
 inline void format_signed(const sink &out, int64_t val,
                           int min_width = 0) noexcept {
   if (val < 0) {
-    out.put('-');
-    format_unsigned(out, static_cast<uint64_t>(-(val + 1)) + 1, 10, false,
-                    min_width > 1 ? min_width - 1 : 0);
+    // Safe conversion for INT64_MIN (-9223372036854775808)
+    const uint64_t mag = static_cast<uint64_t>(-(val + 1)) + 1ULL;
+    format_integer_core(out, mag, true, 10, false, min_width);
   } else {
-    format_unsigned(out, static_cast<uint64_t>(val), 10, false, min_width);
+    format_integer_core(out, static_cast<uint64_t>(val), false, 10, false,
+                        min_width);
   }
 }
 
