@@ -35,8 +35,11 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/sinks/container_sink.hpp` | `container_sink<Container>`, `make_container_sink`, `format_to_container(container, ...)`, and `format_as_container<Container>(...)` for growable character containers |
 | `microfmt/sinks/pmr_sink.hpp` | PMR-backed `string`, `vector`, `format`, `format_vector`, and `arena_sink` facilities |
 | `microfmt/sinks/ring_buffer_sink.hpp` | `ring_buffer_sink<Capacity>` for a circular output buffer; `Capacity` must be a non-zero power of two. Use `as_sink`, `view`, `dump_to`, `size`, `capacity`, `empty`, `full`, and `reset` |
+| `microfmt/log/logger.hpp` | `basic_logger`, structured log records, and nullable `default_logger()` / `set_default_logger()`; define `MICROFMT_ENABLE_DEFAULT_LOGGER` to opt into the stdout-backed fallback |
+| `microfmt/log/macros.hpp` | `MICROFMT_LOGGER_*` macros for explicit loggers, plus optional `MICROFMT_LOG_*` macros; define `MICROFMT_DEFAULT_LOGGER` to an application logger before including this header |
 | `microfmt/sinks/stdio.hpp` | `file_sink`, `stdout_sink`, `stderr_sink`, POSIX `fd_sink`, plus `print` and `println` overloads for stdout, `FILE*`, and POSIX file descriptors |
-| `microfmt/sinks/syslog_sink.hpp` | `log_priority`, line-buffered `syslog_sink<Capacity>`, and the scoped `syslog` helper |
+| `microfmt/sinks/syslog_sink.hpp` | `log::syslog_sink<Capacity>` adapter for structured `log::log_msg` records |
+| `microfmt/sinks/android_log_sink.hpp` | `log::android_log_sink<MessageCapacity, TagCapacity>` adapter for structured Android logcat records |
 | `microfmt/formatters/ranges.hpp` | `join(range, delimiter)`, `join(first, last, delimiter)`, and compile-time `join_as<Delimiter, ElementSpec>(...)` |
 | `microfmt/formatters/format_helpers.hpp` | `hex`, `bin`, `bytes`, `addr_offset`, `mem_range`, `align`, and `join(span, delimiter)` |
 | `microfmt/formatters/binary.hpp` | `binary_view`, fixed-width `bin`, `bin<Bits>`, `bin_prefixed`, and `bin_grouped` |

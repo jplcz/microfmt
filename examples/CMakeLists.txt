@@ -40,6 +40,9 @@ add_microfmt_example(tee_sink_demo tee_sink_demo.cpp)
 add_microfmt_example(syslog_demo syslog_demo.cpp)
 add_microfmt_example(container_sink_demo container_sink_demo.cpp)
 add_microfmt_example(pmr_sink_demo pmr_sink_demo.cpp)
+add_microfmt_example(android_log_demo android_log_demo.cpp)
+add_microfmt_example(logger_demo logger_demo.cpp)
+add_microfmt_example(default_logger_demo default_logger_demo.cpp)
 
 if(MICROFMT_COMPILER_SUPPORTS_CXX23)
     set_target_properties(monad_demo PROPERTIES

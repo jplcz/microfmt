@@ -22,8 +22,14 @@
 #include <microfmt/sinks/container_sink.hpp>
 #include <microfmt/sinks/pmr_sink.hpp>
 #include <microfmt/sinks/stdio.hpp>
-#include <microfmt/sinks/syslog_sink.hpp>
 #include <microfmt/sinks/tee_sink.hpp>
+
+#if MICROFMT_HEADER_CHECK_STANDARD >= 20
+#include <microfmt/log/logger.hpp>
+#include <microfmt/log/macros.hpp>
+#include <microfmt/sinks/android_log_sink.hpp>
+#include <microfmt/sinks/syslog_sink.hpp>
+#endif
 
 #if defined(MICROFMT_COMPILE_WITH_BOOST_DESCRIBE)
 #include <microfmt/formatters/boost_describe.hpp>

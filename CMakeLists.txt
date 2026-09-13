@@ -107,7 +107,9 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_source_location.cpp
         tests/test_tee_sink.cpp
         tests/test_container_sink.cpp
-        tests/test_pmr_sink.cpp)
+        tests/test_pmr_sink.cpp
+        tests/test_platform_log_sinks.cpp
+        tests/test_logger_override.cpp)
     target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main)
 
     target_compile_options(microfmt_tests PRIVATE

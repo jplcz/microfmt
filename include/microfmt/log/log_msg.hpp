@@ -1,0 +1,67 @@
+#pragma once
+
+#include "../microfmt.hpp"
+#include <chrono>
+#include <cstdint>
+#include <source_location>
+#include <string_view>
+
+namespace microfmt::log {
+
+// ============================================================================
+// Severity Levels
+// ============================================================================
+
+enum class level : uint8_t { trace = 0, debug, info, warn, err, critical, off };
+
+[[nodiscard]] constexpr std::string_view to_string_view(level lvl) noexcept {
+  switch (lvl) {
+  case level::trace:
+    return "trace";
+  case level::debug:
+    return "debug";
+  case level::info:
+    return "info";
+  case level::warn:
+    return "warn";
+  case level::err:
+    return "error";
+  case level::critical:
+    return "critical";
+  default:
+    return "off";
+  }
+}
+
+[[nodiscard]] constexpr std::string_view to_short_string(level lvl) noexcept {
+  switch (lvl) {
+  case level::trace:
+    return "T";
+  case level::debug:
+    return "D";
+  case level::info:
+    return "I";
+  case level::warn:
+    return "W";
+  case level::err:
+    return "E";
+  case level::critical:
+    return "C";
+  default:
+    return "O";
+  }
+}
+
+// ============================================================================
+// Log Entry Record (Carries zero-copy metadata)
+// ============================================================================
+
+struct log_msg {
+  std::string_view logger_name{};
+  level lvl{level::info};
+  std::chrono::system_clock::time_point time{std::chrono::system_clock::now()};
+  std::string_view payload{};
+  std::source_location loc{std::source_location::current()};
+};
+
+} // namespace microfmt::log
