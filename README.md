@@ -19,7 +19,7 @@ A zero-allocation, deterministic, and low-overhead C++ formatting library engine
 * **Range formatting:** Join iterator pairs or ranges with runtime delimiters and element format specifications, or use compile-time `join_as` delimiters and element specs.
 * **Binary and diagnostic views:** Format integers as binary with prefixes, explicit widths, and nibble grouping; render named bitfields and synthesized register types; produce direct or fault-checked hex dumps with ASCII panes.
 * **Embedded-friendly value adapters:** Format fixed-point values, escaped strings and byte buffers, UUIDs, hexadecimal/binary wrapper values, human-readable byte counts, address offsets, memory ranges, aligned text, and joined spans.
-* **Terminal and document output:** Emit ANSI colors and attributes with a runtime color toggle, and generate Markdown headings, lists, code blocks, block quotes, and aligned tables.
+* **Terminal and document output:** Emit ANSI colors and attributes with a runtime color toggle, compose aligned, quoted, case-transformed, and truncated text views, and generate Markdown headings, lists, code blocks, block quotes, and aligned tables.
 * **Optional ecosystem bridges:** Use `fmt.hpp` for a lightweight `{fmt}`-style compatibility surface (`format`, `format_to`, `format_to_n`, `print`, `println`, and custom `fmt::formatter`s). `boost_describe.hpp` formats reflected Boost.Describe enums and public members; `uuid.hpp` optionally accepts `boost::uuids::uuid`.
 
 ---
@@ -66,6 +66,7 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/log/logger.hpp` | `basic_logger`, structured log records, and nullable `default_logger()` / `set_default_logger()`; define `MICROFMT_ENABLE_DEFAULT_LOGGER` to opt into the stdout-backed fallback |
 | `microfmt/log/macros.hpp` | `MICROFMT_LOGGER_*` macros for explicit loggers, plus optional `MICROFMT_LOG_*` macros; define `MICROFMT_DEFAULT_LOGGER` to an application logger before including this header |
 | `microfmt/sinks/stdio.hpp` | `file_sink`, `stdout_sink`, `stderr_sink`, POSIX `fd_sink`, plus `print` and `println` overloads for stdout, `FILE*`, and POSIX file descriptors |
+| `microfmt/sinks/styled_sink.hpp` | `transform_sink` with `char_transform`, `prefix_sink`, and `limit_sink` for zero-buffer output adaptation |
 | `microfmt/sinks/syslog_sink.hpp` | `log::syslog_sink<Capacity>` adapter for structured `log::log_msg` records |
 | `microfmt/sinks/android_log_sink.hpp` | `log::android_log_sink<MessageCapacity, TagCapacity>` adapter for structured Android logcat records |
 | `microfmt/sinks/systemd_sink.hpp` | `log::systemd_sink<MessageCapacity, IdentifierCapacity>` adapter for structured systemd journal records |
@@ -92,6 +93,7 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/formatters/uuid.hpp` | `uuid` overloads for 16-byte data and, when enabled, `boost::uuids::uuid` |
 | `microfmt/formatters/net.hpp` | `mac` for MAC-48/EUI-48 and EUI-64 byte sequences |
 | `microfmt/formatters/ansi.hpp` | `microfmt::ansi::color`, `attribute`, `style`, predefined styles, `styled`, and color helpers such as `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, and `gray` |
+| `microfmt/formatters/styled.hpp` | `styled_str_view`, `pad`, `pad_center`, `pad_right`, `to_upper`, `to_lower`, `truncate`, and `quoted` for zero-allocation text presentation |
 | `microfmt/markdown.hpp` | `microfmt::md::align`, `column`, and fluent `writer` methods for text, headings, lists, block quotes, code blocks, and tables |
 | `microfmt/formatters/fmt.hpp` | `fmt::format`, `fmt::format_to`, `fmt::format_to_n`, `fmt::print`, `fmt::println`, `fmt::join`, and the `fmt::formatter<T>` bridge |
 | `microfmt/formatters/boost_describe.hpp` | Automatic `formatter<T>` support for Boost.Describe reflected enums, structs, and classes |
@@ -201,6 +203,26 @@ auto message = microfmt::format<128>(
 microfmt::println("{}", microfmt::ansi::red("error"));
 microfmt::ansi::style::colors_enabled = false; // Disable escape sequences.
 microfmt::println(stderr, "failed with code {}", 5);
+```
+
+```cpp
+#include <microfmt/formatters/styled.hpp>
+
+auto row = microfmt::format<64>(
+    "|{:*^12u}| {:>16tq.9} |",
+    microfmt::pad_right("ready", 5),
+    microfmt::to_lower("FIRMWARE_UPDATE_PENDING"));
+// |***READY****|      "Firmw..." |
+```
+
+```cpp
+#include <microfmt/sinks/styled_sink.hpp>
+
+microfmt::buffer_sink<64> storage;
+microfmt::prefix_sink output{storage.as_sink(), "[telemetry] "};
+microfmt::format_to(output.as_sink(), "id={}\nvoltage={} mV", 3, 3295);
+// [telemetry] id=3
+// [telemetry] voltage=3295 mV
 ```
 
 To support a custom type, specialize `microfmt::formatter<T>` with `parse` and

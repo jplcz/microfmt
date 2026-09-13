@@ -21,12 +21,14 @@
 #include <microfmt/formatters/semver.hpp>
 #include <microfmt/formatters/spi.hpp>
 #include <microfmt/formatters/source_location.hpp>
+#include <microfmt/formatters/styled.hpp>
 #include <microfmt/formatters/units.hpp>
 #include <microfmt/formatters/uuid.hpp>
 #include <microfmt/sinks/ring_buffer_sink.hpp>
 #include <microfmt/sinks/container_sink.hpp>
 #include <microfmt/sinks/pmr_sink.hpp>
 #include <microfmt/sinks/stdio.hpp>
+#include <microfmt/sinks/styled_sink.hpp>
 #include <microfmt/sinks/tee_sink.hpp>
 
 #if MICROFMT_HEADER_CHECK_STANDARD >= 20

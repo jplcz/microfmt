@@ -134,6 +134,8 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_math.cpp
         tests/test_monad.cpp
         tests/test_source_location.cpp
+        tests/test_styled.cpp
+        tests/test_styled_sink.cpp
         tests/test_tee_sink.cpp
         tests/test_container_sink.cpp
         tests/test_pmr_sink.cpp
