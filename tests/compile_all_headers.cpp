@@ -8,6 +8,7 @@
 #include <microfmt/formatters/cbor.hpp>
 #include <microfmt/formatters/chrono.hpp>
 #include <microfmt/formatters/escaped.hpp>
+#include <microfmt/formatters/filter_view.hpp>
 #include <microfmt/formatters/fixed_point.hpp>
 #include <microfmt/formatters/fmt.hpp>
 #include <microfmt/formatters/format_helpers.hpp>

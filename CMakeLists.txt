@@ -119,6 +119,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_ranges.cpp
         tests/test_spi.cpp
         tests/test_escaped.cpp
+        tests/test_filter_view.cpp
         tests/test_probes.cpp
         tests/test_fmt_compat.cpp
         tests/test_i2c.cpp
@@ -283,6 +284,23 @@ if(MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(microfmt_cxx17_pointer_tests
         TEST_PREFIX "Cxx17Pointer.")
+
+    add_executable(microfmt_cxx17_filter_view_tests
+        tests/test_filter_view.cpp)
+    target_link_libraries(microfmt_cxx17_filter_view_tests PRIVATE
+        microfmt GTest::gtest_main)
+    set_target_properties(microfmt_cxx17_filter_view_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    target_compile_options(microfmt_cxx17_filter_view_tests PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
+        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
+        >
+    )
+    gtest_discover_tests(microfmt_cxx17_filter_view_tests
+        TEST_PREFIX "Cxx17FilterView.")
 
     if(MICROFMT_COMPILER_SUPPORTS_CXX23)
         add_executable(microfmt_cxx23_tests tests/test_monad.cpp)

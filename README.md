@@ -81,6 +81,7 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/formatters/spi.hpp` | `spi_duplex`, `spi_write`, `spi_read`, and diagnostic or compact SPI transfer formatting |
 | `microfmt/formatters/base_views.hpp` | `base64` for byte spans and arrays, plus custom-size `bin_grouped(value, group_size, separator)` |
 | `microfmt/formatters/escaped.hpp` | `escaped` overloads for string views, character buffers, byte buffers, and spans |
+| `microfmt/formatters/filter_view.hpp` | `filter(range, predicate)` and `filter(pointer, count, predicate)` for zero-allocation filtered range formatting; select `b`, `c`, or `n` delimiters and forward element specifiers |
 | `microfmt/formatters/fixed_point.hpp` | `fixed<Scale, Decimals>`, `milli`, `centi`, `micro`, and the `milli_view`, `centi_view`, and `micro_view` aliases |
 | `microfmt/formatters/semver.hpp` | `semver`, `version`, `from_packed32`, and `from_packed24` |
 | `microfmt/formatters/units.hpp` | `scale_base`, `with_unit`, `auto_si`, `auto_bytes`, and `hertz` |
@@ -256,6 +257,17 @@ auto values = microfmt::format<32>("regs={:c04X}",
                                    microfmt::raw_range(registers, size_t{2}));
 // pc=0X08001234
 // regs={00A1, 000F}
+```
+
+```cpp
+#include <microfmt/formatters/filter_view.hpp>
+
+const uint16_t registers[] = {0x0001, 0x000A, 0x001F};
+auto active = microfmt::format<32>(
+    "active={:c04X}", microfmt::filter(registers, [](uint16_t value) {
+      return value >= 0x0010;
+    }));
+// active={001F}
 ```
 
 To support a custom type, specialize `microfmt::formatter<T>` with `parse` and
