@@ -106,7 +106,8 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_monad.cpp
         tests/test_source_location.cpp
         tests/test_tee_sink.cpp
-        tests/test_container_sink.cpp)
+        tests/test_container_sink.cpp
+        tests/test_pmr_sink.cpp)
     target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main)
 
     target_compile_options(microfmt_tests PRIVATE
@@ -134,6 +135,22 @@ if(MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(microfmt_cxx17_container_sink_tests
         TEST_PREFIX "Cxx17ContainerSink.")
+
+    add_executable(microfmt_cxx17_pmr_sink_tests tests/test_pmr_sink.cpp)
+    target_link_libraries(microfmt_cxx17_pmr_sink_tests PRIVATE
+        microfmt GTest::gtest_main)
+    set_target_properties(microfmt_cxx17_pmr_sink_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    target_compile_options(microfmt_cxx17_pmr_sink_tests PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
+        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
+        >
+    )
+    gtest_discover_tests(microfmt_cxx17_pmr_sink_tests
+        TEST_PREFIX "Cxx17PmrSink.")
 
     if(MICROFMT_COMPILER_SUPPORTS_CXX23)
         add_executable(microfmt_cxx23_tests tests/test_monad.cpp)
