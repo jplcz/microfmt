@@ -1,0 +1,50 @@
+name: Cross-compile
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x86_64
+            compiler: g++
+            packages: ""
+          - name: arm32
+            compiler: arm-linux-gnueabihf-g++
+            packages: g++-arm-linux-gnueabihf
+          - name: aarch64
+            compiler: aarch64-linux-gnu-g++
+            packages: g++-aarch64-linux-gnu
+          - name: riscv64
+            compiler: riscv64-linux-gnu-g++
+            packages: g++-riscv64-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cross compiler
+        if: matrix.packages != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ${{ matrix.packages }}
+
+      - name: Configure
+        run: |
+          cmake -S . -B build/${{ matrix.name }} -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
+            -DMICROFMT_BUILD_TESTS=OFF \
+            -DMICROFMT_BUILD_EXAMPLES=ON
+
+      - name: Build examples
+        run: cmake --build build/${{ matrix.name }} --parallel
