@@ -27,6 +27,17 @@ int main() {
                  "EdgeGateway-01", "STM32H743", 0xA1B2C3D4)
       .newline();
 
+  doc.println("Use {}, {}, {}, and {} for readable diagnostics.",
+              microfmt::md::bold("bold labels"),
+              microfmt::md::italic("context"),
+              microfmt::md::strike("obsolete values"),
+              microfmt::md::code("register_name"));
+  doc.println("Documentation: {}",
+              microfmt::md::link("microfmt", "https://github.com/jplcz/microfmt"));
+  doc.println("{}",
+              microfmt::md::image("microfmt logo", "docs/microfmt-logo.svg"))
+      .newline();
+
   // ------------------------------------------------------------------------
   // Ordered & Unordered Lists (Integer / Millivolt units)
   // ------------------------------------------------------------------------
@@ -41,6 +52,19 @@ int main() {
       .numbered_item(2, "Configure peripheral buses and DMA rings")
       .numbered_item(3, "Mount file systems and launch telemetry task")
       .newline();
+
+  doc.h3("Deployment Checklist")
+      .task_item(true, "Firmware image signature verified")
+      .task_item(true, "Boot configuration persisted")
+      .task_item(false, "Confirm telemetry endpoint reachability")
+      .nested_list_item(1, "Retry endpoint discovery after {} seconds", 30)
+      .newline();
+
+  doc.alert(microfmt::md::admonition::warning,
+            [](microfmt::md::writer &w) {
+              w.write("> The VCC rail is below its nominal 3300 mV target.\n");
+              w.write("> Inspect the regulator before deployment.\n");
+            });
 
   // ------------------------------------------------------------------------
   // Tables with Alignment and Pure Integer Formatting
@@ -82,7 +106,7 @@ int main() {
   doc.newline().horizontal_rule().newline();
 
   // ------------------------------------------------------------------------
-  // Code Blocks with Embedded Hexdump
+  // Collapsible Hexdump Block
   // ------------------------------------------------------------------------
   doc.h2("Crash Context Payload");
 
@@ -91,12 +115,9 @@ int main() {
                                 0x48, 0x61, 0x72, 0x64, 0x46, 0x61, 0x75, 0x6c,
                                 0x74, 0x5f, 0x49, 0x53, 0x52};
 
-  doc.code_block("text", [&](microfmt::md::writer &w) {
-    microfmt::format_to(w.get_sink(), "{}",
-                        microfmt::hexdump(microfmt::span<const uint8_t>(
-                                              crash_dump, sizeof(crash_dump)),
-                                          /*base_address=*/0x20000000));
-  });
+  doc.hexdump_block(
+      "Expand the captured HardFault payload",
+      microfmt::span<const uint8_t>(crash_dump, sizeof(crash_dump)));
 
   return 0;
 }
