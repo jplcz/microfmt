@@ -41,7 +41,8 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_fmt_compat.cpp
         tests/test_stdio.cpp
         tests/test_binary.cpp
-        tests/test_uuid.cpp)
+        tests/test_uuid.cpp
+        tests/test_ring_buffer.cpp)
     target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main)
 
     target_compile_options(microfmt_tests PRIVATE
