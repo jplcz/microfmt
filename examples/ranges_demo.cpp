@@ -68,14 +68,34 @@ int main() {
                       microfmt::join(voltages, " | "));
 
   // ------------------------------------------------------------------------
+  // Compile-Time join_as with Custom Element Specifiers
+  // ------------------------------------------------------------------------
+  microfmt::format_to(term, "=== 5. Compile-Time join_as Specifiers ===\n");
+
+  const uint8_t mac_raw[] = {0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E};
+  const uint16_t reg_dump[] = {0x00A1, 0x000F, 0x1234, 0xBEEF};
+
+  // Compile-time separator + 2-digit uppercase hex per element
+  microfmt::format_to(term, "MAC (join_as)     : {}\n",
+                      microfmt::join_as<":", "02X">(mac_raw));
+
+  // Compile-time separator + 4-digit lowercase hex with prefix
+  microfmt::format_to(term, "Registers         : [{}]\n",
+                      microfmt::join_as<", ", "04x">(reg_dump));
+
+  // Format string specifier forwarding ({:08b} applied to each element)
+  const uint8_t flag_masks[] = {0b00000001, 0b00100100, 0b11000000};
+  microfmt::format_to(term, "Bitmasks          : {:08b}\n\n",
+                      microfmt::join(flag_masks, " | "));
+
+  // ------------------------------------------------------------------------
   // Formatting Directly into Bounded Stack Buffer
   // ------------------------------------------------------------------------
-  microfmt::format_to(term, "=== 5. Format into Fixed Stack Buffer ===\n");
+  microfmt::format_to(term, "=== 6. Format into Fixed Stack Buffer ===\n");
 
-  const uint8_t mac_addr[] = {0x00, 0x1A, 0x2B, 0x3C, 0x4D, 0x5E};
-  auto msg =
-      microfmt::format<128>("Device MAC: [{}] (Length: {} bytes)",
-                            microfmt::join(mac_addr, ":"), sizeof(mac_addr));
+  auto msg = microfmt::format<128>("Device MAC: [{}] (Length: {} bytes)",
+                                   microfmt::join_as<":", "02X">(mac_raw),
+                                   sizeof(mac_raw));
 
   std::fwrite(msg.view().data(), 1, msg.size(), stdout);
   microfmt::format_to(term, "\n");
