@@ -2,17 +2,46 @@
 
 A zero-allocation, deterministic, and low-overhead C++ formatting library engineered specifically for resource-constrained environments (bare-metal embedded systems, real-time operating systems, ISRs, and kernel-space drivers).
 
-`microfmt` provides Python/`std::format`-style formatting syntax with compile-time format string validation, strict `noexcept` guarantees, full `-fno-exceptions`/`-fno-rtti` compatibility, and a strictly bounded stack footprint.
+`microfmt` provides Python/`std::format`-style sequential formatting syntax with `noexcept` APIs, `-fno-exceptions`/`-fno-rtti` compatibility, and a strictly bounded stack footprint.
 
 ---
 
 ## Key Features
 
-* **Zero Dynamic Allocations:** Never touches the heap (`malloc`/`free` or `new`/`delete`).
-* **Strictly `noexcept` & Freestanding:** Fully functional with `-fno-exceptions` and `-fno-rtti`.
-* **Deterministic, Bounded Stack Usage:** Integral conversion routines share a compact 24-byte scratchpad within leaf frames to prevent deep stack growth.
-* **Type-Erased Sinks:** Lightweight sink abstraction for streaming output directly into custom ring buffers, UART interfaces, fixed arrays, or iterators.
-* **Modern C++ Support:** First-class C++20 support with clean C++17 runtime fallback.
+* **Zero-allocation, `noexcept` formatting:** Formats directly to a sink without heap allocation, exceptions, virtual dispatch, or RTTI. Integer conversion uses a fixed 24-byte scratch buffer.
+* **C++20 header-only core:** Supports sequential `{}` replacement fields, escaped braces (`{{` and `}}`), decimal and hexadecimal (`x`/`X`) integers, and zero-padded widths such as `{:04x}`.
+* **Extensible formatters:** Define `microfmt::formatter<T>` specializations for application types. Built-in formatters cover strings, character arrays, integral values, booleans, pointers, and `nullptr`.
+* **Flexible output sinks:** Stream to a type-erased callback, bounded external buffer (`span_sink`), inline fixed buffer (`buffer_sink`), null-terminated buffer (`c_string_sink`), output iterator, callback, byte counter, or discard sink. `stdio.hpp` adds `FILE*`, stdout/stderr, and POSIX file-descriptor sinks.
+* **Span support:** Includes a small C++17-compatible `microfmt::span` and interoperates with `std::span` when it is available.
+* **Range formatting:** Join iterator pairs or ranges with runtime delimiters and element format specifications, or use compile-time `join_as` delimiters and element specs.
+* **Binary and diagnostic views:** Format integers as binary with prefixes, explicit widths, and nibble grouping; render named bitfields and synthesized register types; produce direct or fault-checked hex dumps with ASCII panes.
+* **Embedded-friendly value adapters:** Format fixed-point values, escaped strings and byte buffers, UUIDs, hexadecimal/binary wrapper values, human-readable byte counts, address offsets, memory ranges, aligned text, and joined spans.
+* **Terminal and document output:** Emit ANSI colors and attributes with a runtime color toggle, and generate Markdown headings, lists, code blocks, block quotes, and aligned tables.
+* **Optional ecosystem bridges:** Use `fmt.hpp` for a lightweight `{fmt}`-style compatibility surface (`format`, `format_to`, `format_to_n`, `print`, `println`, and custom `fmt::formatter`s). `boost_describe.hpp` formats reflected Boost.Describe enums and public members; `uuid.hpp` optionally accepts `boost::uuids::uuid`.
+
+---
+
+## Public API
+
+Include the headers for the facilities you use. Every API below is in
+`microfmt` unless another namespace is shown.
+
+| Header | Developer-facing APIs |
+|---|---|
+| `microfmt/microfmt.hpp` | `span<T>`, `sink`, `span_sink`, `buffer_sink<N>`, `c_string_sink<N>`, `iterator_sink<It>`, `counting_sink`, `null_sink`, `callback_sink<F>`, `make_callback_sink`, `format_to`, `vformat_to`, `format<N>`, and the `formatter<T>` customization point |
+| `microfmt/stdio.hpp` | `file_sink`, `stdout_sink`, `stderr_sink`, POSIX `fd_sink`, plus `print` and `println` overloads for stdout, `FILE*`, and POSIX file descriptors |
+| `microfmt/ranges.hpp` | `join(range, delimiter)`, `join(first, last, delimiter)`, and compile-time `join_as<Delimiter, ElementSpec>(...)` |
+| `microfmt/format_helpers.hpp` | `hex`, `bin`, `bytes`, `addr_offset`, `mem_range`, `align`, and `join(span, delimiter)` |
+| `microfmt/binary.hpp` | `binary_view`, fixed-width `bin`, `bin<Bits>`, `bin_prefixed`, and `bin_grouped` |
+| `microfmt/escaped.hpp` | `escaped` overloads for string views, character buffers, byte buffers, and spans |
+| `microfmt/fixed_point.hpp` | `fixed<Scale, Decimals>`, `milli`, `centi`, `micro`, and the `milli_view`, `centi_view`, and `micro_view` aliases |
+| `microfmt/bitfield.hpp` | `bit_type`, `bit_field`, `bitfield_view`, `bits`, `MICROFMT_BIT_FLAG`, `MICROFMT_BIT_VALUE_DEC`, `MICROFMT_BIT_VALUE_HEX`, and `MICROFMT_DEFINE_REGISTER_TYPE` |
+| `microfmt/hexdump.hpp` | `memory_reader_fn_t`, `hexdump`, `hexdump_checked`, and `hexdump_to` |
+| `microfmt/uuid.hpp` | `uuid` overloads for 16-byte data and, when enabled, `boost::uuids::uuid` |
+| `microfmt/ansi.hpp` | `microfmt::ansi::color`, `attribute`, `style`, predefined styles, `styled`, and color helpers such as `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, and `gray` |
+| `microfmt/markdown.hpp` | `microfmt::md::align`, `column`, and fluent `writer` methods for text, headings, lists, block quotes, code blocks, and tables |
+| `microfmt/fmt.hpp` | `fmt::format`, `fmt::format_to`, `fmt::format_to_n`, `fmt::print`, `fmt::println`, `fmt::join`, and the `fmt::formatter<T>` bridge |
+| `microfmt/boost_describe.hpp` | Automatic `formatter<T>` support for Boost.Describe reflected enums, structs, and classes |
 
 ---
 
