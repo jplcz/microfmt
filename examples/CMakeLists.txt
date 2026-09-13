@@ -51,6 +51,13 @@ else()
     message(STATUS "microfmt: libsystemd not found - skipping systemd demo")
 endif()
 
+if(TARGET PkgConfig::MICROFMT_TIZEN_DLOG)
+    add_microfmt_example(tizen_dlog_demo tizen_dlog_demo.cpp)
+    target_link_libraries(tizen_dlog_demo PRIVATE PkgConfig::MICROFMT_TIZEN_DLOG)
+else()
+    message(STATUS "microfmt: Tizen dlog not found - skipping Tizen dlog demo")
+endif()
+
 if(MICROFMT_COMPILER_SUPPORTS_CXX23)
     set_target_properties(monad_demo PROPERTIES
         CXX_STANDARD 23

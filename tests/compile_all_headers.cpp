@@ -32,6 +32,9 @@
 #if defined(MICROFMT_COMPILE_WITH_SYSTEMD)
 #include <microfmt/sinks/systemd_sink.hpp>
 #endif
+#if defined(MICROFMT_COMPILE_WITH_TIZEN_DLOG)
+#include <microfmt/sinks/tizen_dlog_sink.hpp>
+#endif
 #endif
 
 #if defined(MICROFMT_COMPILE_WITH_BOOST_DESCRIBE)

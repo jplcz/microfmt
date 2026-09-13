@@ -11,6 +11,7 @@ find_package(Boost 1.77 CONFIG QUIET)
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
     pkg_check_modules(MICROFMT_SYSTEMD QUIET IMPORTED_TARGET libsystemd)
+    pkg_check_modules(MICROFMT_TIZEN_DLOG QUIET IMPORTED_TARGET dlog)
 endif()
 
 if(MSVC)
@@ -63,6 +64,13 @@ if(MICROFMT_BUILD_HEADER_CHECKS)
                 PkgConfig::MICROFMT_SYSTEMD)
             target_compile_definitions(microfmt_headers_cxx${STANDARD} PRIVATE
                 MICROFMT_COMPILE_WITH_SYSTEMD=1)
+        endif()
+
+        if(STANDARD GREATER_EQUAL 20 AND TARGET PkgConfig::MICROFMT_TIZEN_DLOG)
+            target_link_libraries(microfmt_headers_cxx${STANDARD} PRIVATE
+                PkgConfig::MICROFMT_TIZEN_DLOG)
+            target_compile_definitions(microfmt_headers_cxx${STANDARD} PRIVATE
+                MICROFMT_COMPILE_WITH_TIZEN_DLOG=1)
         endif()
     endfunction()
 
@@ -135,6 +143,12 @@ if(MICROFMT_BUILD_TESTS)
     if(TARGET PkgConfig::MICROFMT_SYSTEMD)
         target_sources(microfmt_tests PRIVATE tests/test_systemd_sink.cpp)
         target_link_libraries(microfmt_tests PRIVATE PkgConfig::MICROFMT_SYSTEMD)
+    endif()
+
+    if(TARGET PkgConfig::MICROFMT_TIZEN_DLOG)
+        target_sources(microfmt_tests PRIVATE tests/test_tizen_dlog_sink.cpp)
+        target_link_libraries(microfmt_tests PRIVATE
+            PkgConfig::MICROFMT_TIZEN_DLOG)
     endif()
 
     add_executable(microfmt_cxx17_container_sink_tests

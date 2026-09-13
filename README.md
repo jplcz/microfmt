@@ -41,6 +41,7 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/sinks/syslog_sink.hpp` | `log::syslog_sink<Capacity>` adapter for structured `log::log_msg` records |
 | `microfmt/sinks/android_log_sink.hpp` | `log::android_log_sink<MessageCapacity, TagCapacity>` adapter for structured Android logcat records |
 | `microfmt/sinks/systemd_sink.hpp` | `log::systemd_sink<MessageCapacity, IdentifierCapacity>` adapter for structured systemd journal records |
+| `microfmt/sinks/tizen_dlog_sink.hpp` | `log::tizen_dlog_sink<TagCapacity>` adapter for structured Tizen DLOG records |
 | `microfmt/formatters/ranges.hpp` | `join(range, delimiter)`, `join(first, last, delimiter)`, and compile-time `join_as<Delimiter, ElementSpec>(...)` |
 | `microfmt/formatters/format_helpers.hpp` | `hex`, `bin`, `bytes`, `addr_offset`, `mem_range`, `align`, and `join(span, delimiter)` |
 | `microfmt/formatters/binary.hpp` | `binary_view`, fixed-width `bin`, `bin<Bits>`, `bin_prefixed`, and `bin_grouped` |
