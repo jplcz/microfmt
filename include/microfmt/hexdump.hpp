@@ -164,9 +164,7 @@ template <> struct formatter<hexdump_view> {
       }
 
       offset += chunk_len;
-      if (offset < h.total_len) {
-        out.put('\n');
-      }
+      out.put('\n');
     }
   }
 };

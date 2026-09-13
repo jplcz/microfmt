@@ -10,3 +10,4 @@ endfunction()
 
 add_microfmt_example(demo_hexdump hexdump_demo.cpp)
 add_microfmt_example(ansi_demo ansi_demo.cpp)
+add_microfmt_example(markdown_demo markdown_demo.cpp)
