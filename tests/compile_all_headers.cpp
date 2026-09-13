@@ -18,6 +18,7 @@
 #include <microfmt/formatters/map_view.hpp>
 #include <microfmt/formatters/monad.hpp>
 #include <microfmt/formatters/net.hpp>
+#include <microfmt/formatters/pointer.hpp>
 #include <microfmt/formatters/ranges.hpp>
 #include <microfmt/formatters/semver.hpp>
 #include <microfmt/formatters/spi.hpp>

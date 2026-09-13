@@ -88,6 +88,7 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/formatters/math.hpp` | `vec`, owning `vec3`, and row-major `mat<T, Rows, Cols>` views |
 | `microfmt/formatters/map_view.hpp` | `map_view` for standard, iterator-based, or custom-extractor key/value ranges; select `b`, `c`, or `n` delimiters and forward element specifiers |
 | `microfmt/formatters/monad.hpp` | `std::optional` formatting and, in C++23, `std::expected` formatting |
+| `microfmt/formatters/pointer.hpp` | `raw_ptr`, `raw_ptr32`, `ptr_width_mode`, and `raw_range` for deterministic native or compatibility-width addresses and contiguous pointer ranges |
 | `microfmt/formatters/source_location.hpp` | `source_loc`, `source_loc_view`, and direct source-location formatters when a supported source-location API is enabled |
 | `microfmt/formatters/tuple.hpp` | C++17 tuple-like formatting for `std::tuple`, `std::pair`, and compatible types; select `b`, `c`, `n`, or `p` delimiters and forward element specifiers |
 | `microfmt/formatters/bitfield.hpp` | `bit_type`, `bit_field`, `bitfield_view`, `bits`, `MICROFMT_BIT_FLAG`, `MICROFMT_BIT_VALUE_DEC`, `MICROFMT_BIT_VALUE_HEX`, and `MICROFMT_DEFINE_REGISTER_TYPE` |
@@ -243,6 +244,18 @@ auto row = microfmt::format<64>("registers={:b04X}", registers);
 std::map<int, const char*> states{{1, "boot"}, {3, "ready"}};
 auto line = microfmt::format<64>("states={}", microfmt::map_view(states));
 // states={1: boot, 3: ready}
+```
+
+```cpp
+#include <microfmt/formatters/pointer.hpp>
+
+const uint16_t registers[] = {0x00A1, 0x000F};
+auto address = microfmt::format<32>("pc={:32P}",
+                                    microfmt::raw_ptr(uintptr_t{0x08001234}));
+auto values = microfmt::format<32>("regs={:c04X}",
+                                   microfmt::raw_range(registers, size_t{2}));
+// pc=0X08001234
+// regs={00A1, 000F}
 ```
 
 To support a custom type, specialize `microfmt::formatter<T>` with `parse` and
