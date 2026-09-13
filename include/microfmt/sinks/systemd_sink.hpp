@@ -1,0 +1,87 @@
+#pragma once
+
+#include "../log/sink.hpp"
+#include <cstddef>
+#include <string_view>
+#include <sys/uio.h>
+#include <syslog.h>
+#include <systemd/sd-journal.h>
+
+namespace microfmt::log {
+
+template <std::size_t MessageCapacity = 512, std::size_t IdentifierCapacity = 64>
+class systemd_sink {
+  static_assert(MessageCapacity > 0, "Message capacity must be at least 1 byte");
+  static_assert(IdentifierCapacity > 0,
+                "Identifier capacity must be at least 1 byte");
+
+public:
+  using write_fn_t = void (*)(int priority, std::string_view identifier,
+                              std::string_view message) noexcept;
+
+  explicit constexpr systemd_sink(write_fn_t write_fn = write_to_journal) noexcept
+      : write_fn_(write_fn) {}
+
+  [[nodiscard]] log_sink as_sink() noexcept {
+    return log_sink{this,
+                    [](void *ctx, const log_msg &msg) noexcept {
+                      static_cast<systemd_sink *>(ctx)->log_impl(msg);
+                    },
+                    nullptr,
+                    level::trace};
+  }
+
+private:
+  static void write_to_journal(int priority, std::string_view identifier,
+                               std::string_view message) noexcept {
+    char priority_field[] = "PRIORITY=0";
+    priority_field[9] = static_cast<char>('0' + priority);
+
+    buffer_sink<IdentifierCapacity + 18> identifier_field;
+    const auto identifier_out = identifier_field.as_sink();
+    identifier_out.write("SYSLOG_IDENTIFIER=");
+    identifier_out.write(identifier.empty() ? "microfmt" : identifier);
+
+    buffer_sink<MessageCapacity + 8> message_field;
+    const auto message_out = message_field.as_sink();
+    message_out.write("MESSAGE=");
+    message_out.write(message);
+
+    const iovec fields[] = {
+        {priority_field, sizeof(priority_field) - 1},
+        {const_cast<char *>(identifier_field.view().data()),
+         identifier_field.view().size()},
+        {const_cast<char *>(message_field.view().data()), message_field.view().size()},
+    };
+    (void)::sd_journal_sendv(fields, 3);
+  }
+
+  static int priority_for(level lvl) noexcept {
+    switch (lvl) {
+    case level::trace:
+    case level::debug:
+      return LOG_DEBUG;
+    case level::info:
+      return LOG_INFO;
+    case level::warn:
+      return LOG_WARNING;
+    case level::err:
+      return LOG_ERR;
+    case level::critical:
+      return LOG_CRIT;
+    case level::off:
+      return LOG_DEBUG;
+    }
+    return LOG_DEBUG;
+  }
+
+  void log_impl(const log_msg &msg) noexcept {
+    if (msg.lvl != level::off) {
+      write_fn_(priority_for(msg.lvl), msg.logger_name, msg.payload);
+    }
+  }
+
+  write_fn_t write_fn_;
+};
+
+} // namespace microfmt::log

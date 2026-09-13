@@ -8,6 +8,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(CheckCXXCompilerFlag)
 
 find_package(Boost 1.77 CONFIG QUIET)
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(MICROFMT_SYSTEMD QUIET IMPORTED_TARGET libsystemd)
+endif()
 
 if(MSVC)
     check_cxx_compiler_flag("/std:c++latest" MICROFMT_COMPILER_SUPPORTS_CXX23)
@@ -52,6 +56,13 @@ if(MICROFMT_BUILD_HEADER_CHECKS)
                 MICROFMT_COMPILE_WITH_BOOST_DESCRIBE=1
                 MICROFMT_ENABLE_BOOST_UUID=1
                 MICROFMT_ENABLE_BOOST_SOURCE_LOCATION=1)
+        endif()
+
+        if(STANDARD GREATER_EQUAL 20 AND TARGET PkgConfig::MICROFMT_SYSTEMD)
+            target_link_libraries(microfmt_headers_cxx${STANDARD} PRIVATE
+                PkgConfig::MICROFMT_SYSTEMD)
+            target_compile_definitions(microfmt_headers_cxx${STANDARD} PRIVATE
+                MICROFMT_COMPILE_WITH_SYSTEMD=1)
         endif()
     endfunction()
 
@@ -120,6 +131,11 @@ if(MICROFMT_BUILD_TESTS)
 
     include(GoogleTest)
     gtest_discover_tests(microfmt_tests)
+
+    if(TARGET PkgConfig::MICROFMT_SYSTEMD)
+        target_sources(microfmt_tests PRIVATE tests/test_systemd_sink.cpp)
+        target_link_libraries(microfmt_tests PRIVATE PkgConfig::MICROFMT_SYSTEMD)
+    endif()
 
     add_executable(microfmt_cxx17_container_sink_tests
         tests/test_container_sink.cpp)

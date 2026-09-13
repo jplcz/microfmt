@@ -44,6 +44,13 @@ add_microfmt_example(android_log_demo android_log_demo.cpp)
 add_microfmt_example(logger_demo logger_demo.cpp)
 add_microfmt_example(default_logger_demo default_logger_demo.cpp)
 
+if(TARGET PkgConfig::MICROFMT_SYSTEMD)
+    add_microfmt_example(systemd_demo systemd_demo.cpp)
+    target_link_libraries(systemd_demo PRIVATE PkgConfig::MICROFMT_SYSTEMD)
+else()
+    message(STATUS "microfmt: libsystemd not found - skipping systemd demo")
+endif()
+
 if(MICROFMT_COMPILER_SUPPORTS_CXX23)
     set_target_properties(monad_demo PROPERTIES
         CXX_STANDARD 23
