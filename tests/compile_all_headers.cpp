@@ -17,6 +17,7 @@
 #include <microfmt/formatters/net.hpp>
 #include <microfmt/formatters/ranges.hpp>
 #include <microfmt/formatters/semver.hpp>
+#include <microfmt/formatters/spi.hpp>
 #include <microfmt/formatters/source_location.hpp>
 #include <microfmt/formatters/units.hpp>
 #include <microfmt/formatters/uuid.hpp>

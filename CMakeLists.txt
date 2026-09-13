@@ -111,6 +111,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_can.cpp
         tests/test_fixed_point.cpp
         tests/test_ranges.cpp
+        tests/test_spi.cpp
         tests/test_escaped.cpp
         tests/test_probes.cpp
         tests/test_fmt_compat.cpp
