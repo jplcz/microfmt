@@ -31,6 +31,7 @@ add_microfmt_example(fmt_bridge_demo fmt_bridge_demo.cpp)
 add_microfmt_example(stdio_demo stdio_demo.cpp)
 add_microfmt_example(binary_demo binary_demo.cpp)
 add_microfmt_example(ring_buffer_demo ring_buffer_demo.cpp)
+add_microfmt_example(syslog_demo syslog_demo.cpp)
 
 if(Boost_FOUND)
     add_microfmt_example(uuid_demo uuid_demo.cpp)
