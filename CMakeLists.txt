@@ -132,6 +132,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_ring_buffer.cpp
         tests/test_base_views.cpp
         tests/test_math.cpp
+        tests/test_map_view.cpp
         tests/test_monad.cpp
         tests/test_source_location.cpp
         tests/test_styled.cpp
@@ -163,6 +164,10 @@ if(MICROFMT_BUILD_TESTS)
         target_sources(microfmt_tests PRIVATE tests/test_tizen_dlog_sink.cpp)
         target_link_libraries(microfmt_tests PRIVATE
             PkgConfig::MICROFMT_TIZEN_DLOG)
+    endif()
+
+    if(Boost_FOUND)
+        target_sources(microfmt_tests PRIVATE tests/test_map_view_boost.cpp)
     endif()
 
     add_executable(microfmt_cxx17_container_sink_tests
@@ -245,6 +250,22 @@ if(MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(microfmt_cxx17_tuple_tests
         TEST_PREFIX "Cxx17Tuple.")
+
+    add_executable(microfmt_cxx17_map_view_tests tests/test_map_view.cpp)
+    target_link_libraries(microfmt_cxx17_map_view_tests PRIVATE
+        microfmt GTest::gtest_main)
+    set_target_properties(microfmt_cxx17_map_view_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    target_compile_options(microfmt_cxx17_map_view_tests PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
+        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
+        >
+    )
+    gtest_discover_tests(microfmt_cxx17_map_view_tests
+        TEST_PREFIX "Cxx17MapView.")
 
     if(MICROFMT_COMPILER_SUPPORTS_CXX23)
         add_executable(microfmt_cxx23_tests tests/test_monad.cpp)

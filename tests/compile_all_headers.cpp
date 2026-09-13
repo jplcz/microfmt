@@ -15,6 +15,7 @@
 #include <microfmt/formatters/i2c.hpp>
 #include <microfmt/formatters/json.hpp>
 #include <microfmt/formatters/math.hpp>
+#include <microfmt/formatters/map_view.hpp>
 #include <microfmt/formatters/monad.hpp>
 #include <microfmt/formatters/net.hpp>
 #include <microfmt/formatters/ranges.hpp>

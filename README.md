@@ -86,6 +86,7 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/formatters/units.hpp` | `scale_base`, `with_unit`, `auto_si`, `auto_bytes`, and `hertz` |
 | `microfmt/formatters/chrono.hpp` | Formatters for `std::chrono::duration`, system-clock timestamps, and steady-clock uptime values |
 | `microfmt/formatters/math.hpp` | `vec`, owning `vec3`, and row-major `mat<T, Rows, Cols>` views |
+| `microfmt/formatters/map_view.hpp` | `map_view` for standard, iterator-based, or custom-extractor key/value ranges; select `b`, `c`, or `n` delimiters and forward element specifiers |
 | `microfmt/formatters/monad.hpp` | `std::optional` formatting and, in C++23, `std::expected` formatting |
 | `microfmt/formatters/source_location.hpp` | `source_loc`, `source_loc_view`, and direct source-location formatters when a supported source-location API is enabled |
 | `microfmt/formatters/tuple.hpp` | C++17 tuple-like formatting for `std::tuple`, `std::pair`, and compatible types; select `b`, `c`, `n`, or `p` delimiters and forward element specifiers |
@@ -233,6 +234,15 @@ microfmt::format_to(output.as_sink(), "id={}\nvoltage={} mV", 3, 3295);
 auto registers = std::make_tuple(0x00A1, 0x000F, 0xBEEF);
 auto row = microfmt::format<64>("registers={:b04X}", registers);
 // registers=[00A1, 000F, BEEF]
+```
+
+```cpp
+#include <microfmt/formatters/map_view.hpp>
+#include <map>
+
+std::map<int, const char*> states{{1, "boot"}, {3, "ready"}};
+auto line = microfmt::format<64>("states={}", microfmt::map_view(states));
+// states={1: boot, 3: ready}
 ```
 
 To support a custom type, specialize `microfmt::formatter<T>` with `parse` and
