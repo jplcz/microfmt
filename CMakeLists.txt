@@ -43,6 +43,8 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_binary.cpp
         tests/test_uuid.cpp
         tests/test_semver.cpp
+        tests/test_units.cpp
+        tests/test_chrono.cpp
         tests/test_ring_buffer.cpp)
     target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main)
 

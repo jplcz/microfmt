@@ -39,6 +39,8 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/formatters/escaped.hpp` | `escaped` overloads for string views, character buffers, byte buffers, and spans |
 | `microfmt/formatters/fixed_point.hpp` | `fixed<Scale, Decimals>`, `milli`, `centi`, `micro`, and the `milli_view`, `centi_view`, and `micro_view` aliases |
 | `microfmt/formatters/semver.hpp` | `semver`, `version`, `from_packed32`, and `from_packed24` |
+| `microfmt/formatters/units.hpp` | `scale_base`, `with_unit`, `auto_si`, `auto_bytes`, and `hertz` |
+| `microfmt/formatters/chrono.hpp` | Formatters for `std::chrono::duration`, system-clock timestamps, and steady-clock uptime values |
 | `microfmt/formatters/bitfield.hpp` | `bit_type`, `bit_field`, `bitfield_view`, `bits`, `MICROFMT_BIT_FLAG`, `MICROFMT_BIT_VALUE_DEC`, `MICROFMT_BIT_VALUE_HEX`, and `MICROFMT_DEFINE_REGISTER_TYPE` |
 | `microfmt/formatters/hexdump.hpp` | `memory_reader_fn_t`, `hexdump`, `hexdump_checked`, and `hexdump_to` |
 | `microfmt/formatters/uuid.hpp` | `uuid` overloads for 16-byte data and, when enabled, `boost::uuids::uuid` |
