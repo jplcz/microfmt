@@ -114,6 +114,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_escaped.cpp
         tests/test_probes.cpp
         tests/test_fmt_compat.cpp
+        tests/test_i2c.cpp
         tests/test_stdio.cpp
         tests/test_binary.cpp
         tests/test_uuid.cpp
