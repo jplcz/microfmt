@@ -95,7 +95,7 @@ class array_writer;
 /** @brief RAII writer for a streaming JSON object. */
 class object_writer {
 public:
-  explicit object_writer(const sink &out) noexcept : out_(out) {
+  explicit object_writer(sink out) noexcept : out_(std::move(out)) {
     out_.put('{');
   }
 
@@ -109,7 +109,8 @@ public:
   object_writer(const object_writer &) = delete;
   object_writer &operator=(const object_writer &) = delete;
   object_writer(object_writer &&other) noexcept
-      : out_(other.out_), first_(other.first_), closed_(other.closed_) {
+      : out_(std::move(other.out_)), first_(other.first_),
+        closed_(other.closed_) {
     other.closed_ = true;
   }
 
@@ -188,7 +189,7 @@ private:
     first_ = false;
   }
 
-  const sink &out_;
+  sink out_;
   bool first_{true};
   bool closed_{false};
 };
