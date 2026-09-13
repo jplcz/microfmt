@@ -5,6 +5,7 @@
 #include <string_view>
 #include <sys/uio.h>
 #include <syslog.h>
+#include <systemd/sd-daemon.h>
 #include <systemd/sd-journal.h>
 
 namespace microfmt::log {
@@ -34,6 +35,11 @@ public:
 private:
   static void write_to_journal(int priority, std::string_view identifier,
                                std::string_view message) noexcept {
+    if (::sd_booted() <= 0) {
+      write_to_stdio(identifier, message);
+      return;
+    }
+
     char priority_field[] = "PRIORITY=0";
     priority_field[9] = static_cast<char>('0' + priority);
 
@@ -53,7 +59,20 @@ private:
          identifier_field.view().size()},
         {const_cast<char *>(message_field.view().data()), message_field.view().size()},
     };
-    (void)::sd_journal_sendv(fields, 3);
+    if (::sd_journal_sendv(fields, 3) < 0) {
+      write_to_stdio(identifier, message);
+    }
+  }
+
+  static void write_to_stdio(std::string_view identifier,
+                             std::string_view message) noexcept {
+    buffer_sink<MessageCapacity + IdentifierCapacity + 4> output;
+    const auto out = output.as_sink();
+    if (!identifier.empty()) {
+      format_to(out, "[{}] ", identifier);
+    }
+    format_to(out, "{}\n", message);
+    stdout_sink().write(output.view());
   }
 
   static int priority_for(level lvl) noexcept {
