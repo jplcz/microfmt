@@ -68,7 +68,7 @@ class array_writer;
 /** @brief RAII writer for an indefinite-length streaming CBOR map. */
 class map_writer {
 public:
-  explicit map_writer(const sink &out) noexcept : out_(out) {
+  explicit map_writer(sink out) noexcept : out_(std::move(out)) {
     // 0xBF: Indefinite-length map
     out_.put(static_cast<char>(detail::MT_MAP | 31));
   }
@@ -78,7 +78,7 @@ public:
   map_writer(const map_writer &) = delete;
   map_writer &operator=(const map_writer &) = delete;
   map_writer(map_writer &&other) noexcept
-      : out_(other.out_), closed_(other.closed_) {
+      : out_(std::move(other.out_)), closed_(other.closed_) {
     other.closed_ = true;
   }
 
@@ -108,7 +108,8 @@ public:
     if (val == nullptr) {
       out_.put(static_cast<char>(detail::MT_SIMPLE | 22));
     } else {
-      detail::encode_header(out_, detail::MT_TEXT, std::string_view(val).size());
+      detail::encode_header(out_, detail::MT_TEXT,
+                            std::string_view(val).size());
       out_.write(val);
     }
     return *this;
@@ -198,7 +199,7 @@ public:
   }
 
 private:
-  const sink &out_;
+  sink out_;
   bool closed_{false};
 };
 
