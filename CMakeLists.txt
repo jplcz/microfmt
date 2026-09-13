@@ -99,10 +99,15 @@ if(MICROFMT_BUILD_TESTS)
         googletest
         URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
     )
+    FetchContent_Declare(
+        nlohmann_json
+        URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.zip
+    )
 
     # For Windows: Prevent overriding the parent project's compiler/linker settings
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    FetchContent_MakeAvailable(googletest)
+    set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest nlohmann_json)
 
     enable_testing()
 
@@ -116,6 +121,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_probes.cpp
         tests/test_fmt_compat.cpp
         tests/test_i2c.cpp
+        tests/test_json.cpp
         tests/test_stdio.cpp
         tests/test_binary.cpp
         tests/test_uuid.cpp
@@ -132,7 +138,8 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_pmr_sink.cpp
         tests/test_platform_log_sinks.cpp
         tests/test_logger_override.cpp)
-    target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main)
+    target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main
+        nlohmann_json::nlohmann_json)
 
     target_compile_options(microfmt_tests PRIVATE
         $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
@@ -186,6 +193,22 @@ if(MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(microfmt_cxx17_pmr_sink_tests
         TEST_PREFIX "Cxx17PmrSink.")
+
+    add_executable(microfmt_cxx17_json_tests tests/test_json.cpp)
+    target_link_libraries(microfmt_cxx17_json_tests PRIVATE
+        microfmt GTest::gtest_main nlohmann_json::nlohmann_json)
+    set_target_properties(microfmt_cxx17_json_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    target_compile_options(microfmt_cxx17_json_tests PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
+        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
+        >
+    )
+    gtest_discover_tests(microfmt_cxx17_json_tests
+        TEST_PREFIX "Cxx17Json.")
 
     if(MICROFMT_COMPILER_SUPPORTS_CXX23)
         add_executable(microfmt_cxx23_tests tests/test_monad.cpp)
