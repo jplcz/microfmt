@@ -703,6 +703,28 @@ template <> struct formatter<const char *> {
   }
 };
 
+// String literal / character array specialization
+template <size_t N> struct formatter<char[N]> {
+  constexpr void parse(format_parse_context &) noexcept {}
+  void format(const char *val, const sink &out) const noexcept {
+    out.write(val ? std::string_view(val) : "(null)");
+  }
+};
+
+template <size_t N> struct formatter<const char[N]> {
+  constexpr void parse(format_parse_context &) noexcept {}
+  void format(const char *val, const sink &out) const noexcept {
+    out.write(val ? std::string_view(val) : "(null)");
+  }
+};
+
+template <> struct formatter<char *> {
+  constexpr void parse(format_parse_context &) noexcept {}
+  void format(const char *val, const sink &out) const noexcept {
+    out.write(val ? std::string_view(val) : "(null)");
+  }
+};
+
 // Integers (Signed & Unsigned)
 template <typename T>
 struct formatter<
@@ -810,11 +832,21 @@ namespace detail {
 template <typename T>
 inline void format_type_thunk(const void *val_ptr, std::string_view spec,
                               const sink &out) noexcept {
-  using RawT = std::remove_cv_t<std::remove_reference_t<T>>;
-  formatter<RawT> f;
+  // std::decay_t converts char[N] -> const char*, float[] -> float*, etc.
+  using DecayedT = std::decay_t<T>;
+
+  formatter<DecayedT> f;
   format_parse_context ctx(spec);
   f.parse(ctx);
-  f.format(*static_cast<const RawT *>(val_ptr), out);
+
+  if constexpr (std::is_array_v<std::remove_reference_t<T>>) {
+    // Arrays are passed by address (const char* pointing to buffer)
+    const auto *decayed_val = static_cast<
+        const std::remove_all_extents_t<std::remove_reference_t<T>> *>(val_ptr);
+    f.format(decayed_val, out);
+  } else {
+    f.format(*static_cast<const DecayedT *>(val_ptr), out);
+  }
 }
 
 template <typename... Args> struct format_type_table {
