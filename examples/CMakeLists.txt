@@ -9,3 +9,4 @@ function(add_microfmt_example NAME SOURCE)
 endfunction()
 
 add_microfmt_example(demo_hexdump hexdump_demo.cpp)
+add_microfmt_example(ansi_demo ansi_demo.cpp)

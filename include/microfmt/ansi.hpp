@@ -12,6 +12,7 @@ namespace microfmt::ansi {
 
 enum class color : uint8_t {
   none = 0,
+  // Standard colors (30-37)
   black = 30,
   red = 31,
   green = 32,
@@ -20,7 +21,8 @@ enum class color : uint8_t {
   magenta = 35,
   cyan = 36,
   white = 37,
-  bright_black = 90,
+  // Bright / High-Intensity colors (90-97)
+  bright_black = 90, // Gray / Dark Gray
   bright_red = 91,
   bright_green = 92,
   bright_yellow = 93,
@@ -63,23 +65,69 @@ struct style {
 
 inline bool style::colors_enabled = true;
 
-// Predefined style instances
+// Reset
 inline constexpr style reset{};
+
+// Standard Foreground Colors
+inline constexpr style fg_black{color::black};
 inline constexpr style fg_red{color::red};
 inline constexpr style fg_green{color::green};
 inline constexpr style fg_yellow{color::yellow};
 inline constexpr style fg_blue{color::blue};
 inline constexpr style fg_magenta{color::magenta};
 inline constexpr style fg_cyan{color::cyan};
+inline constexpr style fg_white{color::white};
 
+// Bright Foreground Colors
+inline constexpr style fg_gray{color::bright_black};
+inline constexpr style fg_bright_black{color::bright_black};
+inline constexpr style fg_bright_red{color::bright_red};
+inline constexpr style fg_bright_green{color::bright_green};
+inline constexpr style fg_bright_yellow{color::bright_yellow};
+inline constexpr style fg_bright_blue{color::bright_blue};
+inline constexpr style fg_bright_magenta{color::bright_magenta};
+inline constexpr style fg_bright_cyan{color::bright_cyan};
+inline constexpr style fg_bright_white{color::bright_white};
+
+// Standard Background Colors
+inline constexpr style bg_black{color::none, color::black};
+inline constexpr style bg_red{color::none, color::red};
+inline constexpr style bg_green{color::none, color::green};
+inline constexpr style bg_yellow{color::none, color::yellow};
+inline constexpr style bg_blue{color::none, color::blue};
+inline constexpr style bg_magenta{color::none, color::magenta};
+inline constexpr style bg_cyan{color::none, color::cyan};
+inline constexpr style bg_white{color::none, color::white};
+
+// Bright Background Colors
+inline constexpr style bg_gray{color::none, color::bright_black};
+inline constexpr style bg_bright_black{color::none, color::bright_black};
+inline constexpr style bg_bright_red{color::none, color::bright_red};
+inline constexpr style bg_bright_green{color::none, color::bright_green};
+inline constexpr style bg_bright_yellow{color::none, color::bright_yellow};
+inline constexpr style bg_bright_blue{color::none, color::bright_blue};
+inline constexpr style bg_bright_magenta{color::none, color::bright_magenta};
+inline constexpr style bg_bright_cyan{color::none, color::bright_cyan};
+inline constexpr style bg_bright_white{color::none, color::bright_white};
+
+// Text Attributes & Modifiers
 inline constexpr style bold{color::none, color::none, attribute::bold};
 inline constexpr style dim{color::none, color::none, attribute::dim};
+inline constexpr style italic{color::none, color::none, attribute::italic};
+inline constexpr style underline{color::none, color::none,
+                                 attribute::underline};
+inline constexpr style blink{color::none, color::none, attribute::blink};
+inline constexpr style reverse{color::none, color::none, attribute::reverse};
+
+// Semantic Status Styles
 inline constexpr style error_style{color::bright_red, color::none,
                                    attribute::bold};
 inline constexpr style warn_style{color::bright_yellow, color::none,
                                   attribute::bold};
 inline constexpr style ok_style{color::bright_green, color::none,
-                                attribute::none};
+                                attribute::bold};
+inline constexpr style info_style{color::bright_cyan, color::none,
+                                  attribute::none};
 
 // ============================================================================
 // Low-Level ANSI Code Emitter
@@ -124,7 +172,7 @@ inline void emit_style(const style &s, const sink &out) noexcept {
     emit_code(static_cast<uint8_t>(s.fg));
   }
 
-  // Background color (fg code + 10)
+  // Background color (standard +10, bright +10)
   if (s.bg != color::none) {
     emit_code(static_cast<uint8_t>(s.bg) + 10);
   }
@@ -167,6 +215,31 @@ template <typename T>
   return styled_view<T>{val, fg_yellow};
 }
 
+template <typename T>
+[[nodiscard]] constexpr styled_view<T> blue(const T &val) noexcept {
+  return styled_view<T>{val, fg_blue};
+}
+
+template <typename T>
+[[nodiscard]] constexpr styled_view<T> magenta(const T &val) noexcept {
+  return styled_view<T>{val, fg_magenta};
+}
+
+template <typename T>
+[[nodiscard]] constexpr styled_view<T> cyan(const T &val) noexcept {
+  return styled_view<T>{val, fg_cyan};
+}
+
+template <typename T>
+[[nodiscard]] constexpr styled_view<T> white(const T &val) noexcept {
+  return styled_view<T>{val, fg_white};
+}
+
+template <typename T>
+[[nodiscard]] constexpr styled_view<T> gray(const T &val) noexcept {
+  return styled_view<T>{val, fg_gray};
+}
+
 } // namespace microfmt::ansi
 
 // ============================================================================
@@ -175,7 +248,7 @@ template <typename T>
 
 namespace microfmt {
 
-// 1. Direct ANSI style control tokens: microfmt::format_to(out, "{}Text{}",
+// Direct ANSI style control tokens: microfmt::format_to(out, "{}Text{}",
 // ansi::fg_red, ansi::reset);
 template <> struct formatter<ansi::style> {
   constexpr void parse(format_parse_context &) noexcept {}
@@ -185,7 +258,7 @@ template <> struct formatter<ansi::style> {
   }
 };
 
-// 2. Automatic scoped styling: microfmt::format_to(out, "Status: {}",
+// Automatic scoped styling: microfmt::format_to(out, "Status: {}",
 // ansi::red("FAILED"));
 template <typename T> struct formatter<ansi::styled_view<T>> {
   constexpr void parse(format_parse_context &) noexcept {}
