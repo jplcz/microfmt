@@ -197,18 +197,22 @@ private:
 /** @brief RAII writer for a streaming JSON array. */
 class array_writer {
 public:
-  explicit array_writer(const sink &out) noexcept : out_(out) { out_.put('['); }
+  explicit array_writer(sink out) noexcept : out_(std::move(out)) {
+    out_.put('[');
+  }
 
   ~array_writer() noexcept {
     if (!closed_) {
       out_.put(']');
+      closed_ = true;
     }
   }
 
   array_writer(const array_writer &) = delete;
   array_writer &operator=(const array_writer &) = delete;
   array_writer(array_writer &&other) noexcept
-      : out_(other.out_), first_(other.first_), closed_(other.closed_) {
+      : out_(std::move(other.out_)), first_(other.first_),
+        closed_(other.closed_) {
     other.closed_ = true;
   }
 
@@ -274,7 +278,7 @@ private:
     first_ = false;
   }
 
-  const sink &out_;
+  sink out_;
   bool first_{true};
   bool closed_{false};
 };

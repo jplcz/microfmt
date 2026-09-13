@@ -206,7 +206,7 @@ private:
 /** @brief RAII writer for an indefinite-length streaming CBOR array. */
 class array_writer {
 public:
-  explicit array_writer(const sink &out) noexcept : out_(out) {
+  explicit array_writer(sink out) noexcept : out_(std::move(out)) {
     // 0x9F: Indefinite-length array
     out_.put(static_cast<char>(detail::MT_ARRAY | 31));
   }
@@ -216,7 +216,7 @@ public:
   array_writer(const array_writer &) = delete;
   array_writer &operator=(const array_writer &) = delete;
   array_writer(array_writer &&other) noexcept
-      : out_(other.out_), closed_(other.closed_) {
+      : out_(std::move(other.out_)), closed_(other.closed_) {
     other.closed_ = true;
   }
 
@@ -288,7 +288,7 @@ public:
   }
 
 private:
-  const sink &out_;
+  sink out_;
   bool closed_{false};
 };
 
