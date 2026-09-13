@@ -1,5 +1,5 @@
 #pragma once
-#include "microfmt.hpp"
+#include "../microfmt.hpp"
 
 namespace microfmt {
 

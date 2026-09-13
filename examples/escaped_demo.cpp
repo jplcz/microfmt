@@ -1,6 +1,6 @@
 #include <cstdint>
 #include <cstdio>
-#include <microfmt/escaped.hpp>
+#include <microfmt/formatters/escaped.hpp>
 #include <microfmt/microfmt.hpp>
 #include <string_view>
 

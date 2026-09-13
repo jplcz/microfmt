@@ -1,5 +1,5 @@
 #include <cstdio>
-#include <microfmt/fixed_point.hpp>
+#include <microfmt/formatters/fixed_point.hpp>
 #include <microfmt/microfmt.hpp>
 
 int main() {

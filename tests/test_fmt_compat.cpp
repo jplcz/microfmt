@@ -1,6 +1,6 @@
 #include <array>
 #include <gtest/gtest.h>
-#include <microfmt/fmt.hpp>
+#include <microfmt/formatters/fmt.hpp>
 #include <string_view>
 
 TEST(FmtCompatTest, FormatToN) {

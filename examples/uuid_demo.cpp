@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <microfmt/microfmt.hpp>
 #include <microfmt/sinks/stdio.hpp>
-#include <microfmt/uuid.hpp>
+#include <microfmt/formatters/uuid.hpp>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>

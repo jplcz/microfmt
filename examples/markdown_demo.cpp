@@ -1,6 +1,6 @@
 #include <cstdint>
 #include <cstdio>
-#include <microfmt/hexdump.hpp>
+#include <microfmt/formatters/hexdump.hpp>
 #include <microfmt/markdown.hpp>
 #include <microfmt/microfmt.hpp>
 #include <string_view>

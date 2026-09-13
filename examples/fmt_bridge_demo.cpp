@@ -1,5 +1,5 @@
 #include <cstdint>
-#include <microfmt/fmt.hpp>
+#include <microfmt/formatters/fmt.hpp>
 #include <microfmt/microfmt.hpp>
 
 // User domain type with a standard fmt::formatter specialization

@@ -1,6 +1,6 @@
 #include <cstdint>
 #include <gtest/gtest.h>
-#include <microfmt/bitfield.hpp>
+#include <microfmt/formatters/bitfield.hpp>
 #include <microfmt/microfmt.hpp>
 
 // ============================================================================

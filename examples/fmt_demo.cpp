@@ -1,4 +1,4 @@
-#include <microfmt/fmt.hpp>
+#include <microfmt/formatters/fmt.hpp>
 
 int main() {
   // Direct stdout printing

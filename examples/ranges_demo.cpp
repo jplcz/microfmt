@@ -1,9 +1,9 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
-#include <microfmt/fixed_point.hpp>
+#include <microfmt/formatters/fixed_point.hpp>
 #include <microfmt/microfmt.hpp>
-#include <microfmt/ranges.hpp>
+#include <microfmt/formatters/ranges.hpp>
 #include <string_view>
 
 static void terminal_write(void * /*ctx*/, std::string_view sv) noexcept {

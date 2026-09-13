@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <microfmt/microfmt.hpp>
-#include <microfmt/uuid.hpp>
+#include <microfmt/formatters/uuid.hpp>
 #include <string_view>
 
 TEST(UuidTest, CanonicalFormat) {

@@ -1,4 +1,4 @@
-#include <microfmt/fixed_point.hpp>
+#include <microfmt/formatters/fixed_point.hpp>
 #include <microfmt/microfmt.hpp>
 #include <microfmt/sinks/stdio.hpp>
 

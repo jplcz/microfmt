@@ -1,6 +1,6 @@
 #include <cstdint>
 #include <gtest/gtest.h>
-#include <microfmt/binary.hpp>
+#include <microfmt/formatters/binary.hpp>
 #include <microfmt/microfmt.hpp>
 
 TEST(BinaryViewTest, TypeInferredBitWidth) {

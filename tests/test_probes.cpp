@@ -1,11 +1,11 @@
 #include <array>
 #include <cstdint>
 #include <gtest/gtest.h>
-#include <microfmt/bitfield.hpp>
-#include <microfmt/escaped.hpp>
-#include <microfmt/fixed_point.hpp>
+#include <microfmt/formatters/bitfield.hpp>
+#include <microfmt/formatters/escaped.hpp>
+#include <microfmt/formatters/fixed_point.hpp>
 #include <microfmt/microfmt.hpp>
-#include <microfmt/ranges.hpp>
+#include <microfmt/formatters/ranges.hpp>
 #include <string_view>
 
 // Register setup for bitfield probe

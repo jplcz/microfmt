@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <microfmt/microfmt.hpp>
-#include <microfmt/ranges.hpp>
+#include <microfmt/formatters/ranges.hpp>
 #include <string_view>
 
 TEST(JoinTest, EmptyRange) {

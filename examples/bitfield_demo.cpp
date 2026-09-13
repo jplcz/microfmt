@@ -1,6 +1,6 @@
 #include <cstdint>
 #include <cstdio>
-#include <microfmt/bitfield.hpp>
+#include <microfmt/formatters/bitfield.hpp>
 #include <microfmt/microfmt.hpp>
 #include <string_view>
 

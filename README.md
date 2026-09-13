@@ -33,18 +33,18 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/sinks/ring_buffer_sink.hpp` | `ring_buffer_sink<Capacity>` for a circular output buffer; `Capacity` must be a non-zero power of two. Use `as_sink`, `view`, `dump_to`, `size`, `capacity`, `empty`, `full`, and `reset` |
 | `microfmt/sinks/stdio.hpp` | `file_sink`, `stdout_sink`, `stderr_sink`, POSIX `fd_sink`, plus `print` and `println` overloads for stdout, `FILE*`, and POSIX file descriptors |
 | `microfmt/sinks/syslog_sink.hpp` | `log_priority`, line-buffered `syslog_sink<Capacity>`, and the scoped `syslog` helper |
-| `microfmt/ranges.hpp` | `join(range, delimiter)`, `join(first, last, delimiter)`, and compile-time `join_as<Delimiter, ElementSpec>(...)` |
-| `microfmt/format_helpers.hpp` | `hex`, `bin`, `bytes`, `addr_offset`, `mem_range`, `align`, and `join(span, delimiter)` |
-| `microfmt/binary.hpp` | `binary_view`, fixed-width `bin`, `bin<Bits>`, `bin_prefixed`, and `bin_grouped` |
-| `microfmt/escaped.hpp` | `escaped` overloads for string views, character buffers, byte buffers, and spans |
-| `microfmt/fixed_point.hpp` | `fixed<Scale, Decimals>`, `milli`, `centi`, `micro`, and the `milli_view`, `centi_view`, and `micro_view` aliases |
-| `microfmt/bitfield.hpp` | `bit_type`, `bit_field`, `bitfield_view`, `bits`, `MICROFMT_BIT_FLAG`, `MICROFMT_BIT_VALUE_DEC`, `MICROFMT_BIT_VALUE_HEX`, and `MICROFMT_DEFINE_REGISTER_TYPE` |
-| `microfmt/hexdump.hpp` | `memory_reader_fn_t`, `hexdump`, `hexdump_checked`, and `hexdump_to` |
-| `microfmt/uuid.hpp` | `uuid` overloads for 16-byte data and, when enabled, `boost::uuids::uuid` |
-| `microfmt/ansi.hpp` | `microfmt::ansi::color`, `attribute`, `style`, predefined styles, `styled`, and color helpers such as `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, and `gray` |
+| `microfmt/formatters/ranges.hpp` | `join(range, delimiter)`, `join(first, last, delimiter)`, and compile-time `join_as<Delimiter, ElementSpec>(...)` |
+| `microfmt/formatters/format_helpers.hpp` | `hex`, `bin`, `bytes`, `addr_offset`, `mem_range`, `align`, and `join(span, delimiter)` |
+| `microfmt/formatters/binary.hpp` | `binary_view`, fixed-width `bin`, `bin<Bits>`, `bin_prefixed`, and `bin_grouped` |
+| `microfmt/formatters/escaped.hpp` | `escaped` overloads for string views, character buffers, byte buffers, and spans |
+| `microfmt/formatters/fixed_point.hpp` | `fixed<Scale, Decimals>`, `milli`, `centi`, `micro`, and the `milli_view`, `centi_view`, and `micro_view` aliases |
+| `microfmt/formatters/bitfield.hpp` | `bit_type`, `bit_field`, `bitfield_view`, `bits`, `MICROFMT_BIT_FLAG`, `MICROFMT_BIT_VALUE_DEC`, `MICROFMT_BIT_VALUE_HEX`, and `MICROFMT_DEFINE_REGISTER_TYPE` |
+| `microfmt/formatters/hexdump.hpp` | `memory_reader_fn_t`, `hexdump`, `hexdump_checked`, and `hexdump_to` |
+| `microfmt/formatters/uuid.hpp` | `uuid` overloads for 16-byte data and, when enabled, `boost::uuids::uuid` |
+| `microfmt/formatters/ansi.hpp` | `microfmt::ansi::color`, `attribute`, `style`, predefined styles, `styled`, and color helpers such as `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `white`, and `gray` |
 | `microfmt/markdown.hpp` | `microfmt::md::align`, `column`, and fluent `writer` methods for text, headings, lists, block quotes, code blocks, and tables |
-| `microfmt/fmt.hpp` | `fmt::format`, `fmt::format_to`, `fmt::format_to_n`, `fmt::print`, `fmt::println`, `fmt::join`, and the `fmt::formatter<T>` bridge |
-| `microfmt/boost_describe.hpp` | Automatic `formatter<T>` support for Boost.Describe reflected enums, structs, and classes |
+| `microfmt/formatters/fmt.hpp` | `fmt::format`, `fmt::format_to`, `fmt::format_to_n`, `fmt::print`, `fmt::println`, `fmt::join`, and the `fmt::formatter<T>` bridge |
+| `microfmt/formatters/boost_describe.hpp` | Automatic `formatter<T>` support for Boost.Describe reflected enums, structs, and classes |
 
 ---
 
@@ -90,9 +90,9 @@ trace.dump_to(microfmt::stdout_sink());
 ```
 
 ```cpp
-#include <microfmt/ranges.hpp>
-#include <microfmt/format_helpers.hpp>
-#include <microfmt/binary.hpp>
+#include <microfmt/formatters/ranges.hpp>
+#include <microfmt/formatters/format_helpers.hpp>
+#include <microfmt/formatters/binary.hpp>
 
 uint8_t bytes[] = {0x12, 0x34, 0x56};
 auto joined = microfmt::join(bytes, ":");
@@ -105,9 +105,9 @@ auto message = microfmt::format<96>(
 ```
 
 ```cpp
-#include <microfmt/escaped.hpp>
-#include <microfmt/fixed_point.hpp>
-#include <microfmt/uuid.hpp>
+#include <microfmt/formatters/escaped.hpp>
+#include <microfmt/formatters/fixed_point.hpp>
+#include <microfmt/formatters/uuid.hpp>
 
 uint8_t id[16] = {};
 auto message = microfmt::format<128>(
@@ -120,7 +120,7 @@ auto message = microfmt::format<128>(
 ```
 
 ```cpp
-#include <microfmt/ansi.hpp>
+#include <microfmt/formatters/ansi.hpp>
 #include <microfmt/sinks/stdio.hpp>
 
 microfmt::println("{}", microfmt::ansi::red("error"));

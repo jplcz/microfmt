@@ -1,6 +1,6 @@
 #include <cstdint>
 #include <cstdio>
-#include <microfmt/binary.hpp>
+#include <microfmt/formatters/binary.hpp>
 #include <microfmt/microfmt.hpp>
 
 int main() {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "hexdump.hpp"
+#include "formatters/hexdump.hpp"
 #include "microfmt.hpp"
 #include <algorithm>
 #include <cstddef>

@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <string_view>
 
-#include <microfmt/ansi.hpp>
+#include <microfmt/formatters/ansi.hpp>
 #include <microfmt/microfmt.hpp>
 #include <microfmt/sinks/ring_buffer_sink.hpp>
 #include <microfmt/sinks/stdio.hpp>

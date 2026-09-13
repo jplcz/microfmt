@@ -1,8 +1,8 @@
 #include <cstdint>
 #include <microfmt/microfmt.hpp>
 #include <microfmt/sinks/syslog_sink.hpp>
-#include <microfmt/bitfield.hpp>
-#include <microfmt/net.hpp>
+#include <microfmt/formatters/bitfield.hpp>
+#include <microfmt/formatters/net.hpp>
 
 int main() {
   ::openlog("microfmt_daemon", LOG_PID | LOG_NDELAY, LOG_DAEMON);
