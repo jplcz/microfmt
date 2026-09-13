@@ -171,4 +171,10 @@ template <> struct formatter<hexdump_view> {
   }
 };
 
+inline void hexdump_to(const sink &out, span<const uint8_t> data,
+                       uintptr_t base_address = 0) noexcept {
+  formatter<hexdump_view> f;
+  f.format(hexdump(data, base_address), out);
+}
+
 } // namespace microfmt

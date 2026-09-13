@@ -13,8 +13,11 @@ target_include_directories(microfmt INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
+add_library(microfmt::microfmt ALIAS microfmt)
+
 # Optional test runner
 option(MICROFMT_BUILD_TESTS "Build test suite" ON)
+option(MICROFMT_BUILD_EXAMPLES "Build example apps" ON)
 
 if(MICROFMT_BUILD_TESTS)
     include(FetchContent)
@@ -90,4 +93,8 @@ if(MICROFMT_BUILD_TESTS)
             )
         endif()
     endif()
+endif()
+
+if(MICROFMT_BUILD_EXAMPLES)
+    add_subdirectory(examples)
 endif()
