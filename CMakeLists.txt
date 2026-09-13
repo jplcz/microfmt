@@ -108,6 +108,7 @@ if(MICROFMT_BUILD_TESTS)
 
     add_executable(microfmt_tests tests/test_core.cpp
         tests/test_bitfield.cpp
+        tests/test_can.cpp
         tests/test_fixed_point.cpp
         tests/test_ranges.cpp
         tests/test_escaped.cpp
