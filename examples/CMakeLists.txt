@@ -15,6 +15,8 @@ add_microfmt_example(bitfield_demo bitfield_demo.cpp)
 add_microfmt_example(fixedpoint_demo fixedpoint_demo.cpp)
 add_microfmt_example(ranges_demo ranges_demo.cpp)
 add_microfmt_example(escaped_demo escaped_demo.cpp)
+add_microfmt_example(fmt_demo fmt_demo.cpp)
+add_microfmt_example(fmt_bridge_demo fmt_bridge_demo.cpp)
 
 find_package(Boost 1.77 QUIET)
 
