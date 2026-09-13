@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <gtest/gtest.h>
 #include <microfmt/microfmt.hpp>
-#include <microfmt/stdio.hpp>
+#include <microfmt/sinks/stdio.hpp>
 
 #if MICROFMT_HAS_POSIX_FD
 #include <unistd.h>

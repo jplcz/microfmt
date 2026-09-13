@@ -4,8 +4,8 @@
 
 #include <microfmt/ansi.hpp>
 #include <microfmt/microfmt.hpp>
-#include <microfmt/ring_buffer_sink.hpp>
-#include <microfmt/stdio.hpp>
+#include <microfmt/sinks/ring_buffer_sink.hpp>
+#include <microfmt/sinks/stdio.hpp>
 
 // 256-byte circular trace buffer (Power of 2 size)
 static microfmt::ring_buffer_sink<256> g_trace_buffer;

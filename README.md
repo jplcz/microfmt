@@ -30,8 +30,9 @@ Include the headers for the facilities you use. Every API below is in
 | Header | Developer-facing APIs |
 |---|---|
 | `microfmt/microfmt.hpp` | `span<T>`, `sink`, `span_sink`, `buffer_sink<N>`, `c_string_sink<N>`, `iterator_sink<It>`, `counting_sink`, `null_sink`, `callback_sink<F>`, `make_callback_sink`, `format_to`, `vformat_to`, `format<N>`, and the `formatter<T>` customization point |
-| `microfmt/ring_buffer_sink.hpp` | `ring_buffer_sink<Capacity>` for a circular output buffer; `Capacity` must be a non-zero power of two. Use `as_sink`, `view`, `dump_to`, `size`, `capacity`, `empty`, `full`, and `reset` |
-| `microfmt/stdio.hpp` | `file_sink`, `stdout_sink`, `stderr_sink`, POSIX `fd_sink`, plus `print` and `println` overloads for stdout, `FILE*`, and POSIX file descriptors |
+| `microfmt/sinks/ring_buffer_sink.hpp` | `ring_buffer_sink<Capacity>` for a circular output buffer; `Capacity` must be a non-zero power of two. Use `as_sink`, `view`, `dump_to`, `size`, `capacity`, `empty`, `full`, and `reset` |
+| `microfmt/sinks/stdio.hpp` | `file_sink`, `stdout_sink`, `stderr_sink`, POSIX `fd_sink`, plus `print` and `println` overloads for stdout, `FILE*`, and POSIX file descriptors |
+| `microfmt/sinks/syslog_sink.hpp` | `log_priority`, line-buffered `syslog_sink<Capacity>`, and the scoped `syslog` helper |
 | `microfmt/ranges.hpp` | `join(range, delimiter)`, `join(first, last, delimiter)`, and compile-time `join_as<Delimiter, ElementSpec>(...)` |
 | `microfmt/format_helpers.hpp` | `hex`, `bin`, `bytes`, `addr_offset`, `mem_range`, `align`, and `join(span, delimiter)` |
 | `microfmt/binary.hpp` | `binary_view`, fixed-width `bin`, `bin<Bits>`, `bin_prefixed`, and `bin_grouped` |
@@ -77,8 +78,8 @@ std::size_t required = counter.count();
 ```
 
 ```cpp
-#include <microfmt/ring_buffer_sink.hpp>
-#include <microfmt/stdio.hpp>
+#include <microfmt/sinks/ring_buffer_sink.hpp>
+#include <microfmt/sinks/stdio.hpp>
 
 // Keep the latest 256 bytes of formatted trace output. Capacity is a power of two.
 microfmt::ring_buffer_sink<256> trace;
@@ -120,7 +121,7 @@ auto message = microfmt::format<128>(
 
 ```cpp
 #include <microfmt/ansi.hpp>
-#include <microfmt/stdio.hpp>
+#include <microfmt/sinks/stdio.hpp>
 
 microfmt::println("{}", microfmt::ansi::red("error"));
 microfmt::ansi::style::colors_enabled = false; // Disable escape sequences.

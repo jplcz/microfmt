@@ -1,6 +1,6 @@
 #include <microfmt/fixed_point.hpp>
 #include <microfmt/microfmt.hpp>
-#include <microfmt/stdio.hpp>
+#include <microfmt/sinks/stdio.hpp>
 
 int main() {
   // Standard stdout & stderr formatting

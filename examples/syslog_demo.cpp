@@ -1,6 +1,6 @@
 #include <cstdint>
 #include <microfmt/microfmt.hpp>
-#include <microfmt/syslog_sink.hpp>
+#include <microfmt/sinks/syslog_sink.hpp>
 #include <microfmt/bitfield.hpp>
 #include <microfmt/net.hpp>
 

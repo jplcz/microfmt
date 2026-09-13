@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <microfmt/microfmt.hpp>
-#include <microfmt/ring_buffer_sink.hpp>
+#include <microfmt/sinks/ring_buffer_sink.hpp>
 
 TEST(RingBufferSinkTest, LinearWritingBeforeWrap) {
   microfmt::ring_buffer_sink<16> rb;

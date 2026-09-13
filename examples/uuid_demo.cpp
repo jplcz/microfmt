@@ -1,7 +1,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <microfmt/microfmt.hpp>
-#include <microfmt/stdio.hpp>
+#include <microfmt/sinks/stdio.hpp>
 #include <microfmt/uuid.hpp>
 
 #include <boost/uuid/uuid.hpp>
