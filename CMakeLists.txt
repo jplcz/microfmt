@@ -114,6 +114,7 @@ if(MICROFMT_BUILD_TESTS)
     add_executable(microfmt_tests tests/test_core.cpp
         tests/test_bitfield.cpp
         tests/test_can.cpp
+        tests/test_cbor.cpp
         tests/test_fixed_point.cpp
         tests/test_ranges.cpp
         tests/test_spi.cpp
@@ -209,6 +210,22 @@ if(MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(microfmt_cxx17_json_tests
         TEST_PREFIX "Cxx17Json.")
+
+    add_executable(microfmt_cxx17_cbor_tests tests/test_cbor.cpp)
+    target_link_libraries(microfmt_cxx17_cbor_tests PRIVATE
+        microfmt GTest::gtest_main nlohmann_json::nlohmann_json)
+    set_target_properties(microfmt_cxx17_cbor_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    target_compile_options(microfmt_cxx17_cbor_tests PRIVATE
+        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
+        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
+        >
+    )
+    gtest_discover_tests(microfmt_cxx17_cbor_tests
+        TEST_PREFIX "Cxx17Cbor.")
 
     if(MICROFMT_COMPILER_SUPPORTS_CXX23)
         add_executable(microfmt_cxx23_tests tests/test_monad.cpp)

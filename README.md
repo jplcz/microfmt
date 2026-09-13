@@ -46,6 +46,7 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/formatters/format_helpers.hpp` | `hex`, `bin`, `bytes`, `addr_offset`, `mem_range`, `align`, and `join(span, delimiter)` |
 | `microfmt/formatters/binary.hpp` | `binary_view`, fixed-width `bin`, `bin<Bits>`, `bin_prefixed`, and `bin_grouped` |
 | `microfmt/formatters/can.hpp` | `can_frame`, `can_extended`, `can_fd`, and diagnostic or candump-style CAN frame formatting |
+| `microfmt/formatters/cbor.hpp` | `map_writer`, `array_writer`, byte/text values, and `cbor_map` format-string adapters |
 | `microfmt/formatters/i2c.hpp` | `i2c_write`, `i2c_read`, `i2c_10bit`, and diagnostic or compact I2C transaction formatting |
 | `microfmt/formatters/json.hpp` | `object_writer`, `array_writer`, JSON escaping, and `json_obj` format-string adapters |
 | `microfmt/formatters/spi.hpp` | `spi_duplex`, `spi_write`, `spi_read`, and diagnostic or compact SPI transfer formatting |
