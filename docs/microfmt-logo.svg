@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">microfmt logo</title>
+  <desc id="desc">Formatting brackets surrounding three aligned output lines.</desc>
+  <defs>
+    <linearGradient id="background" x1="32" y1="24" x2="224" y2="232" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#102a69"/>
+      <stop offset="0.55" stop-color="#2457d6"/>
+      <stop offset="1" stop-color="#3979eb"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="52" fill="url(#background)"/>
+  <path d="M92 65 48 128l44 63M164 65l44 63-44 63" fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="18"/>
+  <path d="M105 96h46M105 128h32M105 160h46" fill="none" stroke="#a9e7ff" stroke-linecap="round" stroke-width="14"/>
+</svg>

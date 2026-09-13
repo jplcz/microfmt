@@ -1,5 +1,7 @@
 # microfmt
 
+![microfmt logo](docs/microfmt-logo.svg)
+
 A zero-allocation, deterministic, and low-overhead C++ formatting library engineered specifically for resource-constrained environments (bare-metal embedded systems, real-time operating systems, ISRs, and kernel-space drivers).
 
 `microfmt` provides Python/`std::format`-style sequential formatting syntax with `noexcept` APIs, `-fno-exceptions`/`-fno-rtti` compatibility, and a strictly bounded stack footprint.
@@ -276,6 +278,13 @@ doxygen Doxyfile
 ```
 
 The HTML output is written to `build/docs/html/index.html`.
+Preview it locally with:
+
+```bash
+python3 -m http.server 8000 --directory build/docs/html
+```
+
+Then open [localhost:8000](http://localhost:8000).
 
 The **Publish API documentation** workflow publishes the generated HTML to
 GitHub Pages on pushes to `master` that change public headers or documentation.

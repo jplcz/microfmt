@@ -1,5 +1,6 @@
 PROJECT_NAME           = microfmt
 PROJECT_BRIEF          = Zero-allocation C++ formatting for constrained environments
+PROJECT_LOGO           = docs/microfmt-logo.svg
 OUTPUT_DIRECTORY       = build
 CREATE_SUBDIRS         = NO
 OUTPUT_LANGUAGE        = English

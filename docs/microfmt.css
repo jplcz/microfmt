@@ -42,6 +42,12 @@ body {
   letter-spacing: -0.04em;
 }
 
+#projectlogo img {
+  height: 3.5rem;
+  margin-right: 0.75rem;
+  width: 3.5rem;
+}
+
 #projectbrief {
   opacity: 0.88;
 }
