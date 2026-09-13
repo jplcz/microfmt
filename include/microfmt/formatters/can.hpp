@@ -42,6 +42,7 @@ enum class can_flags : uint8_t {
 // CAN Frame View Descriptor
 // ============================================================================
 
+/** @brief Non-owning CAN or CAN-FD frame descriptor for formatting. */
 struct can_frame_view {
   uint32_t id{0};
   span<const uint8_t> payload{};
@@ -53,6 +54,7 @@ struct can_frame_view {
 // ============================================================================
 
 // Standard CAN 2.0 Frame (11-bit ID, max 8 bytes)
+/** @brief Creates a standard 11-bit CAN frame view. */
 [[nodiscard]] constexpr can_frame_view
 can_frame(uint16_t id, span<const uint8_t> payload, bool rtr = false) noexcept {
   return {static_cast<uint32_t>(id & 0x7FF), payload,
@@ -67,6 +69,7 @@ can_frame(uint16_t id, const uint8_t (&arr)[N], bool rtr = false) noexcept {
 }
 
 // Extended CAN Frame (29-bit ID)
+/** @brief Creates an extended 29-bit CAN frame view. */
 [[nodiscard]] constexpr can_frame_view can_extended(uint32_t id,
                                                     span<const uint8_t> payload,
                                                     bool rtr = false) noexcept {
@@ -75,6 +78,7 @@ can_frame(uint16_t id, const uint8_t (&arr)[N], bool rtr = false) noexcept {
 }
 
 // CAN-FD Frame (up to 64 bytes, optional BRS/ESI)
+/** @brief Creates a CAN-FD frame view with optional extended, BRS, and ESI flags. */
 [[nodiscard]] constexpr can_frame_view
 can_fd(uint32_t id, span<const uint8_t> payload, bool is_extended = false,
        bool brs = false, bool esi = false) noexcept {

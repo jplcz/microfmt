@@ -65,6 +65,7 @@ inline void encode_header(const sink &out, uint8_t major,
 
 class array_writer;
 
+/** @brief RAII writer for an indefinite-length streaming CBOR map. */
 class map_writer {
 public:
   explicit map_writer(const sink &out) noexcept : out_(out) {
@@ -201,6 +202,7 @@ private:
   bool closed_{false};
 };
 
+/** @brief RAII writer for an indefinite-length streaming CBOR array. */
 class array_writer {
 public:
   explicit array_writer(const sink &out) noexcept : out_(out) {
@@ -302,6 +304,7 @@ template <typename Fn> struct cbor_map_view {
   Fn fn;
 };
 
+/** @brief Wraps a map-writing callable for use as a format argument. */
 template <typename Fn> [[nodiscard]] constexpr auto cbor_map(Fn &&fn) noexcept {
   return cbor_map_view<std::decay_t<Fn>>{std::forward<Fn>(fn)};
 }

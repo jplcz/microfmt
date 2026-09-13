@@ -30,6 +30,7 @@ inline int __android_log_write(int /*prio*/, const char * /*tag*/,
 namespace microfmt::log {
 
 template <std::size_t MessageCapacity = 512, std::size_t TagCapacity = 64>
+/** @brief Adapter that writes structured records to Android logcat. */
 class android_log_sink {
   static_assert(MessageCapacity > 0, "Message capacity must be at least 1 byte");
   static_assert(TagCapacity > 0, "Tag capacity must be at least 1 byte");

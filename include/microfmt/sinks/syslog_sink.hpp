@@ -10,6 +10,7 @@
 
 namespace microfmt::log {
 
+/** @brief Adapter that writes structured records to POSIX syslog. */
 template <std::size_t Capacity = 256> class syslog_sink {
   static_assert(Capacity > 0, "Capacity must be at least 1 byte");
 

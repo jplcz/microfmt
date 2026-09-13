@@ -14,6 +14,7 @@ namespace microfmt::log {
 // Severity Levels
 // ============================================================================
 
+/** @brief Shared log severity levels in ascending order. */
 enum class level : uint8_t { trace = 0, debug, info, warn, err, critical, off };
 
 [[nodiscard]] constexpr std::string_view to_string_view(level lvl) noexcept {
@@ -58,6 +59,7 @@ enum class level : uint8_t { trace = 0, debug, info, warn, err, critical, off };
 // Log Entry Record (Carries zero-copy metadata)
 // ============================================================================
 
+/** @brief Structured log record forwarded by a logger to each sink. */
 struct log_msg {
   std::string_view logger_name{};
   level lvl{level::info};

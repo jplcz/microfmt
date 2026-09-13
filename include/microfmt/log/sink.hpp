@@ -15,6 +15,7 @@ namespace microfmt::log {
 // Abstract Log Sink Interface (Polymorphism via Type-Erased Function Pointer)
 // ============================================================================
 
+/** @brief Type-erased destination for structured @ref log_msg records. */
 struct log_sink {
   void *ctx{nullptr};
   void (*log_fn)(void *ctx, const log_msg &msg) noexcept {nullptr};
@@ -42,6 +43,7 @@ struct log_sink {
 // ============================================================================
 
 // ANSI Color Console Sink (stdout / stderr)
+/** @brief ANSI-colorized stdout adapter for structured log records. */
 template <size_t LineBufCap = 256> class stdout_color_sink {
 public:
   stdout_color_sink() noexcept = default;

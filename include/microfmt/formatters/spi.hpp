@@ -33,6 +33,7 @@ enum class spi_status : uint8_t { ok = 0, timeout, crc_err, overrun };
 // SPI Transfer View Descriptor
 // ============================================================================
 
+/** @brief Non-owning simplex or full-duplex SPI transfer descriptor. */
 struct spi_transfer_view {
   span<const uint8_t> mosi{}; // TX data (can be empty for half-duplex RX)
   span<const uint8_t> miso{}; // RX data (can be empty for half-duplex TX)
@@ -46,6 +47,7 @@ struct spi_transfer_view {
 // ============================================================================
 
 // Full-duplex MOSI/MISO transfer
+/** @brief Creates a full-duplex SPI transfer view. */
 [[nodiscard]] constexpr spi_transfer_view
 spi_duplex(span<const uint8_t> mosi, span<const uint8_t> miso, uint8_t cs = 0,
            spi_mode mode = spi_mode::mode0,
@@ -63,6 +65,7 @@ spi_duplex(const uint8_t (&mosi)[N1], const uint8_t (&miso)[N2], uint8_t cs = 0,
 }
 
 // Simplex/Half-duplex MOSI write
+/** @brief Creates a write-only SPI transfer view. */
 [[nodiscard]] constexpr spi_transfer_view
 spi_write(span<const uint8_t> mosi, uint8_t cs = 0,
           spi_mode mode = spi_mode::mode0,
@@ -80,6 +83,7 @@ spi_write(const uint8_t (&mosi)[N], uint8_t cs = 0,
 }
 
 // Simplex/Half-duplex MISO read
+/** @brief Creates a read-only SPI transfer view. */
 [[nodiscard]] constexpr spi_transfer_view
 spi_read(span<const uint8_t> miso, uint8_t cs = 0,
          spi_mode mode = spi_mode::mode0,

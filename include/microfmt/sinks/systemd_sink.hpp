@@ -13,6 +13,7 @@
 namespace microfmt::log {
 
 template <std::size_t MessageCapacity = 512, std::size_t IdentifierCapacity = 64>
+/** @brief Adapter that writes structured records to the systemd journal. */
 class systemd_sink {
   static_assert(MessageCapacity > 0, "Message capacity must be at least 1 byte");
   static_assert(IdentifierCapacity > 0,

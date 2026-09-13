@@ -42,6 +42,7 @@ template <typename T> void write_integer(const sink &out, T value) noexcept {
 // Escaped String Serializer
 // ============================================================================
 
+/** @brief Writes a quoted, JSON-escaped string to @p out. */
 inline void write_escaped_string(const sink &out,
                                  std::string_view str) noexcept {
   out.put('"');
@@ -91,6 +92,7 @@ inline void write_escaped_string(const sink &out,
 
 class array_writer;
 
+/** @brief RAII writer for a streaming JSON object. */
 class object_writer {
 public:
   explicit object_writer(const sink &out) noexcept : out_(out) {
@@ -191,6 +193,7 @@ private:
   bool closed_{false};
 };
 
+/** @brief RAII writer for a streaming JSON array. */
 class array_writer {
 public:
   explicit array_writer(const sink &out) noexcept : out_(out) { out_.put('['); }
@@ -288,6 +291,7 @@ template <typename Fn> struct json_obj_view {
   Fn fn;
 };
 
+/** @brief Wraps an object-writing callable for use as a format argument. */
 template <typename Fn> [[nodiscard]] constexpr auto json_obj(Fn &&fn) noexcept {
   return json_obj_view<std::decay_t<Fn>>{std::forward<Fn>(fn)};
 }

@@ -10,6 +10,7 @@
 
 namespace microfmt::log {
 
+/** @brief Adapter that writes structured records to Tizen DLOG. */
 template <std::size_t TagCapacity = 64> class tizen_dlog_sink {
   static_assert(TagCapacity > 0, "Tag capacity must be at least 1 byte");
 

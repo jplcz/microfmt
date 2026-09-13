@@ -50,6 +50,7 @@ enum class i2c_flags : uint8_t {
 // I2C Message View Descriptor
 // ============================================================================
 
+/** @brief Non-owning I2C transfer descriptor for formatting. */
 struct i2c_msg_view {
   uint16_t addr{0}; // 7-bit (0x00..0x7F) or 10-bit (0x000..0x3FF)
   i2c_dir direction{i2c_dir::write};
@@ -63,6 +64,7 @@ struct i2c_msg_view {
 // ============================================================================
 
 // Standard 7-bit I2C write transaction
+/** @brief Creates a 7-bit I2C write transaction view. */
 [[nodiscard]] constexpr i2c_msg_view
 i2c_write(uint8_t addr_7bit, span<const uint8_t> data,
           i2c_status status = i2c_status::ok) noexcept {
@@ -79,6 +81,7 @@ i2c_write(uint8_t addr_7bit, const uint8_t (&arr)[N],
 }
 
 // Standard 7-bit I2C read transaction
+/** @brief Creates a 7-bit I2C read transaction view. */
 [[nodiscard]] constexpr i2c_msg_view
 i2c_read(uint8_t addr_7bit, span<const uint8_t> data,
          i2c_status status = i2c_status::ok) noexcept {
@@ -95,6 +98,7 @@ i2c_read(uint8_t addr_7bit, const uint8_t (&arr)[N],
 }
 
 // 10-bit Extended address message
+/** @brief Creates a 10-bit I2C read or write transaction view. */
 [[nodiscard]] constexpr i2c_msg_view
 i2c_10bit(uint16_t addr_10bit, i2c_dir dir, span<const uint8_t> data,
           i2c_status status = i2c_status::ok) noexcept {

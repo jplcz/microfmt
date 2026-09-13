@@ -10,6 +10,12 @@
 
 namespace microfmt::log {
 
+/**
+ * @brief Fixed-capacity logger that formats records before dispatching to sinks.
+ *
+ * @tparam MaxSinks Maximum number of attached structured log sinks.
+ * @tparam MsgBufferCapacity Capacity of each formatted message payload.
+ */
 template <size_t MaxSinks = 4, size_t MsgBufferCapacity = 256>
 class basic_logger {
 public:
@@ -148,6 +154,7 @@ inline logger &built_in_default_logger() noexcept {
 
 } // namespace detail
 
+/** @brief Returns the configured default logger, or @c nullptr when unset. */
 [[nodiscard]] inline logger *default_logger() noexcept {
   logger *configured = detail::configured_default_logger();
   if (configured != nullptr) {
@@ -161,6 +168,7 @@ inline logger &built_in_default_logger() noexcept {
 #endif
 }
 
+/** @brief Sets or clears the process-default logger used by free helpers. */
 inline void set_default_logger(logger *instance) noexcept {
   detail::configured_default_logger() = instance;
 }
