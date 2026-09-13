@@ -32,7 +32,9 @@ if(MICROFMT_BUILD_TESTS)
 
     enable_testing()
 
-    add_executable(microfmt_tests tests/test_core.cpp tests/test_bitfield.cpp)
+    add_executable(microfmt_tests tests/test_core.cpp
+        tests/test_bitfield.cpp
+        tests/test_fixed_point.cpp)
     target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main)
 
     target_compile_options(microfmt_tests PRIVATE

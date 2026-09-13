@@ -12,6 +12,7 @@ add_microfmt_example(demo_hexdump hexdump_demo.cpp)
 add_microfmt_example(ansi_demo ansi_demo.cpp)
 add_microfmt_example(markdown_demo markdown_demo.cpp)
 add_microfmt_example(bitfield_demo bitfield_demo.cpp)
+add_microfmt_example(fixedpoint_demo fixedpoint_demo.cpp)
 
 find_package(Boost 1.77 QUIET)
 
