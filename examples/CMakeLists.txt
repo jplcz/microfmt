@@ -39,6 +39,14 @@ add_microfmt_example(ring_buffer_demo ring_buffer_demo.cpp)
 add_microfmt_example(tee_sink_demo tee_sink_demo.cpp)
 add_microfmt_example(syslog_demo syslog_demo.cpp)
 
+if(MICROFMT_COMPILER_SUPPORTS_CXX23)
+    set_target_properties(monad_demo PROPERTIES
+        CXX_STANDARD 23
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+endif()
+
 if(Boost_FOUND)
     add_microfmt_example(uuid_demo uuid_demo.cpp)
 
