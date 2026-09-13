@@ -19,6 +19,7 @@
 #include <microfmt/formatters/units.hpp>
 #include <microfmt/formatters/uuid.hpp>
 #include <microfmt/sinks/ring_buffer_sink.hpp>
+#include <microfmt/sinks/container_sink.hpp>
 #include <microfmt/sinks/stdio.hpp>
 #include <microfmt/sinks/syslog_sink.hpp>
 #include <microfmt/sinks/tee_sink.hpp>

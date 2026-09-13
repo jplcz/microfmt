@@ -38,6 +38,7 @@ add_microfmt_example(source_location_demo source_location_demo.cpp)
 add_microfmt_example(ring_buffer_demo ring_buffer_demo.cpp)
 add_microfmt_example(tee_sink_demo tee_sink_demo.cpp)
 add_microfmt_example(syslog_demo syslog_demo.cpp)
+add_microfmt_example(container_sink_demo container_sink_demo.cpp)
 
 if(MICROFMT_COMPILER_SUPPORTS_CXX23)
     set_target_properties(monad_demo PROPERTIES
