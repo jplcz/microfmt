@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file systemd_sink.hpp @brief Structured systemd journal sink adapter. */
+
 #include "../log/sink.hpp"
 #include <cstddef>
 #include <string_view>

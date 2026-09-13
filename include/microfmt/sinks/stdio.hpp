@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file stdio.hpp @brief FILE, standard-stream, and POSIX descriptor sinks. */
+
 #include "../microfmt.hpp"
 #include <cstdio>
 #include <string_view>

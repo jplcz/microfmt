@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file math.hpp @brief Vector and matrix formatting views. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <string_view>

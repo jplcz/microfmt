@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file base_views.hpp @brief Base64 and configurable binary formatting views. */
+
 #include "binary.hpp"
 #include <cstddef>
 #include <cstdint>

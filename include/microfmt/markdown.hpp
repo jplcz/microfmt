@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file markdown.hpp @brief Markdown document-writing helpers. */
+
 #include "formatters/hexdump.hpp"
 #include "microfmt.hpp"
 #include <algorithm>

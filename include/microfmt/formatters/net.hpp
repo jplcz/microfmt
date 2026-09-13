@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file net.hpp @brief Network address formatting views. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <cstdint>

@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file semver.hpp @brief Semantic-version parsing and formatting types. */
+
 #include "../microfmt.hpp"
 #include <cstdint>
 #include <string_view>

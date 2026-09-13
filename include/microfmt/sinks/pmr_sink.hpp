@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file pmr_sink.hpp @brief Polymorphic-memory-resource-backed sink adapters. */
+
 #include "../microfmt.hpp"
 #include <cassert>
 #include <cstddef>

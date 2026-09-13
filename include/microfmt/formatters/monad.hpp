@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file monad.hpp @brief std::optional and std::expected formatting support. */
+
 #include "../microfmt.hpp"
 #include <optional>
 #include <string_view>

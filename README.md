@@ -24,6 +24,34 @@ A zero-allocation, deterministic, and low-overhead C++ formatting library engine
 
 ---
 
+## Format Specifier Reference
+
+Format arguments are consumed in order. A replacement field has the form
+`{}` or `{:specifier}`.
+
+| Syntax | Applies to | Meaning | Example output |
+|---|---|---|---|
+| `{}` | All formatters | Default representation | `format<32>("id={}", 42)` → `id=42` |
+| `{{` / `}}` | Literal text | Escaped opening/closing brace | `format<32>("{{{}}}", 42)` → `{42}` |
+| `{:N}` | Integers and pointers | Minimum width, zero-padded; a sign is outside the padded digits | `{:4}` with `42` → `0042` |
+| `{:0N}` | Integers and pointers | Explicit zero-padded minimum width | `{:04}` with `42` → `0042` |
+| `{:x}` | Integers | Lowercase hexadecimal | `{:04x}` with `26` → `001a` |
+| `{:X}` | Integers | Uppercase hexadecimal | `{:04X}` with `26` → `001A` |
+| `{:N}` | Pointers | Minimum-width, zero-padded hexadecimal address digits after `0x` | `{:08}` with `0x1000` → `0x00001000` |
+
+Some formatting views define additional specifiers:
+
+| Header | Specifier | Meaning |
+|---|---|---|
+| `formatters/binary.hpp` | `#` | Add the `0b` binary prefix |
+| `formatters/binary.hpp` | `_` | Group binary digits into nibbles with underscores |
+| `formatters/can.hpp` | `c` | Use compact SocketCAN `candump` output |
+| `formatters/i2c.hpp` | `c` | Use compact I2C trace output |
+| `formatters/spi.hpp` | `c` | Use compact SPI trace output |
+| `formatters/can.hpp`, `formatters/i2c.hpp`, `formatters/spi.hpp` | `x` | Use lowercase hexadecimal digits |
+
+---
+
 ## Public API
 
 Include the headers for the facilities you use. Every API below is in

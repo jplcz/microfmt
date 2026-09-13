@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file tizen_dlog_sink.hpp @brief Structured Tizen DLOG sink adapter. */
+
 #include "../log/sink.hpp"
 #include <cstddef>
 #include <string_view>

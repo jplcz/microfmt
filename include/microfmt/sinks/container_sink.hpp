@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file container_sink.hpp @brief Growable character-container sink adapter. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <string>

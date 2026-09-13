@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file ansi.hpp @brief ANSI terminal color and text-style formatting views. */
+
 #include "../microfmt.hpp"
 #include <cstdint>
 #include <string_view>

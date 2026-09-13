@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file sink.hpp @brief Type-erased structured logging sinks and console output. */
+
 #include "../formatters/ansi.hpp"
 #include "../formatters/chrono.hpp"
 #include "../sinks/stdio.hpp"

@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file escaped.hpp @brief Escaped text and binary-buffer formatting views. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <cstdint>

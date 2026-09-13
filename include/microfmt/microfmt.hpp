@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file microfmt.hpp @brief Core formatting primitives, sinks, and customization point. */
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>

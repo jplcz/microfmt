@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file fmt.hpp @brief Lightweight {fmt}-compatible formatting bridge. */
+
 #include "../microfmt.hpp"
 #include "ranges.hpp"
 #include <cstddef>

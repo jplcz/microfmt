@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file fixed_point.hpp @brief Fixed-point numeric formatting views. */
+
 #include "../microfmt.hpp"
 #include <cstdint>
 #include <type_traits>

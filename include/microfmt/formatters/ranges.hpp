@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file ranges.hpp @brief Range and iterator-pair joining formatting views. */
+
 #include "../microfmt.hpp"
 #include <iterator>
 #include <string_view>

@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file hexdump.hpp @brief Direct and fault-checked memory hex-dump views. */
+
 #include "../microfmt.hpp"
 #include <algorithm>
 #include <cstddef>

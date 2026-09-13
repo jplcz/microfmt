@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file macros.hpp @brief Source-location-aware structured logging macros. */
+
 #include "logger.hpp"
 #include <source_location>
 

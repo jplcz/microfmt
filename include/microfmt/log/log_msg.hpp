@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file log_msg.hpp @brief Structured log-record types and severity levels. */
+
 #include "../microfmt.hpp"
 #include <chrono>
 #include <cstdint>

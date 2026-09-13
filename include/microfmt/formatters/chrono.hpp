@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file chrono.hpp @brief std::chrono duration and time-point formatters. */
+
 #include "../microfmt.hpp"
 #include <chrono>
 #include <cstdint>

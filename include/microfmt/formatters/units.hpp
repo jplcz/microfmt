@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file units.hpp @brief SI, byte-size, and unit-suffixed formatting views. */
+
 #include "../microfmt.hpp"
 #include <cstdint>
 #include <string_view>

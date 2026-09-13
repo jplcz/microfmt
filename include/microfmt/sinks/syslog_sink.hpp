@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file syslog_sink.hpp @brief Structured POSIX syslog sink adapter. */
+
 #include "../log/sink.hpp"
 #include <cstddef>
 #include <cstdint>

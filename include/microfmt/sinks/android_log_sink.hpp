@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file android_log_sink.hpp @brief Structured Android logcat sink adapter. */
+
 #include "../log/sink.hpp"
 #include <cstddef>
 #include <string_view>

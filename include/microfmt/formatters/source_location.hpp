@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file source_location.hpp @brief Standard and Boost source-location formatters. */
+
 #include "../microfmt.hpp"
 #include <cstdint>
 #include <string_view>

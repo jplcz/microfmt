@@ -1,4 +1,6 @@
 #pragma once
+
+/** @file format_helpers.hpp @brief Hexadecimal, byte, address, and alignment helpers. */
 #include "../microfmt.hpp"
 
 namespace microfmt {

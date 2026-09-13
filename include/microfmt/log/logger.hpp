@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file logger.hpp @brief Configurable structured loggers and helper functions. */
+
 #include "sink.hpp"
 #include <array>
 #include <cstddef>

@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file tee_sink.hpp @brief Fan-out sink that writes to multiple destinations. */
+
 #include "../microfmt.hpp"
 #include <array>
 #include <cstddef>

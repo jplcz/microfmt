@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file boost_describe.hpp @brief Boost.Describe integration for reflected types. */
+
 #include "../microfmt.hpp"
 #include <boost/describe.hpp>
 #include <type_traits>

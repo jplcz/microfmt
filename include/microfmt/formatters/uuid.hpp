@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file uuid.hpp @brief UUID formatting views and optional Boost.UUID support. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <cstdint>

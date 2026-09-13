@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file ring_buffer_sink.hpp @brief Fixed-capacity circular output-buffer sink. */
+
 #include "../microfmt.hpp"
 #include <array>
 #include <atomic>

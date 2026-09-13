@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file binary.hpp @brief Binary integer formatting views and grouping options. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <cstdint>

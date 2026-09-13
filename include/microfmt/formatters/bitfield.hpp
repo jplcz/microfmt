@@ -1,5 +1,7 @@
 #pragma once
 
+/** @file bitfield.hpp @brief Named bitfield and register-value formatting views. */
+
 #include "../microfmt.hpp"
 #include <cstdint>
 #include <string_view>
