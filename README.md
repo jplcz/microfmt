@@ -279,6 +279,8 @@ The HTML output is written to `build/docs/html/index.html`.
 
 The **Publish API documentation** workflow publishes the generated HTML to
 GitHub Pages on pushes to `master` that change public headers or documentation.
+The published reference is available at
+[jplcz.github.io/microfmt](https://jplcz.github.io/microfmt/).
 To enable deployment, configure **Settings > Pages > Build and deployment** to
 use **GitHub Actions** as the source. The workflow can also be run manually
 from the Actions tab.
