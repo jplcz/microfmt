@@ -109,4 +109,27 @@ void println(int fd, std::string_view fmt_str, const Args &...args) noexcept {
 }
 #endif
 
+// Target Sink printing
+template <typename... Args>
+void print(sink s, std::string_view fmt_str, const Args &...args) noexcept {
+  format_to(s, fmt_str, args...);
+}
+
+template <typename... Args>
+void println(sink s, std::string_view fmt_str, const Args &...args) noexcept {
+  format_to(s, fmt_str, args...);
+  s.put('\n');
+}
+
+// Bare newline helpers for sinks
+inline void println(sink s) noexcept { s.put('\n'); }
+
+inline void println() noexcept { stdout_sink().put('\n'); }
+
+inline void println(std::FILE *file) noexcept { file_sink(file).put('\n'); }
+
+#if MICROFMT_HAS_POSIX_FD
+inline void println(int fd) noexcept { fd_sink(fd).put('\n'); }
+#endif
+
 } // namespace microfmt

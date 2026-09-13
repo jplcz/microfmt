@@ -54,6 +54,7 @@ add_microfmt_example(pointer_demo pointer_demo.cpp)
 add_microfmt_example(android_log_demo android_log_demo.cpp)
 add_microfmt_example(logger_demo logger_demo.cpp)
 add_microfmt_example(default_logger_demo default_logger_demo.cpp)
+add_microfmt_example(register_demo register_demo.cpp)
 
 if(TARGET PkgConfig::MICROFMT_SYSTEMD)
     add_microfmt_example(systemd_demo systemd_demo.cpp)
