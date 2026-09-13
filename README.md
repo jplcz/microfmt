@@ -45,6 +45,79 @@ Include the headers for the facilities you use. Every API below is in
 
 ---
 
+## Cheat Sheet
+
+```cpp
+#include <microfmt/microfmt.hpp>
+
+// Format to a fixed-size inline buffer.
+auto message = microfmt::format<64>("id={}, value=0x{:04X}", 42, 0x1af);
+std::string_view text = message.view();
+
+// Format to an existing buffer; excess output is safely truncated.
+char storage[32];
+microfmt::span_sink buffer{microfmt::span<char>{storage}};
+microfmt::format_to(buffer.as_sink(), "status={}", true);
+
+// Stream formatted output to a callback, device driver, or logger.
+auto write = [](std::string_view chunk) noexcept { /* transmit chunk */ };
+auto callback = microfmt::make_callback_sink(write);
+microfmt::format_to(callback.as_sink(), "temperature={:03}", 24);
+
+// Format through an output iterator.
+char output[16];
+char* end = microfmt::format_to(output, "{}", 123);
+
+// Count required output size without storing the output.
+microfmt::counting_sink counter;
+microfmt::format_to(counter.as_sink(), "name={}, id={}", "dev0", 7);
+std::size_t required = counter.count();
+```
+
+```cpp
+#include <microfmt/ranges.hpp>
+#include <microfmt/format_helpers.hpp>
+#include <microfmt/binary.hpp>
+
+uint8_t bytes[] = {0x12, 0x34, 0x56};
+auto joined = microfmt::join(bytes, ":");
+auto hex_value = microfmt::hex(0x2a, 4, true);
+auto binary = microfmt::bin_prefixed(uint8_t{0x2a}, true);
+
+auto message = microfmt::format<96>(
+    "bytes=[{}], value={}, bits={}", joined, hex_value, binary);
+// bytes=[18:52:86], value=0x002a, bits=0b0010_1010
+```
+
+```cpp
+#include <microfmt/escaped.hpp>
+#include <microfmt/fixed_point.hpp>
+#include <microfmt/uuid.hpp>
+
+uint8_t id[16] = {};
+auto message = microfmt::format<128>(
+    "name={}, voltage={} V, id={:#X}",
+    microfmt::escaped("line\nbreak"),
+    microfmt::milli(3300),
+    microfmt::uuid(id));
+// name="line\nbreak", voltage=3.300 V,
+// id={00000000-0000-0000-0000-000000000000}
+```
+
+```cpp
+#include <microfmt/ansi.hpp>
+#include <microfmt/stdio.hpp>
+
+microfmt::println("{}", microfmt::ansi::red("error"));
+microfmt::ansi::style::colors_enabled = false; // Disable escape sequences.
+microfmt::println(stderr, "failed with code {}", 5);
+```
+
+To support a custom type, specialize `microfmt::formatter<T>` with `parse` and
+`format` methods; see the custom formatter example below.
+
+---
+
 ## Static Stack Usage vs. libc `snprintf`
 
 Under `MinSizeRel` (`-Oz` / `-Os`), `microfmt` enforces flat caller overhead and bounded leaf frames. Unlike `snprintf`, which demands large caller destination buffers and deep execution frames, `microfmt` streams directly into the target sink.
