@@ -32,7 +32,7 @@ if(MICROFMT_BUILD_TESTS)
 
     enable_testing()
 
-    add_executable(microfmt_tests tests/test_core.cpp)
+    add_executable(microfmt_tests tests/test_core.cpp tests/test_bitfield.cpp)
     target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main)
 
     target_compile_options(microfmt_tests PRIVATE
@@ -47,7 +47,8 @@ if(MICROFMT_BUILD_TESTS)
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
     # Build probe object file with optimization
-    add_library(microfmt_stack_probes OBJECT tests/stack_probes.cpp)
+    add_library(microfmt_stack_probes OBJECT
+        tests/stack_probes.cpp)
     target_link_libraries(microfmt_stack_probes PRIVATE microfmt)
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
