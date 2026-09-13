@@ -1,6 +1,6 @@
 # microfmt
 
-![microfmt logo](docs/microfmt-logo.svg)
+<img src="docs/microfmt-logo.svg" alt="microfmt logo" width="128">
 
 A zero-allocation, deterministic, and low-overhead C++ formatting library engineered specifically for resource-constrained environments (bare-metal embedded systems, real-time operating systems, ISRs, and kernel-space drivers).
 
