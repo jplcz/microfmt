@@ -15,3 +15,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(bench_stack_painting PRIVATE -fstack-size-section)
   endif()
 endif()
+
+include(CTest)
+add_test(NAME bench_stack_painting COMMAND bench_stack_painting)
+
+# Custom target: 'cmake --build <build_dir> --target run_stack_bench'
+add_custom_target(run_stack_bench
+  COMMAND bench_stack_painting
+  DEPENDS bench_stack_painting
+  COMMENT "Running microfmt stack high-water mark benchmark..."
+  USES_TERMINAL
+)
