@@ -18,9 +18,10 @@ template <typename WordType, size_t N> struct reg_grid_desc {
   std::string_view names[N];
 };
 
-// Deduction guide
+template <typename T> struct type_tag {};
+
 template <typename WordType, typename... Names>
-reg_grid_desc(std::string_view, uint8_t, Names...)
+reg_grid_desc(type_tag<WordType>, std::string_view, uint8_t, Names...)
     -> reg_grid_desc<WordType, sizeof...(Names)>;
 
 // ============================================================================

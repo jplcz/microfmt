@@ -33,6 +33,7 @@ add_library(microfmt::microfmt ALIAS microfmt)
 # Optional test runner
 option(MICROFMT_BUILD_TESTS "Build test suite" ON)
 option(MICROFMT_BUILD_EXAMPLES "Build example apps" ON)
+option(MICROFMT_BUILD_BENCHMARKS "Build benchmark apps" ON)
 option(MICROFMT_BUILD_HEADER_CHECKS
     "Compile all public headers under each supported C++ standard" ON)
 
@@ -373,4 +374,8 @@ endif()
 
 if(MICROFMT_BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+
+if (MICROFMT_BUILD_BENCHMARKS)
+    add_subdirectory(bench)
 endif()
