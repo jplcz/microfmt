@@ -65,6 +65,7 @@ add_microfmt_example(stress_compile_time stress_compile_time.cpp)
 add_microfmt_example(variant_demo variant_demo.cpp)
 add_microfmt_example(hash_demo hash_demo.cpp)
 add_microfmt_example(address_space_demo address_space_demo.cpp)
+add_microfmt_example(resolver_demo resolver_demo.cpp)
 
 if(TARGET PkgConfig::MICROFMT_SYSTEMD)
   add_microfmt_example(systemd_demo systemd_demo.cpp)
