@@ -77,6 +77,67 @@ __attribute__((noinline)) void probe_stack_10_mixed_system_state(
 }
 
 // ============================================================================
+// microfmt Compile Time String Probes
+// ============================================================================
+
+__attribute__((noinline)) void probe_microfmt_compiled_0_args(void) {
+  volatile_sink vs;
+  microfmt::format_to(vs.as_sink(), MICROFMT_STRING("Fixed panic message\n"));
+}
+
+__attribute__((noinline)) void probe_microfmt_compiled_2_integers(uint32_t a,
+                                                                  uint64_t b) {
+  volatile_sink vs;
+  microfmt::format_to(vs.as_sink(),
+                      MICROFMT_STRING("A: 0x{:08x}, B: 0x{:016x}\n"), a, b);
+}
+
+__attribute__((noinline)) void probe_microfmt_compiled_4_mixed(uint32_t code,
+                                                               const char *name,
+                                                               uintptr_t pc,
+                                                               void *sp) {
+  volatile_sink vs;
+  microfmt::format_to(vs.as_sink(),
+                      MICROFMT_STRING("[#{:02x}] {}: PC=0x{:016x} SP={}\n"),
+                      code, name, pc, sp);
+}
+
+__attribute__((noinline)) void
+probe_microfmt_compiled_8_context(uint64_t r0, uint64_t r1, uint64_t r2,
+                                  uint64_t r3, uint64_t r4, uint64_t r5,
+                                  uint64_t r6, uint64_t r7) {
+  volatile_sink vs;
+  microfmt::format_to(
+      vs.as_sink(),
+      MICROFMT_STRING("R0: {:016x} R1: {:016x} R2: {:016x} R3: {:016x} "
+                      "R4: {:016x} R5: {:016x} R6: {:016x} R7: {:016x}\n"),
+      r0, r1, r2, r3, r4, r5, r6, r7);
+}
+
+__attribute__((noinline)) void
+probe_stack_compiled_6_mixed_log(uint32_t timestamp, const char *module,
+                                 char severity, int32_t error_code,
+                                 void *caller_pc, bool is_fatal) {
+  volatile_sink vs;
+  microfmt::format_to(
+      vs.as_sink(), MICROFMT_STRING("[{}] {}: ({}) err={} pc={} fatal={}\n"),
+      timestamp, module, severity, error_code, caller_pc, is_fatal);
+}
+
+__attribute__((noinline)) void probe_stack_compiled_10_mixed_system_state(
+    uint8_t id, int16_t temp, uint32_t voltage, const char *sensor_name,
+    std::string_view status, bool calibrated, uint64_t uptime, void *dma_buffer,
+    char rev_letter, uint32_t checksum) {
+  volatile_sink vs;
+  microfmt::format_to(
+      vs.as_sink(),
+      MICROFMT_STRING("ID:#{:02x} T={} V={}mV S='{}' ST='{}' CAL={} UP={} "
+                      "DMA={} REV={} CS=0x{:08x}\n"),
+      id, temp, voltage, sensor_name, status, calibrated, uptime, dma_buffer,
+      rev_letter, checksum);
+}
+
+// ============================================================================
 // libc snprintf Probes (Identical Scenarios)
 // ============================================================================
 

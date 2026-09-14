@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 
 #if __has_include(<span>) && __cplusplus >= 202002L
@@ -916,16 +917,16 @@ inline void format_type_thunk(const void *val_ptr, std::string_view spec,
 }
 
 #if __cplusplus >= 202002L
-template <typename T> using remove_cvref_t = std::remove_cvref_t<T>;
+template <typename T> using microfmt_remove_cvref_t = std::remove_cvref_t<T>;
 #else
 template <typename T>
-using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+using microfmt_remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 #endif
 
 template <typename... Args> struct format_type_table {
   // Static array living in flash / .rodata (Zero runtime RAM usage)
   static inline constexpr std::array<format_fn_t, sizeof...(Args)> functions = {
-      &format_type_thunk<remove_cvref_t<Args>>...};
+      &format_type_thunk<microfmt_remove_cvref_t<Args>>...};
 
   static inline constexpr span<const format_fn_t> dynamic_span{
       functions.data(), functions.size()};
@@ -935,6 +936,121 @@ template <typename... Args> struct format_type_table {
 template <> struct format_type_table<> {
   static inline constexpr span<const format_fn_t> dynamic_span{};
 };
+
+// Represents a pre-parsed action in the format string
+struct compiled_piece {
+  std::string_view literal{}; // Static literal text to emit directly
+  std::string_view spec{};    // Format specifier (e.g. ":08x")
+  size_t arg_index{0};        // Which argument index to format
+  bool is_arg{false};         // true = format arg, false = write literal
+};
+
+template <size_t MaxPieces = 32> struct compiled_format {
+  std::array<compiled_piece, MaxPieces> pieces{};
+  size_t count{0};
+};
+
+template <size_t MaxPieces = 32>
+constexpr compiled_format<MaxPieces>
+compile_format_string(std::string_view str) noexcept {
+  compiled_format<MaxPieces> result{};
+  size_t arg_idx = 0;
+  size_t lit_start = 0;
+
+  for (size_t i = 0; i < str.size(); ++i) {
+    if (str[i] == '{') {
+      if (i + 1 < str.size() && str[i + 1] == '{') {
+        // Escaped '{{'
+        ++i;
+        continue;
+      }
+
+      // Record preceding literal if non-empty
+      if (i > lit_start) {
+        result.pieces[result.count++] =
+            compiled_piece{str.substr(lit_start, i - lit_start), {}, 0, false};
+      }
+
+      // Find matching '}'
+      size_t end = i + 1;
+      while (end < str.size() && str[end] != '}') {
+        ++end;
+      }
+
+      std::string_view spec = str.substr(i + 1, end - (i + 1));
+      result.pieces[result.count++] = compiled_piece{{}, spec, arg_idx++, true};
+
+      i = end;
+      lit_start = i + 1;
+    } else if (str[i] == '}') {
+      if (i + 1 < str.size() && str[i + 1] == '}') {
+        ++i;
+        continue;
+      }
+    }
+  }
+
+  // Trailing literal
+  if (lit_start < str.size()) {
+    result.pieces[result.count++] =
+        compiled_piece{str.substr(lit_start), {}, 0, false};
+  }
+
+  return result;
+}
+
+// Helper to extract the N-th argument from a parameter pack
+template <size_t TargetIdx, size_t CurIdx, typename T, typename... Rest>
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((always_inline))
+#endif
+inline const void *get_arg_by_index(const T &first,
+                                    const Rest &...rest) noexcept {
+  if constexpr (TargetIdx == CurIdx) {
+    return static_cast<const void *>(&first);
+  } else {
+    return get_arg_by_index<TargetIdx, CurIdx + 1>(rest...);
+  }
+}
+
+template <typename StrProvider> struct compiled_string_storage {
+  static constexpr auto compiled = compile_format_string(StrProvider::get());
+};
+
+// Formats a single compiled piece with zero runtime indirect thunks
+template <typename StrProvider, size_t PieceIdx, typename... Args>
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((always_inline))
+#endif
+inline void
+emit_piece_by_index(const sink &out,
+                    const std::tuple<const Args &...> &arg_tuple) noexcept {
+  constexpr auto &piece =
+      compiled_string_storage<StrProvider>::compiled.pieces[PieceIdx];
+
+  if constexpr (!piece.is_arg) {
+    out.write(piece.literal);
+  } else {
+    // Select the argument reference from the tuple
+    const auto &arg = std::get<piece.arg_index>(arg_tuple);
+    using arg_t = microfmt_remove_cvref_t<decltype(arg)>;
+
+    formatter<arg_t> fmt{};
+    format_parse_context ctx(piece.spec);
+    fmt.parse(ctx);
+    fmt.format(arg, out);
+  }
+}
+
+template <typename StrProvider, typename... Args, size_t... Is>
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((always_inline))
+#endif
+inline void unrolled_format_impl(const sink &out, std::index_sequence<Is...>,
+                                 const Args &...args) noexcept {
+  auto arg_tuple = std::forward_as_tuple(args...);
+  (emit_piece_by_index<StrProvider, Is>(out, arg_tuple), ...);
+}
 
 } // namespace detail
 
@@ -1023,6 +1139,54 @@ inline OutputIt format_to(OutputIt it, std::string_view fmt,
 template <size_t N, typename... Args>
 [[nodiscard]] inline buffer_sink<N> format(std::string_view fmt,
                                            const Args &...args) noexcept {
+  buffer_sink<N> buf;
+  format_to(buf.as_sink(), fmt, args...);
+  return buf;
+}
+
+template <typename Provider> struct compile_string_holder {
+  using provider_type = Provider;
+
+  [[nodiscard]] constexpr std::string_view get() const noexcept {
+    return Provider::get();
+  }
+};
+
+// Creates a unique static provider for C++17 compatibility
+#define MICROFMT_STRING(s)                                                     \
+  ([] {                                                                        \
+    struct str_provider {                                                      \
+      static constexpr std::string_view get() noexcept {                       \
+        return std::string_view{s, sizeof(s) - 1};                             \
+      }                                                                        \
+    };                                                                         \
+    return ::microfmt::compile_string_holder<str_provider>{};                  \
+  }())
+
+// Compile-time unrolled overload (Zero stack arg_ptrs, zero indirect thunks)
+template <typename StrProvider, typename... Args>
+inline void format_to(const sink &out, compile_string_holder<StrProvider>,
+                      const Args &...args) noexcept {
+  constexpr size_t num_pieces =
+      detail::compiled_string_storage<StrProvider>::compiled.count;
+
+  detail::unrolled_format_impl<StrProvider>(
+      out, std::make_index_sequence<num_pieces>{}, args...);
+}
+
+// Compile-time overload
+template <typename OutputIt, typename StrProvider, typename... Args>
+inline OutputIt format_to(OutputIt it, compile_string_holder<StrProvider> fmt,
+                          const Args &...args) noexcept {
+  iterator_sink<OutputIt> isink(it);
+  format_to(isink.as_sink(), fmt, args...);
+  return isink.current();
+}
+
+// Compile-time overload
+template <size_t N, typename StrProvider, typename... Args>
+[[nodiscard]] inline buffer_sink<N>
+format(compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
   buffer_sink<N> buf;
   format_to(buf.as_sink(), fmt, args...);
   return buf;
