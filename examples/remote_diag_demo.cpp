@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #include <iostream>
 #include <microfmt/inspector/address_space.hpp>
 #include <microfmt/inspector/remote_diagnostics.hpp>
