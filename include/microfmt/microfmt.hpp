@@ -792,54 +792,186 @@ template <> struct formatter<char *> {
   }
 };
 
-// Integers (Signed & Unsigned)
-template <typename T>
-struct formatter<
-    T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool> &&
-                        !std::is_same_v<T, char>>> {
-  char spec{'\0'};
-  int width{0};
+namespace detail {
 
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    std::string_view s = ctx.spec();
-    if (s.empty())
-      return;
+// 2-digit lookup table for values 00-99
+inline constexpr char digits_lut[200] = {
+    '0', '0', '0', '1', '0', '2', '0', '3', '0', '4', '0', '5', '0', '6', '0',
+    '7', '0', '8', '0', '9', '1', '0', '1', '1', '1', '2', '1', '3', '1', '4',
+    '1', '5', '1', '6', '1', '7', '1', '8', '1', '9', '2', '0', '2', '1', '2',
+    '2', '2', '3', '2', '4', '2', '5', '2', '6', '2', '7', '2', '8', '2', '9',
+    '3', '0', '3', '1', '3', '2', '3', '3', '3', '4', '3', '5', '3', '6', '3',
+    '7', '3', '8', '3', '9', '4', '0', '4', '1', '4', '2', '4', '3', '4', '4',
+    '4', '5', '4', '6', '4', '7', '4', '8', '4', '9', '5', '0', '5', '1', '5',
+    '2', '5', '3', '5', '4', '5', '5', '5', '6', '5', '7', '5', '8', '5', '9',
+    '6', '0', '6', '1', '6', '2', '6', '3', '6', '4', '6', '5', '6', '6', '6',
+    '7', '6', '8', '6', '9', '7', '0', '7', '1', '7', '2', '7', '3', '7', '4',
+    '7', '5', '7', '6', '7', '7', '7', '8', '7', '9', '8', '0', '8', '1', '8',
+    '2', '8', '3', '8', '4', '8', '5', '8', '6', '8', '7', '8', '8', '8', '9',
+    '9', '0', '9', '1', '9', '2', '9', '3', '9', '4', '9', '5', '9', '6', '9',
+    '7', '9', '8', '9', '9'};
 
-    size_t p = 0;
-    if (s[p] == '0')
-      ++p;
-    while (p < s.size() && s[p] >= '0' && s[p] <= '9') {
-      width = width * 10 + (s[p] - '0');
-      ++p;
-    }
-    if (p < s.size()) {
-      spec = s[p];
+inline constexpr char hex_digits_lower[16] = {'0', '1', '2', '3', '4', '5',
+                                              '6', '7', '8', '9', 'a', 'b',
+                                              'c', 'd', 'e', 'f'};
+
+inline constexpr char hex_digits_upper[16] = {'0', '1', '2', '3', '4', '5',
+                                              '6', '7', '8', '9', 'A', 'B',
+                                              'C', 'D', 'E', 'F'};
+
+// =============================================================================
+// Fast Backward Decimal Formatting
+// =============================================================================
+
+template <typename UInt>
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((always_inline))
+#endif
+inline char *format_dec_backward(char *ptr, UInt value) noexcept {
+  // Process 2 digits at a time using the lookup table
+  while (value >= 100) {
+    const auto rem = static_cast<unsigned>(value % 100);
+    value /= 100;
+    ptr -= 2;
+    ptr[0] = digits_lut[rem * 2];
+    ptr[1] = digits_lut[rem * 2 + 1];
+  }
+
+  // Handle remaining 1 or 2 digits
+  if (value < 10) {
+    *--ptr = static_cast<char>('0' + value);
+  } else {
+    ptr -= 2;
+    ptr[0] = digits_lut[value * 2];
+    ptr[1] = digits_lut[value * 2 + 1];
+  }
+  return ptr;
+}
+
+// =============================================================================
+// Fast Backward Hexadecimal Formatting
+// =============================================================================
+
+template <typename UInt>
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((always_inline))
+#endif
+inline char *format_hex_backward(char *ptr, UInt value,
+                                 bool uppercase) noexcept {
+  const char *lut = uppercase ? hex_digits_upper : hex_digits_lower;
+  if (value == 0) {
+    *--ptr = '0';
+    return ptr;
+  }
+  while (value > 0) {
+    *--ptr = lut[value & 0xF];
+    value >>= 4;
+  }
+  return ptr;
+}
+
+// Low-overhead emission routine with zero-padding and width handling
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((always_inline))
+#endif
+inline void emit_formatted_int(const sink &out, const char *digits, size_t len,
+                               bool is_negative, uint8_t width,
+                               bool zero_pad) noexcept {
+
+  const size_t total_len = len + (is_negative ? 1 : 0);
+
+  // Left-padding when not zero-padded
+  if (!zero_pad && width > total_len) {
+    for (size_t i = 0; i < width - total_len; ++i) {
+      out.put(' ');
     }
   }
 
-  void format(T val, const sink &out) const noexcept {
-    if constexpr (std::is_signed_v<T>) {
-      if (spec == 'x') {
-        detail::format_unsigned(out, static_cast<uint64_t>(val), 16, false,
-                                width);
-      } else if (spec == 'X') {
-        detail::format_unsigned(out, static_cast<uint64_t>(val), 16, true,
-                                width);
-      } else {
-        detail::format_signed(out, static_cast<int64_t>(val), width);
-      }
-    } else {
-      if (spec == 'x') {
-        detail::format_unsigned(out, static_cast<uint64_t>(val), 16, false,
-                                width);
-      } else if (spec == 'X') {
-        detail::format_unsigned(out, static_cast<uint64_t>(val), 16, true,
-                                width);
-      } else {
-        detail::format_unsigned(out, static_cast<uint64_t>(val), 10, false,
-                                width);
+  if (is_negative) {
+    out.put('-');
+  }
+
+  // Zero padding
+  if (zero_pad && width > total_len) {
+    for (size_t i = 0; i < width - total_len; ++i) {
+      out.put('0');
+    }
+  }
+
+  out.write(std::string_view{digits, len});
+}
+
+} // namespace detail
+
+// Integers (Signed & Unsigned)
+template <typename T>
+struct formatter<T, std::enable_if_t<std::is_integral_v<T> && 
+                                     !std::is_same_v<T, bool> && 
+                                     !std::is_same_v<T, char>>> {
+  // Format specifications extracted during parse
+  uint8_t width{0};
+  bool zero_pad{false};
+  bool is_hex{false};
+  bool uppercase{false};
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    std::string_view spec = ctx.spec();
+    if (spec.empty()) return;
+
+    size_t i = 0;
+    if (spec[i] == '0') {
+      zero_pad = true;
+      ++i;
+    }
+
+    while (i < spec.size() && spec[i] >= '0' && spec[i] <= '9') {
+      width = static_cast<uint8_t>(width * 10 + (spec[i] - '0'));
+      ++i;
+    }
+
+    if (i < spec.size()) {
+      if (spec[i] == 'x') {
+        is_hex = true;
+        uppercase = false;
+      } else if (spec[i] == 'X') {
+        is_hex = true;
+        uppercase = true;
       }
     }
+  }
+
+  // Uses minimal stack buffer size depending on whether T is 32-bit or 64-bit
+  void format(T val, const sink &out) const noexcept {
+    // 32-bit uint needs max 10 digits (12 B buffer)
+    // 64-bit uint needs max 20 digits (24 B buffer)
+    constexpr size_t BUF_SIZE = (sizeof(T) <= 4) ? 12 : 24;
+    char buffer[BUF_SIZE];
+    char *end = buffer + BUF_SIZE;
+    char *start = end;
+
+    using unsigned_t = std::make_unsigned_t<T>;
+    unsigned_t uval;
+    bool is_negative = false;
+
+    if constexpr (std::is_signed_v<T>) {
+      if (val < 0) {
+        is_negative = true;
+        uval = static_cast<unsigned_t>(0) - static_cast<unsigned_t>(val);
+      } else {
+        uval = static_cast<unsigned_t>(val);
+      }
+    } else {
+      uval = val;
+    }
+
+    if (is_hex) {
+      start = detail::format_hex_backward(end, uval, uppercase);
+    } else {
+      start = detail::format_dec_backward(end, uval);
+    }
+
+    const size_t digits_len = static_cast<size_t>(end - start);
+    detail::emit_formatted_int(out, start, digits_len, is_negative, width, zero_pad);
   }
 };
 
