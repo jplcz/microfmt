@@ -966,31 +966,41 @@ inline char *format_hex_backward(char *ptr, UInt value,
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((always_inline))
 #endif
-inline void emit_formatted_int(const sink &out, const char *digits, size_t len,
-                               bool is_negative, uint8_t width,
+inline void emit_formatted_int(const sink &out, const char *digits,
+                               size_t digits_len, bool is_negative,
+                               std::string_view prefix, uint8_t width,
                                bool zero_pad) noexcept {
+  const size_t prefix_len = prefix.size();
+  const size_t total_content_len =
+      digits_len + prefix_len + (is_negative ? 1 : 0);
+  const size_t pad_len =
+      (width > total_content_len) ? (width - total_content_len) : 0;
 
-  const size_t total_len = len + (is_negative ? 1 : 0);
-
-  // Left-padding when not zero-padded
-  if (!zero_pad && width > total_len) {
-    for (size_t i = 0; i < width - total_len; ++i) {
-      out.put(' ');
+  if (zero_pad) {
+    // Zero-padded: [sign][prefix][zeros][digits]
+    if (is_negative) {
+      out.put('-');
     }
-  }
-
-  if (is_negative) {
-    out.put('-');
-  }
-
-  // Zero padding
-  if (zero_pad && width > total_len) {
-    for (size_t i = 0; i < width - total_len; ++i) {
+    if (!prefix.empty()) {
+      out.write(prefix);
+    }
+    for (size_t i = 0; i < pad_len; ++i) {
       out.put('0');
     }
+  } else {
+    // Space-padded: [spaces][sign][prefix][digits]
+    for (size_t i = 0; i < pad_len; ++i) {
+      out.put(' ');
+    }
+    if (is_negative) {
+      out.put('-');
+    }
+    if (!prefix.empty()) {
+      out.write(prefix);
+    }
   }
 
-  out.write(std::string_view{digits, len});
+  out.write(std::string_view(digits, digits_len));
 }
 
 } // namespace detail
@@ -1000,11 +1010,16 @@ template <typename T>
 struct formatter<
     T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool> &&
                         !std::is_same_v<T, char>>> {
-  // Format specifications extracted during parse
   uint8_t width{0};
-  bool zero_pad{false};
-  bool is_hex{false};
-  bool uppercase{false};
+
+  // Bitfield backing all boolean state in a single byte
+  // C++17 clean bitfields without in-class initializers
+  struct flags_t {
+    uint8_t alt_form : 1;
+    uint8_t zero_pad : 1;
+    uint8_t is_hex : 1;
+    uint8_t uppercase : 1;
+  } flags{}; // Zero-initializes all bit-field members to 0
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     std::string_view spec = ctx.spec();
@@ -1012,31 +1027,38 @@ struct formatter<
       return;
 
     size_t i = 0;
-    if (spec[i] == '0') {
-      zero_pad = true;
+
+    // Parse '#' (alternate form)
+    if (i < spec.size() && spec[i] == '#') {
+      flags.alt_form = 1;
       ++i;
     }
 
+    // Parse '0' (zero padding flag)
+    if (i < spec.size() && spec[i] == '0') {
+      flags.zero_pad = 1;
+      ++i;
+    }
+
+    // Parse width
     while (i < spec.size() && spec[i] >= '0' && spec[i] <= '9') {
       width = static_cast<uint8_t>(width * 10 + (spec[i] - '0'));
       ++i;
     }
 
+    // Parse type specifier
     if (i < spec.size()) {
       if (spec[i] == 'x') {
-        is_hex = true;
-        uppercase = false;
+        flags.is_hex = 1;
+        flags.uppercase = 0;
       } else if (spec[i] == 'X') {
-        is_hex = true;
-        uppercase = true;
+        flags.is_hex = 1;
+        flags.uppercase = 1;
       }
     }
   }
 
-  // Uses minimal stack buffer size depending on whether T is 32-bit or 64-bit
   void format(T val, const sink &out) const noexcept {
-    // 32-bit uint needs max 10 digits (12 B buffer)
-    // 64-bit uint needs max 20 digits (24 B buffer)
     constexpr size_t BUF_SIZE = (sizeof(T) <= 4) ? 12 : 24;
     char buffer[BUF_SIZE];
     char *end = buffer + BUF_SIZE;
@@ -1057,15 +1079,19 @@ struct formatter<
       uval = val;
     }
 
-    if (is_hex) {
-      start = detail::format_hex_backward(end, uval, uppercase);
+    std::string_view prefix{};
+    if (flags.is_hex) {
+      start = detail::format_hex_backward(end, uval, flags.uppercase);
+      if (flags.alt_form) {
+        prefix = flags.uppercase ? "0X" : "0x";
+      }
     } else {
       start = detail::format_dec_backward(end, uval);
     }
 
     const size_t digits_len = static_cast<size_t>(end - start);
-    detail::emit_formatted_int(out, start, digits_len, is_negative, width,
-                               zero_pad);
+    detail::emit_formatted_int(out, start, digits_len, is_negative, prefix,
+                               width, flags.zero_pad);
   }
 };
 
