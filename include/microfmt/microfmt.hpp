@@ -21,6 +21,17 @@
 #define MICROFMT_HAS_STD_SPAN 0
 #endif
 
+// Attribute compatibility
+#if defined(__has_cpp_attribute) && __has_cpp_attribute(no_unique_address) &&  \
+    (__cplusplus >= 202002L)
+#define MICROFMT_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#elif defined(_MSC_VER) && defined(__has_cpp_attribute) &&                     \
+    __has_cpp_attribute(msvc::no_unique_address)
+#define MICROFMT_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
+#else
+#define MICROFMT_NO_UNIQUE_ADDRESS
+#endif
+
 namespace microfmt {
 
 // ============================================================================
@@ -1137,6 +1148,17 @@ template <typename T> using microfmt_remove_cvref_t = std::remove_cvref_t<T>;
 template <typename T>
 using microfmt_remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 #endif
+
+// C++17 string_view prefix helper
+constexpr bool starts_with(std::string_view sv,
+                           std::string_view prefix) noexcept {
+  return sv.size() >= prefix.size() &&
+         sv.compare(0, prefix.size(), prefix) == 0;
+}
+
+constexpr bool starts_with(std::string_view sv, char c) noexcept {
+  return !sv.empty() && sv.front() == c;
+}
 
 template <typename... Args> struct format_type_table {
   // Static array living in flash / .rodata (Zero runtime RAM usage)
