@@ -1,6 +1,7 @@
 #pragma once
 
-/** @file microfmt.hpp @brief Core formatting primitives, sinks, and customization point. */
+/** @file microfmt.hpp @brief Core formatting primitives, sinks, and
+ * customization point. */
 
 #include <algorithm>
 #include <cstddef>
@@ -914,13 +915,26 @@ inline void format_type_thunk(const void *val_ptr, std::string_view spec,
   }
 }
 
+#if __cplusplus >= 202002L
+template <typename T> using remove_cvref_t = std::remove_cvref_t<T>;
+#else
+template <typename T>
+using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+#endif
+
 template <typename... Args> struct format_type_table {
-  static constexpr format_fn_t functions[] = {(&format_type_thunk<Args>)...,
-                                              nullptr};
+  // Static array living in flash / .rodata (Zero runtime RAM usage)
+  static inline constexpr std::array<format_fn_t, sizeof...(Args)> functions = {
+      &format_type_thunk<remove_cvref_t<Args>>...};
+
+  static inline constexpr span<const format_fn_t> dynamic_span{
+      functions.data(), functions.size()};
 };
 
-template <typename... Args>
-constexpr format_fn_t format_type_table<Args...>::functions[];
+// Specialization for zero arguments
+template <> struct format_type_table<> {
+  static inline constexpr span<const format_fn_t> dynamic_span{};
+};
 
 } // namespace detail
 
@@ -991,10 +1005,10 @@ inline void format_to(const sink &out, std::string_view fmt,
     vformat_to(out, fmt, {}, {});
   } else {
     const void *const arg_ptrs[] = {static_cast<const void *>(&args)...};
-    constexpr const auto &fns = detail::format_type_table<Args...>::functions;
+    constexpr auto thunks = detail::format_type_table<Args...>::dynamic_span;
 
     vformat_to(out, fmt, span<const void *const>(arg_ptrs, sizeof...(Args)),
-               span<const format_fn_t>(fns, sizeof...(Args)));
+               thunks);
   }
 }
 
