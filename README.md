@@ -530,6 +530,21 @@ Scanned files: 1
 [SUCCESS] All microfmt functions are within the 256B stack budget.
 ```
 
+Benchmark:
+
+```text
+===================================================================
+   microfmt Runtime Stack High-Water Mark Benchmark (1-Byte Res)   
+===================================================================
+Baseline Call Overhead: 28 Bytes
+-------------------------------------------------------------------
+Benchmark Probe | Peak Stack | Net Overhead
+-------------------------------------------------------------------
+microfmt runtime vformat_to (10 args) | 488 B | 460 B
+microfmt compiled MICROFMT_STRING (10 args) | 264 B | 236 B
+===================================================================
+```
+
 #### Clang 24
 
 ```text
@@ -574,8 +589,21 @@ Scanned files: 1
          0 B |    256 B |     PASS | microfmt::detail::format_type_thunk<std::basic_string_view<char, std::char_traits<char>>>
 --------------------------------------------------------------------------------
 [SUCCESS] All microfmt functions are within the 256B stack budget.
+```
 
+Benchmark:
 
+```text
+===================================================================
+   microfmt Runtime Stack High-Water Mark Benchmark (1-Byte Res)   
+===================================================================
+Baseline Call Overhead: 20 Bytes
+-------------------------------------------------------------------
+Benchmark Probe | Peak Stack | Net Overhead
+-------------------------------------------------------------------
+microfmt runtime vformat_to (10 args) | 3640 B | 3620 B
+microfmt compiled MICROFMT_STRING (10 args) | 256 B | 236 B
+===================================================================
 ```
 
 ## License
