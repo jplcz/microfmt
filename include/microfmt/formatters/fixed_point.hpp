@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 /** @file fixed_point.hpp @brief Fixed-point numeric formatting views. */

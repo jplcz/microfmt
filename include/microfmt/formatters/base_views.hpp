@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 /** @file base_views.hpp @brief Base64 and configurable binary formatting views. */

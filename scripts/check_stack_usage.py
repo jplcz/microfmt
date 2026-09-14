@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+# SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+#
+# SPDX-License-Identifier: MIT
+
 """
 microfmt static stack usage analyzer
 Parses GCC `.su` files and Clang `llvm-readelf --stack-sizes` output.

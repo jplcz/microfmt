@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 /** @file units.hpp @brief SI, byte-size, and unit-suffixed formatting views. */

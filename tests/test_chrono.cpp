@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #include <chrono>
 #include <gtest/gtest.h>
 #include <microfmt/formatters/chrono.hpp>

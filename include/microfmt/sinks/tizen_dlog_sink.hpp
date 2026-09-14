@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 /** @file tizen_dlog_sink.hpp @brief Structured Tizen DLOG sink adapter. */

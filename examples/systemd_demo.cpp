@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #include <microfmt/log/logger.hpp>
 #include <microfmt/sinks/systemd_sink.hpp>
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+#
+# SPDX-License-Identifier: MIT
+
 PROJECT_NAME           = microfmt
 PROJECT_BRIEF          = Zero-allocation C++ formatting for constrained environments
 PROJECT_LOGO           = docs/microfmt-logo.svg

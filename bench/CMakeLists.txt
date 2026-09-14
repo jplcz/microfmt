@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+#
+# SPDX-License-Identifier: MIT
+
 add_executable(bench_stack_painting bench_stack_painting.cpp)
 target_link_libraries(bench_stack_painting PRIVATE microfmt)
 

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #include <cstdio>
 #include <microfmt/formatters/fixed_point.hpp>
 #include <microfmt/microfmt.hpp>

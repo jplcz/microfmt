@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+
+SPDX-License-Identifier: MIT
+-->
+
 # microfmt
 
 <img src="docs/microfmt-logo.svg" alt="microfmt logo" width="128">

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 /** @file uuid.hpp @brief UUID formatting views and optional Boost.UUID support. */

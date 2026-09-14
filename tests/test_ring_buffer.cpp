@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #include <gtest/gtest.h>
 #include <microfmt/microfmt.hpp>
 #include <microfmt/sinks/ring_buffer_sink.hpp>

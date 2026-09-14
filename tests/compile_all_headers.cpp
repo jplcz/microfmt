@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
 #include <microfmt/microfmt.hpp>
 #include <microfmt/markdown.hpp>
 #include <microfmt/formatters/ansi.hpp>
