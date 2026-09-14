@@ -739,14 +739,91 @@ inline void format_signed(const sink &out, int64_t val,
 
 class format_parse_context {
 public:
+  using iterator = std::string_view::const_iterator;
+  using const_iterator = std::string_view::const_iterator;
+  using value_type = char;
+  using size_type = std::size_t;
+
   constexpr explicit format_parse_context(std::string_view spec) noexcept
       : m_spec(spec) {}
+
+  // --- Core Accessors ---
   [[nodiscard]] constexpr std::string_view spec() const noexcept {
     return m_spec;
   }
   [[nodiscard]] constexpr bool empty() const noexcept { return m_spec.empty(); }
+  [[nodiscard]] constexpr size_type size() const noexcept {
+    return m_spec.size();
+  }
+
+  // --- Iterator Interface (Required for std::format/fmtlib-style custom
+  // formatters) ---
+  [[nodiscard]] constexpr const_iterator begin() const noexcept {
+    return m_spec.begin();
+  }
+  [[nodiscard]] constexpr const_iterator end() const noexcept {
+    return m_spec.end();
+  }
+  [[nodiscard]] constexpr const_iterator cbegin() const noexcept {
+    return m_spec.cbegin();
+  }
+  [[nodiscard]] constexpr const_iterator cend() const noexcept {
+    return m_spec.cend();
+  }
+
+  // --- Element Access ---
   [[nodiscard]] constexpr char front() const noexcept {
     return m_spec.empty() ? '\0' : m_spec.front();
+  }
+  [[nodiscard]] constexpr char back() const noexcept {
+    return m_spec.empty() ? '\0' : m_spec.back();
+  }
+  [[nodiscard]] constexpr char operator[](size_type idx) const noexcept {
+    return idx < m_spec.size() ? m_spec[idx] : '\0';
+  }
+
+  // --- Parsing & Cursor Advancing Utilities ---
+  constexpr void advance_to(const_iterator it) noexcept {
+    if (it >= m_spec.begin() && it <= m_spec.end()) {
+      m_spec.remove_prefix(static_cast<size_type>(it - m_spec.begin()));
+    }
+  }
+
+  constexpr void remove_prefix(size_type n) noexcept {
+    m_spec.remove_prefix(n < m_spec.size() ? n : m_spec.size());
+  }
+
+  constexpr char consume() noexcept {
+    if (m_spec.empty())
+      return '\0';
+    char ch = m_spec.front();
+    m_spec.remove_prefix(1);
+    return ch;
+  }
+
+  [[nodiscard]] constexpr bool starts_with(char ch) const noexcept {
+    return !m_spec.empty() && m_spec.front() == ch;
+  }
+
+  [[nodiscard]] constexpr bool
+  starts_with(std::string_view prefix) const noexcept {
+#if __cplusplus >= 202002L
+    return m_spec.starts_with(prefix);
+#else
+    return m_spec.size() >= prefix.size() &&
+           m_spec.substr(0, prefix.size()) == prefix;
+#endif
+  }
+
+  [[nodiscard]] constexpr size_type find(char ch,
+                                         size_type pos = 0) const noexcept {
+    return m_spec.find(ch, pos);
+  }
+
+  [[nodiscard]] constexpr std::string_view
+  substr(size_type pos = 0,
+         size_type count = std::string_view::npos) const noexcept {
+    return m_spec.substr(pos, count);
   }
 
 private:
@@ -909,9 +986,9 @@ inline void emit_formatted_int(const sink &out, const char *digits, size_t len,
 
 // Integers (Signed & Unsigned)
 template <typename T>
-struct formatter<T, std::enable_if_t<std::is_integral_v<T> && 
-                                     !std::is_same_v<T, bool> && 
-                                     !std::is_same_v<T, char>>> {
+struct formatter<
+    T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool> &&
+                        !std::is_same_v<T, char>>> {
   // Format specifications extracted during parse
   uint8_t width{0};
   bool zero_pad{false};
@@ -920,7 +997,8 @@ struct formatter<T, std::enable_if_t<std::is_integral_v<T> &&
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     std::string_view spec = ctx.spec();
-    if (spec.empty()) return;
+    if (spec.empty())
+      return;
 
     size_t i = 0;
     if (spec[i] == '0') {
@@ -975,7 +1053,8 @@ struct formatter<T, std::enable_if_t<std::is_integral_v<T> &&
     }
 
     const size_t digits_len = static_cast<size_t>(end - start);
-    detail::emit_formatted_int(out, start, digits_len, is_negative, width, zero_pad);
+    detail::emit_formatted_int(out, start, digits_len, is_negative, width,
+                               zero_pad);
   }
 };
 

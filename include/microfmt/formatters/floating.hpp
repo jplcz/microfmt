@@ -1,0 +1,175 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include "../microfmt.hpp"
+#include <cstddef>
+#include <cstdio>
+#include <string_view>
+#include <type_traits>
+
+namespace microfmt {
+
+namespace detail {
+
+struct parsed_float_spec {
+  char sign{'\0'};      // '+', ' ', or '\0'
+  bool alt_form{false}; // '#' (force decimal point)
+  int precision{-1};    // -1 if not specified
+  char type{'g'};       // 'f', 'F', 'e', 'E', 'g', 'G', 'a', 'A'
+};
+
+inline constexpr parsed_float_spec
+parse_float_spec(std::string_view spec) noexcept {
+  parsed_float_spec res{};
+  if (spec.empty()) {
+    return res;
+  }
+
+  size_t pos = 0;
+  const size_t len = spec.size();
+
+  // Sign option: ['+' | '-' | ' ']
+  if (pos < len && (spec[pos] == '+' || spec[pos] == '-' || spec[pos] == ' ')) {
+    if (spec[pos] != '-') {
+      res.sign = spec[pos];
+    }
+    pos++;
+  }
+
+  // Alternate form: ['#']
+  if (pos < len && spec[pos] == '#') {
+    res.alt_form = true;
+    pos++;
+  }
+
+  // Precision: ['.' precision]
+  if (pos < len && spec[pos] == '.') {
+    pos++;
+    res.precision = 0;
+    while (pos < len && spec[pos] >= '0' && spec[pos] <= '9') {
+      res.precision = res.precision * 10 + (spec[pos++] - '0');
+    }
+  }
+
+  // Type presentation: [f|F|e|E|g|G|a|A]
+  if (pos < len) {
+    char ch = spec[pos];
+    if (ch == 'f' || ch == 'F' || ch == 'e' || ch == 'E' || ch == 'g' ||
+        ch == 'G' || ch == 'a' || ch == 'A') {
+      res.type = ch;
+    }
+  }
+
+  return res;
+}
+
+// Build a standard printf format string (e.g., "%+#.4f" or "%Lg")
+template <typename T>
+inline size_t
+build_printf_float_format(char *dest, const parsed_float_spec &spec) noexcept {
+  size_t idx = 0;
+  dest[idx++] = '%';
+
+  if (spec.sign != '\0') {
+    dest[idx++] = spec.sign;
+  }
+  if (spec.alt_form) {
+    dest[idx++] = '#';
+  }
+  if (spec.precision >= 0) {
+    dest[idx++] = '.';
+    dest[idx++] = '*'; // dynamic precision passed via argument
+  }
+
+  if constexpr (std::is_same_v<T, long double>) {
+    dest[idx++] = 'L';
+  }
+
+  dest[idx++] = spec.type;
+  dest[idx] = '\0';
+  return idx;
+}
+
+template <typename T>
+inline void format_float_via_printf(T val, const parsed_float_spec &spec,
+                                    const sink &out) noexcept {
+  char fmt_buf[16];
+  build_printf_float_format<T>(fmt_buf, spec);
+
+  char buf[128];
+  int written = 0;
+
+  if (spec.precision >= 0) {
+    written = std::snprintf(buf, sizeof(buf), fmt_buf, spec.precision, val);
+  } else {
+    written = std::snprintf(buf, sizeof(buf), fmt_buf, val);
+  }
+
+  if (written > 0) {
+    if (static_cast<size_t>(written) < sizeof(buf)) {
+      out.write(std::string_view(buf, static_cast<size_t>(written)));
+    } else {
+      // Stack buffer overflow fallback (rare for extreme precision)
+      size_t heap_size = static_cast<size_t>(written) + 1;
+      auto *heap_buf = new (std::nothrow) char[heap_size];
+      if (heap_buf) {
+        if (spec.precision >= 0) {
+          std::snprintf(heap_buf, heap_size, fmt_buf, spec.precision, val);
+        } else {
+          std::snprintf(heap_buf, heap_size, fmt_buf, val);
+        }
+        out.write(std::string_view(heap_buf, static_cast<size_t>(written)));
+        delete[] heap_buf;
+      }
+    }
+  }
+}
+
+} // namespace detail
+
+// ============================================================================
+// Formatter Specializations
+// ============================================================================
+
+template <> struct formatter<float> {
+  detail::parsed_float_spec spec_{};
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    spec_ = detail::parse_float_spec(ctx.spec());
+  }
+
+  void format(float val, const sink &out) const noexcept {
+    // Promoted to double for standard %f / %g printf conversions
+    detail::format_float_via_printf<double>(static_cast<double>(val), spec_,
+                                            out);
+  }
+};
+
+template <> struct formatter<double> {
+  detail::parsed_float_spec spec_{};
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    spec_ = detail::parse_float_spec(ctx.spec());
+  }
+
+  void format(double val, const sink &out) const noexcept {
+    detail::format_float_via_printf<double>(val, spec_, out);
+  }
+};
+
+template <> struct formatter<long double> {
+  detail::parsed_float_spec spec_{};
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    spec_ = detail::parse_float_spec(ctx.spec());
+  }
+
+  void format(long double val, const sink &out) const noexcept {
+    detail::format_float_via_printf<long double>(val, spec_, out);
+  }
+};
+
+} // namespace microfmt
