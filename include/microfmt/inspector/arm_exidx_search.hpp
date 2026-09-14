@@ -1,0 +1,81 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include "address_space.hpp"
+#include <cstdint>
+
+namespace microfmt {
+
+class exidx_table_searcher {
+public:
+  // Decodes a 31-bit program-relative offset (PREL31) from the EXIDX table
+  // entry location
+  [[nodiscard]] static constexpr uintptr_t
+  decode_prel31(uintptr_t entry_addr, uint32_t prel31) noexcept {
+    // PREL31 is a 31-bit signed offset relative to the address of the prel31
+    // word itself. Arithmetic right shift sign-extends from bit 30 to
+    // 32-bit/64-bit int32_t.
+    int32_t signed_offset = static_cast<int32_t>(prel31 << 1) >> 1;
+    return entry_addr + static_cast<int32_t>(signed_offset);
+  }
+
+  // Performs a zero-allocation binary search over the sorted .ARM.exidx table
+  // to locate the unwind descriptor corresponding to target_pc.
+  [[nodiscard]] static bool
+  find_exidx_entry(address_space_ref space, uintptr_t table_base,
+                   size_t num_entries, uintptr_t target_pc,
+                   uint32_t &out_unwind_data) noexcept {
+    if (num_entries == 0 || table_base == 0)
+      return false;
+
+    size_t low = 0;
+    size_t high = num_entries;
+    size_t match_index = num_entries;
+
+    // Iterative binary search: find the highest function address <= target_pc
+    while (low < high) {
+      size_t mid = low + (high - low) / 2;
+      uintptr_t entry_addr =
+          table_base + (mid * 8); // Each entry is 2 words (8 bytes)
+
+      uint32_t prel31 = 0;
+      if (!space.read_bytes(entry_addr, &prel31, 4)) {
+        return false;
+      }
+
+      uintptr_t fn_addr = decode_prel31(entry_addr, prel31);
+
+      if (fn_addr <= target_pc) {
+        match_index = mid; // Candidate found, try looking for a closer (higher)
+                           // function start
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+
+    if (match_index == num_entries) {
+      return false; // Target PC precedes all entries in the table
+    }
+
+    // Read the second word (unwind descriptor or pointer to .ARM.extab)
+    uintptr_t matched_entry_addr = table_base + (match_index * 8);
+    uint32_t unwind_data = 0;
+    if (!space.read_bytes(matched_entry_addr + 4, &unwind_data, 4)) {
+      return false;
+    }
+
+    // Check for EXIDX_CANTUNWIND sentinel value (0x1)
+    if (unwind_data == 0x1) {
+      return false;
+    }
+
+    out_unwind_data = unwind_data;
+    return true;
+  }
+};
+
+} // namespace microfmt

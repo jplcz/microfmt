@@ -91,4 +91,4 @@ make_remote_ref32(compat32_ptr<T> ptr, address_space_ref space,
   return remote_ref<T>(ptr.to_uintptr(), space, scratch);
 }
 
-} // namespace microfmt
+} // namespace microfmt 
