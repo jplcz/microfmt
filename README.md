@@ -21,6 +21,7 @@ A zero-allocation, deterministic, and low-overhead C++ formatting library engine
 * **Embedded-friendly value adapters:** Format fixed-point values, escaped strings and byte buffers, UUIDs, hexadecimal/binary wrapper values, human-readable byte counts, address offsets, memory ranges, aligned text, and joined spans.
 * **Terminal and document output:** Emit ANSI colors and attributes with a runtime color toggle, compose aligned, quoted, case-transformed, and truncated text views, and generate Markdown headings, lists, code blocks, block quotes, and aligned tables.
 * **Optional ecosystem bridges:** Use `fmt.hpp` for a lightweight `{fmt}`-style compatibility surface (`format`, `format_to`, `format_to_n`, `print`, `println`, and custom `fmt::formatter`s). `boost_describe.hpp` formats reflected Boost.Describe enums and public members; `uuid.hpp` optionally accepts `boost::uuids::uuid`.
+* **Compile-time format strings & unrolled dispatch:** Parse format strings during constant evaluation via `MICROFMT_STRING(...)` to validate syntax and unroll formatting at compile time. This eliminates dynamic parsing loops, indirect function pointer thunks, and stack-allocated argument arrays (`arg_ptrs`), reducing stack frame footprints by up to 90% for constrained embedded targets.
 
 ---
 
@@ -102,6 +103,63 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/formatters/fmt.hpp` | `fmt::format`, `fmt::format_to`, `fmt::format_to_n`, `fmt::print`, `fmt::println`, `fmt::join`, and the `fmt::formatter<T>` bridge |
 | `microfmt/formatters/boost_describe.hpp` | Automatic `formatter<T>` support for Boost.Describe reflected enums, structs, and classes |
 | `microfmt/sinks/tee_sink.hpp` | `tee_sink<N>` and `make_tee` for broadcasting output to a fixed number of sinks |
+
+---
+
+## Compile time strings
+
+Compile-time string evaluation in microfmt shifts format string parsing and argument dispatch from runtime loops to 
+constant evaluation. This eliminates dynamic parsing overhead, runtime indirection thunks, and stack-allocated 
+argument pointer arrays.
+
+### The MICROFMT_STRING Macro
+
+Because standard C++17 lacks class-type non-type template parameters (NTTP), microfmt uses a static provider lambda pattern.
+The `MICROFMT_STRING` macro wraps a string literal into a unique static type holding a `constexpr std::string_view` 
+getter without runtime overhead.
+
+```cpp
+#include "microfmt/microfmt.hpp"
+
+// Creates a unique static type provider for the format string
+auto fmt_str = MICROFMT_STRING("Value: {}, Status: {}");
+```
+
+### Available Compile-Time APIs
+
+Every core formatting and printing function provides an overload accepting `compile_string_holder` alongside runtime `std::string_view` fallbacks.
+
+* Formatting to Buffers & Sinks
+
+```cpp
+// Fixed-size stack buffer sink
+auto buf = microfmt::format<64>(MICROFMT_STRING("Sensor ID: {}, Temp: {}C"), id, temp);
+
+// Writing to an explicit sink
+microfmt::format_to(my_sink, MICROFMT_STRING("Data: 0x{:08X}"), val);
+```
+
+* Direct Printing Helpers:
+
+```cpp
+// stdout printing
+microfmt::print(MICROFMT_STRING("Connected to server on port {}\n"), port);
+microfmt::println(MICROFMT_STRING("System ready. Active tasks: {}"), count);
+
+// Target FILE* stream
+microfmt::println(stderr, MICROFMT_STRING("Error code: {}"), err_code);
+
+// POSIX file descriptor (e.g., UART or socket)
+microfmt::println(uart_fd, MICROFMT_STRING("AT+SEND={}\r\n"), len);
+```
+
+### Under the Hood: Unrolled Format Dispatch
+
+When using `MICROFMT_STRING`, the library evaluates the format string during constant folding:
+
+* Breaks the format string into static literal slices and argument indices at compile time.
+* Dispatches formatting via std::index_sequence without building a runtime `const void* arg_ptrs[]` stack array.
+* Inlines trivial formatters (such as integers, booleans, and characters) directly into sequential write operations.
 
 ---
 
