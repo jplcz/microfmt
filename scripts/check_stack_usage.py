@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from typing import List, Tuple
 
 # ANSI terminal colors
@@ -43,29 +44,47 @@ def is_reference_symbol(func_name: str) -> bool:
     lower = func_name.lower()
     return "probe_libc" in lower or "snprintf" in lower or "sprintf" in lower
 
-
 def parse_gcc_su_file(su_path: str) -> List[Tuple[str, int, str]]:
     results = []
     if not os.path.exists(su_path):
         return results
+
+    # Matches: /path/to/file.cpp:123:45:optional_qualifiers\t<size>\t<type>
+    # Group 1: Function name / mangled symbol / template signature
+    # Group 2: Stack size in bytes
+    # Group 3: Allocation type (static, dynamic, etc.)
+    entry_pattern = re.compile(
+        r"^.+?:\d+:\d+:(?:[a-zA-Z0-9_]+:)?\s*(.*?)\t+(\d+)\t+([a-zA-Z0-9_]+)"
+    )
 
     with open(su_path, "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
-            parts = line.split("\t")
-            if len(parts) >= 2:
-                loc_func = parts[0]
-                size_str = parts[1]
-                alloc_type = parts[2] if len(parts) > 2 else "static"
 
-                func_name = loc_func.split(":")[-1] if ":" in loc_func else loc_func
+            match = entry_pattern.match(line)
+            if match:
+                func_name, size_str, alloc_type = match.groups()
+                func_name = func_name.strip()
+                if not func_name:
+                    continue
                 try:
-                    size = int(size_str)
-                    results.append((func_name, size, alloc_type))
+                    results.append((func_name, int(size_str), alloc_type))
                 except ValueError:
                     continue
+            else:
+                # Fallback tab-split if regex doesn't match
+                parts = line.split("\t")
+                if len(parts) >= 2:
+                    loc_func = parts[0]
+                    # Strip leading file:line:col:
+                    cleaned_name = re.sub(r"^.+?:\d+:\d+:", "", loc_func).strip()
+                    try:
+                        results.append((cleaned_name, int(parts[1]), parts[2] if len(parts) > 2 else "static"))
+                    except ValueError:
+                        continue
+
     return results
 
 
@@ -108,6 +127,24 @@ def parse_clang_readelf(obj_path: str, readelf_bin: str) -> List[Tuple[str, int,
     return results
 
 
+def collect_target_files(args: argparse.Namespace) -> List[str]:
+    """Resolves target input files from either --input or --input-dir."""
+    if args.input:
+        return [args.input] if os.path.exists(args.input) else []
+
+    search_dir = Path(args.input_dir)
+    if not search_dir.is_dir():
+        print(f"{COLOR_RED}[ERROR] Input directory not found: {args.input_dir}{COLOR_RESET}", file=sys.stderr)
+        return []
+
+    if args.compiler == "gcc":
+        # Matches stack_probes.cpp.su, stack_probes.su, etc.
+        return [str(p) for p in search_dir.rglob("*.su")]
+    else:
+        # Matches object files (.o, .obj) containing .stack_sizes metadata
+        return [str(p) for p in search_dir.rglob("*.o")] + [str(p) for p in search_dir.rglob("*.obj")]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Static Stack Usage Analyzer for microfmt"
@@ -115,11 +152,17 @@ def main() -> int:
     parser.add_argument(
         "--compiler", choices=["gcc", "clang"], required=True, help="Compiler flavor"
     )
-    parser.add_argument(
+
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument(
         "--input",
-        required=True,
-        help="Path to .su file (GCC) or .o object file (Clang)",
+        help="Path to single .su file (GCC) or .o object file (Clang)",
     )
+    input_group.add_argument(
+        "--input-dir",
+        help="Directory to recursively search for .su files (GCC) or .o files (Clang)",
+    )
+
     parser.add_argument(
         "--readelf",
         default="llvm-readelf",
@@ -140,15 +183,21 @@ def main() -> int:
 
     args = parser.parse_args()
 
-    if args.compiler == "gcc":
-        entries = parse_gcc_su_file(args.input)
-    else:
-        entries = parse_clang_readelf(args.input, args.readelf)
+    target_files = collect_target_files(args)
+    if not target_files:
+        location = args.input if args.input else args.input_dir
+        print(f"{COLOR_YELLOW}[WARN] No stack usage files found in: {location}{COLOR_RESET}")
+        return 0
+
+    entries: List[Tuple[str, int, str]] = []
+    for file_path in target_files:
+        if args.compiler == "gcc":
+            entries.extend(parse_gcc_su_file(file_path))
+        else:
+            entries.extend(parse_clang_readelf(file_path, args.readelf))
 
     if not entries:
-        print(
-            f"{COLOR_YELLOW}[WARN] No stack usage records found in: {args.input}{COLOR_RESET}"
-        )
+        print(f"{COLOR_YELLOW}[WARN] No valid stack usage records found in collected files.{COLOR_RESET}")
         return 0
 
     # Sort descending by stack size
@@ -157,6 +206,7 @@ def main() -> int:
     print(
         f"\n{COLOR_CYAN}=== Static Stack Usage Report ({args.compiler.upper()}) ==={COLOR_RESET}"
     )
+    print(f"Scanned files: {len(target_files)}")
     print(f"{'Stack Size':>12} | {'Budget':>8} | {'Status':>8} | Function Name")
     print("-" * 80)
 

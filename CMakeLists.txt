@@ -336,7 +336,7 @@ if(MICROFMT_BUILD_TESTS)
             COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_stack_usage.py
             --compiler gcc
-            --input $<TARGET_OBJECTS:microfmt_stack_probes>.su
+            --input-dir $<TARGET_PROPERTY:microfmt_stack_probes,BINARY_DIR>
             --budget 256
             --warn-budget 192
             DEPENDS microfmt_stack_probes
