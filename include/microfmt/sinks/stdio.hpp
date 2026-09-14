@@ -59,69 +59,150 @@ namespace microfmt {
 }
 #endif
 
-// ============================================================================
-// Print / Println Helpers
-// ============================================================================
-
+// =============================================================================
 // Direct stdout printing
+// =============================================================================
+
+// Compile-time stdout overloads
+template <typename StrProvider, typename... Args>
+inline void print(compile_string_holder<StrProvider> fmt,
+                  const Args &...args) noexcept {
+  auto s = stdout_sink();
+  format_to(s, fmt, args...);
+}
+
+template <typename StrProvider, typename... Args>
+inline void println(compile_string_holder<StrProvider> fmt,
+                    const Args &...args) noexcept {
+  auto s = stdout_sink();
+  format_to(s, fmt, args...);
+  s.put('\n');
+}
+
+// Runtime stdout overloads
 template <typename... Args>
-void print(std::string_view fmt_str, const Args &...args) noexcept {
+inline void print(std::string_view fmt_str, const Args &...args) noexcept {
   auto s = stdout_sink();
   format_to(s, fmt_str, args...);
 }
 
 template <typename... Args>
-void println(std::string_view fmt_str, const Args &...args) noexcept {
+inline void println(std::string_view fmt_str, const Args &...args) noexcept {
   auto s = stdout_sink();
   format_to(s, fmt_str, args...);
   s.put('\n');
 }
 
-// Target FILE* stream printing
+// =============================================================================
+// Target std::FILE* stream printing
+// =============================================================================
+
+// Compile-time FILE* overloads
+template <typename StrProvider, typename... Args>
+inline void print(std::FILE *file, compile_string_holder<StrProvider> fmt,
+                  const Args &...args) noexcept {
+  auto s = file_sink(file);
+  format_to(s, fmt, args...);
+}
+
+template <typename StrProvider, typename... Args>
+inline void println(std::FILE *file, compile_string_holder<StrProvider> fmt,
+                    const Args &...args) noexcept {
+  auto s = file_sink(file);
+  format_to(s, fmt, args...);
+  s.put('\n');
+}
+
+// Runtime FILE* overloads
 template <typename... Args>
-void print(std::FILE *file, std::string_view fmt_str,
-           const Args &...args) noexcept {
+inline void print(std::FILE *file, std::string_view fmt_str,
+                  const Args &...args) noexcept {
   auto s = file_sink(file);
   format_to(s, fmt_str, args...);
 }
 
 template <typename... Args>
-void println(std::FILE *file, std::string_view fmt_str,
-             const Args &...args) noexcept {
+inline void println(std::FILE *file, std::string_view fmt_str,
+                    const Args &...args) noexcept {
   auto s = file_sink(file);
   format_to(s, fmt_str, args...);
   s.put('\n');
 }
+
+// =============================================================================
+// Target POSIX FD printing
+// =============================================================================
 
 #if MICROFMT_HAS_POSIX_FD
-// Target FD printing
+// Compile-time FD overloads
+template <typename StrProvider, typename... Args>
+inline void print(int fd, compile_string_holder<StrProvider> fmt,
+                  const Args &...args) noexcept {
+  auto s = fd_sink(fd);
+  format_to(s, fmt, args...);
+}
+
+template <typename StrProvider, typename... Args>
+inline void println(int fd, compile_string_holder<StrProvider> fmt,
+                    const Args &...args) noexcept {
+  auto s = fd_sink(fd);
+  format_to(s, fmt, args...);
+  s.put('\n');
+}
+
+// Runtime FD overloads
 template <typename... Args>
-void print(int fd, std::string_view fmt_str, const Args &...args) noexcept {
+inline void print(int fd, std::string_view fmt_str,
+                  const Args &...args) noexcept {
   auto s = fd_sink(fd);
   format_to(s, fmt_str, args...);
 }
 
 template <typename... Args>
-void println(int fd, std::string_view fmt_str, const Args &...args) noexcept {
+inline void println(int fd, std::string_view fmt_str,
+                    const Args &...args) noexcept {
   auto s = fd_sink(fd);
   format_to(s, fmt_str, args...);
   s.put('\n');
 }
 #endif
 
+// =============================================================================
 // Target Sink printing
+// =============================================================================
+
+// Compile-time Sink overloads
+template <typename StrProvider, typename... Args>
+inline void print(sink s, compile_string_holder<StrProvider> fmt,
+                  const Args &...args) noexcept {
+  format_to(s, fmt, args...);
+}
+
+template <typename StrProvider, typename... Args>
+inline void println(sink s, compile_string_holder<StrProvider> fmt,
+                    const Args &...args) noexcept {
+  format_to(s, fmt, args...);
+  s.put('\n');
+}
+
+// Runtime Sink overloads
 template <typename... Args>
-void print(sink s, std::string_view fmt_str, const Args &...args) noexcept {
+inline void print(sink s, std::string_view fmt_str,
+                  const Args &...args) noexcept {
   format_to(s, fmt_str, args...);
 }
 
 template <typename... Args>
-void println(sink s, std::string_view fmt_str, const Args &...args) noexcept {
+inline void println(sink s, std::string_view fmt_str,
+                    const Args &...args) noexcept {
   format_to(s, fmt_str, args...);
   s.put('\n');
 }
 
-// Bare newline helpers for sinks
+// =============================================================================
+// Bare newline helpers
+// =============================================================================
+
 inline void println(sink s) noexcept { s.put('\n'); }
 
 inline void println() noexcept { stdout_sink().put('\n'); }

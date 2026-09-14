@@ -1049,6 +1049,7 @@ __attribute__((always_inline))
 inline void unrolled_format_impl(const sink &out, std::index_sequence<Is...>,
                                  const Args &...args) noexcept {
   auto arg_tuple = std::forward_as_tuple(args...);
+  (void)arg_tuple;
   (emit_piece_by_index<StrProvider, Is>(out, arg_tuple), ...);
 }
 

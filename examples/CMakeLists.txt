@@ -57,6 +57,7 @@ add_microfmt_example(register_demo register_demo.cpp)
 add_microfmt_example(grid_view_demo grid_view_demo.cpp)
 add_microfmt_example(bintime_demo bintime_demo.cpp)
 add_microfmt_example(posix_time_demo posix_time_demo.cpp)
+add_microfmt_example(stress_compile_time stress_compile_time.cpp)
 
 if(TARGET PkgConfig::MICROFMT_SYSTEMD)
   add_microfmt_example(systemd_demo systemd_demo.cpp)
