@@ -488,7 +488,6 @@ Example report output:
 #### GCC 15.2.0
 
 ```text
-=== Static Stack Usage Report (GCC) ===
 Scanned files: 1
   Stack Size |   Budget |   Status | Function Name
 --------------------------------------------------------------------------------
@@ -500,39 +499,38 @@ Scanned files: 1
        160 B |    256 B |     PASS | void probe_stack_6_mixed_log(uint32_t, const char*, char, int32_t, void*, bool)
        160 B |    256 B |     PASS | void probe_stack_compiled_10_mixed_system_state(uint8_t, int16_t, uint32_t, const char*, std::string_view, bool, uint64_t, void*, char, uint32_t)
        160 B |    256 B |    REF | void probe_libc_snprintf_4_mixed(uint32_t, const char*, uintptr_t, void*)
+       144 B |    256 B |     PASS | void microfmt::formatter<T, typename std::enable_if<((is_integral_v<T> && (! is_same_v<T, bool>)) && (! is_same_v<T, char>)), void>::type>::format(T, const microfmt::sink&) const [with T = short int]
+       144 B |    256 B |     PASS | void microfmt::formatter<T, typename std::enable_if<((is_integral_v<T> && (! is_same_v<T, bool>)) && (! is_same_v<T, char>)), void>::type>::format(T, const microfmt::sink&) const [with T = int]
        144 B |    256 B |     PASS | void microfmt::vformat_to(const sink&, std::string_view, span<const void* const>, span<void (* const)(const void*, std::basic_string_view<char>, const sink&) noexcept>)
        144 B |    256 B |     PASS | void probe_microfmt_4_mixed(uint32_t, const char*, uintptr_t, void*)
        144 B |    256 B |     PASS | void probe_stack_compiled_6_mixed_log(uint32_t, const char*, char, int32_t, void*, bool)
+       128 B |    256 B |     PASS | void microfmt::formatter<T, typename std::enable_if<((is_integral_v<T> && (! is_same_v<T, bool>)) && (! is_same_v<T, char>)), void>::type>::format(T, const microfmt::sink&) const [with T = long unsigned int]
        128 B |    256 B |     PASS | void probe_microfmt_compiled_8_context(uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t, uint64_t)
        112 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = void*]
        112 B |    256 B |     PASS | void microfmt::formatter<T, typename std::enable_if<((is_integral_v<T> && (! is_same_v<T, bool>)) && (! is_same_v<T, char>)), void>::type>::format(T, const microfmt::sink&) const [with T = unsigned char]
-       112 B |    256 B |     PASS | void microfmt::formatter<T, typename std::enable_if<((is_integral_v<T> && (! is_same_v<T, bool>)) && (! is_same_v<T, char>)), void>::type>::format(T, const microfmt::sink&) const [with T = long unsigned int]
        112 B |    256 B |     PASS | void microfmt::formatter<T, typename std::enable_if<((is_integral_v<T> && (! is_same_v<T, bool>)) && (! is_same_v<T, char>)), void>::type>::format(T, const microfmt::sink&) const [with T = unsigned int]
-       112 B |    256 B |     PASS | void microfmt::formatter<T, typename std::enable_if<((is_integral_v<T> && (! is_same_v<T, bool>)) && (! is_same_v<T, char>)), void>::type>::format(T, const microfmt::sink&) const [with T = short int]
-       112 B |    256 B |     PASS | void microfmt::formatter<T, typename std::enable_if<((is_integral_v<T> && (! is_same_v<T, bool>)) && (! is_same_v<T, char>)), void>::type>::format(T, const microfmt::sink&) const [with T = int]
        112 B |    256 B |     PASS | void probe_microfmt_2_integers(uint32_t, uint64_t)
        112 B |    256 B |     PASS | void probe_microfmt_compiled_4_mixed(uint32_t, const char*, uintptr_t, void*)
        112 B |    256 B |    REF | void probe_libc_snprintf_2_integers(uint32_t, uint64_t)
+        96 B |    256 B |     PASS | void probe_microfmt_compiled_2_integers(uint32_t, uint64_t)
         80 B |    256 B |     PASS | void probe_microfmt_0_args()
-        80 B |    256 B |     PASS | void probe_microfmt_compiled_2_integers(uint32_t, uint64_t)
         48 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = const char*]
         32 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = char]
+        16 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = unsigned char]
+        16 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = long unsigned int]
+        16 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = unsigned int]
+        16 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = short int]
+        16 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = int]
          8 B |    256 B |     PASS | static constexpr void {anonymous}::volatile_sink::as_sink()::<lambda(void*, std::string_view)>::_FUN(void*, std::string_view)
          8 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = std::basic_string_view<char>]
          8 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = bool]
-         8 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = unsigned char]
-         8 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = long unsigned int]
-         8 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = unsigned int]
-         8 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = short int]
-         8 B |    256 B |     PASS | void microfmt::detail::format_type_thunk(const void*, std::string_view, const microfmt::sink&) [with T = int]
          8 B |    256 B |     PASS | void probe_microfmt_compiled_0_args()
          8 B |    256 B |    REF | void probe_libc_snprintf_0_args()
 --------------------------------------------------------------------------------
 [SUCCESS] All microfmt functions are within the 256B stack budget.
-
 ```
 
-#### Clang 21.1.8
+#### Clang 24
 
 ```text
 === Static Stack Usage Report (CLANG) ===
@@ -551,16 +549,16 @@ Scanned files: 1
        104 B |    256 B |     PASS | probe_stack_compiled_6_mixed_log
        104 B |    256 B |     PASS | probe_stack_compiled_10_mixed_system_state
         88 B |    256 B |     PASS | probe_microfmt_compiled_4_mixed
-        88 B |    256 B |     PASS | microfmt::formatter<unsigned int, void>::format
         88 B |    256 B |     PASS | microfmt::formatter<unsigned long, void>::format
         88 B |    256 B |     PASS | microfmt::detail::format_type_thunk<void*>
         88 B |    256 B |     PASS | microfmt::formatter<int, void>::format
-        88 B |    256 B |     PASS | microfmt::formatter<unsigned char, void>::format
         88 B |    256 B |     PASS | microfmt::formatter<short, void>::format
         72 B |    256 B |     PASS | probe_microfmt_0_args
         72 B |    256 B |     PASS | probe_microfmt_2_integers
         72 B |    256 B |     PASS | probe_microfmt_compiled_8_context
         72 B |    256 B |    REF | probe_libc_snprintf_2_integers
+        56 B |    256 B |     PASS | microfmt::formatter<unsigned int, void>::format
+        56 B |    256 B |     PASS | microfmt::formatter<unsigned char, void>::format
         40 B |    256 B |     PASS | probe_microfmt_compiled_2_integers
         24 B |    256 B |     PASS | microfmt::detail::format_type_thunk<char const*>
          8 B |    256 B |     PASS | microfmt::detail::format_type_thunk<unsigned int>
@@ -576,6 +574,7 @@ Scanned files: 1
          0 B |    256 B |     PASS | microfmt::detail::format_type_thunk<std::basic_string_view<char, std::char_traits<char>>>
 --------------------------------------------------------------------------------
 [SUCCESS] All microfmt functions are within the 256B stack budget.
+
 
 ```
 

@@ -9,11 +9,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     -Wextra
   )
 
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(bench_stack_painting PRIVATE -fstack-usage)
-  elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_options(bench_stack_painting PRIVATE -fstack-size-section)
-  endif()
+#   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+#     target_compile_options(bench_stack_painting PRIVATE -fstack-usage)
+#   elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+#     target_compile_options(bench_stack_painting PRIVATE -fstack-size-section)
+#   endif()
 endif()
 
 include(CTest)
