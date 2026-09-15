@@ -4,11 +4,13 @@
 #pragma once
 
 /** @file fp_unwinder.hpp
- * @brief Frame-pointer-based unwinder backend for remote address spaces. */
+ * @brief Frame-pointer-based unwinder backend utilizing register_context_ref.
+ */
 
 #include "address_space.hpp"
 #include "dwarf_abi.hpp"
 #include "frame_pointer.hpp"
+#include "register_context.hpp"
 #include <cstdint>
 
 namespace microfmt {
@@ -39,22 +41,36 @@ struct microfmt::frame_unwinder_traits<microfmt::fp_unwinder_tag<AbiTraits>> {
   using context_type = microfmt::fp_unwinder_context<AbiTraits>;
 
   /**
-   * @brief Reads the caller frame record from the current frame pointer.
+   * @brief Reads the caller frame record from the current frame pointer
+   * register.
    *
-   * The ABI traits provide the saved frame-pointer and return-address offsets.
+   * The ABI traits provide the saved frame-pointer and return-address offsets
+   * along with the standard frame pointer register index (`fp_reg`).
    *
    * @param ctx Pointer to a @ref context_type.
-   * @param current_fp Frame pointer of the current frame.
+   * @param reg_ctx Target register context handle.
    * @param next_fp Receives the caller's frame pointer.
    * @param next_pc Receives the normalized caller program counter.
    * @return `true` when both frame slots were read and form a valid caller
    * frame; otherwise `false`.
    */
-  static bool step(const void *ctx, uintptr_t current_fp, uintptr_t &next_fp,
-                   uintptr_t &next_pc) noexcept {
-    if (!ctx || current_fp == 0)
+  static bool step(const void *ctx, register_context_ref reg_ctx,
+                   uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
+    if (!ctx || !reg_ctx)
       return false;
     const auto &cfg = *static_cast<const context_type *>(ctx);
+
+    // Read current frame pointer dynamically from register context using
+    // AbiTraits
+    typename AbiTraits::register_type raw_fp = 0;
+    if (!reg_ctx.read_raw(AbiTraits::fp_reg, &raw_fp,
+                          AbiTraits::pointer_size)) {
+      return false;
+    }
+
+    uintptr_t current_fp = static_cast<uintptr_t>(raw_fp);
+    if (current_fp == 0)
+      return false;
 
     constexpr size_t ptr_size = AbiTraits::pointer_size;
 

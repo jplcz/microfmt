@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: MIT
 
+#include <array>
 #include <cstring>
 #include <iostream>
 #include <microfmt/inspector/address_space.hpp>
@@ -21,6 +22,30 @@ struct simulated_space_context {
   uintptr_t buffer_base;
   size_t buffer_size;
 };
+
+struct arm_register_file {
+  std::array<uint64_t, 96> values{};
+};
+
+bool read_arm_register(const void *ctx, microfmt::address_space_ref,
+                       uint32_t dwarf_reg, void *out_value,
+                       size_t value_size) noexcept {
+  if (!ctx || !out_value || dwarf_reg >= 96 || value_size > sizeof(uint64_t))
+    return false;
+  const auto &registers = *static_cast<const arm_register_file *>(ctx);
+  std::memcpy(out_value, &registers.values[dwarf_reg], value_size);
+  return true;
+}
+
+bool write_arm_register(void *ctx, microfmt::address_space_ref,
+                        uint32_t dwarf_reg, const void *in_value,
+                        size_t value_size) noexcept {
+  if (!ctx || !in_value || dwarf_reg >= 96 || value_size > sizeof(uint64_t))
+    return false;
+  auto &registers = *static_cast<arm_register_file *>(ctx);
+  std::memcpy(&registers.values[dwarf_reg], in_value, value_size);
+  return true;
+}
 
 template <> struct microfmt::address_space_traits<simulated_space_tag> {
   using context_type = simulated_space_context;
@@ -114,14 +139,14 @@ int main() {
   uintptr_t fn0_target = 0x0800'1000;
   int32_t prel31_0 = static_cast<int32_t>(fn0_target - exidx_table_base);
   exidx_region[0] = static_cast<uint32_t>(prel31_0);
-  exidx_region[1] = 0x0001'0000; // Inline bytecode: adjust stack pointer (+4)
+  exidx_region[1] = 0x0084'80B0; // Pop R11 and LR, then finish
 
   // Entry 1: Function at 0x08002000 (System_MainLoop)
   uintptr_t entry1_addr = exidx_table_base + 8;
   uintptr_t fn1_target = 0x0800'2000;
   int32_t prel31_1 = static_cast<int32_t>(fn1_target - entry1_addr);
   exidx_region[2] = static_cast<uint32_t>(prel31_1);
-  exidx_region[3] = 0x80B00000; // Inline bytecode: finish / terminate
+  exidx_region[3] = 0x1; // EXIDX_CANTUNWIND
 
   // ==========================================================================
   // Setup Simulated Stack Frames at Offset 0x500 (RAM)
@@ -131,7 +156,7 @@ int main() {
 
   // Frame 0 (SensorData_Process active frame)
   stack_region[0] = stack_base + 16; // Caller FP (points to Frame 1)
-  stack_region[1] = 0x0800'1041;     // Thumb PC inside SensorData_Process
+  stack_region[1] = 0x0800'2011;     // Thumb return PC in System_MainLoop
 
   // Frame 1 (System_MainLoop caller frame)
   stack_region[4] = 0;           // Terminator FP
@@ -151,18 +176,16 @@ int main() {
   elf_registry.register_image({.image_name = "firmware.elf",
                                .load_base = 0x0800'0000,
                                .image_size = 0x0005'0000,
-                               .exidx_start = 0x0804'0000,
-                               .exidx_end = 0x0804'1000});
+                               .exidx_start = exidx_table_base,
+                               .exidx_end = exidx_table_base + 16});
 
   microfmt::elf_image_enumerator_ref enumerator(
       microfmt::multi_elf_registry_tag{}, elf_registry);
 
-  microfmt::arm_register_state reg_scratch{};
   microfmt::elf_image_info off_stack_img_storage{};
 
   microfmt::arm_exidx_unwinder_context exidx_ctx{.space = space,
                                                  .enumerator = enumerator,
-                                                 .reg_scratch = &reg_scratch,
                                                  .elf_img_storage =
                                                      &off_stack_img_storage};
 
@@ -176,11 +199,27 @@ int main() {
   // ==========================================================================
   // Run EXIDX Unwinder Iteration & Formatting
   // ==========================================================================
-  microfmt::frame_pointer_iterator it(unwinder, initial_fp, initial_pc);
+  arm_register_file register_file;
+  register_file.values[microfmt::dwarf::arm32::FP] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::SP] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::LR] = initial_pc;
+  std::byte register_scratch[sizeof(uint64_t)]{};
+  microfmt::register_context_ref register_context(
+      &register_file, {&read_arm_register, &write_arm_register}, space,
+      register_scratch);
+  microfmt::frame_pointer_iterator it(unwinder, register_context, initial_fp,
+                                      initial_pc);
   microfmt::remote_backtrace_view bt(it, resolver, scratch);
 
   microfmt::println("\nUnwound Backtrace Result:\n{}", bt);
-  microfmt::println("\nVerbose Backtrace Result:\n{:#}", bt);
+
+  register_file.values[microfmt::dwarf::arm32::FP] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::SP] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::LR] = initial_pc;
+  microfmt::frame_pointer_iterator verbose_it(unwinder, register_context,
+                                              initial_fp, initial_pc);
+  microfmt::remote_backtrace_view verbose_bt(verbose_it, resolver, scratch);
+  microfmt::println("\nVerbose Backtrace Result:\n{:#}", verbose_bt);
 
   microfmt::println("\n[Test Success]: EXIDX binary search completed cleanly "
                     "over simulated address space.");

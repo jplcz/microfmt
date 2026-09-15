@@ -26,6 +26,8 @@ struct arm_abi_traits {
   static constexpr uint32_t sp_reg = dwarf::arm32::SP; // R13
   /// LR register number.
   static constexpr uint32_t lr_reg = dwarf::arm32::LR; // R14
+  /// Return-address register number.
+  static constexpr uint32_t ra_reg = lr_reg;
   /// FP register number.
   static constexpr uint32_t fp_reg = dwarf::arm32::FP; // R11 (Traditional ARM)
 

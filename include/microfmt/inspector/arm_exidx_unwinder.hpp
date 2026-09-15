@@ -93,6 +93,7 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
 
     uintptr_t fault_pc = static_cast<uintptr_t>(return_lr & ~1U);
     uintptr_t virtual_sp = static_cast<uintptr_t>(current_sp);
+    bool unwind_applied = false;
 
     elf_image_info &img = *cfg.elf_img_storage;
     img = {};
@@ -130,28 +131,40 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
         uint32_t raw_unwind_data = 0;
 
         if (cfg.space.read_bytes(word2_address, &raw_unwind_data, 4)) {
+          if (raw_unwind_data == 0x1)
+            return false;
+
           if ((raw_unwind_data & 0x80000000U) != 0U) {
             uintptr_t extab_addr = exidx_table_searcher::decode_prel31(
                 word2_address, raw_unwind_data);
-            extab_stream_executor::execute(cfg.space, extab_addr, virtual_sp,
-                                           reg_ctx);
-          } else if (raw_unwind_data != 0x1) {
-            arm_exidx_bytecode_decoder::execute_bytecode(
+            unwind_applied = extab_stream_executor::execute(
+                cfg.space, extab_addr, virtual_sp, reg_ctx);
+          } else {
+            unwind_applied = arm_exidx_bytecode_decoder::execute_bytecode(
                 cfg.space, raw_unwind_data, virtual_sp, fault_pc, reg_ctx);
           }
         }
       }
     }
 
-    // Read back updated FP and SP from register context if available, otherwise
-    // fallback
+    if (!unwind_applied)
+      return false;
+
+    const uint32_t updated_sp = static_cast<uint32_t>(virtual_sp);
+    if (!reg_ctx.write(dwarf::arm32::SP, updated_sp))
+      return false;
+
     uint32_t updated_fp = 0;
     if (!reg_ctx.read(dwarf::arm32::FP, updated_fp)) {
-      updated_fp = static_cast<uint32_t>(virtual_sp);
+      updated_fp = updated_sp;
     }
 
+    uint32_t updated_lr = 0;
+    if (!reg_ctx.read(dwarf::arm32::LR, updated_lr))
+      return false;
+
     next_fp = static_cast<uintptr_t>(updated_fp);
-    next_pc = fault_pc;
+    next_pc = static_cast<uintptr_t>(updated_lr & ~1U);
     return true;
   }
 };

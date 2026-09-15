@@ -151,16 +151,18 @@ public:
    * @param fp_unwinder Frame-pointer unwinder for standard frames.
    * @param trap_decoder Trap-frame decoder for transition frames.
    * @param matcher Exception trampoline detector.
+   * @param reg_ctx Target register context.
    * @param initial_fp Frame pointer of the starting frame.
    * @param initial_pc Program counter of the starting frame.
    */
   constexpr hybrid_stack_unwinder(frame_unwinder_ref fp_unwinder,
                                   exception_frame_ref trap_decoder,
                                   exception_matcher_ref matcher,
+                                  register_context_ref reg_ctx,
                                   uintptr_t initial_fp,
                                   uintptr_t initial_pc) noexcept
       : fp_unwinder_(fp_unwinder), trap_decoder_(trap_decoder),
-        matcher_(matcher),
+        matcher_(matcher), reg_ctx_(reg_ctx),
         current_{0, initial_fp, initial_pc, frame_kind::standard, {}},
         is_valid_(initial_fp != 0 || initial_pc != 0) {}
 
@@ -223,7 +225,7 @@ public:
     // Normal FP unwind step
     uintptr_t next_fp = 0;
     uintptr_t next_pc = 0;
-    if (!fp_unwinder_.step(current_.fp, next_fp, next_pc)) {
+    if (!fp_unwinder_.step(reg_ctx_, next_fp, next_pc)) {
       is_valid_ = false;
       return false;
     }
@@ -268,6 +270,8 @@ private:
   exception_frame_ref trap_decoder_{};
   /// Exception trampoline matcher.
   exception_matcher_ref matcher_{};
+  /// Target register context.
+  register_context_ref reg_ctx_{};
   /// Current frame record.
   hybrid_frame current_{};
   /// Validity flag.

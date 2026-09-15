@@ -21,6 +21,45 @@ struct arch_unwinder_context {
   uintptr_t stack_ceil{0};  // Upper bound (e.g. stack top/base)
 };
 
+struct arch_register_state {
+  uint64_t fp{0};
+  uint64_t pc{0};
+};
+
+bool read_arch_register(const void *ctx, microfmt::address_space_ref,
+                        uint32_t dwarf_reg, void *out_value,
+                        size_t value_size) noexcept {
+  if (!ctx || !out_value || value_size != sizeof(uint64_t))
+    return false;
+  const auto &state = *static_cast<const arch_register_state *>(ctx);
+  const uint64_t *value = nullptr;
+  if (dwarf_reg == microfmt::dwarf::x86_64::FP)
+    value = &state.fp;
+  else if (dwarf_reg == microfmt::dwarf::x86_64::PC)
+    value = &state.pc;
+  if (!value)
+    return false;
+  std::memcpy(out_value, value, value_size);
+  return true;
+}
+
+bool write_arch_register(void *ctx, microfmt::address_space_ref,
+                         uint32_t dwarf_reg, const void *in_value,
+                         size_t value_size) noexcept {
+  if (!ctx || !in_value || value_size != sizeof(uint64_t))
+    return false;
+  auto &state = *static_cast<arch_register_state *>(ctx);
+  uint64_t *value = nullptr;
+  if (dwarf_reg == microfmt::dwarf::x86_64::FP)
+    value = &state.fp;
+  else if (dwarf_reg == microfmt::dwarf::x86_64::PC)
+    value = &state.pc;
+  if (!value)
+    return false;
+  std::memcpy(value, in_value, value_size);
+  return true;
+}
+
 struct trap_x86_64_tag {};
 
 struct arch_trap_context {
@@ -30,9 +69,13 @@ struct arch_trap_context {
 template <> struct microfmt::frame_unwinder_traits<arch_x86_64_tag> {
   using context_type = arch_unwinder_context;
 
-  static bool step(const void *ctx, uintptr_t current_fp, uintptr_t &next_fp,
-                   uintptr_t &next_pc) noexcept {
-    if (!ctx || current_fp == 0 || (current_fp % 8) != 0)
+  static bool step(const void *ctx, microfmt::register_context_ref reg_ctx,
+                   uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
+    uint64_t raw_fp = 0;
+    if (!ctx || !reg_ctx.read(microfmt::dwarf::x86_64::FP, raw_fp))
+      return false;
+    uintptr_t current_fp = static_cast<uintptr_t>(raw_fp);
+    if (current_fp == 0 || (current_fp % 8) != 0)
       return false;
     const auto &cfg = *static_cast<const arch_unwinder_context *>(ctx);
 
@@ -55,7 +98,8 @@ template <> struct microfmt::frame_unwinder_traits<arch_x86_64_tag> {
 
     next_fp = static_cast<uintptr_t>(saved_rbp);
     next_pc = static_cast<uintptr_t>(return_rip);
-    return true;
+    return reg_ctx.write(microfmt::dwarf::x86_64::FP, saved_rbp) &&
+           reg_ctx.write(microfmt::dwarf::x86_64::PC, return_rip);
   }
 };
 
@@ -271,12 +315,16 @@ int main() {
   arch_trap_context tctx{.space = space};
   microfmt::exception_frame_ref trap_decoder(trap_x86_64_tag{}, tctx);
 
+  arch_register_state register_state{};
+
   // Matcher: Detects if PC is in 'asm_exc_page_fault', pointing to the saved
   // pt_regs
   auto matcher_fn = [&](uintptr_t /*fp*/, uintptr_t pc,
                         uintptr_t &out_addr) noexcept -> bool {
     if (pc >= 0xffff'8000'0010'0200ULL && pc < 0xffff'8000'0010'0300ULL) {
       out_addr = reinterpret_cast<uintptr_t>(pt_regs);
+      register_state.fp = reinterpret_cast<uintptr_t>(user_f0);
+      register_state.pc = 0x0000'0000'0040'1044ULL;
       return true;
     }
     return false;
@@ -288,8 +336,15 @@ int main() {
   uintptr_t initial_pc =
       0xffff'8000'0010'0020ULL; // PC inside page_fault_handler
 
-  microfmt::hybrid_stack_unwinder unwinder(fp_unwinder, trap_decoder, matcher,
-                                           initial_fp, initial_pc);
+  register_state = {initial_fp, initial_pc};
+  std::byte register_scratch[sizeof(uint64_t)]{};
+  microfmt::register_context_ref register_context(
+      &register_state, {&read_arch_register, &write_arch_register}, space,
+      register_scratch);
+
+  microfmt::hybrid_stack_unwinder unwinder(
+      fp_unwinder, trap_decoder, matcher, register_context, initial_fp,
+      initial_pc);
 
   char scratch[64];
   microfmt::hybrid_backtrace_view bt(unwinder, resolver, scratch);

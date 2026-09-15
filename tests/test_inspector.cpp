@@ -442,6 +442,7 @@ TEST(InspectorSmartPointers, FormatsViewsAndPointerLayoutWrappers) {
 struct fake_fp_abi {
   using register_type = uintptr_t;
   static constexpr size_t pointer_size = sizeof(uintptr_t);
+  static constexpr uint32_t fp_reg = 6;
   static constexpr ptrdiff_t fp_slot_offset = 0;
   static constexpr ptrdiff_t ra_slot_offset =
       static_cast<ptrdiff_t>(sizeof(uintptr_t));
@@ -460,31 +461,41 @@ TEST(InspectorFrameUnwinder, StepsFrameRecordsAndRejectsInvalidRecords) {
   frame_record caller{0, 0};
   frame_record current{address_of(caller), 0x101};
   microfmt::fp_unwinder_context<fake_fp_abi> context{local_space()};
+  fake_register_state register_state;
+  register_state.value = address_of(current);
+  std::byte register_scratch[sizeof(uintptr_t)]{};
+  microfmt::register_context_ref register_context(
+      &register_state, {&read_fake_register, nullptr}, local_space(),
+      register_scratch);
   uintptr_t next_fp = 0;
   uintptr_t next_pc = 0;
 
   using tag = microfmt::fp_unwinder_tag<fake_fp_abi>;
   EXPECT_TRUE(microfmt::frame_unwinder_traits<tag>::step(
-      &context, address_of(current), next_fp, next_pc));
+      &context, register_context, next_fp, next_pc));
   EXPECT_EQ(next_fp, address_of(caller));
   EXPECT_EQ(next_pc, 0x100u);
 
   microfmt::frame_unwinder_ref unwinder(tag{}, context);
-  EXPECT_TRUE(unwinder.step(address_of(current), next_fp, next_pc));
+  EXPECT_TRUE(unwinder.step(register_context, next_fp, next_pc));
   EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
-      nullptr, address_of(current), next_fp, next_pc));
-  EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(&context, 0, next_fp,
-                                                           next_pc));
+      nullptr, register_context, next_fp, next_pc));
   EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
-      &context, address_of(current) + 1, next_fp, next_pc));
+      &context, microfmt::register_context_ref{}, next_fp, next_pc));
+
+  register_state.value = address_of(current) + 1;
+  EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
+      &context, register_context, next_fp, next_pc));
 
   frame_record non_advancing{0, 0x100};
   non_advancing.saved_fp = address_of(non_advancing);
+  register_state.value = address_of(non_advancing);
   EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
-      &context, address_of(non_advancing), next_fp, next_pc));
+      &context, register_context, next_fp, next_pc));
   frame_record no_return_address{address_of(caller), 0};
+  register_state.value = address_of(no_return_address);
   EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
-      &context, address_of(no_return_address), next_fp, next_pc));
+      &context, register_context, next_fp, next_pc));
 }
 
 } // namespace
