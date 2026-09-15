@@ -5,8 +5,8 @@
 
 #include "address_space.hpp"
 #include "dwarf_registers.hpp"
-#include "microfmt.hpp"
-#include "span.hpp"
+#include "../microfmt.hpp"
+#include "../detail/span.hpp"
 #include <cstddef>
 #include <cstdint>
 

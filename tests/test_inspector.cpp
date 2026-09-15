@@ -4,14 +4,17 @@
 
 #include <gtest/gtest.h>
 #include <microfmt/inspector/fp_unwinder.hpp>
+#include <microfmt/inspector/register_context.hpp>
 #include <microfmt/inspector/remote_binary_tree.hpp>
 #include <microfmt/inspector/remote_forward_list.hpp>
 #include <microfmt/inspector/remote_hash_table.hpp>
 #include <microfmt/inspector/remote_smart_ptr.hpp>
 #include <microfmt/inspector/remote_vector.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 
 namespace {
@@ -22,6 +25,172 @@ template <typename T> uintptr_t address_of(const T &object) noexcept {
 
 microfmt::address_space_ref local_space() {
   return microfmt::address_space_ref(microfmt::local_space_tag{});
+}
+
+struct fake_register_state {
+  uint64_t value{0};
+  uintptr_t probe_address{0};
+  int expected_probe{0};
+  bool read_succeeds{true};
+  bool write_succeeds{true};
+  mutable size_t read_calls{0};
+  size_t write_calls{0};
+  mutable uint32_t last_read_index{0};
+  uint32_t last_write_index{0};
+  mutable size_t last_read_size{0};
+  size_t last_write_size{0};
+  mutable bool read_space_forwarded{false};
+  bool write_space_forwarded{false};
+};
+
+bool read_fake_register(const void *opaque_state,
+                        microfmt::address_space_ref space,
+                        uint32_t dwarf_reg_index, void *out_value,
+                        size_t value_size) noexcept {
+  const auto &state =
+      *static_cast<const fake_register_state *>(opaque_state);
+  ++state.read_calls;
+  state.last_read_index = dwarf_reg_index;
+  state.last_read_size = value_size;
+
+  int probe = 0;
+  state.read_space_forwarded =
+      space.read(state.probe_address, probe) && probe == state.expected_probe;
+  if (!state.read_succeeds || value_size > sizeof(state.value))
+    return false;
+
+  std::memcpy(out_value, &state.value, value_size);
+  return true;
+}
+
+bool write_fake_register(void *opaque_state,
+                         microfmt::address_space_ref space,
+                         uint32_t dwarf_reg_index, const void *in_value,
+                         size_t value_size) noexcept {
+  auto &state = *static_cast<fake_register_state *>(opaque_state);
+  ++state.write_calls;
+  state.last_write_index = dwarf_reg_index;
+  state.last_write_size = value_size;
+
+  int probe = 0;
+  state.write_space_forwarded =
+      space.read(state.probe_address, probe) && probe == state.expected_probe;
+  if (!state.write_succeeds || value_size > sizeof(state.value))
+    return false;
+
+  std::memcpy(&state.value, in_value, value_size);
+  return true;
+}
+
+TEST(RegisterContextRef, ReportsNullAndSupportedOperations) {
+  microfmt::register_context_ref empty;
+  EXPECT_TRUE(empty.is_null());
+  EXPECT_FALSE(empty);
+
+  fake_register_state state;
+  std::byte scratch[8]{};
+  const auto space = local_space();
+
+  microfmt::register_context_ref no_operations(
+      &state, microfmt::register_context_vtable{}, space, scratch);
+  EXPECT_TRUE(no_operations.is_null());
+  EXPECT_FALSE(no_operations);
+
+  microfmt::register_context_ref read_only(
+      &state, {&read_fake_register, nullptr}, space, scratch);
+  EXPECT_FALSE(read_only.is_null());
+  EXPECT_TRUE(read_only);
+  EXPECT_FALSE(read_only.write(1, uint32_t{42}));
+  EXPECT_FALSE(read_only.write_raw(1, scratch, sizeof(scratch)));
+
+  microfmt::register_context_ref write_only(
+      &state, {nullptr, &write_fake_register}, space, scratch);
+  EXPECT_FALSE(write_only.is_null());
+  EXPECT_TRUE(write_only);
+  uint32_t value = 0;
+  EXPECT_FALSE(write_only.read(1, value));
+  EXPECT_FALSE(write_only.read_raw(1, &value, sizeof(value)));
+
+  microfmt::register_context_ref null_state(
+      static_cast<fake_register_state *>(nullptr),
+      {&read_fake_register, &write_fake_register}, space, scratch);
+  EXPECT_TRUE(null_state.is_null());
+  EXPECT_FALSE(null_state);
+}
+
+TEST(RegisterContextRef, DispatchesTypedAndRawReadsAndWrites) {
+  int probe = 73;
+  fake_register_state state;
+  state.value = UINT64_C(0x1122334455667788);
+  state.probe_address = address_of(probe);
+  state.expected_probe = probe;
+  std::byte scratch[16]{};
+  const auto space = local_space();
+  microfmt::register_context_ref context(
+      &state, {&read_fake_register, &write_fake_register}, space, scratch);
+
+  uint64_t typed_value = 0;
+  EXPECT_TRUE(context.read(17, typed_value));
+  EXPECT_EQ(typed_value, UINT64_C(0x1122334455667788));
+  EXPECT_EQ(state.read_calls, 1u);
+  EXPECT_EQ(state.last_read_index, 17u);
+  EXPECT_EQ(state.last_read_size, sizeof(typed_value));
+  EXPECT_TRUE(state.read_space_forwarded);
+
+  const uint32_t replacement = UINT32_C(0xaabbccdd);
+  EXPECT_TRUE(context.write(18, replacement));
+  EXPECT_EQ(state.write_calls, 1u);
+  EXPECT_EQ(state.last_write_index, 18u);
+  EXPECT_EQ(state.last_write_size, sizeof(replacement));
+  EXPECT_TRUE(state.write_space_forwarded);
+
+  std::array<std::byte, sizeof(replacement)> raw_value{};
+  EXPECT_TRUE(context.read_raw(19, raw_value.data(), raw_value.size()));
+  EXPECT_EQ(std::memcmp(raw_value.data(), &replacement, sizeof(replacement)), 0);
+  EXPECT_EQ(state.last_read_index, 19u);
+  EXPECT_EQ(state.last_read_size, raw_value.size());
+
+  const std::array<std::byte, 2> raw_replacement{std::byte{0x34},
+                                                 std::byte{0x12}};
+  EXPECT_TRUE(context.write_raw(20, raw_replacement.data(),
+                                raw_replacement.size()));
+  EXPECT_EQ(state.last_write_index, 20u);
+  EXPECT_EQ(state.last_write_size, raw_replacement.size());
+  EXPECT_EQ(state.value & UINT64_C(0xffff), UINT64_C(0x1234));
+
+  EXPECT_TRUE(context.space());
+  EXPECT_EQ(context.scratch().data(), scratch);
+  EXPECT_EQ(context.scratch().size(), sizeof(scratch));
+}
+
+TEST(RegisterContextRef, PropagatesCallbackFailuresAndSupportsConstState) {
+  int probe = 11;
+  fake_register_state state;
+  state.value = 42;
+  state.probe_address = address_of(probe);
+  state.expected_probe = probe;
+  state.read_succeeds = false;
+  state.write_succeeds = false;
+  std::byte scratch[8]{};
+  microfmt::register_context_ref context(
+      &state, {&read_fake_register, &write_fake_register}, local_space(),
+      scratch);
+
+  uint64_t value = 0;
+  EXPECT_FALSE(context.read(1, value));
+  EXPECT_FALSE(context.read_raw(2, &value, sizeof(value)));
+  EXPECT_FALSE(context.write(3, value));
+  EXPECT_FALSE(context.write_raw(4, &value, sizeof(value)));
+  EXPECT_EQ(state.read_calls, 2u);
+  EXPECT_EQ(state.write_calls, 2u);
+
+  const fake_register_state const_state{UINT64_C(0xfeedface),
+                                        address_of(probe), probe};
+  microfmt::register_context_ref const_context(
+      &const_state, {&read_fake_register, nullptr}, local_space(), scratch);
+  uint64_t const_value = 0;
+  EXPECT_TRUE(const_context.read(5, const_value));
+  EXPECT_EQ(const_value, UINT64_C(0xfeedface));
 }
 
 TEST(InspectorContainer, InvokesTypeErasedContextAndReportsFailures) {
