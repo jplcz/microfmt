@@ -16,12 +16,16 @@ namespace microfmt {
 
 struct elf_image_info {
   std::string_view image_name{""};
-  uintptr_t load_base{0};  // Virtual base address of the ELF image
-  uintptr_t image_size{0}; // Total mapped size of the image
-  uintptr_t exidx_start{
-      0}; // Virtual address of .ARM.exidx start (0 if unavailable)
-  uintptr_t exidx_end{
-      0}; // Virtual address of .ARM.exidx end (0 if unavailable)
+  uintptr_t load_base{0};
+  uintptr_t image_size{0};
+
+  // EXIDX section bounds
+  uintptr_t exidx_start{0};
+  uintptr_t exidx_end{0};
+
+  // DWARF debug_frame section bounds
+  uintptr_t debug_frame_start{0};
+  uintptr_t debug_frame_end{0};
 
   [[nodiscard]] constexpr bool contains(uintptr_t addr) const noexcept {
     return addr >= load_base && addr < (load_base + image_size);
@@ -29,6 +33,10 @@ struct elf_image_info {
 
   [[nodiscard]] constexpr bool has_exidx() const noexcept {
     return exidx_start != 0 && exidx_end > exidx_start;
+  }
+
+  [[nodiscard]] constexpr bool has_debug_frame() const noexcept {
+    return debug_frame_start != 0 && debug_frame_end > debug_frame_start;
   }
 };
 

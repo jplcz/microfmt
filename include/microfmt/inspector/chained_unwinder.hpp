@@ -8,9 +8,20 @@ namespace microfmt {
 
 struct chained_unwinder_context {
   address_space_ref space;
-  frame_unwinder_ref exidx_unwinder; // EXIDX / DWARF unwinder handle
-  frame_unwinder_ref fp_unwinder;    // Frame pointer unwinder handle
-  unwind_hint_registry_ref hints;    // Type-erased unwind hint registry
+
+  // Pluggable unwinder tiers (any can be left empty/null)
+
+  // clang-format off
+  frame_unwinder_ref exidx_unwinder{}; // Tier 1: ARM EXIDX
+  frame_unwinder_ref dwarf_unwinder{}; // Tier 2: DWARF CFI (.debug_frame / .eh_frame)
+  frame_unwinder_ref fp_unwinder{};    // Tier 3: Standard Frame Pointer
+  // clang-format on
+
+  unwind_hint_registry_ref hints{}; // Type-erased unwind hint registry
+
+  // Pointer to the current instruction pointer (PC) being unwound,
+  // allowing hint lookup without probing a non-existent/malformed stack frame.
+  uintptr_t *current_pc{nullptr};
 };
 
 struct chained_unwinder_tag {};
@@ -38,7 +49,17 @@ template <> struct frame_unwinder_traits<chained_unwinder_tag> {
     }
 
     // ========================================================================
-    // Attempt Secondary: Standard Frame Pointer Unwinder
+    // Attempt Secondary: DWARF CFI Unwinder
+    // ========================================================================
+    if (cfg.dwarf_unwinder &&
+        cfg.dwarf_unwinder.step(current_fp, trial_fp, trial_pc)) {
+      next_fp = trial_fp;
+      next_pc = trial_pc;
+      return true;
+    }
+
+    // ========================================================================
+    // Attempt Tertiary: Standard Frame Pointer Unwinder
     // ========================================================================
     if (cfg.fp_unwinder &&
         cfg.fp_unwinder.step(current_fp, trial_fp, trial_pc)) {
@@ -48,34 +69,17 @@ template <> struct frame_unwinder_traits<chained_unwinder_tag> {
     }
 
     // ========================================================================
-    // Attempt Tertiary: Type-Erased Unwind Hint Table Fallback
+    // Attempt Quaternary: Unwind Hint Table Fallback (Direct PC Lookup)
     // ========================================================================
-    // Read return address (LR) from current frame to evaluate hint match
-    uint32_t return_lr = 0;
-    if (!cfg.space.read_bytes(current_fp + 4, &return_lr, 4)) {
-      if (!cfg.space.read_bytes(current_fp, &return_lr, 4))
-        return false;
-    }
-    uintptr_t fault_pc = static_cast<uintptr_t>(return_lr & ~1U);
-
-    if (cfg.hints) {
+    if (cfg.hints && cfg.current_pc && *cfg.current_pc != 0) {
       unwind_hint hint{};
-      if (cfg.hints.find_hint(fault_pc, hint)) {
-        // Apply manual hint recovery rule
-        uint32_t saved_fp = 0;
-        uint32_t saved_lr = 0;
-
-        if (cfg.space.read_bytes(current_fp, &saved_fp, 4) &&
-            cfg.space.read_bytes(current_fp + 4, &saved_lr, 4)) {
-          next_fp = static_cast<uintptr_t>(saved_fp);
-          next_pc = static_cast<uintptr_t>(saved_lr & ~1U);
-          return true;
+      if (cfg.hints.find_hint(*cfg.current_pc, hint)) {
+        if (hint.routine != nullptr) {
+          // Delegate entirely to the hint's custom assembly/stub decoding
+          // routine
+          return hint.routine(cfg.space, current_fp, *cfg.current_pc, next_fp,
+                              next_pc);
         }
-
-        // If FP slot is broken, apply fixed stack offset from hint
-        next_fp = current_fp + hint.sp_offset;
-        next_pc = fault_pc;
-        return true;
       }
     }
 

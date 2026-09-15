@@ -33,6 +33,8 @@ struct arm_exidx_unwinder_context {
   // Caller-supplied off-stack storage for register state
   // (Prevents ~300 bytes of kernel stack allocation per unwind step)
   arm_register_state *reg_scratch{nullptr};
+  // Calle supplied off-stack storage
+  elf_image_info *elf_img_storage{nullptr};
 };
 
 struct arm_exidx_unwinder_tag {};
@@ -53,7 +55,7 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
     uint32_t saved_fp = 0;
     uint32_t return_lr = 0;
 
-    if (!cfg.reg_scratch)
+    if (!cfg.reg_scratch || !cfg.elf_img_storage)
       return false;
     if (!cfg.space.read_bytes(current_fp, &saved_fp, 4))
       return false;
@@ -69,7 +71,8 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
     regs = {};
 
     if (cfg.enumerator) {
-      elf_image_info img{};
+      elf_image_info &img = *cfg.elf_img_storage;
+      img = {};
 
       // Query which loaded ELF module owns the faulting program counter
       if (cfg.enumerator.find_by_pc(fault_pc, img) && img.has_exidx()) {
@@ -121,6 +124,26 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
     next_fp = static_cast<uintptr_t>(saved_fp);
     next_pc = fault_pc;
     return true;
+  }
+};
+
+struct arm_exidx_unwinder_holder {
+  elf_image_info img_storage{};
+  arm_register_state reg_scratch{};
+  arm_exidx_unwinder_context ctx;
+
+  arm_exidx_unwinder_holder(address_space_ref space,
+                            elf_image_enumerator_ref enumerator) noexcept
+      : ctx{space, enumerator, &reg_scratch, &img_storage} {}
+
+  arm_exidx_unwinder_holder(const arm_exidx_unwinder_holder &) = delete;
+  arm_exidx_unwinder_holder &
+  operator=(const arm_exidx_unwinder_holder &) = delete;
+  arm_exidx_unwinder_holder(arm_exidx_unwinder_holder &&) = delete;
+  arm_exidx_unwinder_holder &operator=(arm_exidx_unwinder_holder &&) = delete;
+
+  [[nodiscard]] frame_unwinder_ref make_ref() noexcept {
+    return frame_unwinder_ref(arm_exidx_unwinder_tag{}, ctx);
   }
 };
 

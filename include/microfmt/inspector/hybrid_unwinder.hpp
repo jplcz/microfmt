@@ -167,22 +167,22 @@ private:
 
 class hybrid_backtrace_view {
 public:
-  constexpr hybrid_backtrace_view(hybrid_stack_unwinder unwinder,
-                                  symbol_resolver_ref resolver,
-                                  span<char> scratch,
-                                  uint32_t max_depth = 32) noexcept
+  constexpr explicit hybrid_backtrace_view(hybrid_stack_unwinder &unwinder,
+                                           symbol_resolver_ref resolver,
+                                           span<char> scratch,
+                                           uint32_t max_depth = 32) noexcept
       : unwinder_(unwinder), resolver_(resolver), scratch_(scratch),
         max_depth_(max_depth) {}
 
   template <size_t N>
-  constexpr hybrid_backtrace_view(hybrid_stack_unwinder unwinder,
+  constexpr hybrid_backtrace_view(hybrid_stack_unwinder &unwinder,
                                   symbol_resolver_ref resolver,
                                   char (&scratch)[N],
                                   uint32_t max_depth = 32) noexcept
       : unwinder_(unwinder), resolver_(resolver), scratch_(scratch, N),
         max_depth_(max_depth) {}
 
-  [[nodiscard]] constexpr hybrid_stack_unwinder unwinder() const noexcept {
+  [[nodiscard]] constexpr hybrid_stack_unwinder &unwinder() const noexcept {
     return unwinder_;
   }
   [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept {
@@ -196,7 +196,8 @@ public:
   }
 
 private:
-  hybrid_stack_unwinder unwinder_;
+  hybrid_stack_unwinder
+      &unwinder_; // Stored by reference to eliminate stack bloat
   symbol_resolver_ref resolver_{};
   span<char> scratch_{};
   uint32_t max_depth_{32};

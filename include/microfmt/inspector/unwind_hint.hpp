@@ -12,9 +12,16 @@ namespace microfmt {
 struct unwind_hint {
   uintptr_t pc_start{0};
   uintptr_t pc_end{0};
-  int32_t sp_offset{0}; // Fixed stack adjustment for stripped routines
-  bool restores_fp{false};
-  bool is_assembly_stub{false};
+
+  // Signature for a custom unwind routine provided by the hint
+  using unwind_routine_t = bool (*)(address_space_ref space,
+                                    uintptr_t current_fp, uintptr_t current_pc,
+                                    uintptr_t &next_fp,
+                                    uintptr_t &next_pc) noexcept;
+
+  // Custom routine handler (can be nullptr if layout-based fallback is
+  // preferred)
+  unwind_routine_t routine{nullptr};
 
   [[nodiscard]] constexpr bool contains(uintptr_t pc) const noexcept {
     return pc >= pc_start && pc < pc_end;
@@ -22,7 +29,7 @@ struct unwind_hint {
 };
 
 // ============================================================================
-// Type-Erased Unwind Hint Registry Handle
+// Type-Erased Unwind Hint Registry Handle`
 // ============================================================================
 
 class unwind_hint_registry_ref {

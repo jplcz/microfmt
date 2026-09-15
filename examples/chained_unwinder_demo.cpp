@@ -1,6 +1,7 @@
 #include <microfmt/inspector/address_space.hpp>
 #include <microfmt/inspector/arm_exidx_unwinder.hpp>
 #include <microfmt/inspector/chained_unwinder.hpp>
+#include <microfmt/inspector/dwarf_decoder.hpp>
 #include <microfmt/inspector/frame_pointer.hpp>
 #include <microfmt/inspector/symbol_resolver.hpp>
 #include <microfmt/inspector/unwind_hint.hpp>
@@ -153,10 +154,27 @@ int main() {
 
   // C. Setup Type-Erased Unwind Hint Registry
   microfmt::unwind_hint_registry_context<4> hint_context{};
-  hint_context.add_hint({.pc_start = 0x0800'8000,
-                         .pc_end = 0x0800'8200,
-                         .sp_offset = 32,
-                         .is_assembly_stub = true});
+
+  hint_context.add_hint(
+      {.pc_start = 0x0800'8000,
+       .pc_end = 0x0800'8200,
+       .routine = [](microfmt::address_space_ref space, uintptr_t current_fp,
+                     uintptr_t, uintptr_t &next_fp,
+                     uintptr_t &next_pc) noexcept -> bool {
+         // Custom assembly stub/prologue recovery logic
+         uint32_t saved_fp = 0;
+         uint32_t saved_lr = 0;
+
+         if (!space.read_bytes(current_fp, &saved_fp, 4))
+           return false;
+         if (!space.read_bytes(current_fp + 4, &saved_lr, 4))
+           return false;
+
+         next_fp = static_cast<uintptr_t>(saved_fp);
+         next_pc = static_cast<uintptr_t>(saved_lr & ~1U);
+         return true;
+       }});
+
   microfmt::unwind_hint_registry_ref hint_ref(
       microfmt::unwind_hint_registry_tag{}, hint_context);
 
@@ -182,11 +200,14 @@ int main() {
 
   // Off-stack register scratch buffer to prevent kernel stack overflow
   microfmt::arm_register_state off_stack_scratch{};
+  microfmt::elf_image_info off_stack_img_storage{};
 
-  microfmt::arm_exidx_unwinder_context exidx_ctx{.space = space,
-                                                 .enumerator = enumerator,
-                                                 .reg_scratch =
-                                                     &off_stack_scratch};
+  microfmt::arm_exidx_unwinder_context exidx_ctx{
+      .space = space,
+      .enumerator = enumerator,
+      .reg_scratch = &off_stack_scratch,
+      .elf_img_storage = &off_stack_img_storage};
+
   microfmt::frame_unwinder_ref exidx_unwinder(
       microfmt::arm_exidx_unwinder_tag{}, exidx_ctx);
 

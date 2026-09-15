@@ -158,8 +158,13 @@ int main() {
       microfmt::multi_elf_registry_tag{}, elf_registry);
 
   microfmt::arm_register_state reg_scratch{};
-  microfmt::arm_exidx_unwinder_context exidx_ctx{
-      .space = space, .enumerator = enumerator, .reg_scratch = &reg_scratch};
+  microfmt::elf_image_info off_stack_img_storage{};
+
+  microfmt::arm_exidx_unwinder_context exidx_ctx{.space = space,
+                                                 .enumerator = enumerator,
+                                                 .reg_scratch = &reg_scratch,
+                                                 .elf_img_storage =
+                                                     &off_stack_img_storage};
 
   microfmt::frame_unwinder_ref unwinder(microfmt::arm_exidx_unwinder_tag{},
                                         exidx_ctx);
