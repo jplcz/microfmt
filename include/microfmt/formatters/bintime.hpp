@@ -204,7 +204,7 @@ template <typename T> struct formatter<T, std::enable_if_t<is_bintime_v<T>>> {
       out.put('.');
       uint64_t dec_frac = detail::bintime_frac_to_decimal(frac, precision);
       detail::format_unsigned(out, dec_frac, 10, false,
-                              static_cast<size_t>(precision));
+                              static_cast<int>(precision));
     }
 
     if (show_unit) {
@@ -283,22 +283,26 @@ template <typename T> struct formatter<sbintime_view<T>> {
    * @param out Destination sink.
    */
   void format(const sbintime_view<T> &sv, const sink &out) const noexcept {
-    int64_t val = sv.sbt;
+    const int64_t val = sv.sbt;
+    uint64_t magnitude = 0;
     if (val < 0) {
       out.put('-');
-      val = -val;
+      magnitude = static_cast<uint64_t>(-(val + 1)) + 1;
+    } else {
+      magnitude = static_cast<uint64_t>(val);
     }
 
-    int64_t sec = val >> 32;
-    uint32_t frac = static_cast<uint32_t>(val & 0xFFFFFFFFULL);
+    const uint64_t sec = magnitude >> 32;
+    const uint32_t frac =
+        static_cast<uint32_t>(magnitude & UINT64_C(0xFFFFFFFF));
 
-    detail::format_unsigned(out, static_cast<uint64_t>(sec), 10, false, 0);
+    detail::format_unsigned(out, sec, 10, false, 0);
 
     if (precision != time_precision::sec) {
       out.put('.');
       uint32_t dec_frac = detail::sbintime_frac_to_decimal(frac, precision);
       detail::format_unsigned(out, dec_frac, 10, false,
-                              static_cast<size_t>(precision));
+                              static_cast<int>(precision));
     }
 
     if (show_unit) {

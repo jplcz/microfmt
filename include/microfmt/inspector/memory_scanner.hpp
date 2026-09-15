@@ -224,12 +224,12 @@ private:
         bytes_to_dump = bytes_in_region;
     }
 
-    auto reader = [](void *context, uintptr_t source_address, uint8_t *buffer,
-                     size_t size) noexcept -> size_t {
-      if (!context)
+    auto reader = [](void *reader_context, uintptr_t source_address,
+                     uint8_t *buffer, size_t size) noexcept -> size_t {
+      if (!reader_context)
         return 0;
       const auto &target_space =
-          *static_cast<const address_space_ref *>(context);
+          *static_cast<const address_space_ref *>(reader_context);
       return target_space.read_bytes(source_address, buffer, size) ? size : 0;
     };
     context.reader_space = space;

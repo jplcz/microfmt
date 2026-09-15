@@ -29,7 +29,7 @@ public:
     // word itself. Arithmetic right shift sign-extends from bit 30 to
     // 32-bit/64-bit int32_t.
     int32_t signed_offset = static_cast<int32_t>(prel31 << 1) >> 1;
-    return entry_addr + static_cast<int32_t>(signed_offset);
+    return detail::add_address_offset(entry_addr, signed_offset);
   }
 
   /**

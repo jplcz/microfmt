@@ -12,9 +12,10 @@
 // ----------------------------------------------------------------------------
 
 // STM32 / ARM Cortex USART_CR1 Register
-inline constexpr microfmt::reg_descriptor USART_CR1_DESC{
+inline constexpr microfmt::reg_descriptor<15> USART_CR1_DESC{
     "USART_CR1",
     4,                                         // 32-bit register
+    {
     microfmt::reg_field{"UE", 0, 1, true},     // USART Enable
     microfmt::reg_field{"UESM", 1, 1, true},   // Stop Mode Enable
     microfmt::reg_field{"RE", 2, 1, true},     // Receiver Enable
@@ -32,16 +33,19 @@ inline constexpr microfmt::reg_descriptor USART_CR1_DESC{
                         false}, // Driver Enable Deassertion Time (5 bits)
     microfmt::reg_field{"DEAT", 21, 5,
                         false} // Driver Enable Assertion Time (5 bits)
+    }
 };
 
 // Custom Timer Status Register
-inline constexpr microfmt::reg_descriptor TIMER_SR_DESC{
+inline constexpr microfmt::reg_descriptor<4> TIMER_SR_DESC{
     "TIM_SR",
     2,                                        // 16-bit register
+    {
     microfmt::reg_field{"UIF", 0, 1, true},   // Update Interrupt Flag
     microfmt::reg_field{"CC1IF", 1, 1, true}, // Capture/Compare 1 Flag
     microfmt::reg_field{"CC2IF", 2, 1, true}, // Capture/Compare 2 Flag
-    microfmt::reg_field{"PRESCALER", 8, 4, false}};
+    microfmt::reg_field{"PRESCALER", 8, 4, false}
+    }};
 
 int main() {
   auto out = microfmt::stdout_sink();

@@ -4,13 +4,12 @@
 
 add_executable(bench_stack_painting bench_stack_painting.cpp)
 target_link_libraries(bench_stack_painting PRIVATE microfmt)
+microfmt_enable_warnings(bench_stack_painting)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(bench_stack_painting PRIVATE
     -O2                          # Benchmark against realistic release optimizations
     -fno-omit-frame-pointer      # Keep clean frame tracking
-    -Wall
-    -Wextra
   )
 
 #   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

@@ -119,12 +119,14 @@ public:
 
       // 00xxxxxx: vsp = vsp + (xxxxxx << 2) + 4
       if ((opcode & 0xC0) == 0x00) {
-        uint32_t offset = ((opcode & 0x3F) << 2) + 4;
+        uint32_t offset =
+            (static_cast<uint32_t>(opcode & 0x3F) << 2U) + 4U;
         io_sp += offset;
       }
       // 01xxxxxx: vsp = vsp - (xxxxxx << 2) - 4 (sub sp adjustment)
       else if ((opcode & 0xC0) == 0x40) {
-        uint32_t offset = ((opcode & 0x3F) << 2) + 4;
+        uint32_t offset =
+            (static_cast<uint32_t>(opcode & 0x3F) << 2U) + 4U;
         io_sp -= offset;
       }
       // 1000iiii iiiiiiii: Pop integer registers r4-r15
@@ -133,13 +135,17 @@ public:
         if (!stream.next_byte(opcode_low))
           break;
         uint16_t reg_mask =
-            (static_cast<uint16_t>(opcode & 0x0F) << 8) | opcode_low;
+            static_cast<uint16_t>(
+                (static_cast<uint16_t>(opcode & 0x0F) << 8U) |
+                static_cast<uint16_t>(opcode_low));
 
         for (int i = 0; i < 12; ++i) {
-          if ((reg_mask & (1 << i)) != 0) {
+          if ((reg_mask & (1U << static_cast<unsigned>(i))) != 0) {
             uint32_t val = 0;
             if (space.read_bytes(io_sp, &val, 4)) {
-              uint32_t dwarf_reg = dwarf::arm32::R4 + i;
+              uint32_t dwarf_reg =
+                  static_cast<uint32_t>(dwarf::arm32::R4) +
+                  static_cast<uint32_t>(i);
               if (!reg_ctx.write(dwarf_reg, val))
                 return false;
               io_sp += 4;
@@ -153,7 +159,9 @@ public:
         for (int i = 0; i <= count; ++i, io_sp += 8) {
           uint64_t val = 0;
           if (space.read_bytes(io_sp, &val, 8)) {
-            uint32_t dwarf_reg = dwarf::arm32::D0 + 8 + i;
+            uint32_t dwarf_reg =
+                static_cast<uint32_t>(dwarf::arm32::D0) + 8U +
+                static_cast<uint32_t>(i);
             if (!reg_ctx.write_raw(dwarf_reg, &val, 8))
               return false;
           }

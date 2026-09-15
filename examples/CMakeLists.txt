@@ -9,11 +9,8 @@ endif()
 function(add_microfmt_example NAME SOURCE)
   add_executable(${NAME} ${SOURCE})
   target_link_libraries(${NAME} PRIVATE microfmt::microfmt)
+  microfmt_enable_warnings(${NAME})
   target_compile_features(${NAME} PRIVATE cxx_std_20)
-
-  if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(${NAME} PRIVATE -Wall -Wextra -Wpedantic)
-  endif()
 
   if(Boost_FOUND)
     target_link_libraries(${NAME} PRIVATE Boost::boost)
@@ -109,6 +106,7 @@ if(Boost_FOUND)
   add_executable(demo_boost_describe describe_demo.cpp)
   target_link_libraries(demo_boost_describe PRIVATE microfmt::microfmt
                                                     Boost::boost)
+  microfmt_enable_warnings(demo_boost_describe)
   target_compile_features(demo_boost_describe PRIVATE cxx_std_20)
   set_target_properties(
     demo_boost_describe

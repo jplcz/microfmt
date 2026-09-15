@@ -34,18 +34,70 @@ target_include_directories(microfmt INTERFACE
 
 add_library(microfmt::microfmt ALIAS microfmt)
 
-# Optional test runner
+option(MICROFMT_ENABLE_STRICT_WARNINGS
+    "Treat comprehensive GCC and Clang warnings as errors" ON)
 option(MICROFMT_BUILD_TESTS "Build test suite" ON)
 option(MICROFMT_BUILD_EXAMPLES "Build example apps" ON)
 option(MICROFMT_BUILD_BENCHMARKS "Build benchmark apps" ON)
 option(MICROFMT_BUILD_HEADER_CHECKS
     "Compile all public headers under each supported C++ standard" ON)
 
+add_library(microfmt_warnings INTERFACE)
+if(MICROFMT_ENABLE_STRICT_WARNINGS)
+    target_compile_options(microfmt_warnings INTERFACE
+        $<$<CXX_COMPILER_ID:GNU>:
+            -Wall
+            -Wextra
+            -Wpedantic
+            -Werror
+            -Wconversion
+            -Wsign-conversion
+            -Wshadow
+            -Wcast-align
+            -Wcast-qual
+            -Wundef
+            -Wnull-dereference
+            -Wdouble-promotion
+            -Wimplicit-fallthrough
+            -Woverloaded-virtual
+            -Wnon-virtual-dtor
+            -Wduplicated-cond
+            -Wduplicated-branches
+            -Wlogical-op
+        >
+        $<$<CXX_COMPILER_ID:Clang,AppleClang>:
+            -Wall
+            -Wextra
+            -Wpedantic
+            -Werror
+            -Wconversion
+            -Wsign-conversion
+            -Wshadow
+            -Wcast-align
+            -Wcast-qual
+            -Wundef
+            -Wnull-dereference
+            -Wdouble-promotion
+            -Wimplicit-fallthrough
+            -Woverloaded-virtual
+            -Wnon-virtual-dtor
+            -Wextra-semi
+            -Wimplicit-int-conversion
+            -Wshorten-64-to-32
+        >
+    )
+endif()
+
+function(microfmt_enable_warnings TARGET)
+    target_link_libraries(${TARGET} PRIVATE microfmt_warnings)
+endfunction()
+
 if(MICROFMT_BUILD_HEADER_CHECKS)
     function(add_microfmt_header_check STANDARD)
         add_library(microfmt_headers_cxx${STANDARD} OBJECT
             tests/compile_all_headers.cpp)
         target_link_libraries(microfmt_headers_cxx${STANDARD} PRIVATE microfmt)
+        microfmt_enable_warnings(microfmt_headers_cxx${STANDARD})
         set_target_properties(microfmt_headers_cxx${STANDARD} PROPERTIES
             CXX_STANDARD ${STANDARD}
             CXX_STANDARD_REQUIRED ON
@@ -153,12 +205,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_logger_override.cpp)
     target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main
         nlohmann_json::nlohmann_json)
-
-    target_compile_options(microfmt_tests PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-        >
-    )
+    microfmt_enable_warnings(microfmt_tests)
 
     include(GoogleTest)
     gtest_discover_tests(microfmt_tests)
@@ -182,15 +229,11 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_container_sink.cpp)
     target_link_libraries(microfmt_cxx17_container_sink_tests PRIVATE
         microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_container_sink_tests)
     set_target_properties(microfmt_cxx17_container_sink_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
-    )
-    target_compile_options(microfmt_cxx17_container_sink_tests PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-        >
     )
     gtest_discover_tests(microfmt_cxx17_container_sink_tests
         TEST_PREFIX "Cxx17ContainerSink.")
@@ -198,15 +241,11 @@ if(MICROFMT_BUILD_TESTS)
     add_executable(microfmt_cxx17_pmr_sink_tests tests/test_pmr_sink.cpp)
     target_link_libraries(microfmt_cxx17_pmr_sink_tests PRIVATE
         microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_pmr_sink_tests)
     set_target_properties(microfmt_cxx17_pmr_sink_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
-    )
-    target_compile_options(microfmt_cxx17_pmr_sink_tests PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-        >
     )
     gtest_discover_tests(microfmt_cxx17_pmr_sink_tests
         TEST_PREFIX "Cxx17PmrSink.")
@@ -214,15 +253,11 @@ if(MICROFMT_BUILD_TESTS)
     add_executable(microfmt_cxx17_json_tests tests/test_json.cpp)
     target_link_libraries(microfmt_cxx17_json_tests PRIVATE
         microfmt GTest::gtest_main nlohmann_json::nlohmann_json)
+    microfmt_enable_warnings(microfmt_cxx17_json_tests)
     set_target_properties(microfmt_cxx17_json_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
-    )
-    target_compile_options(microfmt_cxx17_json_tests PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-        >
     )
     gtest_discover_tests(microfmt_cxx17_json_tests
         TEST_PREFIX "Cxx17Json.")
@@ -230,15 +265,11 @@ if(MICROFMT_BUILD_TESTS)
     add_executable(microfmt_cxx17_cbor_tests tests/test_cbor.cpp)
     target_link_libraries(microfmt_cxx17_cbor_tests PRIVATE
         microfmt GTest::gtest_main nlohmann_json::nlohmann_json)
+    microfmt_enable_warnings(microfmt_cxx17_cbor_tests)
     set_target_properties(microfmt_cxx17_cbor_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
-    )
-    target_compile_options(microfmt_cxx17_cbor_tests PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-        >
     )
     gtest_discover_tests(microfmt_cxx17_cbor_tests
         TEST_PREFIX "Cxx17Cbor.")
@@ -246,15 +277,11 @@ if(MICROFMT_BUILD_TESTS)
     add_executable(microfmt_cxx17_tuple_tests tests/test_tuple.cpp)
     target_link_libraries(microfmt_cxx17_tuple_tests PRIVATE
         microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_tuple_tests)
     set_target_properties(microfmt_cxx17_tuple_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
-    )
-    target_compile_options(microfmt_cxx17_tuple_tests PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-        >
     )
     gtest_discover_tests(microfmt_cxx17_tuple_tests
         TEST_PREFIX "Cxx17Tuple.")
@@ -262,15 +289,11 @@ if(MICROFMT_BUILD_TESTS)
     add_executable(microfmt_cxx17_map_view_tests tests/test_map_view.cpp)
     target_link_libraries(microfmt_cxx17_map_view_tests PRIVATE
         microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_map_view_tests)
     set_target_properties(microfmt_cxx17_map_view_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
-    )
-    target_compile_options(microfmt_cxx17_map_view_tests PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-        >
     )
     gtest_discover_tests(microfmt_cxx17_map_view_tests
         TEST_PREFIX "Cxx17MapView.")
@@ -278,15 +301,11 @@ if(MICROFMT_BUILD_TESTS)
     add_executable(microfmt_cxx17_pointer_tests tests/test_pointer.cpp)
     target_link_libraries(microfmt_cxx17_pointer_tests PRIVATE
         microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_pointer_tests)
     set_target_properties(microfmt_cxx17_pointer_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
-    )
-    target_compile_options(microfmt_cxx17_pointer_tests PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-        >
     )
     gtest_discover_tests(microfmt_cxx17_pointer_tests
         TEST_PREFIX "Cxx17Pointer.")
@@ -295,15 +314,11 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_filter_view.cpp)
     target_link_libraries(microfmt_cxx17_filter_view_tests PRIVATE
         microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_filter_view_tests)
     set_target_properties(microfmt_cxx17_filter_view_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
-    )
-    target_compile_options(microfmt_cxx17_filter_view_tests PRIVATE
-        $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-        -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-        >
     )
     gtest_discover_tests(microfmt_cxx17_filter_view_tests
         TEST_PREFIX "Cxx17FilterView.")
@@ -312,15 +327,11 @@ if(MICROFMT_BUILD_TESTS)
         add_executable(microfmt_cxx23_tests tests/test_monad.cpp)
         target_link_libraries(microfmt_cxx23_tests PRIVATE
             microfmt GTest::gtest_main)
+        microfmt_enable_warnings(microfmt_cxx23_tests)
         set_target_properties(microfmt_cxx23_tests PROPERTIES
             CXX_STANDARD 23
             CXX_STANDARD_REQUIRED ON
             CXX_EXTENSIONS OFF
-        )
-        target_compile_options(microfmt_cxx23_tests PRIVATE
-            $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
-            -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion
-            >
         )
         gtest_discover_tests(microfmt_cxx23_tests)
     endif()
@@ -331,6 +342,7 @@ if(MICROFMT_BUILD_TESTS)
     add_library(microfmt_stack_probes OBJECT
         tests/stack_probes.cpp)
     target_link_libraries(microfmt_stack_probes PRIVATE microfmt)
+    microfmt_enable_warnings(microfmt_stack_probes)
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         target_compile_options(microfmt_stack_probes PRIVATE
