@@ -36,7 +36,7 @@ decoder state, or symbol buffers in formatter-local arrays. See the
 
 | Guide | Use it for | Primary headers |
 |---|---|---|
-| [Memory and remote objects](inspector/memory-and-objects.md) | Target transports, foreign strings, ABI-width pointer wrappers, and reflected structures | `address_space.hpp`, `compat32.hpp`, `foreign_string_view.hpp`, `remote_object.hpp`, `remote_smart_ptr.hpp` |
+| [Memory and remote objects](inspector/memory-and-objects.md) | Target transports, address translation and classification, bounded memory scanning, foreign strings, ABI-width pointer wrappers, and reflected structures | `address_space.hpp`, `address_translator.hpp`, `memory_classifier.hpp`, `memory_scanner.hpp`, `compat32.hpp`, `foreign_string_view.hpp`, `remote_object.hpp`, `remote_smart_ptr.hpp` |
 | [Remote containers](inspector/containers.md) | Vectors, linked lists, hash tables, binary trees, and custom container layouts | `remote_container.hpp`, `remote_vector.hpp`, `remote_forward_list.hpp`, `remote_hash_table.hpp`, `remote_binary_tree.hpp` |
 | [Symbols and diagnostics](inspector/symbols-and-diagnostics.md) | ELF image discovery, symbol resolution, demangling, and diagnostic views | `elf_enumerator.hpp`, `symbol_resolver.hpp`, `demangle.hpp`, `remote_diagnostics.hpp` |
 | [Architectures and registers](inspector/architectures-and-registers.md) | Register contexts, architecture catalogs, system and timer registers, address candidates, and register rendering | `register_context.hpp`, `dwarf_registers.hpp`, `dwarf_abi.hpp`, `register_view.hpp` |
@@ -92,5 +92,7 @@ reader.
 * Use `MICROFMT_STRING(...)` for literal diagnostic formats.
 
 The `examples/` directory contains complete runnable demonstrations, including
-`remote_struct_demo.cpp`, `remote_vector_context_demo.cpp`,
-`remote_hash_table_demo.cpp`, `resolver_demo.cpp`, and `unwinder_demo.cpp`.
+`address_translator_demo.cpp`, `memory_classifier_demo.cpp`,
+`memory_scanner_demo.cpp`, `remote_struct_demo.cpp`,
+`remote_vector_context_demo.cpp`, `remote_hash_table_demo.cpp`,
+`resolver_demo.cpp`, and `unwinder_demo.cpp`.

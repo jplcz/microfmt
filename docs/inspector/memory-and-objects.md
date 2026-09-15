@@ -45,6 +45,112 @@ ownership of its context.
 tests or self-inspection only; it does not make arbitrary addresses safe to
 read.
 
+## Translate virtual addresses
+
+`address_translator_ref` type-erases a platform virtual-to-physical
+translation backend. Specialize `address_translator_traits<Tag>` with a
+`context_type` and `translate` operation:
+
+```cpp
+struct page_table_tag {};
+struct page_table_context {
+  // Page-table root and target-specific translation state.
+};
+
+template <> struct microfmt::address_translator_traits<page_table_tag> {
+  using context_type = page_table_context;
+
+  static bool
+  translate(const void *context, uintptr_t virtual_address,
+            microfmt::translation_attributes &attributes) noexcept;
+};
+
+page_table_context page_tables;
+auto translator =
+    microfmt::address_translator_ref::make<page_table_tag>(page_tables);
+```
+
+On success, `translation_attributes` reports the physical address, target
+space ID, security state, and read/write/execute/user permissions.
+`translation_attributes::is_valid()` is true when at least one access
+permission is present.
+
+Both stateless (`context_type = void`) and stateful translators are supported.
+The context is borrowed and must outlive the handle. A failed translation
+should return `false` without publishing a partially initialized result.
+
+See `examples/address_translator_demo.cpp` for a fixed mapping-table backend.
+
+## Classify memory regions
+
+`memory_classifier_ref` maps a virtual address to a
+`memory_region_info`. Region descriptions contain half-open
+`[start_address, end_address)` bounds, an address-space ID, protection flags,
+and a `memory_region_type` such as:
+
+* kernel or user code and data;
+* kernel or process stacks;
+* direct-map and page-descriptor regions;
+* kernel heap memory;
+* device MMIO and guard pages; or
+* secure/non-secure mappings.
+
+`memory_region_info::contains(address)` performs the half-open bounds check.
+Implement `memory_classifier_traits<Tag>::classify_address` using the same
+stateless or borrowed-context pattern as other inspector references:
+
+```cpp
+template <> struct microfmt::memory_classifier_traits<layout_tag> {
+  using context_type = layout_context;
+
+  static bool classify_address(
+      const void *context, uintptr_t virtual_address,
+      microfmt::memory_region_info &region) noexcept;
+};
+```
+
+Return `false` for unknown or unmapped addresses. The classifier describes
+policy and layout; it does not itself read target memory.
+
+See `examples/memory_classifier_demo.cpp` for a region-table implementation.
+
+## Scan likely memory addresses
+
+`memory_scanner<AbiTraits>` combines an `address_space_ref`,
+`memory_classifier_ref`, and one of two address sources:
+
+* a `register_context_ref` plus an explicit `span<const uintptr_t>`; or
+* an `address_source_ref` callback that yields addresses incrementally.
+
+When a register context is supplied, the scanner visits
+`AbiTraits::register_traits::address_registers()` in probability order. This
+uses likely pointer-bearing GPRs while excluding SP, LR/RA, PC, fixed-zero
+registers, and zero-valued candidates. Explicit addresses are scanned after
+the register candidates.
+
+```cpp
+microfmt::memory_scanner<microfmt::aarch64_abi_traits>::scan_and_dump(
+    target_space, classifier, register_context, explicit_addresses, output);
+```
+
+For readable data regions, the scanner uses `hexdump_checked` to render at most
+80 bytes, 16 bytes per line, with a hexadecimal and printable-ASCII pane.
+Reads are bounded by the classified region's exclusive end address, so a dump
+does not cross into the next known mapping. The implementation streams one
+line at a time instead of storing the complete 80-byte dump.
+
+The scanner does not dereference unknown, unreadable, executable, direct-map,
+MMIO, guard-page, or non-secure regions. A safe `address_space_ref` remains
+mandatory because classification data can itself be stale or incorrect.
+
+`address_source_ref` borrows its source context and calls
+`bool next(const void *, uintptr_t &) noexcept` until it returns `false`. This
+is useful for scanning stack slots, allocator metadata, saved contexts, or
+other incrementally produced address sets without allocation.
+
+See `examples/memory_scanner_demo.cpp` for combined register and explicit
+address scanning.
+
 ## Strings and pointer-width compatibility
 
 `remote_string_view` and `foreign_string_view` read a remote NUL-terminated

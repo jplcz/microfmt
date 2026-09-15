@@ -109,6 +109,13 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/formatters/fmt.hpp` | `fmt::format`, `fmt::format_to`, `fmt::format_to_n`, `fmt::print`, `fmt::println`, `fmt::join`, and the `fmt::formatter<T>` bridge |
 | `microfmt/formatters/boost_describe.hpp` | Automatic `formatter<T>` support for Boost.Describe reflected enums, structs, and classes |
 | `microfmt/sinks/tee_sink.hpp` | `tee_sink<N>` and `make_tee` for broadcasting output to a fixed number of sinks |
+| `microfmt/inspector/address_space.hpp` | `address_space_ref`, `address_space_traits<Tag>`, `remote_string_view`, and `remote_ref<T>` for fault-aware target reads |
+| `microfmt/inspector/address_translator.hpp` | `address_translator_ref`, `address_translator_traits<Tag>`, and `translation_attributes` for virtual-to-physical translation |
+| `microfmt/inspector/memory_classifier.hpp` | `memory_classifier_ref`, `memory_classifier_traits<Tag>`, `memory_region_info`, and `memory_region_type` |
+| `microfmt/inspector/memory_scanner.hpp` | `memory_scanner<AbiTraits>` and `address_source_ref` for classified register/address scanning with bounded ASCII hex dumps |
+| `microfmt/inspector/dwarf_registers.hpp` | Architecture register indexes, generic-timer IDs, and constexpr GPR/system/address-candidate catalogs |
+| `microfmt/inspector/register_context.hpp` | `register_context_ref` and `register_context_vtable` for type-erased target register access |
+| `microfmt/inspector/register_view.hpp` | `register_context_view<AbiTraits>` for architecture-aware register rendering |
 
 ---
 
