@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: BSD-2-Clause
+
 #pragma once
 
 /** @file chained_unwinder.hpp @brief Cascaded/tiered frame unwinder combining

@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
 //
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BSD-2-Clause
 
 #include <microfmt/inspector/memory_scanner.hpp>
 #include <microfmt/sinks/stdio.hpp>

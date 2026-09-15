@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
 #
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: BSD-2-Clause
 
 if(Boost_FOUND)
   add_definitions(-DMICROFMT_ENABLE_BOOST_UUID=1)

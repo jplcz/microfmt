@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
-// SPDX-License-Identifier: MIT
+//
+// SPDX-License-Identifier: BSD-2-Clause
 
 #include "microfmt/inspector/remote_forward_list_view.hpp"
 #include "microfmt/sinks/stdio.hpp"

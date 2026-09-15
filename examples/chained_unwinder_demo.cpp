@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include <array>
 #include <microfmt/inspector/address_space.hpp>
 #include <microfmt/inspector/arm_exidx_unwinder.hpp>

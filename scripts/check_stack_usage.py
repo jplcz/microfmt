@@ -2,7 +2,7 @@
 
 # SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
 #
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: BSD-2-Clause
 
 """
 microfmt static stack usage analyzer

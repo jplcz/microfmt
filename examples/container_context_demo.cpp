@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include <microfmt/inspector/remote_container.hpp>
 #include <microfmt/sinks/stdio.hpp>
 

@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
 #
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.20)
 project(microfmt VERSION 0.1.0 LANGUAGES CXX)

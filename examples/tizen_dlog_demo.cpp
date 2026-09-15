@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
 //
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: BSD-2-Clause
 
 #include <microfmt/log/logger.hpp>
 #include <microfmt/sinks/tizen_dlog_sink.hpp>

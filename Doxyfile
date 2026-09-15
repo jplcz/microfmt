@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
 #
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: BSD-2-Clause
 
 PROJECT_NAME           = microfmt
 PROJECT_BRIEF          = Zero-allocation C++ formatting for constrained environments

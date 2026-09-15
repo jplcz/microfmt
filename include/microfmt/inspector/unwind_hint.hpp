@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+//
+// SPDX-License-Identifier: BSD-2-Clause
+
 #pragma once
 
 /** @file unwind_hint.hpp @brief PC-range unwind hint tables for direct,

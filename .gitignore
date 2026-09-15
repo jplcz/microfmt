@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
 #
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: BSD-2-Clause
 
 CMakeLists.txt.user
 CMakeCache.txt
@@ -15,6 +15,9 @@ CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
 
+# Visual Studio Code
+.vscode/
+
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
@@ -22,4 +25,3 @@ CMakeUserPresets.json
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 cmake-build-*
 build*
-
