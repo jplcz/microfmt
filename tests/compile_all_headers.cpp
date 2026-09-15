@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <microfmt/detail/assert.hpp>
+#include <microfmt/expected.hpp>
 #include <microfmt/microfmt.hpp>
 #include <microfmt/markdown.hpp>
 #include <microfmt/formatters/ansi.hpp>

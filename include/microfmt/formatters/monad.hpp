@@ -4,8 +4,10 @@
 
 #pragma once
 
-/** @file monad.hpp @brief std::optional and std::expected formatting support. */
+/** @file monad.hpp
+ * @brief Optional and expected-like value formatting support. */
 
+#include "../expected.hpp"
 #include "../microfmt.hpp"
 #include <optional>
 #include <string_view>
@@ -48,6 +50,38 @@ template <typename T> struct formatter<std::optional<T>> {
       out.put(')');
     } else {
       out.write("None");
+    }
+  }
+};
+
+// ============================================================================
+// microfmt::expected Formatter (C++17+)
+// ============================================================================
+
+template <typename T, typename E> struct formatter<expected<T, E>> {
+  std::string_view forwarded_spec{""};
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    forwarded_spec = ctx.spec();
+  }
+
+  void format(const expected<T, E> &exp, const sink &out) const noexcept {
+    if (exp.has_value()) {
+      out.write("Ok(");
+      if constexpr (!std::is_void_v<T>) {
+        formatter<T> val_fmt;
+        format_parse_context val_ctx(forwarded_spec);
+        val_fmt.parse(val_ctx);
+        val_fmt.format(exp.value(), out);
+      }
+      out.put(')');
+    } else {
+      out.write("Err(");
+      formatter<E> err_fmt;
+      format_parse_context err_ctx(forwarded_spec);
+      err_fmt.parse(err_ctx);
+      err_fmt.format(exp.error(), out);
+      out.put(')');
     }
   }
 };
