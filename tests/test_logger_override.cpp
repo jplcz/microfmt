@@ -53,6 +53,41 @@ TEST(LoggerConfigurationTest, DefaultMacrosUseApplicationLoggerOverride) {
       "value=42");
 }
 
+TEST(LoggerConfigurationTest, CompileTimeFormatStringsUseLoggerOverloads) {
+  captured = {};
+  application_logger.set_level(microfmt::log::level::trace);
+
+  application_logger.info(MICROFMT_STRING("value={:04x}"), 0x2a);
+
+  EXPECT_EQ(captured.count, 1U);
+  EXPECT_EQ(captured.level, microfmt::log::level::info);
+  EXPECT_EQ(
+      std::string_view(captured.message.data(), captured.message_size),
+      "value=002a");
+
+  captured = {};
+  microfmt::log::set_default_logger(&application_logger);
+  microfmt::log::warn(MICROFMT_STRING("enabled={}"), true);
+
+  EXPECT_EQ(captured.count, 1U);
+  EXPECT_EQ(captured.level, microfmt::log::level::warn);
+  EXPECT_EQ(
+      std::string_view(captured.message.data(), captured.message_size),
+      "enabled=true");
+
+  captured = {};
+  MICROFMT_LOGGER_ERROR(application_logger,
+                        MICROFMT_STRING("code={:02X}"), 0x2a);
+
+  EXPECT_EQ(captured.count, 1U);
+  EXPECT_EQ(captured.level, microfmt::log::level::err);
+  EXPECT_EQ(
+      std::string_view(captured.message.data(), captured.message_size),
+      "code=2A");
+
+  microfmt::log::set_default_logger(nullptr);
+}
+
 TEST(LoggerConfigurationTest, DefaultLoggerCanBeSetOrCleared) {
   captured = {};
   microfmt::log::set_default_logger(nullptr);

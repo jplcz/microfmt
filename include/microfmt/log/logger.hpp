@@ -49,28 +49,23 @@ public:
 
   template <typename... Args>
   void log(level lvl, std::string_view fmt_str, const Args &...args) noexcept {
-    if (!should_log(lvl) || sink_count_ == 0) {
-      return;
-    }
+    log_impl(std::source_location::current(), lvl, fmt_str, args...);
+  }
 
-    // Format payload into internal line buffer
-    buffer_sink<MsgBufferCapacity> buf;
-    auto sink_stream = buf.as_sink();
-    format_to(sink_stream, fmt_str, args...);
-
-    log_msg msg{.logger_name = name_,
-                .lvl = lvl,
-                .time = std::chrono::system_clock::now(),
-                .payload = buf.view(),
-                .loc = std::source_location::current()};
-
-    for (size_t i = 0; i < sink_count_; ++i) {
-      sinks_[i].log(msg);
-    }
+  template <typename StrProvider, typename... Args>
+  void log(level lvl, compile_string_holder<StrProvider> fmt_str,
+           const Args &...args) noexcept {
+    log_impl(std::source_location::current(), lvl, fmt_str, args...);
   }
 
   template <typename... Args>
   void trace(std::string_view fmt, const Args &...args) noexcept {
+    log(level::trace, fmt, args...);
+  }
+
+  template <typename StrProvider, typename... Args>
+  void trace(compile_string_holder<StrProvider> fmt,
+             const Args &...args) noexcept {
     log(level::trace, fmt, args...);
   }
 
@@ -79,8 +74,20 @@ public:
     log(level::debug, fmt, args...);
   }
 
+  template <typename StrProvider, typename... Args>
+  void debug(compile_string_holder<StrProvider> fmt,
+             const Args &...args) noexcept {
+    log(level::debug, fmt, args...);
+  }
+
   template <typename... Args>
   void info(std::string_view fmt, const Args &...args) noexcept {
+    log(level::info, fmt, args...);
+  }
+
+  template <typename StrProvider, typename... Args>
+  void info(compile_string_holder<StrProvider> fmt,
+            const Args &...args) noexcept {
     log(level::info, fmt, args...);
   }
 
@@ -89,13 +96,31 @@ public:
     log(level::warn, fmt, args...);
   }
 
+  template <typename StrProvider, typename... Args>
+  void warn(compile_string_holder<StrProvider> fmt,
+            const Args &...args) noexcept {
+    log(level::warn, fmt, args...);
+  }
+
   template <typename... Args>
   void error(std::string_view fmt, const Args &...args) noexcept {
     log(level::err, fmt, args...);
   }
 
+  template <typename StrProvider, typename... Args>
+  void error(compile_string_holder<StrProvider> fmt,
+             const Args &...args) noexcept {
+    log(level::err, fmt, args...);
+  }
+
   template <typename... Args>
   void critical(std::string_view fmt, const Args &...args) noexcept {
+    log(level::critical, fmt, args...);
+  }
+
+  template <typename StrProvider, typename... Args>
+  void critical(compile_string_holder<StrProvider> fmt,
+                const Args &...args) noexcept {
     log(level::critical, fmt, args...);
   }
 
@@ -108,6 +133,20 @@ public:
   template <typename... Args>
   void log_loc(std::source_location loc, level lvl, std::string_view fmt_str,
                const Args &...args) noexcept {
+    log_impl(loc, lvl, fmt_str, args...);
+  }
+
+  template <typename StrProvider, typename... Args>
+  void log_loc(std::source_location loc, level lvl,
+               compile_string_holder<StrProvider> fmt_str,
+               const Args &...args) noexcept {
+    log_impl(loc, lvl, fmt_str, args...);
+  }
+
+private:
+  template <typename Format, typename... Args>
+  void log_impl(std::source_location loc, level lvl, Format fmt_str,
+                const Args &...args) noexcept {
     if (!should_log(lvl) || sink_count_ == 0) {
       return;
     }
@@ -128,7 +167,6 @@ public:
     }
   }
 
-private:
   std::string_view name_{};
   level level_{level::info};
   std::array<log_sink, MaxSinks> sinks_{};
@@ -184,8 +222,24 @@ inline void trace(std::string_view fmt, const Args &...args) noexcept {
   }
 }
 
+template <typename StrProvider, typename... Args>
+inline void trace(compile_string_holder<StrProvider> fmt,
+                  const Args &...args) noexcept {
+  if (logger *instance = default_logger()) {
+    instance->trace(fmt, args...);
+  }
+}
+
 template <typename... Args>
 inline void debug(std::string_view fmt, const Args &...args) noexcept {
+  if (logger *instance = default_logger()) {
+    instance->debug(fmt, args...);
+  }
+}
+
+template <typename StrProvider, typename... Args>
+inline void debug(compile_string_holder<StrProvider> fmt,
+                  const Args &...args) noexcept {
   if (logger *instance = default_logger()) {
     instance->debug(fmt, args...);
   }
@@ -198,8 +252,24 @@ inline void info(std::string_view fmt, const Args &...args) noexcept {
   }
 }
 
+template <typename StrProvider, typename... Args>
+inline void info(compile_string_holder<StrProvider> fmt,
+                 const Args &...args) noexcept {
+  if (logger *instance = default_logger()) {
+    instance->info(fmt, args...);
+  }
+}
+
 template <typename... Args>
 inline void warn(std::string_view fmt, const Args &...args) noexcept {
+  if (logger *instance = default_logger()) {
+    instance->warn(fmt, args...);
+  }
+}
+
+template <typename StrProvider, typename... Args>
+inline void warn(compile_string_holder<StrProvider> fmt,
+                 const Args &...args) noexcept {
   if (logger *instance = default_logger()) {
     instance->warn(fmt, args...);
   }
@@ -212,8 +282,24 @@ inline void error(std::string_view fmt, const Args &...args) noexcept {
   }
 }
 
+template <typename StrProvider, typename... Args>
+inline void error(compile_string_holder<StrProvider> fmt,
+                  const Args &...args) noexcept {
+  if (logger *instance = default_logger()) {
+    instance->error(fmt, args...);
+  }
+}
+
 template <typename... Args>
 inline void critical(std::string_view fmt, const Args &...args) noexcept {
+  if (logger *instance = default_logger()) {
+    instance->critical(fmt, args...);
+  }
+}
+
+template <typename StrProvider, typename... Args>
+inline void critical(compile_string_holder<StrProvider> fmt,
+                     const Args &...args) noexcept {
   if (logger *instance = default_logger()) {
     instance->critical(fmt, args...);
   }
