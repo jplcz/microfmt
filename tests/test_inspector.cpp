@@ -258,6 +258,99 @@ microfmt::address_space_ref local_space() {
   return microfmt::address_space_ref(microfmt::local_space_tag{});
 }
 
+TEST(AddressSpaceRef, ReturnsTypedReadErrorsAndValues) {
+  microfmt::address_space_ref empty;
+  uint32_t value = 0;
+
+  auto invalid_handle = empty.read_bytes(0x1000, &value, sizeof(value));
+  ASSERT_FALSE(invalid_handle);
+  EXPECT_EQ(invalid_handle.error(),
+            microfmt::address_space_error::invalid_handle);
+
+  auto invalid_address = local_space().read_bytes(0, &value, sizeof(value));
+  ASSERT_FALSE(invalid_address);
+  EXPECT_EQ(invalid_address.error(),
+            microfmt::address_space_error::invalid_address);
+
+  auto invalid_buffer =
+      local_space().read_bytes(address_of(value), nullptr, sizeof(value));
+  ASSERT_FALSE(invalid_buffer);
+  EXPECT_EQ(invalid_buffer.error(),
+            microfmt::address_space_error::invalid_buffer);
+
+  const uint32_t source = 0x12345678;
+  auto loaded = local_space().read<uint32_t>(address_of(source));
+  ASSERT_TRUE(loaded);
+  EXPECT_EQ(*loaded, source);
+
+  const uint8_t data[4]{};
+  scanner_space_context context{
+      .virtual_base = 0x1000, .data = data, .size = sizeof(data)};
+  microfmt::address_space_ref scanner(scanner_space_tag{}, context);
+  auto failed_read = scanner.read_bytes(0x2000, &value, sizeof(value));
+  ASSERT_FALSE(failed_read);
+  EXPECT_EQ(failed_read.error(), microfmt::address_space_error::read_failed);
+}
+
+TEST(AddressSpaceRef, ReturnsStringChunkMetadataAndErrors) {
+  char source[] = "abc";
+  char scratch[8]{};
+
+  auto chunk = local_space().read_string_chunk(address_of(source), scratch);
+  ASSERT_TRUE(chunk);
+  EXPECT_EQ(chunk->length, 3U);
+  EXPECT_TRUE(chunk->null_terminated);
+  EXPECT_STREQ(scratch, source);
+
+  auto empty_buffer =
+      local_space().read_string_chunk(address_of(source), microfmt::span<char>{});
+  ASSERT_FALSE(empty_buffer);
+  EXPECT_EQ(empty_buffer.error(),
+            microfmt::address_space_error::empty_buffer);
+}
+
+TEST(RemoteRef, ReturnsPreciseLoadErrors) {
+  struct alignas(8) object {
+    uint64_t value;
+  };
+
+  const object source{0x123456789abcdef0ULL};
+  alignas(object) std::byte scratch[sizeof(object)]{};
+  microfmt::remote_ref<object> valid(address_of(source), local_space(), scratch);
+
+  auto loaded = valid.load();
+  ASSERT_TRUE(loaded);
+  EXPECT_EQ((*loaded)->value, source.value);
+
+  microfmt::remote_ref<object> null_ref(0, local_space(), scratch);
+  auto null_result = null_ref.load();
+  ASSERT_FALSE(null_result);
+  EXPECT_EQ(null_result.error(), microfmt::remote_load_error::null_address);
+
+  std::byte small_scratch[sizeof(object) - 1]{};
+  microfmt::remote_ref<object> too_small(address_of(source), local_space(),
+                                         small_scratch);
+  auto small_result = too_small.load();
+  ASSERT_FALSE(small_result);
+  EXPECT_EQ(small_result.error(),
+            microfmt::remote_load_error::scratch_too_small);
+
+  alignas(object) std::byte misaligned_storage[sizeof(object) + 1]{};
+  microfmt::remote_ref<object> misaligned(
+      address_of(source), local_space(),
+      microfmt::span<std::byte>(misaligned_storage + 1, sizeof(object)));
+  auto misaligned_result = misaligned.load();
+  ASSERT_FALSE(misaligned_result);
+  EXPECT_EQ(misaligned_result.error(),
+            microfmt::remote_load_error::scratch_misaligned);
+
+  microfmt::remote_ref<object> invalid_space(address_of(source), {}, scratch);
+  auto invalid_space_result = invalid_space.load();
+  ASSERT_FALSE(invalid_space_result);
+  EXPECT_EQ(invalid_space_result.error(),
+            microfmt::remote_load_error::invalid_address_space);
+}
+
 TEST(AddressTranslatorRef, ReportsAttributeValidity) {
   microfmt::translation_attributes attributes;
   EXPECT_FALSE(attributes.is_valid());

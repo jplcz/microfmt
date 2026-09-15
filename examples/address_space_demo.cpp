@@ -187,10 +187,10 @@ int main() {
   microfmt::println("Guest Struct : {}", guest_task_ref);
 
   // Dereference the 32-bit string pointer loaded from guest struct
-  Compat32GuestTask *staged_guest_task = nullptr;
-  if (guest_task_ref.load(staged_guest_task)) {
+  auto staged_guest_task = guest_task_ref.load();
+  if (staged_guest_task) {
     auto remote_comm_view = microfmt::make_remote_string32(
-        staged_guest_task->comm_name, guest_space, guest_str_scratch);
+        (*staged_guest_task)->comm_name, guest_space, guest_str_scratch);
     microfmt::println("Resolved Comm: {}", remote_comm_view);
   }
 

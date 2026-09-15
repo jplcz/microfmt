@@ -140,11 +140,8 @@ template <> struct formatter<foreign_string_view> {
     size_t total = 0;
 
     while (total < view.max_limit()) {
-      size_t chunk_len = 0;
-      bool null_term = false;
-
-      if (!view.space().read_string_chunk(cur, view.scratch(), chunk_len,
-                                          null_term)) {
+      auto chunk = view.space().read_string_chunk(cur, view.scratch());
+      if (!chunk) {
         if (total == 0) {
           microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"),
                               view.address());
@@ -154,6 +151,7 @@ template <> struct formatter<foreign_string_view> {
         return;
       }
 
+      const size_t chunk_len = chunk->length;
       if (chunk_len > 0) {
         size_t limit_left = view.max_limit() - total;
         size_t to_write = (chunk_len > limit_left) ? limit_left : chunk_len;
@@ -163,7 +161,7 @@ template <> struct formatter<foreign_string_view> {
         cur += to_write;
       }
 
-      if (null_term || total >= view.max_limit()) {
+      if (chunk->null_terminated || total >= view.max_limit()) {
         break;
       }
     }

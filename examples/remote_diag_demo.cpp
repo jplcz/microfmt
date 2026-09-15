@@ -164,10 +164,12 @@ int main() {
   microfmt::println("Valid Struct      : {}", valid_ref);
 
   // Dereference and symbolize function pointers
-  FileOperations *loaded_fops = nullptr;
-  if (valid_ref.load(loaded_fops)) {
-    microfmt::remote_fn_ptr fn_write(loaded_fops->write_fn, resolver, scratch);
-    microfmt::remote_fn_ptr fn_rel(loaded_fops->release_fn, resolver, scratch);
+  auto loaded_fops = valid_ref.load();
+  if (loaded_fops) {
+    microfmt::remote_fn_ptr fn_write((*loaded_fops)->write_fn, resolver,
+                                    scratch);
+    microfmt::remote_fn_ptr fn_rel((*loaded_fops)->release_fn, resolver,
+                                  scratch);
 
     microfmt::println("Write Hook        : {}", fn_write);
     microfmt::println("Release Hook      : {}", fn_rel);

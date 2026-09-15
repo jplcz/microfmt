@@ -230,16 +230,22 @@ public:
 
   /**
    * @brief Loads the object into the scratch buffer.
-   * @param out_ptr Receives a pointer into the scratch buffer holding the
-   * loaded object.
-   * @return `true` on success, `false` otherwise.
+   * @return A pointer into the scratch buffer, or a precise loading error.
    */
-  [[nodiscard]] bool load(T *&out_ptr) const noexcept {
-    out_ptr = detail::scratch_object<T>(scratch_);
-    if (!out_ptr)
-      return false;
+  [[nodiscard]] expected<T *, remote_load_error> load() const noexcept {
+    if (addr_ == 0)
+      return unexpected(remote_load_error::null_address);
+    if (scratch_.size() < sizeof(T))
+      return unexpected(remote_load_error::scratch_too_small);
+    if (reinterpret_cast<uintptr_t>(scratch_.data()) % alignof(T) != 0)
+      return unexpected(remote_load_error::scratch_misaligned);
+    if (!space_)
+      return unexpected(remote_load_error::invalid_address_space);
 
-    return space_.read_bytes(addr_, out_ptr, sizeof(T));
+    auto *out_ptr = static_cast<T *>(static_cast<void *>(scratch_.data()));
+    if (!space_.read_bytes(addr_, out_ptr, sizeof(T)))
+      return unexpected(remote_load_error::read_failed);
+    return out_ptr;
   }
 
   /**
@@ -309,8 +315,8 @@ template <typename T> struct formatter<remote_diag_ref<T>> {
       return;
     }
 
-    T *staged = nullptr;
-    if (!view.load(staged)) {
+    auto staged = view.load();
+    if (!staged) {
       format_remote_fault(out, view.address(), view.resolver(),
                           view.str_scratch());
       return;
@@ -319,7 +325,7 @@ template <typename T> struct formatter<remote_diag_ref<T>> {
     formatter<T> elem_fmt;
     format_parse_context pctx(spec_);
     elem_fmt.parse(pctx);
-    elem_fmt.format(*staged, out);
+    elem_fmt.format(**staged, out);
   }
 };
 

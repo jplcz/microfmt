@@ -16,6 +16,27 @@
 #include <type_traits>
 namespace microfmt {
 
+enum class address_space_error {
+  invalid_handle,
+  invalid_address,
+  invalid_buffer,
+  empty_buffer,
+  read_failed,
+};
+
+struct string_chunk {
+  size_t length;
+  bool null_terminated;
+};
+
+enum class remote_load_error {
+  null_address,
+  scratch_too_small,
+  scratch_misaligned,
+  invalid_address_space,
+  read_failed,
+};
+
 namespace detail {
 
 constexpr uintptr_t add_address_offset(uintptr_t address,
@@ -212,14 +233,20 @@ public:
    * @param addr Absolute source address.
    * @param dest Destination buffer.
    * @param size Number of bytes to read.
-   * @return `true` on success, `false` if the handle is empty or the read
-   * fails.
+   * @return Success, or an error identifying an invalid handle/address or a
+   * backend read failure.
    */
-  [[nodiscard]] bool read_bytes(uintptr_t addr, void *dest,
-                                size_t size) const noexcept {
+  [[nodiscard]] expected<void, address_space_error>
+  read_bytes(uintptr_t addr, void *dest, size_t size) const noexcept {
     if (!vtbl_)
-      return false;
-    return vtbl_->read_bytes(ctx_, addr, dest, size);
+      return unexpected(address_space_error::invalid_handle);
+    if (addr == 0)
+      return unexpected(address_space_error::invalid_address);
+    if (!dest && size != 0)
+      return unexpected(address_space_error::invalid_buffer);
+    if (!vtbl_->read_bytes(ctx_, addr, dest, size))
+      return unexpected(address_space_error::read_failed);
+    return {};
   }
 
   /**
@@ -227,30 +254,61 @@ public:
    * @tparam T Object type (must be trivially copyable).
    * @param addr Absolute address of the object.
    * @param out_obj Receives the loaded object.
-   * @return `true` on success, `false` otherwise.
+   * @return Success or the address-space error.
    */
   template <typename T>
-  [[nodiscard]] bool read(uintptr_t addr, T &out_obj) const noexcept {
+  [[nodiscard]] expected<void, address_space_error>
+  read(uintptr_t addr, T &out_obj) const noexcept {
     static_assert(std::is_trivially_copyable_v<T>,
                   "Target type T must be trivially copyable");
     return read_bytes(addr, &out_obj, sizeof(T));
   }
 
   /**
+   * @brief Reads and returns a trivially-copyable object.
+   * @tparam T Object type (must be trivially copyable, nothrow default
+   * constructible, and nothrow move constructible).
+   * @param addr Absolute address of the object.
+   * @return The loaded object or the address-space error.
+   */
+  template <typename T>
+  [[nodiscard]] expected<T, address_space_error>
+  read(uintptr_t addr) const noexcept {
+    static_assert(std::is_trivially_copyable_v<T>,
+                  "Target type T must be trivially copyable");
+    static_assert(std::is_nothrow_default_constructible_v<T>,
+                  "Target type T must be nothrow default constructible");
+    static_assert(std::is_nothrow_move_constructible_v<T>,
+                  "Target type T must be nothrow move constructible");
+    T object{};
+    auto result = read_bytes(addr, &object, sizeof(T));
+    if (!result)
+      return unexpected(result.error());
+    return object;
+  }
+
+  /**
    * @brief Reads a bounded chunk of a remote NUL-terminated string.
    * @param addr Absolute source address.
    * @param buffer Scratch buffer receiving the chunk.
-   * @param out_len Receives the number of characters read.
-   * @param null_term Receives whether a terminator was found.
-   * @return `true` on success, `false` otherwise.
+   * @return Chunk metadata or an error identifying an invalid handle/address,
+   * empty buffer, or backend read failure.
    */
-  [[nodiscard]] bool read_string_chunk(uintptr_t addr, span<char> buffer,
-                                       size_t &out_len,
-                                       bool &null_term) const noexcept {
-    if (!vtbl_ || buffer.empty())
-      return false;
-    return vtbl_->read_string(ctx_, addr, buffer.data(), buffer.size(), out_len,
-                              null_term);
+  [[nodiscard]] expected<string_chunk, address_space_error>
+  read_string_chunk(uintptr_t addr, span<char> buffer) const noexcept {
+    if (!vtbl_)
+      return unexpected(address_space_error::invalid_handle);
+    if (addr == 0)
+      return unexpected(address_space_error::invalid_address);
+    if (buffer.empty())
+      return unexpected(address_space_error::empty_buffer);
+
+    string_chunk chunk{};
+    if (!vtbl_->read_string(ctx_, addr, buffer.data(), buffer.size(),
+                            chunk.length, chunk.null_terminated)) {
+      return unexpected(address_space_error::read_failed);
+    }
+    return chunk;
   }
 
   /**
@@ -395,17 +453,22 @@ public:
 
   /**
    * @brief Loads the object into the scratch buffer.
-   * @param out_ptr Receives a pointer into the scratch buffer holding the
-   * loaded object.
-   * @return `true` on success, `false` if scratch is too small, misaligned, or
-   * the read fails.
+   * @return A pointer into the scratch buffer, or a precise loading error.
    */
-  [[nodiscard]] bool load(T *&out_ptr) const noexcept {
-    out_ptr = detail::scratch_object<T>(scratch_);
-    if (!out_ptr)
-      return false;
+  [[nodiscard]] expected<T *, remote_load_error> load() const noexcept {
+    if (addr_ == 0)
+      return unexpected(remote_load_error::null_address);
+    if (scratch_.size() < sizeof(T))
+      return unexpected(remote_load_error::scratch_too_small);
+    if (reinterpret_cast<uintptr_t>(scratch_.data()) % alignof(T) != 0)
+      return unexpected(remote_load_error::scratch_misaligned);
+    if (!space_)
+      return unexpected(remote_load_error::invalid_address_space);
 
-    return space_.read_bytes(addr_, out_ptr, sizeof(T));
+    auto *out_ptr = static_cast<T *>(static_cast<void *>(scratch_.data()));
+    if (!space_.read_bytes(addr_, out_ptr, sizeof(T)))
+      return unexpected(remote_load_error::read_failed);
+    return out_ptr;
   }
 
 private:
@@ -454,11 +517,8 @@ template <> struct formatter<remote_string_view> {
     size_t total = 0;
 
     while (total < view.max_limit()) {
-      size_t chunk_len = 0;
-      bool null_term = false;
-
-      if (!view.space().read_string_chunk(cur, view.scratch(), chunk_len,
-                                          null_term)) {
+      auto chunk = view.space().read_string_chunk(cur, view.scratch());
+      if (!chunk) {
         if (total == 0) {
           microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"),
                               view.address());
@@ -468,6 +528,7 @@ template <> struct formatter<remote_string_view> {
         return;
       }
 
+      const size_t chunk_len = chunk->length;
       if (chunk_len > 0) {
         size_t limit_left = view.max_limit() - total;
         size_t to_write = (chunk_len > limit_left) ? limit_left : chunk_len;
@@ -477,7 +538,7 @@ template <> struct formatter<remote_string_view> {
         cur += to_write;
       }
 
-      if (null_term || total >= view.max_limit()) {
+      if (chunk->null_terminated || total >= view.max_limit()) {
         break;
       }
     }
@@ -518,8 +579,8 @@ template <typename T> struct formatter<remote_ref<T>> {
       return;
     }
 
-    T *staged = nullptr;
-    if (!view.load(staged)) {
+    auto staged = view.load();
+    if (!staged) {
       microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"),
                           view.address());
       return;
@@ -528,7 +589,7 @@ template <typename T> struct formatter<remote_ref<T>> {
     formatter<T> elem_fmt;
     format_parse_context pctx(spec_);
     elem_fmt.parse(pctx);
-    elem_fmt.format(*staged, out);
+    elem_fmt.format(**staged, out);
   }
 };
 

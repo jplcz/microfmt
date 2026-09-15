@@ -263,18 +263,21 @@ public:
   }
   [[nodiscard]] constexpr bool is_null() const noexcept { return addr_ == 0; }
 
-  [[nodiscard]] bool load_raw(const void *&out_ptr) const noexcept {
+  [[nodiscard]] expected<const void *, remote_load_error>
+  load_raw() const noexcept {
+    if (addr_ == 0)
+      return unexpected(remote_load_error::null_address);
     if (scratch_.size() < struct_size_)
-      return false;
+      return unexpected(remote_load_error::scratch_too_small);
     if (struct_align_ > 0 &&
         reinterpret_cast<uintptr_t>(scratch_.data()) % struct_align_ != 0)
-      return false;
+      return unexpected(remote_load_error::scratch_misaligned);
+    if (!space_)
+      return unexpected(remote_load_error::invalid_address_space);
 
-    if (!space_.read_bytes(addr_, scratch_.data(), struct_size_)) {
-      return false;
-    }
-    out_ptr = scratch_.data();
-    return true;
+    if (!space_.read_bytes(addr_, scratch_.data(), struct_size_))
+      return unexpected(remote_load_error::read_failed);
+    return static_cast<const void *>(scratch_.data());
   }
 
 private:
@@ -299,8 +302,8 @@ template <> struct formatter<remote_object_view> {
       return;
     }
 
-    const void *obj = nullptr;
-    if (!view.load_raw(obj)) {
+    auto obj = view.load_raw();
+    if (!obj) {
       microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"),
                           view.address());
       return;
@@ -325,7 +328,7 @@ template <> struct formatter<remote_object_view> {
       out.write(": ");
 
       const void *field_ptr =
-          reinterpret_cast<const char *>(obj) + fields[i].offset;
+          reinterpret_cast<const char *>(*obj) + fields[i].offset;
       fields[i].format_fn(view.space(), field_ptr, work_buf, out);
     }
     out.write(" }");
