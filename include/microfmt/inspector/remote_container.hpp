@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file remote_container.hpp
+ * @brief Type-erased views and contexts for formatting remote containers. */
+
 #include "address_space.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -14,12 +17,19 @@ namespace microfmt {
  * @brief Configuration options for formatting container views.
  */
 struct container_options {
+  /// Whether key components of entries are rendered.
   bool print_key{true};
+  /// Whether value components of entries are rendered.
   bool print_value{true};
+  /// Text separating a key from its value.
   std::string_view kv_separator{": "};
+  /// Text separating adjacent entries.
   std::string_view entry_separator{", "};
+  /// Opening delimiter for the rendered container.
   std::string_view open_bracket{"{"};
+  /// Closing delimiter for the rendered container.
   std::string_view close_bracket{"}"};
+  /// Maximum number of entries to render before truncating.
   size_t max_print{64};
 };
 
@@ -27,16 +37,33 @@ struct container_options {
  * @brief External context holder capturing container state and
  * traversal/formatting logic.
  *
- * Created via make_context(...) and stored safely in the caller's stack frame.
+ * Created via @ref make_container_context and stored safely in the caller's
+ * stack frame.
+ *
+ * @tparam IteratorState State retained while traversing the container.
+ * @tparam FormatterFn Callable used to format the container.
  */
 template <typename IteratorState, typename FormatterFn>
 class container_context {
 public:
+  /**
+   * @brief Stores container traversal state and its formatting callback.
+   * @param initial_state Initial state used by @p formatter.
+   * @param formatter Callable that renders the container.
+   */
   constexpr container_context(IteratorState initial_state,
                               FormatterFn formatter)
       : state_(initial_state), formatter_fn_(formatter) {}
 
-  // Type-erased execution thunk receiving options managed by the view
+  /**
+   * @brief Invokes the stored formatter through the type-erased view API.
+   * @param raw_ctx Pointer to this context.
+   * @param space Address space containing the container.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param out Output destination.
+   * @param opts Rendering options selected by the view.
+   * @return The result reported by the stored formatter.
+   */
   static bool format_thunk(void *raw_ctx, address_space_ref space,
                            span<std::byte> scratch, const sink &out,
                            const container_options &opts) noexcept {
@@ -44,7 +71,15 @@ public:
     return self->formatter_fn_(self->state_, opts, space, scratch, out);
   }
 
+  /**
+   * @brief Returns the mutable traversal state.
+   * @return Reference to the stored state.
+   */
   [[nodiscard]] constexpr IteratorState &state() noexcept { return state_; }
+  /**
+   * @brief Returns the traversal state.
+   * @return Const reference to the stored state.
+   */
   [[nodiscard]] constexpr const IteratorState &state() const noexcept {
     return state_;
   }
@@ -55,7 +90,13 @@ private:
 };
 
 /**
- * @brief Factory helper to build an external container context.
+ * @brief Creates an external context for a remote container view.
+ * @tparam IteratorState State retained while traversing the container.
+ * @tparam FormatterFn Callable type used to render the container.
+ * @param initial_state Initial state supplied to @p formatter.
+ * @param formatter Callable accepting state, options, address space, scratch
+ * storage, and sink.
+ * @return A @ref container_context retaining the supplied state and callable.
  */
 template <typename IteratorState, typename FormatterFn>
 [[nodiscard]] constexpr auto
@@ -71,15 +112,26 @@ make_container_context(IteratorState initial_state,
  */
 class remote_container_view {
 public:
+  /**
+   * @brief Type-erased function signature used to format a container.
+   */
   using format_fn_t = bool (*)(void *ctx, address_space_ref space,
                                span<std::byte> scratch, const sink &out,
                                const container_options &opts) noexcept;
 
+  /**
+   * @brief Constructs an empty, invalid view.
+   */
   constexpr remote_container_view() noexcept = default;
 
   /**
-   * @brief Constructs a remote_container_view with optional explicit
-   * container_options.
+   * @brief Constructs a remote-container view with explicit options.
+   * @tparam Context Concrete @ref container_context type.
+   * @param container_addr Address of the remote container.
+   * @param space Address space containing the container.
+   * @param scratch Reusable scratch storage for traversal.
+   * @param ctx Context whose lifetime must exceed this view.
+   * @param options Formatting configuration.
    */
   template <typename Context>
   constexpr remote_container_view(uintptr_t container_addr,
@@ -90,28 +142,58 @@ public:
         ctx_(ctx), format_fn_(ctx ? &Context::format_thunk : nullptr),
         options_(options) {}
 
+  /**
+   * @brief Returns the remote container address.
+   * @return Absolute container address.
+   */
   [[nodiscard]] constexpr uintptr_t container_address() const noexcept {
     return container_addr_;
   }
+  /**
+   * @brief Returns the address space.
+   * @return Address-space handle used for reads.
+   */
   [[nodiscard]] constexpr address_space_ref space() const noexcept {
     return space_;
   }
+  /**
+   * @brief Returns the reusable scratch storage.
+   * @return Scratch byte span.
+   */
   [[nodiscard]] constexpr span<std::byte> scratch() const noexcept {
     return scratch_;
   }
+  /**
+   * @brief Returns the rendering configuration.
+   * @return Const reference to the view options.
+   */
   [[nodiscard]] constexpr const container_options &options() const noexcept {
     return options_;
   }
+  /**
+   * @brief Reports whether the view lacks a container address or context.
+   * @return `true` when the view cannot be formatted.
+   */
   [[nodiscard]] constexpr bool is_null() const noexcept {
     return container_addr_ == 0 || !ctx_;
   }
 
+  /**
+   * @brief Formats the remote container through its bound context.
+   * @param out Destination sink.
+   * @return `true` when the formatter succeeds; `false` for an invalid view or
+   * formatter failure.
+   */
   bool format(const sink &out) const noexcept {
     if (!format_fn_ || !ctx_)
       return false;
     return format_fn_(ctx_, space_, scratch_, out, options_);
   }
 
+  /**
+   * @brief Reports whether the view can be formatted.
+   * @return `true` when the view is non-null.
+   */
   [[nodiscard]] constexpr explicit operator bool() const noexcept {
     return !is_null();
   }

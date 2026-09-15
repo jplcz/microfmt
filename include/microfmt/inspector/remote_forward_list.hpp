@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file remote_forward_list.hpp
+ * @brief Type-erased formatting support for remote singly-linked lists. */
+
 #include "remote_container.hpp"
 #include "remote_object.hpp"
 
@@ -16,6 +19,11 @@ namespace microfmt {
 struct remote_forward_list_vtable {
   /**
    * @brief Extracts the address of the first node (head) from the container.
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the list.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param out_node_addr Receives the head-node address.
+   * @return `true` on success.
    */
   bool (*get_head_node)(const void *state, address_space_ref space,
                         span<std::byte> scratch,
@@ -24,6 +32,12 @@ struct remote_forward_list_vtable {
   /**
    * @brief Extracts the address of the next node given the current node's
    * address.
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the list.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param node_addr Current node address.
+   * @param out_next_addr Receives the next-node address.
+   * @return `true` on success.
    */
   bool (*get_next_node)(const void *state, address_space_ref space,
                         span<std::byte> scratch, uintptr_t node_addr,
@@ -32,6 +46,12 @@ struct remote_forward_list_vtable {
   /**
    * @brief Reads and formats the element stored in the given node into the
    * sink.
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the list.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param node_addr Node containing the element.
+   * @param out Destination sink.
+   * @return `true` on success.
    */
   bool (*format_node_element)(const void *state, address_space_ref space,
                               span<std::byte> scratch, uintptr_t node_addr,
@@ -42,6 +62,11 @@ struct remote_forward_list_vtable {
  * @brief Factory helper that binds user state and a remote_forward_list_vtable
  * into a context compatible with make_container_context and
  * remote_container_view.
+ * @tparam State Caller-defined state consumed by @p vtable.
+ * @param container_addr Remote list-container address.
+ * @param initial_state Initial caller-defined state.
+ * @param vtable Operations used to traverse and format list nodes.
+ * @return A context suitable for constructing @ref remote_container_view.
  */
 template <typename State>
 [[nodiscard]] constexpr auto
@@ -169,6 +194,9 @@ struct forward_list_layout_traits_impl {
 
 } // namespace detail
 
+/**
+ * @brief Generates contexts for conventional singly-linked-list layouts.
+ */
 struct remote_forward_list_traits {
   /**
    * @brief Layout generator for singly-linked lists.
@@ -179,6 +207,7 @@ struct remote_forward_list_traits {
    * @param head_offset Offset from container to the head node pointer
    * @param next_offset Offset from a node to its next node pointer
    * @param data_offset Offset from a node to its payload data member
+   * @return A callable that binds a remote container address to this layout.
    */
   template <typename T, typename RemotePtr = uintptr_t>
   [[nodiscard]] static constexpr auto

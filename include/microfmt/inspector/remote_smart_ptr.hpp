@@ -1,5 +1,8 @@
 #pragma once
 
+/** @file remote_smart_ptr.hpp
+ * @brief Remote smart-pointer views, layout wrappers, and formatters. */
+
 #include "address_space.hpp"
 #include "remote_object.hpp"
 #include <cstddef>
@@ -11,15 +14,32 @@ namespace microfmt {
 // Unique Pointer View & Traits
 // ============================================================================
 
+/**
+ * @brief Formattable view over a unique pointer stored in a remote process.
+ * @tparam T Pointee type.
+ * @tparam RemotePtr Pointer representation in the target process.
+ */
 template <typename T, typename RemotePtr = uintptr_t>
 class remote_unique_ptr_view {
 public:
+  /**
+   * @brief Constructs a view over a remote unique-pointer object.
+   * @param ptr_addr Address of the remote pointer object.
+   * @param space Address space containing the pointer and pointee.
+   * @param scratch Storage used to load the pointee.
+   * @param ptr_offset Offset from @p ptr_addr to the stored pointer.
+   */
   constexpr remote_unique_ptr_view(uintptr_t ptr_addr, address_space_ref space,
                                    span<std::byte> scratch,
                                    ptrdiff_t ptr_offset = 0) noexcept
       : ptr_addr_(ptr_addr), space_(space), scratch_(scratch),
         ptr_offset_(ptr_offset) {}
 
+  /**
+   * @brief Loads and renders the pointee or `nullptr`.
+   * @param out Destination sink.
+   * @return `true` on success; `false` when a required remote read fails.
+   */
   bool format(const sink &out) const noexcept {
     uintptr_t raw_ptr_addr = ptr_addr_ + ptr_offset_;
     RemotePtr remote_ptr{};
@@ -58,10 +78,27 @@ private:
 // Shared Pointer View & Traits (Control Block Reference Counting)
 // ============================================================================
 
+/**
+ * @brief Formattable view over a shared pointer and its remote control block.
+ * @tparam T Pointee type.
+ * @tparam RemotePtr Pointer representation in the target process.
+ * @tparam RemoteRefCount Reference-count representation in the target process.
+ */
 template <typename T, typename RemotePtr = uintptr_t,
           typename RemoteRefCount = int32_t>
 class remote_shared_ptr_view {
 public:
+  /**
+   * @brief Constructs a view over a remote shared-pointer object.
+   * @param shared_ptr_addr Address of the remote shared-pointer object.
+   * @param space Address space containing the pointer, pointee, and control
+   * block.
+   * @param scratch Storage used to load the pointee.
+   * @param ptr_offset Offset to the stored pointee pointer.
+   * @param control_block_offset Offset to the control-block pointer.
+   * @param use_count_offset Offset in the control block to the strong count.
+   * @param weak_count_offset Offset in the control block to the weak count.
+   */
   constexpr remote_shared_ptr_view(uintptr_t shared_ptr_addr,
                                    address_space_ref space,
                                    span<std::byte> scratch,
@@ -73,6 +110,11 @@ public:
         ptr_off_(ptr_offset), cb_off_(control_block_offset),
         use_off_(use_count_offset), weak_off_(weak_count_offset) {}
 
+  /**
+   * @brief Loads and renders the pointee and reference counts.
+   * @param out Destination sink.
+   * @return `true` on success; `false` when required pointer reads fail.
+   */
   bool format(const sink &out) const noexcept {
     RemotePtr remote_ptr{};
     if (!space_.read(addr_ + ptr_off_, remote_ptr)) {
@@ -135,10 +177,24 @@ private:
 // Intrusive Pointer View & Traits (Embedded Reference Counting)
 // ============================================================================
 
+/**
+ * @brief Formattable view over an intrusive pointer with an embedded count.
+ * @tparam T Pointee type.
+ * @tparam RemotePtr Pointer representation in the target process.
+ * @tparam RemoteRefCount Reference-count representation in the target process.
+ */
 template <typename T, typename RemotePtr = uintptr_t,
           typename RemoteRefCount = int32_t>
 class remote_intrusive_ptr_view {
 public:
+  /**
+   * @brief Constructs a view over a remote intrusive-pointer object.
+   * @param intrusive_ptr_addr Address of the remote pointer object.
+   * @param space Address space containing the pointer and pointee.
+   * @param scratch Storage used to load the pointee.
+   * @param ptr_offset Offset to the stored pointee pointer.
+   * @param ref_count_offset Offset in the pointee to its reference count.
+   */
   constexpr remote_intrusive_ptr_view(uintptr_t intrusive_ptr_addr,
                                       address_space_ref space,
                                       span<std::byte> scratch,
@@ -147,6 +203,11 @@ public:
       : addr_(intrusive_ptr_addr), space_(space), scratch_(scratch),
         ptr_off_(ptr_offset), ref_off_(ref_count_offset) {}
 
+  /**
+   * @brief Loads and renders the pointee and its embedded reference count.
+   * @param out Destination sink.
+   * @return `true` on success; `false` when the pointer read fails.
+   */
   bool format(const sink &out) const noexcept {
     RemotePtr remote_ptr{};
     if (!space_.read(addr_ + ptr_off_, remote_ptr)) {
@@ -195,7 +256,9 @@ private:
 // ============================================================================
 
 /**
- * @brief Inline wrapper for remote unique pointers.
+ * @brief Layout wrapper for a remote unique pointer.
+ * @tparam T Pointee type.
+ * @tparam RemotePtr Pointer representation in the target process.
  */
 template <typename T, typename RemotePtr = uintptr_t> class remote_unique_ptr {
 public:
@@ -216,8 +279,10 @@ private:
 };
 
 /**
- * @brief Inline wrapper for remote shared pointers (stores object ptr and
- * control block ptr).
+ * @brief Layout wrapper for a remote shared pointer.
+ * @tparam T Pointee type.
+ * @tparam RemotePtr Pointer representation in the target process.
+ * @tparam RemoteRefCount Reference-count representation in the target process.
  */
 template <typename T, typename RemotePtr = uintptr_t,
           typename RemoteRefCount = int32_t>
@@ -241,6 +306,13 @@ private:
   RemotePtr control_block_{0};
 };
 
+/**
+ * @brief Layout wrapper for a remote intrusive pointer.
+ * @tparam T Pointee type.
+ * @tparam RefCountOffset Offset in the pointee to its reference count.
+ * @tparam RemotePtr Pointer representation in the target process.
+ * @tparam RemoteRefCount Reference-count representation in the target process.
+ */
 template <typename T, ptrdiff_t RefCountOffset = 0,
           typename RemotePtr = uintptr_t, typename RemoteRefCount = int32_t>
 class remote_intrusive_ptr {

@@ -3,6 +3,9 @@
 
 #pragma once
 
+/** @file fp_unwinder.hpp
+ * @brief Frame-pointer-based unwinder backend for remote address spaces. */
+
 #include "address_space.hpp"
 #include "dwarf_abi.hpp"
 #include "frame_pointer.hpp"
@@ -10,18 +13,43 @@
 
 namespace microfmt {
 
+/**
+ * @brief Context used by a frame-pointer unwinder.
+ *
+ * @tparam AbiTraits Architecture-specific frame layout traits.
+ */
 template <typename AbiTraits> struct fp_unwinder_context {
+  /// Address space containing the stack to unwind.
   address_space_ref space;
 };
 
+/**
+ * @brief Tag selecting the frame-pointer unwinder for an ABI.
+ * @tparam AbiTraits Architecture-specific frame layout traits.
+ */
 template <typename AbiTraits> struct fp_unwinder_tag {};
 
 } // namespace microfmt
 
 template <typename AbiTraits>
 struct microfmt::frame_unwinder_traits<microfmt::fp_unwinder_tag<AbiTraits>> {
+  /**
+   * @brief Context type accepted by the frame unwinder.
+   */
   using context_type = microfmt::fp_unwinder_context<AbiTraits>;
 
+  /**
+   * @brief Reads the caller frame record from the current frame pointer.
+   *
+   * The ABI traits provide the saved frame-pointer and return-address offsets.
+   *
+   * @param ctx Pointer to a @ref context_type.
+   * @param current_fp Frame pointer of the current frame.
+   * @param next_fp Receives the caller's frame pointer.
+   * @param next_pc Receives the normalized caller program counter.
+   * @return `true` when both frame slots were read and form a valid caller
+   * frame; otherwise `false`.
+   */
   static bool step(const void *ctx, uintptr_t current_fp, uintptr_t &next_fp,
                    uintptr_t &next_pc) noexcept {
     if (!ctx || current_fp == 0)

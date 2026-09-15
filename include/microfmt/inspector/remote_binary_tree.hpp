@@ -3,6 +3,9 @@
 
 #pragma once
 
+/** @file remote_binary_tree.hpp
+ * @brief Type-erased formatting support for remote binary-tree containers. */
+
 #include "remote_container.hpp"
 #include "remote_object.hpp"
 #include <cstddef>
@@ -21,6 +24,11 @@ namespace microfmt {
 struct remote_binary_tree_vtable {
   /**
    * @brief Extracts the root node address from the tree container.
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the tree.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param out_node_addr Receives the root-node address.
+   * @return `true` on success.
    */
   bool (*get_root_node)(const void *state, address_space_ref space,
                         span<std::byte> scratch,
@@ -28,6 +36,12 @@ struct remote_binary_tree_vtable {
 
   /**
    * @brief Extracts the left child node address given a node address.
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the tree.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param node_addr Parent node address.
+   * @param out_left_addr Receives the left-child address.
+   * @return `true` on success.
    */
   bool (*get_left_node)(const void *state, address_space_ref space,
                         span<std::byte> scratch, uintptr_t node_addr,
@@ -35,6 +49,12 @@ struct remote_binary_tree_vtable {
 
   /**
    * @brief Extracts the right child node address given a node address.
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the tree.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param node_addr Parent node address.
+   * @param out_right_addr Receives the right-child address.
+   * @return `true` on success.
    */
   bool (*get_right_node)(const void *state, address_space_ref space,
                          span<std::byte> scratch, uintptr_t node_addr,
@@ -42,6 +62,13 @@ struct remote_binary_tree_vtable {
 
   /**
    * @brief Formats the payload/entry at the given node address.
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the tree.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param node_addr Node containing the entry.
+   * @param opts Entry rendering options.
+   * @param out Destination sink.
+   * @return `true` on success.
    */
   bool (*format_node)(const void *state, address_space_ref space,
                       span<std::byte> scratch, uintptr_t node_addr,
@@ -55,6 +82,12 @@ struct remote_binary_tree_vtable {
  * Partitions the provided scratch buffer dynamically: the first half is used
  * as a bounded iteration stack, and the remainder is passed down for node
  * formatting.
+ *
+ * @tparam State Caller-defined state consumed by @p vtable.
+ * @param container_addr Remote tree-container address.
+ * @param initial_state Initial caller-defined state.
+ * @param vtable Operations used to traverse and format tree nodes.
+ * @return A context suitable for constructing @ref remote_container_view.
  */
 template <typename State>
 [[nodiscard]] constexpr auto
@@ -179,6 +212,12 @@ make_remote_binary_tree_context(uintptr_t container_addr, State initial_state,
 // Binary Tree Layout Traits & Generator Helpers
 // ============================================================================
 
+/**
+ * @brief Implementation backing generated binary-tree layout contexts.
+ * @tparam Key Key type stored in each node.
+ * @tparam Value Value type stored in each node.
+ * @tparam RemotePtr Pointer representation in the target process.
+ */
 template <typename Key, typename Value, typename RemotePtr>
 struct binary_tree_layout_traits_impl {
   struct layout_state {
@@ -267,6 +306,9 @@ struct binary_tree_layout_traits_impl {
           }};
 };
 
+/**
+ * @brief Generates contexts for conventional binary-search-tree layouts.
+ */
 struct remote_binary_tree_traits {
   /**
    * @brief Layout generator for binary search trees (BSTs, maps, sets).
@@ -275,6 +317,12 @@ struct remote_binary_tree_traits {
    * @tparam Value Value type stored in nodes
    * @tparam RemotePtr Target pointer type (e.g., uintptr_t or uint32_t for
    * compat)
+   * @param root_offset Offset from the container to its root-node pointer.
+   * @param left_offset Offset from a node to its left-child pointer.
+   * @param right_offset Offset from a node to its right-child pointer.
+   * @param key_offset Offset from a node to its key.
+   * @param val_offset Offset from a node to its value.
+   * @return A callable that binds a remote container address to this layout.
    */
   template <typename Key, typename Value, typename RemotePtr = uintptr_t>
   [[nodiscard]] static constexpr auto

@@ -1,5 +1,8 @@
 #pragma once
 
+/** @file remote_hash_table.hpp
+ * @brief Type-erased formatting support for remote chained hash tables. */
+
 #include "remote_container.hpp"
 #include "remote_object.hpp"
 
@@ -12,12 +15,23 @@ namespace microfmt {
 struct remote_hash_table_vtable {
   /**
    * @brief Reads the total number of buckets in the hash table.
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the table.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param out_count Receives the bucket count.
+   * @return `true` on success.
    */
   bool (*get_bucket_count)(const void *state, address_space_ref space,
                            span<std::byte> scratch, size_t &out_count) noexcept;
 
   /**
    * @brief Gets the first node address for a given bucket index.
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the table.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param bucket_index Zero-based bucket index.
+   * @param out_node_addr Receives the first node address.
+   * @return `true` on success.
    */
   bool (*get_bucket_head)(const void *state, address_space_ref space,
                           span<std::byte> scratch, size_t bucket_index,
@@ -25,6 +39,12 @@ struct remote_hash_table_vtable {
 
   /**
    * @brief Gets the next node address in the current bucket's chain.
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the table.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param node_addr Current node address.
+   * @param out_next_addr Receives the next node address.
+   * @return `true` on success.
    */
   bool (*get_next_node)(const void *state, address_space_ref space,
                         span<std::byte> scratch, uintptr_t node_addr,
@@ -34,6 +54,13 @@ struct remote_hash_table_vtable {
    * @brief Formats a hash table entry (key and/or value) at the given node
    * address respecting container_options (print_key, print_value,
    * kv_separator).
+   * @param state Caller-defined traversal state.
+   * @param space Address space containing the table.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param node_addr Node containing the entry.
+   * @param opts Entry rendering options.
+   * @param out Destination sink.
+   * @return `true` on success.
    */
   bool (*format_entry)(const void *state, address_space_ref space,
                        span<std::byte> scratch, uintptr_t node_addr,
@@ -44,6 +71,11 @@ struct remote_hash_table_vtable {
  * @brief Factory helper that binds user state and a remote_hash_table_vtable
  * into a context compatible with make_container_context and
  * remote_container_view.
+ * @tparam State Caller-defined state consumed by @p vtable.
+ * @param container_addr Remote hash-table address.
+ * @param initial_state Initial caller-defined state.
+ * @param vtable Operations used to traverse and format entries.
+ * @return A context suitable for constructing @ref remote_container_view.
  */
 template <typename State>
 [[nodiscard]] constexpr auto
@@ -220,9 +252,22 @@ struct hash_table_layout_traits_impl {
 
 } // namespace detail
 
+/**
+ * @brief Generates contexts for conventional chained-hash-table layouts.
+ */
 struct remote_hash_table_traits {
   /**
    * @brief Layout generator for chaining hash tables.
+   * @tparam Key Key type stored by each node.
+   * @tparam Value Value type stored by each node.
+   * @tparam RemotePtr Pointer representation in the target process.
+   * @tparam RemoteSize Bucket-count representation in the target process.
+   * @param buckets_ptr_offset Offset to the bucket-array pointer.
+   * @param bucket_count_offset Offset to the bucket count.
+   * @param node_next_offset Offset to a node's next pointer.
+   * @param node_key_offset Offset to a node's key.
+   * @param node_val_offset Offset to a node's value.
+   * @return A callable that binds a remote container address to this layout.
    */
   template <typename Key, typename Value, typename RemotePtr = uintptr_t,
             typename RemoteSize = size_t>

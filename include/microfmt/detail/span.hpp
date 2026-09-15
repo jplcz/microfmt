@@ -1,5 +1,8 @@
 #pragma once
 
+/** @file span.hpp
+ * @brief Minimal C++17-compatible non-owning view of contiguous elements. */
+
 #include <cstddef>
 #include <type_traits>
 
@@ -16,6 +19,13 @@
 
 namespace microfmt {
 
+/**
+ * @brief A lightweight, dynamic-extent view over a contiguous element range.
+ *
+ * This C++17 fallback interoperates with @c std::span when it is available.
+ *
+ * @tparam T Element type, optionally const-qualified.
+ */
 template <typename T> class span {
 public:
   using element_type = T;

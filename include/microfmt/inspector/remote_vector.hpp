@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file remote_vector.hpp
+ * @brief Type-erased formatting support for remote vector-like sequences. */
+
 #include "remote_container.hpp"
 #include "remote_object.hpp"
 
@@ -18,18 +21,34 @@ namespace microfmt {
 struct remote_vector_vtable {
   /**
    * @brief Reads the total number of elements in the remote container.
+   * @param ctx Caller-defined traversal state.
+   * @param space Address space containing the sequence.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param out_size Receives the element count.
+   * @return `true` on success.
    */
   bool (*get_size)(const void *ctx, address_space_ref space,
                    span<std::byte> scratch, size_t &out_size) noexcept;
 
   /**
    * @brief Reads the container's capacity (optional).
+   * @param ctx Caller-defined traversal state.
+   * @param space Address space containing the sequence.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param out_cap Receives the capacity.
+   * @return `true` on success; `false` when capacity is unavailable.
    */
   bool (*get_capacity)(const void *ctx, address_space_ref space,
                        span<std::byte> scratch, size_t &out_cap) noexcept;
 
   /**
    * @brief Computes or resolves the remote address of the N-th element.
+   * @param ctx Caller-defined traversal state.
+   * @param space Address space containing the sequence.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param index Zero-based element index.
+   * @param out_elem_addr Receives the element address.
+   * @return `true` on success.
    */
   bool (*get_element_address)(const void *ctx, address_space_ref space,
                               span<std::byte> scratch, size_t index,
@@ -38,6 +57,12 @@ struct remote_vector_vtable {
   /**
    * @brief Formats a single element at the given remote address into the sink
    *        using the scratch buffer for safe local reading.
+   * @param ctx Caller-defined traversal state.
+   * @param space Address space containing the sequence.
+   * @param scratch Reusable scratch storage for remote reads.
+   * @param elem_addr Element address.
+   * @param out Destination sink.
+   * @return `true` on success.
    */
   bool (*format_element)(const void *ctx, address_space_ref space,
                          span<std::byte> scratch, uintptr_t elem_addr,
@@ -45,7 +70,12 @@ struct remote_vector_vtable {
 };
 
 /**
- * @brief Concrete helper that links a user context to the vector vtable.
+ * @brief Creates a context that links caller state to a vector vtable.
+ * @tparam State Caller-defined state consumed by @p vtable.
+ * @param container_addr Remote sequence-container address.
+ * @param initial_state Initial caller-defined state.
+ * @param vtable Operations used to inspect and format elements.
+ * @return A context suitable for constructing @ref remote_container_view.
  */
 template <typename State>
 [[nodiscard]] constexpr auto
@@ -228,7 +258,20 @@ template <typename T> struct carray_layout_traits_impl {
 
 } // namespace detail
 
+/**
+ * @brief Generates contexts for conventional vector and C-array layouts.
+ */
 struct remote_vector_traits {
+  /**
+   * @brief Generates a layout for a contiguous dynamic sequence.
+   * @tparam T Element type.
+   * @tparam RemotePtr Pointer representation in the target process.
+   * @tparam RemoteSize Size representation in the target process.
+   * @param data_offset Offset to the first-element pointer.
+   * @param size_offset Offset to the element count.
+   * @param capacity_offset Offset to the capacity, or `-1` when unavailable.
+   * @return A callable that binds a remote container address to this layout.
+   */
   template <typename T, typename RemotePtr = uintptr_t,
             typename RemoteSize = size_t>
   [[nodiscard]] static constexpr auto
@@ -244,6 +287,12 @@ struct remote_vector_traits {
     };
   }
 
+  /**
+   * @brief Generates a layout for a fixed-size remote C array.
+   * @tparam T Element type.
+   * @param fixed_size Number of elements in the array.
+   * @return A callable that binds a remote array address to this layout.
+   */
   template <typename T>
   [[nodiscard]] static constexpr auto
   carray_layout(size_t fixed_size) noexcept {
