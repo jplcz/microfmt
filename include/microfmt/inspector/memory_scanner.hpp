@@ -12,6 +12,7 @@
 #include "dwarf_abi.hpp"
 #include "memory_classifier.hpp"
 #include "register_context.hpp"
+#include "symbol_resolver.hpp"
 #include "../formatters/hexdump.hpp"
 #include "../microfmt.hpp"
 #include <cstdint>
@@ -52,6 +53,40 @@ private:
 };
 
 /**
+ * @brief Optional memory-scanner behavior and caller-owned symbol storage.
+ *
+ * The scanner borrows @ref symbol_scratch for each symbol lookup and never
+ * allocates a symbol-name buffer on its stack.
+ */
+struct memory_scanner_options {
+  /// Maximum number of bytes dumped for a readable data address.
+  size_t dump_bytes{80};
+  /// Resolver used for addresses classified as code or data.
+  symbol_resolver_ref symbol_resolver{};
+  /// Whether resolved Itanium names are demangled while printing.
+  bool demangle_symbols{true};
+};
+
+/**
+ * @brief Caller-owned reusable storage for memory scanning.
+ *
+ * Keep this context in static, arena, or heap storage when stack usage is
+ * constrained. A context may be reused between scans but must not be shared by
+ * concurrent scans.
+ */
+struct memory_scanner_context {
+  memory_scanner_options options{};
+  /// Caller-owned scratch storage passed to the symbol resolver.
+  span<char> symbol_scratch{};
+  memory_region_info region_info{};
+  raw_resolved_symbol raw_symbol{};
+  resolved_symbol_info resolved_symbol{};
+  hexdump_view dump_view{};
+  uint8_t dump_line_buffer[16]{};
+  address_space_ref reader_space{};
+};
+
+/**
  * @brief Utility scanner parameterized by AbiTraits for inspecting,
  * classifying, and conditional hex-dumping of memory addresses.
  * @tparam AbiTraits Architecture-specific ABI traits.
@@ -66,7 +101,8 @@ public:
                             memory_classifier_ref classifier,
                             register_context_ref reg_ctx,
                             span<const uintptr_t> raw_addresses,
-                            const sink &out, size_t dump_bytes = 80) noexcept {
+                            memory_scanner_context &context,
+                            const sink &out) noexcept {
     size_t index = 0;
 
     // If a register context is provided, scan the architecture's ordered
@@ -79,14 +115,14 @@ public:
             reg_val != 0) {
           microfmt::format_to(out, MICROFMT_STRING("[{}] -> "), reg_desc.name);
           process_address(space, classifier, index++,
-                          static_cast<uintptr_t>(reg_val), out, dump_bytes);
+                          static_cast<uintptr_t>(reg_val), context, out);
         }
       }
     }
 
     // Scan explicit raw address span
     for (uintptr_t addr : raw_addresses) {
-      process_address(space, classifier, index++, addr, out, dump_bytes);
+      process_address(space, classifier, index++, addr, context, out);
     }
   }
 
@@ -96,25 +132,29 @@ public:
    */
   static void scan_and_dump(address_space_ref space,
                             memory_classifier_ref classifier,
-                            address_source_ref source, const sink &out,
-                            size_t dump_bytes = 80) noexcept {
+                            address_source_ref source,
+                            memory_scanner_context &context,
+                            const sink &out) noexcept {
     if (!source)
       return;
 
     size_t index = 0;
     uintptr_t addr = 0;
     while (source.next(addr)) {
-      process_address(space, classifier, index++, addr, out, dump_bytes);
+      process_address(space, classifier, index++, addr, context, out);
     }
   }
 
 private:
   static void process_address(address_space_ref space,
                               memory_classifier_ref classifier, size_t index,
-                              uintptr_t addr, const sink &out,
-                              size_t dump_bytes) noexcept {
-    memory_region_info info{};
-    bool classified = classifier && classifier.classify_address(addr, info);
+                              uintptr_t addr, memory_scanner_context &context,
+                              const sink &out) noexcept {
+    context.region_info = {};
+    bool classified =
+        classifier &&
+        classifier.classify_address(addr, context.region_info);
+    const auto &info = context.region_info;
 
     microfmt::format_to(out, MICROFMT_STRING("  #{:<2} addr={:#018x} | type="),
                         index, addr);
@@ -125,6 +165,28 @@ private:
                           info.start_address, info.end_address);
     } else {
       out.write("unknown/unmapped");
+    }
+
+    if (classified && context.options.symbol_resolver &&
+        is_symbolic_region(info.type)) {
+      context.resolved_symbol = {};
+      if (context.options.symbol_resolver.resolve(
+              addr, context.symbol_scratch, context.raw_symbol,
+              context.resolved_symbol) &&
+          context.resolved_symbol.has_symbol()) {
+        const auto &symbol = context.resolved_symbol;
+        out.write(" | symbol=");
+        if (context.options.demangle_symbols) {
+          microfmt::format_to(out, MICROFMT_STRING("{}"),
+                              as_demangled(symbol.symbol_name));
+        } else {
+          out.write(symbol.symbol_name);
+        }
+        if (symbol.offset_from_symbol != 0) {
+          microfmt::format_to(out, MICROFMT_STRING("+{:#x}"),
+                              symbol.offset_from_symbol);
+        }
+      }
     }
 
     // Determine whether dereferencing (memory reading/dumping) is permitted for
@@ -149,10 +211,12 @@ private:
 
     out.write("\n");
 
-    if (!space || dump_bytes == 0 || !allow_deref)
+    if (!space || context.options.dump_bytes == 0 || !allow_deref)
       return;
 
-    size_t bytes_to_dump = (dump_bytes > 80) ? 80 : dump_bytes;
+    size_t bytes_to_dump =
+        (context.options.dump_bytes > 80) ? 80
+                                          : context.options.dump_bytes;
     if (classified && info.end_address > addr) {
       const size_t bytes_in_region =
           static_cast<size_t>(info.end_address - addr);
@@ -168,9 +232,27 @@ private:
           *static_cast<const address_space_ref *>(context);
       return target_space.read_bytes(source_address, buffer, size) ? size : 0;
     };
-    formatter<hexdump_view> dump_formatter;
-    dump_formatter.format(
-        hexdump_checked(addr, bytes_to_dump, reader, &space, 16, true), out);
+    context.reader_space = space;
+    context.dump_view =
+        hexdump_checked(addr, bytes_to_dump, reader, &context.reader_space, 16,
+                        true);
+    format_hexdump(context.dump_view,
+                   {context.dump_line_buffer,
+                    sizeof(context.dump_line_buffer)},
+                   out);
+  }
+
+  [[nodiscard]] static constexpr bool
+  is_symbolic_region(memory_region_type type) noexcept {
+    switch (type) {
+    case memory_region_type::kernel_code:
+    case memory_region_type::kernel_data:
+    case memory_region_type::user_code:
+    case memory_region_type::user_data:
+      return true;
+    default:
+      return false;
+    }
   }
 
   static void print_region_type(const sink &out,

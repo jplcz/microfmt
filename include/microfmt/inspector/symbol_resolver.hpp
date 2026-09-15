@@ -205,29 +205,47 @@ public:
    */
   [[nodiscard]] bool resolve(uintptr_t addr, span<char> scratch,
                              resolved_symbol_info &out_info) const noexcept {
+    raw_resolved_symbol raw{};
+    return resolve(addr, scratch, raw, out_info);
+  }
+
+  /**
+   * @brief Resolves an address using caller-owned intermediate storage.
+   * @param addr Address to resolve.
+   * @param scratch Scratch buffer available to the backend.
+   * @param raw_storage Storage used for the backend's raw result.
+   * @param out_info Receives the derived symbol info.
+   * @return `true` on success, `false` when the handle is empty or resolution
+   * fails.
+   */
+  [[nodiscard]] bool
+  resolve(uintptr_t addr, span<char> scratch,
+          raw_resolved_symbol &raw_storage,
+          resolved_symbol_info &out_info) const noexcept {
     if (!vtbl_)
       return false;
 
-    raw_resolved_symbol raw{};
-    if (!vtbl_->resolve(ctx_, addr, scratch, raw)) {
+    raw_storage = {};
+    if (!vtbl_->resolve(ctx_, addr, scratch, raw_storage)) {
       return false;
     }
 
-    out_info.symbol_name = raw.symbol_name;
-    out_info.symbol_base = raw.symbol_base;
-    out_info.is_exact = raw.is_exact;
-    out_info.image_name = raw.image_name;
-    out_info.image_load_base = raw.image_load_base;
+    out_info.symbol_name = raw_storage.symbol_name;
+    out_info.symbol_base = raw_storage.symbol_base;
+    out_info.is_exact = raw_storage.is_exact;
+    out_info.image_name = raw_storage.image_name;
+    out_info.image_load_base = raw_storage.image_load_base;
 
     // Derive relative offsets
-    if (raw.symbol_base != 0 && addr >= raw.symbol_base) {
-      out_info.offset_from_symbol = addr - raw.symbol_base;
+    if (raw_storage.symbol_base != 0 && addr >= raw_storage.symbol_base) {
+      out_info.offset_from_symbol = addr - raw_storage.symbol_base;
     } else {
       out_info.offset_from_symbol = 0;
     }
 
-    if (raw.image_load_base != 0 && addr >= raw.image_load_base) {
-      out_info.offset_from_image = addr - raw.image_load_base;
+    if (raw_storage.image_load_base != 0 &&
+        addr >= raw_storage.image_load_base) {
+      out_info.offset_from_image = addr - raw_storage.image_load_base;
     } else {
       out_info.offset_from_image = 0;
     }

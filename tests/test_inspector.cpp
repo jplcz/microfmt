@@ -14,6 +14,7 @@
 #include <microfmt/inspector/remote_hash_table.hpp>
 #include <microfmt/inspector/remote_smart_ptr.hpp>
 #include <microfmt/inspector/remote_vector.hpp>
+#include <microfmt/inspector/symbol_resolver.hpp>
 
 #include <array>
 #include <cstddef>
@@ -26,6 +27,7 @@ struct stateful_translator_tag {};
 struct stateless_classifier_tag {};
 struct stateful_classifier_tag {};
 struct scanner_space_tag {};
+struct scanner_symbol_tag {};
 
 struct translator_context {
   uintptr_t virtual_base;
@@ -50,12 +52,25 @@ struct scanner_space_context {
   mutable size_t read_calls{0};
   mutable size_t largest_read{0};
   mutable uintptr_t last_read_address{0};
+  const uint8_t *expected_read_buffer{nullptr};
+  mutable bool used_external_read_buffer{true};
 };
 
 struct address_sequence {
   const uintptr_t *addresses;
   size_t count;
   mutable size_t index{0};
+};
+
+struct scanner_symbol_context {
+  uintptr_t data_address;
+  uintptr_t code_address;
+  char *expected_scratch;
+  size_t expected_scratch_size;
+  microfmt::raw_resolved_symbol *expected_raw_symbol;
+  mutable size_t calls{0};
+  mutable bool used_external_scratch{true};
+  mutable bool used_external_raw_symbol{true};
 };
 
 bool next_address(const void *opaque_context,
@@ -174,6 +189,10 @@ template <> struct microfmt::address_space_traits<scanner_space_tag> {
     if (size > context.largest_read)
       context.largest_read = size;
     context.last_read_address = address;
+    if (context.expected_read_buffer) {
+      context.used_external_read_buffer &=
+          destination == context.expected_read_buffer;
+    }
 
     if (size > 16 || address < context.virtual_base)
       return false;
@@ -187,6 +206,45 @@ template <> struct microfmt::address_space_traits<scanner_space_tag> {
   static bool read_string(const void *, uintptr_t, char *, size_t, size_t &,
                           bool &) noexcept {
     return false;
+  }
+};
+
+template <> struct microfmt::symbol_resolver_traits<scanner_symbol_tag> {
+  using context_type = scanner_symbol_context;
+
+  static bool resolve(const void *opaque_context, uintptr_t address,
+                      microfmt::span<char> scratch,
+                      microfmt::raw_resolved_symbol &symbol) noexcept {
+    if (!opaque_context)
+      return false;
+    const auto &context =
+        *static_cast<const scanner_symbol_context *>(opaque_context);
+    ++context.calls;
+    context.used_external_scratch &=
+        scratch.data() == context.expected_scratch &&
+        scratch.size() == context.expected_scratch_size;
+    context.used_external_raw_symbol &=
+        &symbol == context.expected_raw_symbol;
+
+    const char *name = nullptr;
+    size_t name_size = 0;
+    if (address == context.data_address) {
+      name = "global_data";
+      name_size = 11;
+    } else if (address == context.code_address) {
+      name = "kernel_entry";
+      name_size = 12;
+    } else {
+      return false;
+    }
+    if (scratch.size() < name_size)
+      return false;
+
+    std::memcpy(scratch.data(), name, name_size);
+    symbol.symbol_name = {scratch.data(), name_size};
+    symbol.symbol_base = address;
+    symbol.is_exact = true;
+    return true;
   }
 };
 
@@ -391,13 +449,35 @@ TEST(MemoryScanner, ScansRawAddressesAndSuppressesUnsafeRegions) {
                                               classifier_state);
   const uintptr_t addresses[]{data_address, code_address, 0};
   microfmt::buffer_sink<1024> output;
+  auto symbol_scratch = std::make_unique<char[]>(32);
+  auto scanner_context = std::make_unique<microfmt::memory_scanner_context>();
+  space_context.expected_read_buffer = scanner_context->dump_line_buffer;
+  scanner_symbol_context symbol_context{
+      .data_address = data_address,
+      .code_address = code_address,
+      .expected_scratch = symbol_scratch.get(),
+      .expected_scratch_size = 32,
+      .expected_raw_symbol = &scanner_context->raw_symbol};
+  const auto resolver =
+      microfmt::symbol_resolver_ref::make<scanner_symbol_tag>(symbol_context);
+  scanner_context->options.dump_bytes = 96;
+  scanner_context->options.symbol_resolver = resolver;
+  scanner_context->symbol_scratch = {symbol_scratch.get(), 32};
+  scanner_context->options.demangle_symbols = false;
 
   microfmt::memory_scanner<microfmt::x86_64_abi_traits>::scan_and_dump(
       space, classifier, microfmt::register_context_ref{}, addresses,
-      output.as_sink(), 96);
+      *scanner_context, output.as_sink());
 
   const auto rendered = output.view();
-  EXPECT_NE(rendered.find("type=user_data"), std::string_view::npos);
+  const auto data_type_position = rendered.find("type=user_data");
+  const auto data_symbol_position = rendered.find("symbol=global_data");
+  const auto data_dump_position = rendered.find("00 01 02 03");
+  EXPECT_NE(data_type_position, std::string_view::npos);
+  EXPECT_NE(data_symbol_position, std::string_view::npos);
+  EXPECT_NE(data_dump_position, std::string_view::npos);
+  EXPECT_LT(data_type_position, data_symbol_position);
+  EXPECT_LT(data_symbol_position, data_dump_position);
   EXPECT_NE(rendered.find("00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f "
                           " |................|"),
             std::string_view::npos);
@@ -406,11 +486,18 @@ TEST(MemoryScanner, ScansRawAddressesAndSuppressesUnsafeRegions) {
             std::string_view::npos);
   EXPECT_EQ(rendered.find("50 51 52 53"), std::string_view::npos);
   EXPECT_NE(rendered.find("type=kernel_code"), std::string_view::npos);
+  EXPECT_NE(rendered.find("symbol=kernel_entry"), std::string_view::npos);
   EXPECT_EQ(rendered.find("aa bb cc dd"), std::string_view::npos);
   EXPECT_NE(rendered.find("type=unknown/unmapped"), std::string_view::npos);
+  EXPECT_EQ(symbol_context.calls, 2u);
+  EXPECT_TRUE(symbol_context.used_external_scratch);
+  EXPECT_TRUE(symbol_context.used_external_raw_symbol);
+  EXPECT_EQ(scanner_context->region_info.type,
+            microfmt::memory_region_type::unknown);
   EXPECT_EQ(space_context.read_calls, 5u);
   EXPECT_EQ(space_context.largest_read, 16u);
   EXPECT_EQ(space_context.last_read_address, data_address + 64);
+  EXPECT_TRUE(space_context.used_external_read_buffer);
 }
 
 TEST(MemoryScanner, ScansOrderedAddressRegistersAndAbstractSources) {
@@ -442,9 +529,11 @@ TEST(MemoryScanner, ScansOrderedAddressRegistersAndAbstractSources) {
   microfmt::register_context_ref registers(
       &values, {read_register, nullptr}, local_space(), scratch);
   microfmt::buffer_sink<512> register_output;
+  auto scanner_context = std::make_unique<microfmt::memory_scanner_context>();
+  scanner_context->options.dump_bytes = 0;
 
   microfmt::memory_scanner<microfmt::aarch64_abi_traits>::scan_and_dump(
-      {}, {}, registers, {}, register_output.as_sink(), 0);
+      {}, {}, registers, {}, *scanner_context, register_output.as_sink());
 
   const auto register_text = register_output.view();
   EXPECT_NE(register_text.find("[FP] ->"), std::string_view::npos);
@@ -459,7 +548,7 @@ TEST(MemoryScanner, ScansOrderedAddressRegistersAndAbstractSources) {
   microfmt::address_source_ref source(sequence, &next_address);
   microfmt::buffer_sink<512> source_output;
   microfmt::memory_scanner<microfmt::arm_abi_traits>::scan_and_dump(
-      {}, {}, source, source_output.as_sink(), 0);
+      {}, {}, source, *scanner_context, source_output.as_sink());
   EXPECT_EQ(sequence.index, 2u);
   EXPECT_NE(source_output.view().find("addr=0x0000000000004444"),
             std::string_view::npos);
@@ -469,7 +558,7 @@ TEST(MemoryScanner, ScansOrderedAddressRegistersAndAbstractSources) {
   microfmt::address_source_ref empty_source;
   microfmt::buffer_sink<32> empty_output;
   microfmt::memory_scanner<microfmt::arm_abi_traits>::scan_and_dump(
-      {}, {}, empty_source, empty_output.as_sink());
+      {}, {}, empty_source, *scanner_context, empty_output.as_sink());
   EXPECT_TRUE(empty_output.view().empty());
 }
 

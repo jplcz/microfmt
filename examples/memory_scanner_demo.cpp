@@ -11,6 +11,7 @@
 #include <cstring>
 
 struct scanner_classifier_tag {};
+struct scanner_symbol_tag {};
 
 struct scanner_classifier_context {
   const microfmt::memory_region_info *regions;
@@ -32,6 +33,39 @@ struct microfmt::memory_classifier_traits<scanner_classifier_tag> {
         info = context.regions[i];
         return true;
       }
+    }
+    return false;
+  }
+};
+
+struct scanner_symbol_context {
+  uintptr_t data_address;
+  uintptr_t code_address;
+};
+
+template <> struct microfmt::symbol_resolver_traits<scanner_symbol_tag> {
+  using context_type = scanner_symbol_context;
+
+  static bool resolve(const void *opaque_context, uintptr_t address,
+                      microfmt::span<char>,
+                      microfmt::raw_resolved_symbol &symbol) noexcept {
+    if (!opaque_context)
+      return false;
+    const auto &context =
+        *static_cast<const scanner_symbol_context *>(opaque_context);
+    if (address >= context.data_address &&
+        address < context.data_address + 80) {
+      symbol.symbol_name = "demo_buffer";
+      symbol.symbol_base = context.data_address;
+      symbol.is_exact = address == context.data_address;
+      return true;
+    }
+    if (address >= context.code_address &&
+        address < context.code_address + 8) {
+      symbol.symbol_name = "demo_handler";
+      symbol.symbol_base = context.code_address;
+      symbol.is_exact = address == context.code_address;
+      return true;
     }
     return false;
   }
@@ -96,6 +130,14 @@ int main() {
           classifier_context);
   const auto space =
       microfmt::address_space_ref{microfmt::local_space_tag{}};
+  const scanner_symbol_context symbol_context{data_address, code_address};
+  const auto resolver =
+      microfmt::symbol_resolver_ref::make<scanner_symbol_tag>(symbol_context);
+  static std::array<char, 64> symbol_scratch{};
+  static microfmt::memory_scanner_context scanner_context;
+  scanner_context.options.symbol_resolver = resolver;
+  scanner_context.symbol_scratch = {symbol_scratch.data(),
+                                    symbol_scratch.size()};
 
   demo_registers register_values{
       .fp = data_address, .x0 = code_address, .x1 = 0};
@@ -108,5 +150,5 @@ int main() {
   microfmt::println("Register and explicit-address memory scan:");
   microfmt::memory_scanner<microfmt::aarch64_abi_traits>::scan_and_dump(
       space, classifier, register_context, explicit_addresses,
-      microfmt::stdout_sink());
+      scanner_context, microfmt::stdout_sink());
 }

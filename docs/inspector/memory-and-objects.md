@@ -129,9 +129,26 @@ registers, and zero-valued candidates. Explicit addresses are scanned after
 the register candidates.
 
 ```cpp
+static std::array<char, 128> symbol_scratch;
+static microfmt::memory_scanner_context scanner_context;
+scanner_context.options.symbol_resolver = resolver;
+scanner_context.symbol_scratch =
+    {symbol_scratch.data(), symbol_scratch.size()};
+
 microfmt::memory_scanner<microfmt::aarch64_abi_traits>::scan_and_dump(
-    target_space, classifier, register_context, explicit_addresses, output);
+    target_space, classifier, register_context, explicit_addresses,
+    scanner_context, output);
 ```
+
+Addresses classified as kernel/user code or data are resolved with the
+optional `symbol_resolver_ref` and printed before any potential dump.
+`symbol_scratch` is borrowed caller-owned storage passed directly to the
+resolver. Keep it in static, arena, or heap storage when scanner stack usage
+must remain minimal; the scanner does not allocate an internal symbol buffer.
+`memory_scanner_context` similarly owns reusable region metadata, raw and
+derived symbol results, the hex-dump descriptor and line buffer, and the
+address-space handle used by the checked reader. The caller controls its
+placement and must not share one context between concurrent scans.
 
 For readable data regions, the scanner uses `hexdump_checked` to render at most
 80 bytes, 16 bytes per line, with a hexadecimal and printable-ASCII pane.

@@ -112,7 +112,7 @@ Include the headers for the facilities you use. Every API below is in
 | `microfmt/inspector/address_space.hpp` | `address_space_ref`, `address_space_traits<Tag>`, `remote_string_view`, and `remote_ref<T>` for fault-aware target reads |
 | `microfmt/inspector/address_translator.hpp` | `address_translator_ref`, `address_translator_traits<Tag>`, and `translation_attributes` for virtual-to-physical translation |
 | `microfmt/inspector/memory_classifier.hpp` | `memory_classifier_ref`, `memory_classifier_traits<Tag>`, `memory_region_info`, and `memory_region_type` |
-| `microfmt/inspector/memory_scanner.hpp` | `memory_scanner<AbiTraits>` and `address_source_ref` for classified register/address scanning with bounded ASCII hex dumps |
+| `microfmt/inspector/memory_scanner.hpp` | `memory_scanner<AbiTraits>`, caller-owned `memory_scanner_context`, and `address_source_ref` for low-stack classified scanning with bounded ASCII hex dumps |
 | `microfmt/inspector/dwarf_registers.hpp` | Architecture register indexes, generic-timer IDs, and constexpr GPR/system/address-candidate catalogs |
 | `microfmt/inspector/register_context.hpp` | `register_context_ref` and `register_context_vtable` for type-erased target register access |
 | `microfmt/inspector/register_view.hpp` | `register_context_view<AbiTraits>` for architecture-aware register rendering |
