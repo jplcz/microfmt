@@ -41,7 +41,7 @@ public:
    * @return `true` on success; `false` when a required remote read fails.
    */
   bool format(const sink &out) const noexcept {
-    uintptr_t raw_ptr_addr = ptr_addr_ + ptr_offset_;
+    uintptr_t raw_ptr_addr = detail::add_address_offset(ptr_addr_, ptr_offset_);
     RemotePtr remote_ptr{};
     if (!space_.read(raw_ptr_addr, remote_ptr)) {
       return false;
@@ -117,7 +117,7 @@ public:
    */
   bool format(const sink &out) const noexcept {
     RemotePtr remote_ptr{};
-    if (!space_.read(addr_ + ptr_off_, remote_ptr)) {
+    if (!space_.read(detail::add_address_offset(addr_, ptr_off_), remote_ptr)) {
       return false;
     }
 
@@ -128,7 +128,7 @@ public:
     }
 
     RemotePtr control_ptr{};
-    if (!space_.read(addr_ + cb_off_, control_ptr)) {
+    if (!space_.read(detail::add_address_offset(addr_, cb_off_), control_ptr)) {
       return false;
     }
     uintptr_t cb_addr = static_cast<uintptr_t>(control_ptr);
@@ -137,8 +137,10 @@ public:
     RemoteRefCount weak_cnt = -1;
 
     if (cb_addr != 0) {
-      std::ignore = space_.read(cb_addr + use_off_, use_cnt);
-      std::ignore = space_.read(cb_addr + weak_off_, weak_cnt);
+      std::ignore =
+          space_.read(detail::add_address_offset(cb_addr, use_off_), use_cnt);
+      std::ignore =
+          space_.read(detail::add_address_offset(cb_addr, weak_off_), weak_cnt);
     }
 
     out.write("shared_ptr(");
@@ -210,7 +212,7 @@ public:
    */
   bool format(const sink &out) const noexcept {
     RemotePtr remote_ptr{};
-    if (!space_.read(addr_ + ptr_off_, remote_ptr)) {
+    if (!space_.read(detail::add_address_offset(addr_, ptr_off_), remote_ptr)) {
       return false;
     }
 
@@ -221,7 +223,8 @@ public:
     }
 
     RemoteRefCount ref_cnt = 0;
-    std::ignore = space_.read(obj_addr + ref_off_, ref_cnt);
+    std::ignore =
+        space_.read(detail::add_address_offset(obj_addr, ref_off_), ref_cnt);
 
     out.write("intrusive_ptr(");
 

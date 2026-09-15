@@ -688,12 +688,17 @@ TEST(DwarfRegisterTraits, DefinesAllArchitectureRegisterCatalogs) {
   static_assert(x86_traits::gpr_registers.size() == 9);
   static_assert(x86_64_traits::gpr_registers.size() == 17);
   static_assert(riscv_traits::gpr_registers.size() == 33);
-  static_assert(microfmt::dwarf::arm32::CNTFRQ ==
-                microfmt::dwarf::generic_timer::CNTFRQ);
-  static_assert(microfmt::dwarf::aarch64::CNTFRQ_EL0 ==
-                microfmt::dwarf::generic_timer::CNTFRQ);
-  static_assert(microfmt::dwarf::aarch64::CNTHVS_CVAL_EL2 ==
-                microfmt::dwarf::generic_timer::CNTHVS_CVAL);
+  static_assert(static_cast<uint32_t>(microfmt::dwarf::arm32::CNTFRQ) ==
+                static_cast<uint32_t>(
+                    microfmt::dwarf::generic_timer::CNTFRQ));
+  static_assert(static_cast<uint32_t>(
+                    microfmt::dwarf::aarch64::CNTFRQ_EL0) ==
+                static_cast<uint32_t>(
+                    microfmt::dwarf::generic_timer::CNTFRQ));
+  static_assert(static_cast<uint32_t>(
+                    microfmt::dwarf::aarch64::CNTHVS_CVAL_EL2) ==
+                static_cast<uint32_t>(
+                    microfmt::dwarf::generic_timer::CNTHVS_CVAL));
   static_assert(address_candidates_are_unique_gprs(
       arm_traits::address_registers(), arm_traits::gpr_registers));
   static_assert(address_candidates_are_unique_gprs(
@@ -1205,8 +1210,10 @@ TEST(InspectorFrameUnwinder, StepsFrameRecordsAndRejectsInvalidRecords) {
     uintptr_t saved_ra;
   };
 
-  frame_record caller{0, 0};
-  frame_record current{address_of(caller), 0x101};
+  frame_record frames[2]{{0, 0}, {0, 0}};
+  frame_record &current = frames[0];
+  frame_record &caller = frames[1];
+  current = {address_of(caller), 0x101};
   microfmt::fp_unwinder_context<fake_fp_abi> context{local_space()};
   fake_register_state register_state;
   register_state.value = address_of(current);

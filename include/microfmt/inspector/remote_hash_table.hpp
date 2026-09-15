@@ -168,7 +168,9 @@ struct hash_table_layout_traits_impl {
           [](const void *state, address_space_ref space, span<std::byte>,
              size_t &out_count) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t count_addr = s->container_addr + s->bucket_count_off;
+            uintptr_t count_addr =
+                detail::add_address_offset(s->container_addr,
+                                           s->bucket_count_off);
             RemoteSize remote_sz{};
             if (!space.read(count_addr, remote_sz))
               return false;
@@ -179,7 +181,9 @@ struct hash_table_layout_traits_impl {
           [](const void *state, address_space_ref space, span<std::byte>,
              size_t bucket_index, uintptr_t &out_node_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t buckets_ptr_addr = s->container_addr + s->buckets_ptr_off;
+            uintptr_t buckets_ptr_addr =
+                detail::add_address_offset(s->container_addr,
+                                           s->buckets_ptr_off);
             RemotePtr buckets_ptr{};
             if (!space.read(buckets_ptr_addr, buckets_ptr))
               return false;
@@ -198,7 +202,8 @@ struct hash_table_layout_traits_impl {
           [](const void *state, address_space_ref space, span<std::byte>,
              uintptr_t node_addr, uintptr_t &out_next_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t next_ptr_addr = node_addr + s->node_next_off;
+            uintptr_t next_ptr_addr =
+                detail::add_address_offset(node_addr, s->node_next_off);
             RemotePtr next_ptr{};
             if (!space.read(next_ptr_addr, next_ptr))
               return false;
@@ -213,7 +218,8 @@ struct hash_table_layout_traits_impl {
 
             // Format Key (if enabled)
             if (opts.print_key) {
-              uintptr_t key_addr = node_addr + s->node_key_off;
+              uintptr_t key_addr =
+                  detail::add_address_offset(node_addr, s->node_key_off);
               if constexpr (remote_object_traits<Key>::is_registered) {
                 remote_object_view key_view(key_addr, space, type_tag<Key>{},
                                             scratch);
@@ -231,7 +237,8 @@ struct hash_table_layout_traits_impl {
 
             // Format Value (if enabled)
             if (opts.print_value) {
-              uintptr_t val_addr = node_addr + s->node_val_off;
+              uintptr_t val_addr =
+                  detail::add_address_offset(node_addr, s->node_val_off);
               if constexpr (remote_object_traits<Value>::is_registered) {
                 remote_object_view val_view(val_addr, space, type_tag<Value>{},
                                             scratch);

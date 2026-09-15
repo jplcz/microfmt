@@ -217,7 +217,7 @@ int main() {
   auto *stack_region = reinterpret_cast<uint32_t *>(&target_memory[stack_base]);
 
   // Frame 0: SensorData_Process (Handled by EXIDX unwinder)
-  stack_region[0] = stack_base + 16; // Caller FP
+  stack_region[0] = static_cast<uint32_t>(stack_base + 16); // Caller FP
   stack_region[1] = 0x0800'2011;     // Thumb return PC in System_MainLoop
 
   // Frame 1: System_MainLoop (Handled by FP unwinder fallback)

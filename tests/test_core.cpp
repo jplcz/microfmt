@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <gtest/gtest.h>
+#include <microfmt/formatters/bintime.hpp>
 #include <microfmt/microfmt.hpp>
 
 #include <cstdint>
@@ -53,11 +54,26 @@ TEST(CoreSpan, StdSpanInteroperability) {
   EXPECT_EQ(custom_s.size(), std_s.size());
   EXPECT_EQ(custom_s.data(), std_s.data());
 
-  // Implicit conversion to std::span
-  std::span<char> roundtrip = custom_s;
+  // Conversion to std::span
+  std::span<char> roundtrip = custom_s.operator std::span<char>();
   EXPECT_EQ(roundtrip.data(), data);
 }
 #endif
+
+TEST(CoreBintime, FormatsPicosecondPrecisionWithoutWideIntegers) {
+  struct binary_time {
+    int64_t sec;
+    uint64_t frac;
+  };
+
+  EXPECT_EQ(
+      microfmt::format<32>("{:p}", binary_time{1, UINT64_C(0x8000000000000000)})
+          .view(),
+      "1.500000000000s");
+  EXPECT_EQ(
+      microfmt::format<32>("{:p}", binary_time{1, UINT64_MAX}).view(),
+      "1.999999999999s");
+}
 
 // ============================================================================
 // Concrete Sink Implementations & Bounds Verification

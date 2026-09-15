@@ -16,6 +16,20 @@
 #include <type_traits>
 namespace microfmt {
 
+namespace detail {
+
+constexpr uintptr_t add_address_offset(uintptr_t address,
+                                       ptrdiff_t offset) noexcept {
+  if (offset >= 0)
+    return address + static_cast<uintptr_t>(offset);
+
+  const auto magnitude =
+      static_cast<uintptr_t>(-(offset + 1)) + uintptr_t{1};
+  return address - magnitude;
+}
+
+} // namespace detail
+
 // ============================================================================
 // Static Customization Point
 // ============================================================================

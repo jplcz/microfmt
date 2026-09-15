@@ -25,7 +25,7 @@ int main() {
 
   // Build a mock Binary Search Tree structure in memory:
   //          [40 : 400]
-  //         /          \
+  //         /          \.
   //    [20 : 200]    [60 : 600]
   //      /
   // [10 : 100]

@@ -149,7 +149,8 @@ struct forward_list_layout_traits_impl {
           [](const void *state, address_space_ref space, span<std::byte>,
              uintptr_t &out_node_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t head_ptr_addr = s->container_addr + s->head_off;
+             uintptr_t head_ptr_addr =
+                 detail::add_address_offset(s->container_addr, s->head_off);
             RemotePtr remote_ptr{};
             if (!space.read(head_ptr_addr, remote_ptr))
               return false;
@@ -160,7 +161,8 @@ struct forward_list_layout_traits_impl {
           [](const void *state, address_space_ref space, span<std::byte>,
              uintptr_t node_addr, uintptr_t &out_next_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t next_ptr_addr = node_addr + s->next_off;
+             uintptr_t next_ptr_addr =
+                 detail::add_address_offset(node_addr, s->next_off);
             RemotePtr remote_ptr{};
             if (!space.read(next_ptr_addr, remote_ptr))
               return false;
@@ -172,7 +174,8 @@ struct forward_list_layout_traits_impl {
              span<std::byte> scratch, uintptr_t node_addr,
              const sink &out) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t elem_addr = node_addr + s->data_off;
+            uintptr_t elem_addr =
+                detail::add_address_offset(node_addr, s->data_off);
 
             if constexpr (remote_object_traits<T>::is_registered) {
               remote_object_view obj_view(elem_addr, space, type_tag<T>{},

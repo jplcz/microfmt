@@ -96,16 +96,20 @@ inline uint64_t bintime_frac_to_decimal(uint64_t frac,
     return 0;
   }
 
-#if defined(__SIZEOF_INT128__)
-  unsigned __int128 prod = static_cast<unsigned __int128>(frac) * multiplier;
-  return static_cast<uint64_t>(prod >> 64);
-#else
-  uint64_t fl = frac & 0xFFFFFFFFULL;
-  uint64_t fh = frac >> 32;
-  uint64_t pl = fl * multiplier;
-  uint64_t ph = fh * multiplier + (pl >> 32);
-  return ph >> 32;
-#endif
+  constexpr uint64_t half_mask = 0xFFFFFFFFULL;
+  const uint64_t frac_low = frac & half_mask;
+  const uint64_t frac_high = frac >> 32;
+  const uint64_t multiplier_low = multiplier & half_mask;
+  const uint64_t multiplier_high = multiplier >> 32;
+
+  const uint64_t low_product = frac_low * multiplier_low;
+  const uint64_t middle =
+      frac_high * multiplier_low + (low_product >> 32);
+  const uint64_t middle_low = middle & half_mask;
+  const uint64_t middle_high = middle >> 32;
+  const uint64_t cross = middle_low + frac_low * multiplier_high;
+
+  return frac_high * multiplier_high + middle_high + (cross >> 32);
 }
 
 /**

@@ -234,7 +234,8 @@ struct binary_tree_layout_traits_impl {
           [](const void *state, address_space_ref space, span<std::byte>,
              uintptr_t &out_node_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t root_ptr_addr = s->container_addr + s->root_off;
+            uintptr_t root_ptr_addr =
+                detail::add_address_offset(s->container_addr, s->root_off);
             RemotePtr remote_ptr{};
             if (!space.read(root_ptr_addr, remote_ptr))
               return false;
@@ -245,7 +246,8 @@ struct binary_tree_layout_traits_impl {
           [](const void *state, address_space_ref space, span<std::byte>,
              uintptr_t node_addr, uintptr_t &out_left_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t left_ptr_addr = node_addr + s->left_off;
+            uintptr_t left_ptr_addr =
+                detail::add_address_offset(node_addr, s->left_off);
             RemotePtr remote_ptr{};
             if (!space.read(left_ptr_addr, remote_ptr))
               return false;
@@ -256,7 +258,8 @@ struct binary_tree_layout_traits_impl {
           [](const void *state, address_space_ref space, span<std::byte>,
              uintptr_t node_addr, uintptr_t &out_right_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t right_ptr_addr = node_addr + s->right_off;
+            uintptr_t right_ptr_addr =
+                detail::add_address_offset(node_addr, s->right_off);
             RemotePtr remote_ptr{};
             if (!space.read(right_ptr_addr, remote_ptr))
               return false;
@@ -270,7 +273,8 @@ struct binary_tree_layout_traits_impl {
             const auto *s = static_cast<const layout_state *>(state);
 
             if (opts.print_key) {
-              uintptr_t key_addr = node_addr + s->key_off;
+              uintptr_t key_addr =
+                  detail::add_address_offset(node_addr, s->key_off);
               if constexpr (remote_object_traits<Key>::is_registered) {
                 remote_object_view key_view(key_addr, space, type_tag<Key>{},
                                             scratch);
@@ -287,7 +291,8 @@ struct binary_tree_layout_traits_impl {
             }
 
             if (opts.print_value) {
-              uintptr_t val_addr = node_addr + s->val_off;
+              uintptr_t val_addr =
+                  detail::add_address_offset(node_addr, s->val_off);
               if constexpr (remote_object_traits<Value>::is_registered) {
                 remote_object_view val_view(val_addr, space, type_tag<Value>{},
                                             scratch);

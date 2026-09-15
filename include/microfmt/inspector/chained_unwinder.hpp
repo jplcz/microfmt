@@ -116,8 +116,10 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
         if (cfg.hints.find_hint(current_pc, hint)) {
           if (hint.routine != nullptr) {
             typename AbiTraits::register_type raw_fp = 0;
-            reg_ctx.read_raw(AbiTraits::fp_reg, &raw_fp,
-                             AbiTraits::pointer_size);
+            if (!reg_ctx.read_raw(AbiTraits::fp_reg, &raw_fp,
+                                  AbiTraits::pointer_size)) {
+              raw_fp = 0;
+            }
             uintptr_t current_fp = static_cast<uintptr_t>(raw_fp);
 
             return hint.routine(cfg.space, current_fp, current_pc, next_fp,

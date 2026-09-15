@@ -152,7 +152,7 @@ struct vector_layout_traits_impl {
              size_t &out_size) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
             uintptr_t size_addr =
-                s->container_addr + static_cast<uintptr_t>(s->s_off);
+                detail::add_address_offset(s->container_addr, s->s_off);
             RemoteSize remote_sz{};
             if (!space.read(size_addr, remote_sz))
               return false;
@@ -166,7 +166,7 @@ struct vector_layout_traits_impl {
             if (s->c_off < 0)
               return false;
             uintptr_t cap_addr =
-                s->container_addr + static_cast<uintptr_t>(s->c_off);
+                detail::add_address_offset(s->container_addr, s->c_off);
             RemoteSize remote_cap{};
             if (!space.read(cap_addr, remote_cap))
               return false;
@@ -178,7 +178,7 @@ struct vector_layout_traits_impl {
              size_t index, uintptr_t &out_elem_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
             uintptr_t data_ptr_addr =
-                s->container_addr + static_cast<uintptr_t>(s->d_off);
+                detail::add_address_offset(s->container_addr, s->d_off);
             RemotePtr remote_ptr{};
             if (!space.read(data_ptr_addr, remote_ptr))
               return false;
