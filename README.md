@@ -442,9 +442,11 @@ target_link_libraries(my_embedded_app PRIVATE microfmt::microfmt)
 
 ## API Documentation
 
-The guides in [`docs/usage.md`](docs/usage.md) and
-[`docs/development.md`](docs/development.md) cover library integration and
-contributor workflows. The API reference documents every public header.
+The guides in [`docs/usage.md`](docs/usage.md),
+[`docs/development.md`](docs/development.md), and
+[`docs/renderer-guide.md`](docs/renderer-guide.md) cover library integration,
+contributor workflows, and low-stack renderer design. The API reference
+documents every public header.
 
 Generate the Doxygen API reference locally with:
 

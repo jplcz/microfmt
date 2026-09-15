@@ -114,6 +114,7 @@ The user and contributor guides are:
 
 * [Usage guide](usage.md)
 * [Developer guide](development.md)
+* [Low-stack renderer guide](renderer-guide.md)
 
 Generate the local API reference with:
 
