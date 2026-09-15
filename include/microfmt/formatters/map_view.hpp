@@ -117,6 +117,10 @@ template <typename MapContainer>
                                            default_val_fn{}};
 }
 
+template <typename MapContainer,
+          std::enable_if_t<!std::is_lvalue_reference_v<MapContainer>, int> = 0>
+[[nodiscard]] constexpr auto map_view(MapContainer &&) noexcept = delete;
+
 /** Create a view using custom extractors for each range element. */
 template <typename MapContainer, typename KeyFn, typename ValFn>
 [[nodiscard]] constexpr auto map_view(const MapContainer &m, KeyFn &&kfn,
@@ -125,6 +129,11 @@ template <typename MapContainer, typename KeyFn, typename ValFn>
                         decltype(m.begin()), decltype(m.end())>{
       m.begin(), m.end(), std::forward<KeyFn>(kfn), std::forward<ValFn>(vfn)};
 }
+
+template <typename MapContainer, typename KeyFn, typename ValFn,
+          std::enable_if_t<!std::is_lvalue_reference_v<MapContainer>, int> = 0>
+[[nodiscard]] constexpr auto map_view(MapContainer &&, KeyFn &&,
+                                      ValFn &&) noexcept = delete;
 
 /** Create a view over an iterator/sentinel range with optional extractors. */
 template <typename Iterator, typename Sentinel, typename KeyFn = default_key_fn,

@@ -50,6 +50,11 @@ template <typename Range, typename Predicate>
       rng, std::forward<Predicate>(pred)};
 }
 
+template <typename Range, typename Predicate,
+          std::enable_if_t<!std::is_lvalue_reference_v<Range>, int> = 0>
+[[nodiscard]] constexpr auto filter(Range &&,
+                                    Predicate &&) noexcept = delete;
+
 /** Create a filtered view over @p count elements beginning at @p ptr. */
 template <typename T, typename Predicate>
 [[nodiscard]] constexpr auto filter(const T *ptr, size_t count,

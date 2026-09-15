@@ -76,6 +76,15 @@ template <typename ContainerT,
                   uppercase};
 }
 
+template <
+    typename ContainerT,
+    std::enable_if_t<
+        !std::is_lvalue_reference_v<ContainerT> &&
+            detail::is_mac_container<std::remove_reference_t<ContainerT>>::value,
+        int> = 0>
+[[nodiscard]] constexpr mac_view mac(ContainerT &&, char = ':',
+                                     bool = false) noexcept = delete;
+
 // ============================================================================
 // Formatter Specialization for mac_view
 // ============================================================================

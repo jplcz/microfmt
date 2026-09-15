@@ -283,6 +283,10 @@ as_string(const std::basic_string<CharT, Traits, Alloc> &str) noexcept {
   return as_string_view{std::string_view(str.data(), str.size())};
 }
 
+template <typename CharT, typename Traits, typename Alloc>
+[[nodiscard]] as_string_view
+as_string(std::basic_string<CharT, Traits, Alloc> &&) noexcept = delete;
+
 /**
  * @brief Wraps a null-terminated C string for advanced string formatting.
  * @param str String to format, or `nullptr` (rendered as `(null)`).

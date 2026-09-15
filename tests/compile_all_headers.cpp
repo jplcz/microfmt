@@ -5,6 +5,7 @@
 #include <microfmt/detail/assert.hpp>
 #include <microfmt/expected.hpp>
 #include <microfmt/microfmt.hpp>
+#include <microfmt/rvalue_safety.hpp>
 #include <microfmt/markdown.hpp>
 #include <microfmt/formatters/ansi.hpp>
 #include <microfmt/formatters/base_views.hpp>

@@ -93,6 +93,15 @@ template <typename Range,
       begin(range), end(range), delimiter};
 }
 
+template <
+    typename Range,
+    std::enable_if_t<
+        !std::is_lvalue_reference_v<Range> &&
+            detail::is_range<std::remove_reference_t<Range>>::value,
+        int> = 0>
+[[nodiscard]] constexpr auto join(Range &&,
+                                  std::string_view = ", ") noexcept = delete;
+
 #if __cplusplus >= 202002L
 // Compile-time join_as (zero runtime overhead)
 template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "",
@@ -104,6 +113,15 @@ template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "",
   return join_as_view<decltype(begin(range)), decltype(end(range)), Delim,
                       ElemSpec>{begin(range), end(range)};
 }
+
+template <
+    detail::fixed_string Delim, detail::fixed_string ElemSpec = "",
+    typename Range,
+    std::enable_if_t<
+        !std::is_lvalue_reference_v<Range> &&
+            detail::is_range<std::remove_reference_t<Range>>::value,
+        int> = 0>
+[[nodiscard]] constexpr auto join_as(Range &&) noexcept = delete;
 
 template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "",
           typename It, typename Sentinel,

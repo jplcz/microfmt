@@ -5,6 +5,7 @@
 #pragma once
 
 #include "detail/assert.hpp"
+#include "rvalue_safety.hpp"
 #include <memory>
 #include <new>
 #include <type_traits>
@@ -151,12 +152,13 @@ public:
     return m_has_value ? m_value : std::move(fallback);
   }
 
-  constexpr T *operator->() noexcept { return &value(); }
-  constexpr const T *operator->() const noexcept { return &value(); }
+  constexpr T *operator->() & noexcept { return &value(); }
+  constexpr const T *operator->() const & noexcept { return &value(); }
 
   constexpr T &operator*() & noexcept { return value(); }
   constexpr const T &operator*() const & noexcept { return value(); }
-  constexpr T &&operator*() && noexcept { return std::move(value()); }
+
+  MICROFMT_BLOCK_RVALUE_ACCESS(T);
 
   constexpr bool operator==(const expected &other) const noexcept {
     if (m_has_value != other.m_has_value)

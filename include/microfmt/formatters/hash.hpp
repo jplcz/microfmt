@@ -86,6 +86,13 @@ template <typename T, std::enable_if_t<detail::is_hashable_v<T>, int> = 0>
   return hash_view<T>{val};
 }
 
+template <
+    typename T,
+    std::enable_if_t<!std::is_lvalue_reference_v<T> &&
+                         detail::is_hashable_v<std::remove_reference_t<T>>,
+                     int> = 0>
+[[nodiscard]] constexpr auto as_hash(T &&) noexcept = delete;
+
 // ============================================================================
 // Formatter for hash_view
 // ============================================================================

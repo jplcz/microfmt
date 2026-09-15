@@ -110,6 +110,15 @@ uuid(const ArrayT &arr, bool uppercase = false, bool braced = false) noexcept {
                    braced};
 }
 
+template <
+    typename ArrayT,
+    std::enable_if_t<
+        !std::is_lvalue_reference_v<ArrayT> &&
+            detail::is_uuid_container<std::remove_reference_t<ArrayT>>::value,
+        int> = 0>
+[[nodiscard]] constexpr uuid_view uuid(ArrayT &&, bool = false,
+                                       bool = false) noexcept = delete;
+
 #if MICROFMT_HAS_BOOST_UUID
 // From boost::uuids::uuid
 [[nodiscard]] constexpr uuid_view uuid(const boost::uuids::uuid &u,
@@ -117,6 +126,9 @@ uuid(const ArrayT &arr, bool uppercase = false, bool braced = false) noexcept {
                                        bool braced = false) noexcept {
   return uuid_view{span<const uint8_t>(u.data, 16), uppercase, braced};
 }
+
+[[nodiscard]] constexpr uuid_view
+uuid(boost::uuids::uuid &&, bool = false, bool = false) noexcept = delete;
 #endif
 
 // ============================================================================
