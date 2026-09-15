@@ -12,11 +12,24 @@
 
 namespace microfmt {
 
+/**
+ * @brief Decoder executing DWARF CFI bytecode against an address space.
+ * @tparam AbiTraits ABI traits describing registers for the target
+ * architecture.
+ */
 template <typename AbiTraits> class dwarf_cfi_decoder {
 public:
+  /// Register width of the target architecture.
   using register_type = typename AbiTraits::register_type;
 
-  // Read Unsigned LEB128
+  /**
+   * @brief Reads an unsigned LEB128 value from the address space.
+   * @param space Address space to read from.
+   * @param addr In/out: byte address; advanced past the encoded value.
+   * @param out_val Receives the decoded value.
+   * @return `true` on success, `false` when reading fails or encoding
+   * overflows.
+   */
   static bool read_uleb128(address_space_ref space, uintptr_t &addr,
                            uint64_t &out_val) noexcept {
     uint64_t result = 0;
@@ -35,7 +48,14 @@ public:
     return false;
   }
 
-  // Read Signed LEB128
+  /**
+   * @brief Reads a signed LEB128 value from the address space.
+   * @param space Address space to read from.
+   * @param addr In/out: byte address; advanced past the encoded value.
+   * @param out_val Receives the decoded value.
+   * @return `true` on success, `false` when reading fails or encoding
+   * overflows.
+   */
   static bool read_sleb128(address_space_ref space, uintptr_t &addr,
                            int64_t &out_val) noexcept {
     int64_t result = 0;
@@ -57,40 +77,77 @@ public:
     return false;
   }
 
+  // ------------------------------------------------------------------------
   // Common DWARF CFI Opcodes
+  // ------------------------------------------------------------------------
+  /// DW_CFA_advance_loc base opcode (two high bits = advance_loc).
   static constexpr uint8_t DW_CFA_advance_loc = 0x40;
+  /// DW_CFA_offset base opcode (two high bits = offset).
   static constexpr uint8_t DW_CFA_offset = 0x80;
+  /// DW_CFA_restore base opcode (two high bits = restore).
   static constexpr uint8_t DW_CFA_restore = 0xC0;
+  /// DW_CFA_nop opcode.
   static constexpr uint8_t DW_CFA_nop = 0x00;
+  /// DW_CFA_advance_loc1 opcode (1-byte delta).
   static constexpr uint8_t DW_CFA_advance_loc1 = 0x02;
+  /// DW_CFA_advance_loc2 opcode (2-byte delta).
   static constexpr uint8_t DW_CFA_advance_loc2 = 0x03;
+  /// DW_CFA_offset_extended opcode.
   static constexpr uint8_t DW_CFA_offset_extended = 0x05;
+  /// DW_CFA_remember_state opcode.
   static constexpr uint8_t DW_CFA_remember_state = 0x0A;
+  /// DW_CFA_restore_state opcode.
   static constexpr uint8_t DW_CFA_restore_state = 0x0B;
+  /// DW_CFA_def_cfa opcode.
   static constexpr uint8_t DW_CFA_def_cfa = 0x0C;
+  /// DW_CFA_def_cfa_register opcode.
   static constexpr uint8_t DW_CFA_def_cfa_register = 0x0D;
+  /// DW_CFA_def_cfa_offset opcode.
   static constexpr uint8_t DW_CFA_def_cfa_offset = 0x0E;
+  /// DW_CFA_offset_extended_sf opcode (signed factor).
   static constexpr uint8_t DW_CFA_offset_extended_sf = 0x11;
+  /// DW_CFA_def_cfa_sf opcode (signed offset).
   static constexpr uint8_t DW_CFA_def_cfa_sf = 0x12;
+  /// DW_CFA_def_cfa_offset_sf opcode (signed offset).
   static constexpr uint8_t DW_CFA_def_cfa_offset_sf = 0x13;
 
+  /**
+   * @brief Reconstructed unwinding state (CFA and register slots).
+   */
   struct frame_state {
+    /// CFA register number.
     uint32_t cfa_reg{AbiTraits::sp_reg};
+    /// CFA offset from the stack pointer.
     int64_t cfa_offset{0};
+    /// Return-address slot offset relative to the CFA.
     int64_t ra_offset{-static_cast<int64_t>(
         AbiTraits::pointer_size)}; // Default position relative to CFA
+    /// Frame-pointer slot offset relative to the CFA.
     int64_t fp_offset{-static_cast<int64_t>(
         AbiTraits::pointer_size * 2)}; // Default position relative to CFA
+    /// Code location the state currently applies to.
     uintptr_t current_loc{0};
   };
 
-  // Caller-supplied scratch container to ensure zero-allocation and minimal
-  // stack footprint
+  /**
+   * @brief Caller-supplied, off-stack scratch container used by the decoder.
+   *
+   * Ensures zero-allocation operation and a minimal stack footprint.
+   *
+   * @tparam MaxStateStackDepth Capacity of the CFI state stack.
+   */
   template <size_t MaxStateStackDepth = 8> struct scratch_context {
+    /// Current state.
     frame_state current_state;
+    /// State history for remember/restore.
     frame_state state_stack[MaxStateStackDepth];
+    /// Depth of @ref state_stack.
     size_t stack_depth{0};
 
+    /**
+     * @brief Resets the scratch to a fresh initial location.
+     * @param initial_loc Code location of the FDE start address.
+     */
     void reset(uintptr_t initial_loc) noexcept {
       current_state = frame_state{};
       current_state.current_loc = initial_loc;
@@ -98,7 +155,23 @@ public:
     }
   };
 
-  // Executes DWARF CFI bytecode to reconstruct registers and stack frame
+  /**
+   * @brief Executes DWARF CFI bytecode to reconstruct the caller's registers.
+   *
+   * Reads the FDE header, decodes instructions up to @p target_pc, computes
+   * the Cananonical Frame Address, and loads the saved FP and return address.
+   *
+   * @tparam MaxStateStackDepth Scratch stack capacity.
+   * @param space Address space to read from.
+   * @param fde_addr Address of the FDE record.
+   * @param target_pc Program counter being unwound.
+   * @param current_sp Stack pointer of the frame being unwound.
+   * @param out_fp Receives the caller's frame pointer.
+   * @param out_pc Receives the caller's program counter.
+   * @param scratch Caller-supplied scratch container.
+   * @return `true` on success, `false` when the FDE does not cover
+   * @p target_pc or decoding fails.
+   */
   template <size_t MaxStateStackDepth>
   static bool
   execute_fde(address_space_ref space, uintptr_t fde_addr, uintptr_t target_pc,
@@ -284,36 +357,74 @@ public:
   }
 };
 
+/**
+ * @brief Immutable context describing a DWARF unwinder back to the type-erased
+ * handle.
+ * @tparam AbiTraits ABI traits for the target architecture.
+ * @tparam MaxStateStackDepth Scratch stack capacity.
+ */
 template <typename AbiTraits, size_t MaxStateStackDepth = 8>
 struct dwarf_unwinder_context {
+  /// Address space to unwind in.
   address_space_ref space;
+  /// ELF image enumerator used to bind PCs to modules.
   elf_image_enumerator_ref enumerator;
+  /// Storage for the located ELF image.
   elf_image_info *img_storage{nullptr};
+  /// Off-stack scratch used by the decoder.
   typename dwarf_cfi_decoder<AbiTraits>::template scratch_context<
       MaxStateStackDepth> *dwarf_scratch{nullptr};
 };
 
+/**
+ * @brief Tag selecting the DWARF unwinder in the traits customization point.
+ * @tparam AbiTraits ABI traits for the target architecture.
+ * @tparam MaxStateStackDepth Scratch stack capacity.
+ */
 template <typename AbiTraits, size_t MaxStateStackDepth = 8>
 struct dwarf_unwinder_tag {};
 
+/**
+ * @brief Self-contained holder owning an image slot and decoder scratch.
+ *
+ * Non-copyable/non-movable to guarantee stable interior pointers.
+ *
+ * @tparam AbiTraits ABI traits for the target architecture.
+ * @tparam MaxStateStackDepth Scratch stack capacity.
+ */
 template <typename AbiTraits, size_t MaxStateStackDepth = 8>
 struct dwarf_unwinder_holder {
+  /// Storage for the located ELF image.
   elf_image_info img_storage{};
+  /// Off-stack decoder scratch.
   typename dwarf_cfi_decoder<AbiTraits>::template scratch_context<
       MaxStateStackDepth>
       dwarf_scratch{};
+  /// Unwinder context referencing the owned storage.
   dwarf_unwinder_context<AbiTraits, MaxStateStackDepth> ctx;
 
+  /**
+   * @brief Constructs a holder bound to an address space and enumerator.
+   * @param space Address space to unwind in.
+   * @param enumerator ELF image enumerator.
+   */
   dwarf_unwinder_holder(address_space_ref space,
                         elf_image_enumerator_ref enumerator) noexcept
       : ctx{space, enumerator, &img_storage, &dwarf_scratch} {}
 
-  // Prevent copying or moving to ensure internal pointer stability
+  /// Copying is disabled to ensure pointer stability.
   dwarf_unwinder_holder(const dwarf_unwinder_holder &) = delete;
+  /// Copy-assignment is disabled to ensure pointer stability.
   dwarf_unwinder_holder &operator=(const dwarf_unwinder_holder &) = delete;
+  /// Moving is disabled to ensure pointer stability.
   dwarf_unwinder_holder(dwarf_unwinder_holder &&) = delete;
+  /// Move-assignment is disabled to ensure pointer stability.
   dwarf_unwinder_holder &operator=(dwarf_unwinder_holder &&) = delete;
 
+  /**
+   * @brief Builds a type-erased unwinder handle bound to this holder.
+   * @return An @ref frame_unwinder_ref over @ref ctx.
+   */
   [[nodiscard]] frame_unwinder_ref make_ref() noexcept {
     return frame_unwinder_ref(
         dwarf_unwinder_tag<AbiTraits, MaxStateStackDepth>{}, ctx);
@@ -322,13 +433,21 @@ struct dwarf_unwinder_holder {
 
 } // namespace microfmt
 
+/**
+ * @brief Specializes @ref frame_unwinder_traits for the DWARF unwinder.
+ * @tparam AbiTraits ABI traits for the target architecture.
+ * @tparam MaxStateStackDepth Scratch stack capacity.
+ */
 template <typename AbiTraits, size_t MaxStateStackDepth>
 struct microfmt::frame_unwinder_traits<
     microfmt::dwarf_unwinder_tag<AbiTraits, MaxStateStackDepth>> {
+  /// Stateful context type.
   using context_type =
       microfmt::dwarf_unwinder_context<AbiTraits, MaxStateStackDepth>;
+  /// Decoder implementation.
   using decoder_type = microfmt::dwarf_cfi_decoder<AbiTraits>;
 
+  /// Unwinds one frame by locating the owning image and executing its FDE.
   static bool step(const void *ctx, uintptr_t current_fp, uintptr_t &next_fp,
                    uintptr_t &next_pc) noexcept {
     if (!ctx || current_fp == 0)

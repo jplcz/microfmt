@@ -17,8 +17,8 @@ namespace microfmt {
 // ============================================================================
 
 /**
- * @brief Classifies a @ref hybrid_frame as either a normal stack frame or a
- * trap transition.
+ * @brief Classifies a `hybrid_frame` as either a normal stack frame or a trap
+ * transition.
  */
 enum class frame_kind : uint8_t { standard = 0, trap_transition };
 
@@ -53,25 +53,55 @@ struct hybrid_frame {
 // Exception Matcher Hook
 // ============================================================================
 
-// Type-erased hook to detect whether the current (FP, PC) sits at an exception
-// trampoline
+/**
+ * @brief Type-erased hook detecting exception trampolines during unwinding.
+ */
 class exception_matcher_ref {
 public:
+  /**
+   * @brief Virtual table of matcher operations.
+   */
   struct vtable {
+    /**
+     * @brief Detects whether (fp, pc) sits at an exception trampoline. See
+     * @ref exception_matcher_ref::match_trap_frame.
+     */
     bool (*match_trap_frame)(const void *ctx, uintptr_t fp, uintptr_t pc,
                              uintptr_t &out_trap_frame_addr) noexcept;
   };
 
+  /**
+   * @brief Constructs an empty (invalid) matcher.
+   */
   constexpr exception_matcher_ref() noexcept = default;
 
+  /**
+   * @brief Constructs a matcher bound to a context object exposing
+   * `match_trap_frame`.
+   * @tparam Tag Tag stored in the virtual table.
+   * @tparam Context Concrete context type.
+   * @param ctx Context object performing the match.
+   */
   template <typename Tag, typename Context>
   constexpr exception_matcher_ref(Tag, const Context &ctx) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag, Context>) {}
 
+  /**
+   * @brief Constructs a matcher bound to a free callable.
+   * @tparam Fn Callable type invoked as `(fp, pc, out_addr)`.
+   * @param fn Object to invoke for matching.
+   */
   template <typename Fn>
   constexpr explicit exception_matcher_ref(const Fn &fn) noexcept
       : ctx_(&fn), vtbl_(&s_fn_vtbl<Fn>) {}
 
+  /**
+   * @brief Tests whether (fp, pc) is an exception trampoline.
+   * @param fp Current frame pointer.
+   * @param pc Current program counter.
+   * @param out_trap_frame_addr Receives the trap frame address.
+   * @return `true` when matched.
+   */
   [[nodiscard]] bool
   match_trap_frame(uintptr_t fp, uintptr_t pc,
                    uintptr_t &out_trap_frame_addr) const noexcept {
@@ -80,6 +110,10 @@ public:
     return vtbl_->match_trap_frame(ctx_, fp, pc, out_trap_frame_addr);
   }
 
+  /**
+   * @brief Reports whether the matcher is bound.
+   * @return `true` when the matcher is valid.
+   */
   [[nodiscard]] constexpr explicit operator bool() const noexcept {
     return vtbl_ != nullptr;
   }
@@ -106,8 +140,20 @@ private:
 // Hybrid Stack Unwinder (FP + Exception Frames)
 // ============================================================================
 
+/**
+ * @brief Forward-only cursor combining frame-pointer stepping with
+ * exception/trap transitions.
+ */
 class hybrid_stack_unwinder {
 public:
+  /**
+   * @brief Constructs a hybrid unwinder.
+   * @param fp_unwinder Frame-pointer unwinder for standard frames.
+   * @param trap_decoder Trap-frame decoder for transition frames.
+   * @param matcher Exception trampoline detector.
+   * @param initial_fp Frame pointer of the starting frame.
+   * @param initial_pc Program counter of the starting frame.
+   */
   constexpr hybrid_stack_unwinder(frame_unwinder_ref fp_unwinder,
                                   exception_frame_ref trap_decoder,
                                   exception_matcher_ref matcher,
@@ -118,17 +164,42 @@ public:
         current_{0, initial_fp, initial_pc, frame_kind::standard, {}},
         is_valid_(initial_fp != 0 || initial_pc != 0) {}
 
+  /**
+   * @brief Returns the current frame record.
+   * @return Reference to the current @ref hybrid_frame.
+   */
   [[nodiscard]] constexpr const hybrid_frame &operator*() const noexcept {
     return current_;
   }
+  /**
+   * @brief Returns the current frame record.
+   * @return Pointer to the current @ref hybrid_frame.
+   */
   [[nodiscard]] constexpr const hybrid_frame *operator->() const noexcept {
     return &current_;
   }
+
+  /**
+   * @brief Reports whether the cursor is positioned on a frame.
+   * @return `true` while the current frame is valid.
+   */
   [[nodiscard]] constexpr bool has_value() const noexcept { return is_valid_; }
+  /**
+   * @brief Reports whether the cursor is positioned on a frame.
+   * @return `true` while the current frame is valid.
+   */
   [[nodiscard]] constexpr explicit operator bool() const noexcept {
     return is_valid_;
   }
 
+  /**
+   * @brief Advances to the next frame.
+   *
+   * Synthesizes a trap-transition frame when the current (fp, pc) matches an
+   * exception trampoline; otherwise performs a standard frame-pointer step.
+   *
+   * @return `false` when the walk can advance no further.
+   */
   bool next() noexcept {
     if (!is_valid_)
       return false;
@@ -164,11 +235,22 @@ public:
     return true;
   }
 
+  /**
+   * @brief Pre-increment advancing to the next frame.
+   * @return This unwinder.
+   */
   hybrid_stack_unwinder &operator++() noexcept {
     next();
     return *this;
   }
 
+  /**
+   * @brief Visitor-style traversal over the hybrid frame chain.
+   * @tparam Visitor Callable accepting `const hybrid_frame &` and returning
+   * `bool` (`true` = continue).
+   * @param visitor Visitor invoked per frame.
+   * @param max_depth Maximum number of frames to visit.
+   */
   template <typename Visitor>
   void for_each_frame(Visitor &&visitor, uint32_t max_depth = 64) noexcept {
     while (is_valid_ && current_.frame_index < max_depth) {
@@ -180,10 +262,15 @@ public:
   }
 
 private:
+  /// Frame-pointer unwinder.
   frame_unwinder_ref fp_unwinder_{};
+  /// Trap-frame decoder.
   exception_frame_ref trap_decoder_{};
+  /// Exception trampoline matcher.
   exception_matcher_ref matcher_{};
+  /// Current frame record.
   hybrid_frame current_{};
+  /// Validity flag.
   bool is_valid_{false};
 };
 
@@ -191,8 +278,18 @@ private:
 // Formattable Hybrid Backtrace View
 // ============================================================================
 
+/**
+ * @brief Formattable view rendering a hybrid backtrace.
+ */
 class hybrid_backtrace_view {
 public:
+  /**
+   * @brief Constructs a hybrid backtrace view.
+   * @param unwinder Unwinder cursor driving the walk.
+   * @param resolver Symbol resolver for frame PCs.
+   * @param scratch Scratch buffer for symbol strings.
+   * @param max_depth Maximum number of frames to render.
+   */
   constexpr explicit hybrid_backtrace_view(hybrid_stack_unwinder &unwinder,
                                            symbol_resolver_ref resolver,
                                            span<char> scratch,
@@ -200,6 +297,14 @@ public:
       : unwinder_(unwinder), resolver_(resolver), scratch_(scratch),
         max_depth_(max_depth) {}
 
+  /**
+   * @brief Constructs a hybrid backtrace view with a C-array scratch buffer.
+   * @tparam N Scratch buffer size.
+   * @param unwinder Unwinder cursor driving the walk.
+   * @param resolver Symbol resolver for frame PCs.
+   * @param scratch Scratch buffer for symbol strings.
+   * @param max_depth Maximum number of frames to render.
+   */
   template <size_t N>
   constexpr hybrid_backtrace_view(hybrid_stack_unwinder &unwinder,
                                   symbol_resolver_ref resolver,
@@ -208,30 +313,63 @@ public:
       : unwinder_(unwinder), resolver_(resolver), scratch_(scratch, N),
         max_depth_(max_depth) {}
 
+  /**
+   * @brief Returns the underlying unwinder.
+   * @return Reference to the @ref hybrid_stack_unwinder.
+   */
   [[nodiscard]] constexpr hybrid_stack_unwinder &unwinder() const noexcept {
     return unwinder_;
   }
+  /**
+   * @brief Returns the symbol resolver handle.
+   * @return Bound @ref symbol_resolver_ref.
+   */
   [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept {
     return resolver_;
   }
+  /**
+   * @brief Returns the scratch buffer.
+   * @return Scratch span used for symbol strings.
+   */
   [[nodiscard]] constexpr span<char> scratch() const noexcept {
     return scratch_;
   }
+  /**
+   * @brief Returns the maximum frame depth.
+   * @return Frame render limit.
+   */
   [[nodiscard]] constexpr uint32_t max_depth() const noexcept {
     return max_depth_;
   }
 
 private:
-  hybrid_stack_unwinder
-      &unwinder_; // Stored by reference to eliminate stack bloat
+  /// Unwinder cursor, stored by reference to eliminate stack bloat.
+  hybrid_stack_unwinder &unwinder_;
+  /// Symbol resolver handle.
   symbol_resolver_ref resolver_{};
+  /// Scratch span for symbol strings.
   span<char> scratch_{};
+  /// Maximum number of frames to render.
   uint32_t max_depth_{32};
 };
 
+/**
+ * @brief Formatter for @ref hybrid_backtrace_view.
+ *
+ * Emits one `#index fp=0x.. pc=<symbol>` line per frame, preceded by an
+ * `[Exception Boundary]` marker at trap transitions. A leading `#` in the
+ * specifier requests verbose symbol output.
+ */
 template <> struct formatter<hybrid_backtrace_view> {
+  /**
+   * @brief Output mode: `'#'` = verbose symbols, `'\0'` = standard.
+   */
   char mode{'\0'};
 
+  /**
+   * @brief Parses the leading `#` mode flag.
+   * @param ctx Format parse context exposing the specifier text.
+   */
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();
     if (!spec.empty() && spec.front() == '#') {
@@ -239,6 +377,11 @@ template <> struct formatter<hybrid_backtrace_view> {
     }
   }
 
+  /**
+   * @brief Renders the hybrid backtrace.
+   * @param view The backtrace view to format.
+   * @param out Destination sink.
+   */
   void format(const hybrid_backtrace_view &view,
               const sink &out) const noexcept {
     hybrid_stack_unwinder cursor = view.unwinder();

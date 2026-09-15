@@ -25,7 +25,6 @@ template <typename CharT, typename Traits, typename Alloc>
 struct formatter<std::basic_string<CharT, Traits, Alloc>> {
   /**
    * @brief No-op parse; plain strings accept no format specifier.
-   * @param ctx Unused format parse context.
    */
   constexpr void parse(format_parse_context &) noexcept {}
   /**

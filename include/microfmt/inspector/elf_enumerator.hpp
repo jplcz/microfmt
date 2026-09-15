@@ -118,7 +118,6 @@ public:
    * @tparam Tag Implementation tag type.
    * @tparam Context Concrete context type exposing `enumerate` and
    * `find_by_pc`.
-   * @param Tag Value selecting the implementation.
    * @param ctx Context object performing the enumeration.
    */
   template <typename Tag, typename Context>

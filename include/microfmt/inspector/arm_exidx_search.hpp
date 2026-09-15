@@ -12,10 +12,17 @@
 
 namespace microfmt {
 
+/**
+ * @brief Binary search over sorted `.ARM.exidx` unwind tables.
+ */
 class exidx_table_searcher {
 public:
-  // Decodes a 31-bit program-relative offset (PREL31) from the EXIDX table
-  // entry location
+  /**
+   * @brief Decodes a 31-bit program-relative (PREL31) offset.
+   * @param entry_addr Address of the PREL31 word itself (base).
+   * @param prel31 Raw PREL31 encoding.
+   * @return Absolute address computed from the entry location.
+   */
   [[nodiscard]] static constexpr uintptr_t
   decode_prel31(uintptr_t entry_addr, uint32_t prel31) noexcept {
     // PREL31 is a 31-bit signed offset relative to the address of the prel31
@@ -25,8 +32,20 @@ public:
     return entry_addr + static_cast<int32_t>(signed_offset);
   }
 
-  // Performs a zero-allocation binary search over the sorted .ARM.exidx table
-  // to locate the unwind descriptor corresponding to target_pc.
+  /**
+   * @brief Locates the unwind descriptor covering target_pc.
+   *
+   * Performs a zero-allocation binary search over the sorted `.ARM.exidx`
+   * table, matching the highest function start not greater than @p target_pc.
+   *
+   * @param space Address space to read from.
+   * @param table_base Base address of the `.ARM.exidx` table.
+   * @param num_entries Number of 8-byte table entries.
+   * @param target_pc PC being looked up.
+   * @param out_unwind_data Receives the descriptor (inline bytecode or
+   * `.ARM.extab` pointer).
+   * @return `true` when a non-`EXIDX_CANTUNWIND` entry matched.
+   */
   [[nodiscard]] static bool
   find_exidx_entry(address_space_ref space, uintptr_t table_base,
                    size_t num_entries, uintptr_t target_pc,

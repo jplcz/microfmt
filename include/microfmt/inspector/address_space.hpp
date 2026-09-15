@@ -47,7 +47,6 @@ template <> struct address_space_traits<local_space_tag> {
 
   /**
    * @brief Copies raw bytes from `addr` into `dest`.
-   * @param Unused context pointer.
    * @param addr Absolute source address.
    * @param dest Destination buffer.
    * @param size Number of bytes to copy.
@@ -63,7 +62,6 @@ template <> struct address_space_traits<local_space_tag> {
 
   /**
    * @brief Reads a string until a null terminator or the length limit.
-   * @param Unused context pointer.
    * @param addr Absolute source address.
    * @param dest Destination buffer.
    * @param max_len Maximum characters that fit in @p dest.
@@ -131,7 +129,6 @@ public:
    * @brief Constructs a handle for a stateless address-space tag.
    * @tparam Tag Address-space tag type.
    * @tparam Traits Specialized traits, enabled when `context_type` is `void`.
-   * @param Tag Value used to select the traits.
    */
   template <
       typename Tag, typename Traits = address_space_traits<Tag>,
@@ -145,7 +142,6 @@ public:
    * @tparam Context Concrete context type.
    * @tparam Traits Specialized traits, enabled when `context_type` is
    * non-void and @p Context converts to it.
-   * @param Tag Value used to select the traits.
    * @param ctx Context object providing the reads.
    */
   template <typename Tag, typename Context,
@@ -413,7 +409,6 @@ private:
 template <> struct formatter<remote_string_view> {
   /**
    * @brief No-op parse; remote strings accept no format specifier.
-   * @param ctx Unused format parse context.
    */
   constexpr void parse(format_parse_context &) noexcept {}
 

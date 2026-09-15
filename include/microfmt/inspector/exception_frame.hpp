@@ -110,7 +110,6 @@ public:
    * @brief Constructs a handle for a stateless architecture tag.
    * @tparam ArchTag Architecture tag type.
    * @tparam Traits Specialized traits, enabled when `context_type` is `void`.
-   * @param ArchTag Value used to select the traits.
    */
   template <
       typename ArchTag, typename Traits = exception_frame_traits<ArchTag>,
@@ -124,7 +123,6 @@ public:
    * @tparam Context Concrete context type.
    * @tparam Traits Specialized traits, enabled when `context_type` is non-void
    * and @p Context converts to it.
-   * @param ArchTag Value used to select the traits.
    * @param ctx Context object decoding trap frames.
    */
   template <typename ArchTag, typename Context,

@@ -140,7 +140,6 @@ public:
    * @brief Constructs a handle for a stateless resolver tag.
    * @tparam Tag Resolver tag type.
    * @tparam Traits Specialized traits, enabled when `context_type` is `void`.
-   * @param Tag Value used to select the traits.
    */
   template <
       typename Tag, typename Traits = symbol_resolver_traits<Tag>,
@@ -154,7 +153,6 @@ public:
    * @tparam Context Concrete context type.
    * @tparam Traits Specialized traits, enabled when `context_type` is non-void
    * and @p Context converts to it.
-   * @param Tag Value used to select the traits.
    * @param ctx Context object performing the resolution.
    */
   template <typename Tag, typename Context,

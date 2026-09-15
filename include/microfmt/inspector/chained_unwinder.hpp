@@ -9,29 +9,55 @@
 
 namespace microfmt {
 
+/**
+ * @brief Stateful context for the cascaded/tiered unwinder.
+ */
 struct chained_unwinder_context {
+  /// Address space to unwind in.
   address_space_ref space;
 
   // Pluggable unwinder tiers (any can be left empty/null)
 
   // clang-format off
-  frame_unwinder_ref exidx_unwinder{}; // Tier 1: ARM EXIDX
-  frame_unwinder_ref dwarf_unwinder{}; // Tier 2: DWARF CFI (.debug_frame / .eh_frame)
-  frame_unwinder_ref fp_unwinder{};    // Tier 3: Standard Frame Pointer
+  /// Tier 1: ARM EXIDX unwinder.
+  frame_unwinder_ref exidx_unwinder{};
+  /// Tier 2: DWARF CFI (.debug_frame / .eh_frame) unwinder.
+  frame_unwinder_ref dwarf_unwinder{};
+  /// Tier 3: standard frame-pointer unwinder.
+  frame_unwinder_ref fp_unwinder{};
   // clang-format on
 
-  unwind_hint_registry_ref hints{}; // Type-erased unwind hint registry
+  /// Type-erased unwind hint registry.
+  unwind_hint_registry_ref hints{};
 
-  // Pointer to the current instruction pointer (PC) being unwound,
-  // allowing hint lookup without probing a non-existent/malformed stack frame.
+  /**
+   * @brief Pointer to the current instruction pointer (PC) being unwound,
+   * allowing hint lookup without probing a non-existent/malformed stack frame.
+   */
   uintptr_t *current_pc{nullptr};
 };
 
+/**
+ * @brief Tag selecting the chained unwinder in the traits customization point.
+ */
 struct chained_unwinder_tag {};
 
+/**
+ * @brief Specializes @ref frame_unwinder_traits for the chained unwinder.
+ */
 template <> struct frame_unwinder_traits<chained_unwinder_tag> {
+  /// Stateful context type.
   using context_type = chained_unwinder_context;
 
+  /**
+   * @brief Walks one frame by trying each tier in order: EXIDX, DWARF CFI,
+   * frame pointer, then unwind-hint lookup.
+   * @param ctx The @ref chained_unwinder_context.
+   * @param current_fp Frame pointer of the current frame.
+   * @param next_fp Receives the caller's frame pointer.
+   * @param next_pc Receives the caller's program counter.
+   * @return `true` when a tier produced the next frame.
+   */
   static bool step(const void *ctx, uintptr_t current_fp, uintptr_t &next_fp,
                    uintptr_t &next_pc) noexcept {
     if (!ctx || current_fp == 0)

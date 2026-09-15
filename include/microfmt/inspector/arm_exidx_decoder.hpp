@@ -12,16 +12,33 @@
 
 namespace microfmt {
 
-// CPU Register State tracker updated during bytecode execution
+/**
+ * @brief CPU register snapshot updated during EXIDX bytecode execution.
+ */
 struct arm_register_state {
+  /// Core registers r0-r15 (r13 = SP, r14 = LR, r15 = PC).
   uint32_t r[16]{0}; // r0-r15 (r13 = SP, r14 = LR, r15 = PC)
+  /// VFP double-precision registers d0-d31.
   uint32_t d[32]{0}; // VFP double-precision registers d0-d31
+  /// Saved-register tracking flags.
   bool reg_saved[16]{false};
 };
 
+/**
+ * @brief Decoder for the inline unwind bytecode packed in an EXIDX word.
+ */
 class arm_exidx_bytecode_decoder {
 public:
-  // Decodes up to 3 inline unwind bytes from an exidx/extab word
+  /**
+   * @brief Executes up to 3 inline unwind bytes from an exidx/extab word.
+   * @param space Address space to read from.
+   * @param unwind_word Descriptor word (personality + inline bytecode).
+   * @param io_sp In/out: virtual stack pointer.
+   * @param io_pc In/out: program counter.
+   * @param out_regs Receives updated register state.
+   * @return `true` when the bytecode was applied; `false` when a personality
+   * routine requires an external `.ARM.extab` table read.
+   */
   static bool execute_bytecode(address_space_ref space, uint32_t unwind_word,
                                uintptr_t &io_sp, uintptr_t &io_pc,
                                arm_register_state &out_regs) noexcept {
@@ -43,6 +60,9 @@ public:
   }
 
 private:
+  /**
+   * @brief Applies the three inline opcode bytes in order.
+   */
   static bool parse_and_apply_bytes(address_space_ref space, uintptr_t &io_sp,
                                     uintptr_t &io_pc,
                                     arm_register_state &out_regs, uint8_t b1,
@@ -62,6 +82,18 @@ private:
     return true;
   }
 
+  /**
+   * @brief Decodes a single inline unwind opcode.
+   *
+   * Handles `vsp` add/sub adjustments, the FINISH (`0xB0`) opcode, and VFP
+   * double-precision register pops.
+   *
+   * @param space Address space to read from.
+   * @param io_sp In/out: virtual stack pointer.
+   * @param out_regs Receives updated register state.
+   * @param opcode The opcode byte to decode.
+   * @return `false` to stop decoding (FINISH), `true` to continue.
+   */
   static bool decode_opcode(address_space_ref space, uintptr_t &io_sp,
                             uintptr_t &, arm_register_state &out_regs,
                             uint8_t opcode) noexcept {

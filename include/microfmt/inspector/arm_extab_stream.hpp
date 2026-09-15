@@ -13,15 +13,31 @@
 
 namespace microfmt {
 
+/**
+ * @brief Byte cursor pulling opcodes sequentially across `.ARM.extab` words.
+ */
 class extab_byte_stream {
 public:
+  /**
+   * @brief Constructs a stream rooted at the first extab word.
+   * @param space Address space to read from.
+   * @param extab_addr Address of the `.ARM.extab` entry.
+   */
   constexpr extab_byte_stream(address_space_ref space,
                               uintptr_t extab_addr) noexcept
       : space_(space), current_word_addr_(extab_addr),
         bytes_remaining_in_word_(0) {}
 
-  // Pulls the next bytecode instruction byte sequentially across word
-  // boundaries
+  /**
+   * @brief Pulls the next bytecode instruction byte across word boundaries.
+   *
+   * The first word yields 3 opcode bytes (after the personality byte); each
+   * subsequent word yields 4, big-endian.
+   *
+   * @param out_byte Receives the next opcode byte.
+   * @return `true` when a byte was produced, `false` at end of stream or on a
+   * read failure.
+   */
   bool next_byte(uint8_t &out_byte) noexcept {
     if (bytes_remaining_in_word_ == 0) {
       uint32_t word = 0;
@@ -71,8 +87,23 @@ private:
 // Multi-Word Extab Bytecode Stream Executor
 // ============================================================================
 
+/**
+ * @brief Executes a multi-word `.ARM.extab` bytecode program.
+ */
 class extab_stream_executor {
 public:
+  /**
+   * @brief Runs the extab bytecode stream, updating SP and registers.
+   *
+   * Supports `vsp` add/sub adjustments, FINISH, integer-register pops, and
+   * VFP double-precision register pops.
+   *
+   * @param space Address space to read from.
+   * @param extab_addr Address of the `.ARM.extab` entry.
+   * @param io_sp In/out: virtual stack pointer.
+   * @param out_regs Receives updated register state.
+   * @return `true` when the stream was consumed.
+   */
   static bool execute(address_space_ref space, uintptr_t extab_addr,
                       uintptr_t &io_sp, uintptr_t &,
                       arm_register_state &out_regs) noexcept {

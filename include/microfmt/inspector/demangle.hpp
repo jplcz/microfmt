@@ -14,11 +14,23 @@
 
 namespace microfmt {
 
+/**
+ * @brief Zero-allocation Itanium (GCC/Clang) name demangler.
+ */
 class itanium_demangler {
 public:
+  /**
+   * @brief Constructs a demangler over an Itanium-mangled symbol.
+   * @param mangled Source symbol (must start with `_Z`).
+   */
   constexpr explicit itanium_demangler(std::string_view mangled) noexcept
       : src_(mangled), pos_(0) {}
 
+  /**
+   * @brief Demangles the symbol into the sink.
+   * @param out Destination sink receiving the demangled form.
+   * @return `false` when the input is not an Itanium-mangled name.
+   */
   bool demangle_to(const sink &out) noexcept {
     if (!detail::starts_with(src_, "_Z")) {
       return false;
@@ -48,6 +60,11 @@ public:
     return parse_encoding(out);
   }
 
+  /**
+   * @brief Demangles a symbol, falling back to the raw input on failure.
+   * @param sym Mangled symbol to demangle.
+   * @param out Destination sink.
+   */
   static void format_symbol(std::string_view sym, const sink &out) noexcept {
     itanium_demangler d(sym);
     if (!d.demangle_to(out)) {
@@ -56,19 +73,35 @@ public:
   }
 
 private:
+  /// Mangled source.
   std::string_view src_;
+  /// Read position within the source.
   size_t pos_{0};
+  /// Recursion guard depth.
   static constexpr size_t kMaxRecursionDepth = 16;
+  /// Current recursion depth.
   size_t depth_{0};
 
+  /**
+   * @brief Reports whether reading is past the end of the source.
+   */
   [[nodiscard]] constexpr bool eof() const noexcept {
     return pos_ >= src_.size();
   }
+  /**
+   * @brief Returns the current character without consuming it.
+   */
   [[nodiscard]] constexpr char peek() const noexcept {
     return eof() ? '\0' : src_[pos_];
   }
+  /**
+   * @brief Consumes and returns the current character.
+   */
   constexpr char get() noexcept { return eof() ? '\0' : src_[pos_++]; }
 
+  /**
+   * @brief Consumes @p c if it is next.
+   */
   constexpr bool match(char c) noexcept {
     if (peek() == c) {
       ++pos_;
@@ -77,6 +110,9 @@ private:
     return false;
   }
 
+  /**
+   * @brief Consumes @p p if it matches at the current position.
+   */
   constexpr bool match_prefix(std::string_view p) noexcept {
     if (detail::starts_with(src_.substr(pos_), p)) {
       pos_ += p.size();
@@ -85,6 +121,9 @@ private:
     return false;
   }
 
+  /**
+   * @brief Parses a base-10 number into @p val.
+   */
   bool parse_number(size_t &val) noexcept {
     if (eof() || peek() < '0' || peek() > '9')
       return false;
@@ -95,7 +134,9 @@ private:
     return true;
   }
 
-  // <encoding> ::= <name> [ <bare-function-type> ]
+  /**
+   * @brief Parses `<encoding>`: name plus optional bare-function-type.
+   */
   bool parse_encoding(const sink &out) noexcept {
     if (!parse_name(out))
       return false;
@@ -121,7 +162,9 @@ private:
     return true;
   }
 
-  // <name> ::= <nested-name> | <unscoped-name> | <substitution>
+  /**
+   * @brief Parses `<name>`: nested, unscoped, or substituted.
+   */
   bool parse_name(const sink &out) noexcept {
     if (depth_++ > kMaxRecursionDepth)
       return false;
@@ -145,6 +188,9 @@ private:
     return ok;
   }
 
+  /**
+   * @brief Parses `<template-args>` between `<` and `>`.
+   */
   bool parse_template_args(const sink &out) noexcept {
     out.write("<");
     bool first = true;
@@ -159,6 +205,9 @@ private:
     return match('E');
   }
 
+  /**
+   * @brief Parses `<nested-name>`, joining components with `::`.
+   */
   bool parse_nested_name(const sink &out) noexcept {
     bool first = true;
     while (!eof() && peek() != 'E') {
@@ -188,6 +237,10 @@ private:
     return match('E');
   }
 
+  /**
+   * @brief Parses an unscoped name: length-prefixed identifiers, constructors,
+   * destructors, and operator symbols.
+   */
   bool parse_unqualified_name(const sink &out) noexcept {
     if (peek() >= '0' && peek() <= '9') {
       size_t len = 0;
@@ -263,6 +316,9 @@ private:
     return false;
   }
 
+  /**
+   * @brief Parses a substitution reference (`S...`).
+   */
   bool parse_substitution(const sink &out) noexcept {
     // 'St' is the prefix for std:: namespace
     if (match('t')) {
@@ -308,6 +364,9 @@ private:
     return true;
   }
 
+  /**
+   * @brief Parses a `<type>`: qualifiers, pointers, builtins, or named types.
+   */
   bool parse_type(const sink &out) noexcept {
     if (depth_++ > kMaxRecursionDepth)
       return false;
@@ -447,17 +506,37 @@ private:
   }
 };
 
+/**
+ * @brief Formattable view over a demangled symbol.
+ */
 struct demangle_view {
+  /// Mangled symbol.
   std::string_view symbol;
 };
 
+/**
+ * @brief Wraps a symbol for demangled formatting.
+ * @param sym Mangled symbol.
+ * @return A @ref demangle_view over the symbol.
+ */
 [[nodiscard]] constexpr auto as_demangled(std::string_view sym) noexcept {
   return demangle_view{sym};
 }
 
+/**
+ * @brief Formatter for @ref demangle_view.
+ */
 template <> struct formatter<demangle_view> {
+  /**
+   * @brief No-op parse.
+   */
   constexpr void parse(format_parse_context &) noexcept {}
 
+  /**
+   * @brief Demangles and writes the symbol.
+   * @param dv The demangle view to format.
+   * @param out Destination sink.
+   */
   void format(const demangle_view &dv, const sink &out) const noexcept {
     itanium_demangler::format_symbol(dv.symbol, out);
   }

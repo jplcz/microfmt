@@ -243,13 +243,11 @@ template <typename... Ts> struct formatter<std::variant<Ts...>> {
 template <> struct formatter<std::monostate> {
   /**
    * @brief No-op parse; monostate accepts no format specifier.
-   * @param ctx Unused format parse context.
    */
   constexpr void parse(format_parse_context &) noexcept {}
 
   /**
    * @brief Writes the literal `null`.
-   * @param val Unused monostate value.
    * @param out Destination sink.
    */
   void format(std::monostate, const sink &out) const noexcept {

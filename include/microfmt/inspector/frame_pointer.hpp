@@ -88,7 +88,6 @@ public:
    * @brief Constructs a handle for a stateless unwinder tag.
    * @tparam ArchTag Unwinder tag type.
    * @tparam Traits Specialized traits, enabled when `context_type` is `void`.
-   * @param ArchTag Value used to select the traits.
    */
   template <
       typename ArchTag, typename Traits = frame_unwinder_traits<ArchTag>,
@@ -102,7 +101,6 @@ public:
    * @tparam Context Concrete context type.
    * @tparam Traits Specialized traits, enabled when `context_type` is non-void
    * and @p Context converts to it.
-   * @param ArchTag Value used to select the traits.
    * @param ctx Context object performing the unwinding.
    */
   template <typename ArchTag, typename Context,

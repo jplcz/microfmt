@@ -120,7 +120,6 @@ struct formatter<reg_grid_view<WordType, N>> {
 
   /**
    * @brief No-op parse; grid views accept no format specifier.
-   * @param ctx Unused format parse context.
    */
   constexpr void parse(format_parse_context &) noexcept {}
 

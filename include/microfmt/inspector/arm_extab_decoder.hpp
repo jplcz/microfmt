@@ -13,11 +13,25 @@
 
 namespace microfmt {
 
+/**
+ * @brief Resolves whether unwind instructions are inline or stored in an
+ * external `.ARM.extab` entry.
+ */
 class extab_entry_resolver {
 public:
-  // Resolves whether unwind instructions are inline or stored in an external
-  // .ARM.extab entry. Populates out_unwind_word with the executable unwind
-  // descriptor or bytecode.
+  /**
+   * @brief Resolves the executable unwind descriptor for an EXIDX entry.
+   *
+   * Follows PREL31 pointers into `.ARM.extab` when bit 31 is set; otherwise
+   * passes the inline descriptor through unchanged.
+   *
+   * @param space Address space to read from.
+   * @param exidx_word2_addr Address of the EXIDX entry's second word.
+   * @param raw_unwind_data Raw second-word contents.
+   * @param out_unwind_word Receives the executable descriptor or bytecode.
+   * @return `true` on success, `false` for the `EXIDX_CANTUNWIND` sentinel or
+   * when reading the extab entry fails.
+   */
   [[nodiscard]] static bool
   resolve_unwind_word(address_space_ref space, uintptr_t exidx_word2_addr,
                       uint32_t raw_unwind_data,
