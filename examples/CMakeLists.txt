@@ -70,6 +70,7 @@ add_microfmt_example(remote_diag_demo remote_diag_demo.cpp)
 add_microfmt_example(unwinder_demo unwinder_demo.cpp)
 add_microfmt_example(exidx_unwinder_test exidx_unwinder_test.cpp)
 add_microfmt_example(chained_unwinder_demo chained_unwinder_demo.cpp)
+add_microfmt_example(remote_struct_demo remote_struct_demo.cpp)
 
 if(TARGET PkgConfig::MICROFMT_SYSTEMD)
   add_microfmt_example(systemd_demo systemd_demo.cpp)
