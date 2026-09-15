@@ -39,6 +39,7 @@
 #include <microfmt/sinks/styled_sink.hpp>
 #include <microfmt/sinks/tee_sink.hpp>
 #include <microfmt/inspector/address_translator.hpp>
+#include <microfmt/inspector/memory_classifier.hpp>
 #include <microfmt/inspector/register_view.hpp>
 
 #if MICROFMT_HEADER_CHECK_STANDARD >= 20

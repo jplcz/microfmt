@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 #include <microfmt/inspector/address_translator.hpp>
 #include <microfmt/inspector/fp_unwinder.hpp>
+#include <microfmt/inspector/memory_classifier.hpp>
 #include <microfmt/inspector/register_context.hpp>
 #include <microfmt/inspector/register_view.hpp>
 #include <microfmt/inspector/remote_binary_tree.hpp>
@@ -21,12 +22,21 @@
 
 struct stateless_translator_tag {};
 struct stateful_translator_tag {};
+struct stateless_classifier_tag {};
+struct stateful_classifier_tag {};
 
 struct translator_context {
   uintptr_t virtual_base;
   uintptr_t physical_base;
   size_t size;
   uint8_t space_id;
+  mutable size_t calls{0};
+  mutable uintptr_t last_virtual_address{0};
+};
+
+struct classifier_context {
+  const microfmt::memory_region_info *regions;
+  size_t region_count;
   mutable size_t calls{0};
   mutable uintptr_t last_virtual_address{0};
 };
@@ -77,6 +87,49 @@ struct microfmt::address_translator_traits<stateful_translator_tag> {
                   .executable = false,
                   .user_accessible = false};
     return true;
+  }
+};
+
+template <>
+struct microfmt::memory_classifier_traits<stateless_classifier_tag> {
+  using context_type = void;
+
+  static bool classify_address(const void *, uintptr_t virtual_address,
+                               microfmt::memory_region_info &info) noexcept {
+    if (virtual_address < 0x8000 || virtual_address >= 0x9000)
+      return false;
+    info = {.start_address = 0x8000,
+            .end_address = 0x9000,
+            .type = microfmt::memory_region_type::device_mmio,
+            .space_id = 0,
+            .readable = true,
+            .writable = true,
+            .executable = false};
+    return true;
+  }
+};
+
+template <>
+struct microfmt::memory_classifier_traits<stateful_classifier_tag> {
+  using context_type = classifier_context;
+
+  static bool classify_address(const void *opaque_context,
+                               uintptr_t virtual_address,
+                               microfmt::memory_region_info &info) noexcept {
+    if (!opaque_context)
+      return false;
+    const auto &context =
+        *static_cast<const classifier_context *>(opaque_context);
+    ++context.calls;
+    context.last_virtual_address = virtual_address;
+
+    for (size_t i = 0; i < context.region_count; ++i) {
+      if (context.regions[i].contains(virtual_address)) {
+        info = context.regions[i];
+        return true;
+      }
+    }
+    return false;
   }
 };
 
@@ -163,6 +216,92 @@ TEST(AddressTranslatorRef, ForwardsStateAndPropagatesFailures) {
       microfmt::address_translator_ref::make<stateful_translator_tag>(context);
   EXPECT_TRUE(made.translate(0x4000, attributes));
   EXPECT_EQ(attributes.physical_address, 0x100000u);
+}
+
+TEST(MemoryClassifierRef, ChecksHalfOpenRegionBounds) {
+  constexpr microfmt::memory_region_info region{
+      .start_address = 0x1000,
+      .end_address = 0x2000,
+      .type = microfmt::memory_region_type::kernel_data};
+
+  static_assert(region.contains(0x1000));
+  static_assert(region.contains(0x1fff));
+  static_assert(!region.contains(0x0fff));
+  static_assert(!region.contains(0x2000));
+  EXPECT_TRUE(region.contains(0x1800));
+}
+
+TEST(MemoryClassifierRef, HandlesEmptyAndStatelessClassifiers) {
+  microfmt::memory_classifier_ref empty;
+  EXPECT_FALSE(empty);
+
+  microfmt::memory_region_info info{
+      .start_address = 1,
+      .end_address = 2,
+      .type = microfmt::memory_region_type::guard_page};
+  EXPECT_FALSE(empty.classify_address(0x8000, info));
+  EXPECT_EQ(info.type, microfmt::memory_region_type::guard_page);
+
+  microfmt::memory_classifier_ref classifier(stateless_classifier_tag{});
+  EXPECT_TRUE(classifier);
+  EXPECT_TRUE(classifier.classify_address(0x8123, info));
+  EXPECT_EQ(info.start_address, 0x8000u);
+  EXPECT_EQ(info.end_address, 0x9000u);
+  EXPECT_EQ(info.type, microfmt::memory_region_type::device_mmio);
+  EXPECT_TRUE(info.readable);
+  EXPECT_TRUE(info.writable);
+  EXPECT_FALSE(info.executable);
+  EXPECT_TRUE(info.contains(0x8fff));
+  EXPECT_FALSE(info.contains(0x9000));
+
+  auto made =
+      microfmt::memory_classifier_ref::make<stateless_classifier_tag>();
+  EXPECT_TRUE(made.classify_address(0x8fff, info));
+  EXPECT_FALSE(made.classify_address(0x9000, info));
+}
+
+TEST(MemoryClassifierRef, ForwardsStateAndClassifiesConfiguredRegions) {
+  constexpr microfmt::memory_region_info regions[]{
+      {.start_address = 0x1000,
+       .end_address = 0x2000,
+       .type = microfmt::memory_region_type::user_code,
+       .space_id = 42,
+       .readable = true,
+       .writable = false,
+       .executable = true},
+      {.start_address = 0x7000,
+       .end_address = 0x8000,
+       .type = microfmt::memory_region_type::process_stack,
+       .space_id = 42,
+       .readable = true,
+       .writable = true,
+       .executable = false}};
+  classifier_context context{regions, sizeof(regions) / sizeof(regions[0])};
+  microfmt::memory_classifier_ref classifier(stateful_classifier_tag{},
+                                              context);
+  EXPECT_TRUE(classifier);
+
+  microfmt::memory_region_info info;
+  EXPECT_TRUE(classifier.classify_address(0x7123, info));
+  EXPECT_EQ(context.calls, 1u);
+  EXPECT_EQ(context.last_virtual_address, 0x7123u);
+  EXPECT_EQ(info.type, microfmt::memory_region_type::process_stack);
+  EXPECT_EQ(info.space_id, 42u);
+  EXPECT_TRUE(info.readable);
+  EXPECT_TRUE(info.writable);
+  EXPECT_FALSE(info.executable);
+
+  info = {.start_address = 0xaaaa,
+          .type = microfmt::memory_region_type::unknown};
+  EXPECT_FALSE(classifier.classify_address(0x3000, info));
+  EXPECT_EQ(info.start_address, 0xaaaau);
+  EXPECT_EQ(context.calls, 2u);
+
+  auto made =
+      microfmt::memory_classifier_ref::make<stateful_classifier_tag>(context);
+  EXPECT_TRUE(made.classify_address(0x1000, info));
+  EXPECT_EQ(info.type, microfmt::memory_region_type::user_code);
+  EXPECT_EQ(info.end_address, 0x2000u);
 }
 
 struct fake_register_state {
