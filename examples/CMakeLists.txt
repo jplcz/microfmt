@@ -73,6 +73,7 @@ add_microfmt_example(chained_unwinder_demo chained_unwinder_demo.cpp)
 add_microfmt_example(remote_struct_demo remote_struct_demo.cpp)
 add_microfmt_example(container_context_demo container_context_demo.cpp)
 add_microfmt_example(remote_vector_context_demo remote_vector_context_demo.cpp)
+add_microfmt_example(remote_forward_list_demo remote_forward_list_demo.cpp)
 
 if(TARGET PkgConfig::MICROFMT_SYSTEMD)
   add_microfmt_example(systemd_demo systemd_demo.cpp)
