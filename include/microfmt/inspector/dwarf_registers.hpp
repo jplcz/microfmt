@@ -129,6 +129,14 @@ struct register_traits {
       register_descriptor{"R14", R14}, register_descriptor{"R15", R15},
       register_descriptor{"RIP", RIP}};
 
+  [[nodiscard]] static constexpr std::array<register_descriptor, 15>
+  address_registers() noexcept {
+    return {{{"RBP", RBP}, {"RDI", RDI}, {"RSI", RSI}, {"RBX", RBX},
+             {"R12", R12}, {"R13", R13}, {"R14", R14}, {"R15", R15},
+             {"RAX", RAX}, {"RCX", RCX}, {"RDX", RDX}, {"R8", R8},
+             {"R9", R9}, {"R10", R10}, {"R11", R11}}};
+  }
+
   inline static constexpr std::array system_registers{
       register_descriptor{"EFLAGS", EFLAGS},
       register_descriptor{"FS_BASE", FS_BASE},
@@ -209,6 +217,12 @@ struct register_traits {
       register_descriptor{"ESP", ESP}, register_descriptor{"EBP", EBP},
       register_descriptor{"ESI", ESI}, register_descriptor{"EDI", EDI},
       register_descriptor{"EIP", EIP}};
+
+  [[nodiscard]] static constexpr std::array<register_descriptor, 7>
+  address_registers() noexcept {
+    return {{{"EBP", EBP}, {"ESI", ESI}, {"EDI", EDI}, {"EBX", EBX},
+             {"EAX", EAX}, {"ECX", ECX}, {"EDX", EDX}}};
+  }
 
   inline static constexpr std::array system_registers{
       register_descriptor{"GS_BASE", GS_BASE},
@@ -395,6 +409,18 @@ struct register_traits {
       register_descriptor{"X28", X28}, register_descriptor{"FP", FP},
       register_descriptor{"LR", LR},   register_descriptor{"SP", SP},
       register_descriptor{"PC", PC}};
+
+  [[nodiscard]] static constexpr std::array<register_descriptor, 30>
+  address_registers() noexcept {
+    return {{{"FP", FP},   {"X0", X0},   {"X1", X1},   {"X2", X2},
+             {"X3", X3},   {"X4", X4},   {"X5", X5},   {"X6", X6},
+             {"X7", X7},   {"X19", X19}, {"X20", X20}, {"X21", X21},
+             {"X22", X22}, {"X23", X23}, {"X24", X24}, {"X25", X25},
+             {"X26", X26}, {"X27", X27}, {"X28", X28}, {"X8", X8},
+             {"X9", X9},   {"X10", X10}, {"X11", X11}, {"X12", X12},
+             {"X13", X13}, {"X14", X14}, {"X15", X15}, {"X16", X16},
+             {"X17", X17}, {"X18", X18}}};
+  }
 
   inline static constexpr std::array system_registers{
       register_descriptor{"TPIDR_EL0", TPIDR_EL0},
@@ -614,6 +640,13 @@ struct register_traits {
       register_descriptor{"IP", R12},  register_descriptor{"SP", SP},
       register_descriptor{"LR", LR},   register_descriptor{"PC", PC}};
 
+  [[nodiscard]] static constexpr std::array<register_descriptor, 13>
+  address_registers() noexcept {
+    return {{{"FP", FP}, {"R0", R0}, {"R1", R1}, {"R2", R2}, {"R3", R3},
+             {"R4", R4}, {"R5", R5}, {"R6", R6}, {"R7", R7}, {"R8", R8},
+             {"R9", R9}, {"R10", R10}, {"IP", R12}}};
+  }
+
   inline static constexpr std::array system_registers{
       register_descriptor{"TPIDRURW", TPIDRURW},
       register_descriptor{"TPIDRURO", TPIDRURO},
@@ -822,6 +855,18 @@ struct register_traits {
       register_descriptor{"t3", T3},     register_descriptor{"t4", T4},
       register_descriptor{"t5", T5},     register_descriptor{"t6", T6},
       register_descriptor{"pc", PC}};
+
+  [[nodiscard]] static constexpr std::array<register_descriptor, 29>
+  address_registers() noexcept {
+    return {{{"s0", FP},  {"gp", GP},  {"tp", TP},   {"a0", A0},
+             {"a1", A1},  {"a2", A2},  {"a3", A3},   {"a4", A4},
+             {"a5", A5},  {"a6", A6},  {"a7", A7},   {"s1", S1},
+             {"s2", S2},  {"s3", S3},  {"s4", S4},   {"s5", S5},
+             {"s6", S6},  {"s7", S7},  {"s8", S8},   {"s9", S9},
+             {"s10", S10}, {"s11", S11}, {"t0", T0}, {"t1", T1},
+             {"t2", T2},  {"t3", T3},  {"t4", T4},   {"t5", T5},
+             {"t6", T6}}};
+  }
 
   inline static constexpr std::array system_registers{
       register_descriptor{"sstatus", SSTATUS},

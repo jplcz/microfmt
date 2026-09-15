@@ -24,11 +24,11 @@ metadata incrementally to recover the caller frame without allocating.
 its EXIDX range. The unwinder then finds the nearest entry, decodes the inline
 or extended bytecode, and derives the next frame state.
 
-## Use an off-stack holder
+## Use a stable holder and register context
 
-`arm_exidx_unwinder_holder` owns the substantial register-state and image
-scratch required by the EXIDX backend. It is deliberately non-copyable and
-non-movable so its context's interior pointers remain stable.
+`arm_exidx_unwinder_holder` owns the image scratch required by the EXIDX
+backend. It is deliberately non-copyable and non-movable so its context's
+interior pointers remain stable.
 
 ```cpp
 microfmt::arm_exidx_unwinder_holder holder{space, image_enumerator};
@@ -36,15 +36,17 @@ auto unwinder = holder.make_ref();
 ```
 
 Store the holder in a crash-reporting context, debugger session, or other
-dedicated owner. Do not create it as a formatter-local object: ARM register
-state is intentionally kept off the formatter stack.
+dedicated owner. Supply the current ARM state separately through a mutable
+`register_context_ref`; EXIDX bytecode reads SP/LR and writes recovered
+registers through that handle.
 
 ## Target requirements
 
 The address-space backend must read target 32-bit words safely. The image
 enumerator must report correct image load addresses and `.ARM.exidx` bounds.
-The stack must be readable at the current frame pointer, and the target's
-frame layout must be compatible with the selected unwinder path.
+The stack must be readable at the current virtual SP. The register context must
+provide ARM SP and LR and must allow writes for registers restored by unwind
+bytecode.
 
 EXIDX information is optional in many binaries. The EXIDX backend can be
 combined with frame-pointer, hint-based, or other unwinders through the

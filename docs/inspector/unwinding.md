@@ -14,8 +14,9 @@ debugger's unwinder.
 ## The unwinder interface
 
 Specialize `frame_unwinder_traits<Tag>` with a `context_type` and a `step`
-operation. `step` receives a current frame pointer and returns the caller frame
-pointer and program counter.
+operation. `step` receives a `register_context_ref` and returns the caller
+frame pointer and program counter. The backend reads whichever architecture
+registers it needs and may update the context while applying unwind rules.
 
 ```cpp
 struct platform_unwinder_tag {};
@@ -23,7 +24,8 @@ struct platform_unwinder_tag {};
 template <> struct microfmt::frame_unwinder_traits<platform_unwinder_tag> {
   using context_type = platform_unwinder_context;
 
-  static bool step(const void *context, uintptr_t current_fp,
+  static bool step(const void *context,
+                   microfmt::register_context_ref registers,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept;
 };
 ```
@@ -33,11 +35,11 @@ borrowed, so it must outlive the iterator or backtrace view.
 
 ## Walk and render frames
 
-`frame_pointer_iterator` performs a forward-only walk beginning with an
-initial frame pointer and program counter. It yields `stack_frame` records with
-the depth, frame pointer, and program counter. Use the backtrace views in
-`frame_pointer.hpp` to stream a bounded stack trace, optionally through a
-`symbol_resolver_ref`.
+`frame_pointer_iterator` performs a forward-only walk beginning with a
+register context, initial frame pointer, and initial program counter. It yields
+`stack_frame` records with the depth, frame pointer, and program counter. Use
+the backtrace views in `frame_pointer.hpp` to stream a bounded stack trace,
+optionally through a `symbol_resolver_ref`.
 
 Set a practical maximum frame count. An unwinder must reject null, unaligned,
 non-advancing, and otherwise invalid caller frame data. These checks prevent a
@@ -101,12 +103,10 @@ can select a recovery routine from the active image, scheduler configuration,
 or platform-specific PC map without heap allocation. The registry lookup is by
 PC; context-sensitive register recovery belongs in the selected routine.
 
-`chained_unwinder_context` tries EXIDX, DWARF, and frame-pointer strategies
-before consulting its hint registry. Set its `current_pc` pointer to the PC
-being unwound so a fallback lookup can occur. A hint is only reached after the
-earlier strategies fail, and the chained unwinder requires a non-zero
-`current_fp`; pass the address of the available saved-context record when no
-ordinary frame pointer exists.
+`chained_unwinder_context<AbiTraits>` tries EXIDX, DWARF, and frame-pointer
+strategies before consulting its hint registry. It obtains the current PC and
+frame pointer through the register context using the ABI's register indexes.
+A hint is only reached after the earlier strategies fail.
 
 Hints are a recovery mechanism, not a reason to trust arbitrary context
 memory. Validate every target read and return `false` when the saved stack
@@ -117,6 +117,8 @@ advance the walk.
 
 | Header | Backend or supporting facility |
 |---|---|
+| `register_context.hpp` | Type-erased register reads and writes used by unwind backends |
+| `dwarf_registers.hpp` | Architecture register numbers and constexpr catalogs |
 | `fp_unwinder.hpp` | Generic ABI-trait-driven frame-pointer stepper |
 | `dwarf_abi.hpp` | Architecture traits and register/frame conventions |
 | `dwarf_decoder.hpp` | Bounded DWARF call-frame instruction decoding |

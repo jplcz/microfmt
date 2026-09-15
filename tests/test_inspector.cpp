@@ -117,6 +117,31 @@ bool read_register_range(const void *opaque_state,
   return true;
 }
 
+template <size_t CandidateCount, size_t RegisterCount>
+constexpr bool address_candidates_are_unique_gprs(
+    const std::array<microfmt::dwarf::register_descriptor, CandidateCount>
+        &candidates,
+    const std::array<microfmt::dwarf::register_descriptor, RegisterCount>
+        &registers) noexcept {
+  for (size_t i = 0; i < candidates.size(); ++i) {
+    bool found = false;
+    for (const auto &reg : registers) {
+      if (reg.index == candidates[i].index && reg.name == candidates[i].name) {
+        found = true;
+        break;
+      }
+    }
+    if (!found)
+      return false;
+
+    for (size_t j = i + 1; j < candidates.size(); ++j) {
+      if (candidates[i].index == candidates[j].index)
+        return false;
+    }
+  }
+  return true;
+}
+
 TEST(DwarfRegisterTraits, DefinesAllArchitectureRegisterCatalogs) {
   using arm_traits = microfmt::dwarf::arm32::register_traits;
   using aarch64_traits = microfmt::dwarf::aarch64::register_traits;
@@ -135,6 +160,16 @@ TEST(DwarfRegisterTraits, DefinesAllArchitectureRegisterCatalogs) {
                 microfmt::dwarf::generic_timer::CNTFRQ);
   static_assert(microfmt::dwarf::aarch64::CNTHVS_CVAL_EL2 ==
                 microfmt::dwarf::generic_timer::CNTHVS_CVAL);
+  static_assert(address_candidates_are_unique_gprs(
+      arm_traits::address_registers(), arm_traits::gpr_registers));
+  static_assert(address_candidates_are_unique_gprs(
+      aarch64_traits::address_registers(), aarch64_traits::gpr_registers));
+  static_assert(address_candidates_are_unique_gprs(
+      x86_traits::address_registers(), x86_traits::gpr_registers));
+  static_assert(address_candidates_are_unique_gprs(
+      x86_64_traits::address_registers(), x86_64_traits::gpr_registers));
+  static_assert(address_candidates_are_unique_gprs(
+      riscv_traits::address_registers(), riscv_traits::gpr_registers));
 
   EXPECT_EQ(arm_traits::gpr_registers.front().name, "R0");
   EXPECT_EQ(arm_traits::gpr_registers.back().name, "PC");
@@ -148,6 +183,40 @@ TEST(DwarfRegisterTraits, DefinesAllArchitectureRegisterCatalogs) {
   EXPECT_EQ(x86_64_traits::system_registers.back().name, "DR7");
   EXPECT_EQ(riscv_traits::system_registers.front().name, "sstatus");
   EXPECT_EQ(riscv_traits::gpr_registers[28].name, "t3");
+
+  constexpr auto arm_addresses = arm_traits::address_registers();
+  constexpr auto aarch64_addresses = aarch64_traits::address_registers();
+  constexpr auto x86_addresses = x86_traits::address_registers();
+  constexpr auto x86_64_addresses = x86_64_traits::address_registers();
+  constexpr auto riscv_addresses = riscv_traits::address_registers();
+  EXPECT_EQ(arm_addresses[0].index, microfmt::dwarf::arm32::FP);
+  EXPECT_EQ(arm_addresses[0].name, "FP");
+  EXPECT_EQ(aarch64_addresses[0].index, microfmt::dwarf::aarch64::FP);
+  EXPECT_EQ(x86_addresses[0].index, microfmt::dwarf::x86::FP);
+  EXPECT_EQ(x86_64_addresses[0].index, microfmt::dwarf::x86_64::FP);
+  EXPECT_EQ(riscv_addresses[0].index, microfmt::dwarf::riscv::FP);
+
+  const auto contains = [](const auto &registers, uint32_t index) noexcept {
+    for (const auto &candidate : registers) {
+      if (candidate.index == index)
+        return true;
+    }
+    return false;
+  };
+  EXPECT_FALSE(contains(arm_addresses, microfmt::dwarf::arm32::SP));
+  EXPECT_FALSE(contains(arm_addresses, microfmt::dwarf::arm32::LR));
+  EXPECT_FALSE(contains(arm_addresses, microfmt::dwarf::arm32::PC));
+  EXPECT_FALSE(contains(aarch64_addresses, microfmt::dwarf::aarch64::SP));
+  EXPECT_FALSE(contains(aarch64_addresses, microfmt::dwarf::aarch64::LR));
+  EXPECT_FALSE(contains(aarch64_addresses, microfmt::dwarf::aarch64::PC));
+  EXPECT_FALSE(contains(x86_addresses, microfmt::dwarf::x86::SP));
+  EXPECT_FALSE(contains(x86_addresses, microfmt::dwarf::x86::PC));
+  EXPECT_FALSE(contains(x86_64_addresses, microfmt::dwarf::x86_64::SP));
+  EXPECT_FALSE(contains(x86_64_addresses, microfmt::dwarf::x86_64::PC));
+  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::ZERO));
+  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::SP));
+  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::RA));
+  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::PC));
 }
 
 TEST(RegisterContextView, UsesArchitectureSystemRegisterTraits) {
