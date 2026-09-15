@@ -17,13 +17,33 @@ namespace microfmt {
 
 namespace detail {
 
+/**
+ * @brief Parsed floating-point format specifier state.
+ */
 struct parsed_float_spec {
+  /**
+   * @brief Optional sign character: `'+'`, `' '` or `'\0'` (none).
+   */
   char sign{'\0'};      // '+', ' ', or '\0'
+  /**
+   * @brief Alternate-form flag (`#`), forcing a decimal point to be printed.
+   */
   bool alt_form{false}; // '#' (force decimal point)
+  /**
+   * @brief Explicit precision, or `-1` when not specified.
+   */
   int precision{-1};    // -1 if not specified
+  /**
+   * @brief Presentation type: `f`, `F`, `e`, `E`, `g`, `G`, `a` or `A`.
+   */
   char type{'g'};       // 'f', 'F', 'e', 'E', 'g', 'G', 'a', 'A'
 };
 
+/**
+ * @brief Parses a floating-point format specifier string.
+ * @param spec Raw specifier text (e.g. `"+#.4e"`).
+ * @return Parsed @ref parsed_float_spec describing the requested formatting.
+ */
 inline constexpr parsed_float_spec
 parse_float_spec(std::string_view spec) noexcept {
   parsed_float_spec res{};
@@ -70,6 +90,13 @@ parse_float_spec(std::string_view spec) noexcept {
 }
 
 // Build a standard printf format string (e.g., "%+#.4f" or "%Lg")
+/**
+ * @brief Builds a `printf`-style format string into a caller buffer.
+ * @tparam T Floating type (adds the `L` prefix for `long double`).
+ * @param dest Output buffer (must fit the produced format string).
+ * @param spec Parsed format specifier to translate.
+ * @return Number of bytes written to @p dest, excluding the null terminator.
+ */
 template <typename T>
 inline size_t
 build_printf_float_format(char *dest, const parsed_float_spec &spec) noexcept {
@@ -96,6 +123,17 @@ build_printf_float_format(char *dest, const parsed_float_spec &spec) noexcept {
   return idx;
 }
 
+/**
+ * @brief Formats a floating-point value via `snprintf` into the given sink.
+ *
+ * Falls back to a heap allocation only when the fixed stack buffer proves too
+ * small for extreme precisions.
+ *
+ * @tparam T Floating type being formatted.
+ * @param val The value to format.
+ * @param spec Parsed format specifier.
+ * @param out Destination sink.
+ */
 template <typename T>
 inline void format_float_via_printf(T val, const parsed_float_spec &spec,
                                     const sink &out) noexcept {
@@ -137,13 +175,28 @@ inline void format_float_via_printf(T val, const parsed_float_spec &spec,
 // Formatter Specializations
 // ============================================================================
 
+/**
+ * @brief Formatter for `float` values using printf-compatible presentation.
+ */
 template <> struct formatter<float> {
+  /**
+   * @brief Parsed state carried from @ref parse to @ref format.
+   */
   detail::parsed_float_spec spec_{};
 
+  /**
+   * @brief Parses the floating-point format specifier.
+   * @param ctx Format parse context exposing the specifier text.
+   */
   constexpr void parse(format_parse_context &ctx) noexcept {
     spec_ = detail::parse_float_spec(ctx.spec());
   }
 
+  /**
+   * @brief Renders a `float` value.
+   * @param val Value to format.
+   * @param out Destination sink.
+   */
   void format(float val, const sink &out) const noexcept {
     // Promoted to double for standard %f / %g printf conversions
     detail::format_float_via_printf<double>(static_cast<double>(val), spec_,
@@ -151,25 +204,56 @@ template <> struct formatter<float> {
   }
 };
 
+/**
+ * @brief Formatter for `double` values using printf-compatible presentation.
+ */
 template <> struct formatter<double> {
+  /**
+   * @brief Parsed state carried from @ref parse to @ref format.
+   */
   detail::parsed_float_spec spec_{};
 
+  /**
+   * @brief Parses the floating-point format specifier.
+   * @param ctx Format parse context exposing the specifier text.
+   */
   constexpr void parse(format_parse_context &ctx) noexcept {
     spec_ = detail::parse_float_spec(ctx.spec());
   }
 
+  /**
+   * @brief Renders a `double` value.
+   * @param val Value to format.
+   * @param out Destination sink.
+   */
   void format(double val, const sink &out) const noexcept {
     detail::format_float_via_printf<double>(val, spec_, out);
   }
 };
 
+/**
+ * @brief Formatter for `long double` values using printf-compatible
+ * presentation.
+ */
 template <> struct formatter<long double> {
+  /**
+   * @brief Parsed state carried from @ref parse to @ref format.
+   */
   detail::parsed_float_spec spec_{};
 
+  /**
+   * @brief Parses the floating-point format specifier.
+   * @param ctx Format parse context exposing the specifier text.
+   */
   constexpr void parse(format_parse_context &ctx) noexcept {
     spec_ = detail::parse_float_spec(ctx.spec());
   }
 
+  /**
+   * @brief Renders a `long double` value.
+   * @param val Value to format.
+   * @param out Destination sink.
+   */
   void format(long double val, const sink &out) const noexcept {
     detail::format_float_via_printf<long double>(val, spec_, out);
   }

@@ -32,13 +32,29 @@ struct is_bintime_struct<T, std::void_t<decltype(std::declval<T>().sec),
 
 } // namespace detail
 
-// Customization point: users can explicitly enable for custom/wrapped types
+/**
+ * @brief Customization point trait detecting FreeBSD-style binary time types.
+ *
+ * Defaults to structural detection of a `sec`/`frac` member pair, but may be
+ * explicitly specialized for custom or wrapped types.
+ *
+ * @tparam T Candidate time type.
+ */
 template <typename T> struct is_bintime : detail::is_bintime_struct<T> {};
 
+/**
+ * @brief Convenience variable template for @ref is_bintime.
+ * @tparam T Candidate time type.
+ */
 template <typename T>
 inline constexpr bool is_bintime_v = is_bintime<std::remove_cvref_t<T>>::value;
 
-// Precision enum for formatting
+/**
+ * @brief Fractional-second precision selectors for time formatting.
+ *
+ * Each enumerator value encodes the corresponding number of fractional decimal
+ * digits to emit.
+ */
 enum class time_precision : uint8_t {
   sec = 0,
   ms = 3,
@@ -53,6 +69,13 @@ enum class time_precision : uint8_t {
 
 namespace detail {
 
+/**
+ * @brief Converts a `bintime` fractional part into decimal-scaling digits.
+ *
+ * @param frac Fractional seconds expressed in 2^-64 units.
+ * @param prec Target decimal precision.
+ * @return Decimal-scaled fractional value, or `0` for `sec` precision.
+ */
 inline uint64_t bintime_frac_to_decimal(uint64_t frac,
                                         time_precision prec) noexcept {
   uint64_t multiplier = 1'000'000'000;
@@ -85,6 +108,13 @@ inline uint64_t bintime_frac_to_decimal(uint64_t frac,
 #endif
 }
 
+/**
+ * @brief Converts an `sbintime_t` fractional part into decimal-scaling digits.
+ *
+ * @param frac32 Fractional seconds expressed in 2^-32 units.
+ * @param prec Target decimal precision.
+ * @return Decimal-scaled fractional value.
+ */
 inline uint32_t sbintime_frac_to_decimal(uint32_t frac32,
                                          time_precision prec) noexcept {
   uint64_t multiplier = 1'000'000'000;
@@ -112,10 +142,28 @@ inline uint32_t sbintime_frac_to_decimal(uint32_t frac32,
 // Formatter for Any `is_bintime` Matching Type (e.g. native struct bintime)
 // ============================================================================
 
+/**
+ * @brief Formatter for any type satisfying @ref is_bintime_v.
+ *
+ * Accepts the `m`/`3`, `u`/`6`, `n`/`9`, `p`/`1` precision suffixes and the
+ * `r`/`R` flag to suppress the trailing `s` unit.
+ *
+ * @tparam T Binary time type with `sec`/`frac` members.
+ */
 template <typename T> struct formatter<T, std::enable_if_t<is_bintime_v<T>>> {
+  /**
+   * @brief Fractional-second precision used when rendering.
+   */
   time_precision precision{time_precision::ns};
+  /**
+   * @brief Set to `false` (via `r`/`R`) to suppress the trailing `s` unit.
+   */
   bool show_unit{true};
 
+  /**
+   * @brief Parses precision and unit flags from the format specifier.
+   * @param ctx Format parse context exposing the specifier text.
+   */
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();
     for (char c : spec) {
@@ -132,6 +180,11 @@ template <typename T> struct formatter<T, std::enable_if_t<is_bintime_v<T>>> {
     }
   }
 
+  /**
+   * @brief Renders a binary time value as `sec.frac` with optional `s` unit.
+   * @param bt The value to format (read-only via @p sec/@p frac members).
+   * @param out Destination sink.
+   */
   void format(const T &bt, const sink &out) const noexcept {
     int64_t sec = static_cast<int64_t>(bt.sec);
     uint64_t frac = static_cast<uint64_t>(bt.frac);
@@ -160,19 +213,52 @@ template <typename T> struct formatter<T, std::enable_if_t<is_bintime_v<T>>> {
 // sbintime_t Wrapper View (disambiguates from standard int64_t)
 // ============================================================================
 
+/**
+ * @brief Non-owning view disambiguating an `sbintime_t` value from a plain
+ * `int64_t`.
+ *
+ * @tparam T Integral storage type holding the raw `sbintime_t` value.
+ */
 template <typename T> struct sbintime_view {
+  /**
+   * @brief Raw 64-bit `sbintime_t` value (signed fixed-point, 32.32).
+   */
   int64_t sbt{0};
 };
 
+/**
+ * @brief Wraps an integral `sbintime_t` value in an @ref sbintime_view.
+ * @tparam T Integral type of @p val.
+ * @param val Raw `sbintime_t` binary fractional-seconds value.
+ * @return A view that can be formatted as `sec.frac`.
+ */
 template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
 [[nodiscard]] constexpr auto as_sbintime(T val) noexcept {
   return sbintime_view<T>{static_cast<int64_t>(val)};
 }
 
+/**
+ * @brief Formatter for @ref sbintime_view values.
+ *
+ * Accepts the `m`/`3`, `u`/`6`, `n`/`9` precision suffixes and the `r`/`R`
+ * flag to suppress the trailing `s` unit.
+ *
+ * @tparam T Integral storage type of the wrapped `sbintime_t`.
+ */
 template <typename T> struct formatter<sbintime_view<T>> {
+  /**
+   * @brief Fractional-second precision used when rendering.
+   */
   time_precision precision{time_precision::us};
+  /**
+   * @brief Set to `false` (via `r`/`R`) to suppress the trailing `s` unit.
+   */
   bool show_unit{true};
 
+  /**
+   * @brief Parses precision and unit flags from the format specifier.
+   * @param ctx Format parse context exposing the specifier text.
+   */
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();
     for (char c : spec) {
@@ -187,6 +273,11 @@ template <typename T> struct formatter<sbintime_view<T>> {
     }
   }
 
+  /**
+   * @brief Renders an `sbintime_t` as `sec.frac` with optional `s` unit.
+   * @param sv The view holding the raw 32.32 fixed-point value.
+   * @param out Destination sink.
+   */
   void format(const sbintime_view<T> &sv, const sink &out) const noexcept {
     int64_t val = sv.sbt;
     if (val < 0) {

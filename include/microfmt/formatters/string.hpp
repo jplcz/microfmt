@@ -14,9 +14,25 @@
 
 namespace microfmt {
 
+/**
+ * @brief Formatter for `std::basic_string` / `std::basic_string_view` values.
+ *
+ * @tparam CharT Character type.
+ * @tparam Traits Character trait type.
+ * @tparam Alloc Allocator type.
+ */
 template <typename CharT, typename Traits, typename Alloc>
 struct formatter<std::basic_string<CharT, Traits, Alloc>> {
+  /**
+   * @brief No-op parse; plain strings accept no format specifier.
+   * @param ctx Unused format parse context.
+   */
   constexpr void parse(format_parse_context &) noexcept {}
+  /**
+   * @brief Writes the string contents verbatim.
+   * @param val String to format.
+   * @param out Destination sink.
+   */
   void format(const std::basic_string<CharT, Traits, Alloc> &val,
               const sink &out) const noexcept {
     out.write(std::basic_string_view<CharT, Traits>(val.data(), val.size()));
@@ -25,16 +41,43 @@ struct formatter<std::basic_string<CharT, Traits, Alloc>> {
 
 namespace detail {
 
+/**
+ * @brief Horizontal alignment mode for padded string output.
+ */
 enum class string_align : uint8_t { none, left, right, center };
 
+/**
+ * @brief Parsed advanced string format specifier state.
+ */
 struct parsed_string_spec {
+  /**
+   * @brief Fill character used for padding (default space).
+   */
   char fill{' '};
+  /**
+   * @brief Requested horizontal alignment.
+   */
   string_align align{string_align::none};
+  /**
+   * @brief Output field width.
+   */
   size_t width{0};
+  /**
+   * @brief Maximum visible length, or `size_t(-1)` for none.
+   */
   size_t precision{size_t(-1)};
+  /**
+   * @brief When `true`, render the string debug-escaped (`"..."`).
+   */
   bool debug_escaped{false};
 };
 
+/**
+ * @brief Parses an advanced string specifier:
+ * `[[fill]align][width][.precision][?]`.
+ * @param spec Raw specifier text.
+ * @return Parsed @ref parsed_string_spec.
+ */
 inline constexpr parsed_string_spec
 parse_advanced_string_spec(std::string_view spec) noexcept {
   parsed_string_spec res{};
@@ -98,6 +141,12 @@ parse_advanced_string_spec(std::string_view spec) noexcept {
   return res;
 }
 
+/**
+ * @brief Writes @p count copies of @p fill to the sink in bounded chunks.
+ * @param out Destination sink.
+ * @param fill Character to emit.
+ * @param count Number of characters to emit.
+ */
 inline void write_fill_chars(const sink &out, char fill,
                              size_t count) noexcept {
   char buf[32];
@@ -109,6 +158,11 @@ inline void write_fill_chars(const sink &out, char fill,
   }
 }
 
+/**
+ * @brief Writes a single character with C-style debug escaping.
+ * @param out Destination sink.
+ * @param ch Character to escape and emit.
+ */
 inline void write_escaped_character(const sink &out, char ch) noexcept {
   switch (ch) {
   case '\n':
@@ -144,7 +198,11 @@ inline void write_escaped_character(const sink &out, char ch) noexcept {
   }
 }
 
-// Compute the rendered character count for escaped strings
+/**
+ * @brief Computes the rendered character count of a debug-escaped string.
+ * @param sv String to measure (including the surrounding quotes).
+ * @return Rendered length in characters.
+ */
 inline size_t calculate_escaped_len(std::string_view sv) noexcept {
   size_t len = 2; // Surrounding quotes
   for (char ch : sv) {
@@ -176,14 +234,26 @@ inline size_t calculate_escaped_len(std::string_view sv) noexcept {
 // as_string_view Wrapper Class
 // ============================================================================
 
+/**
+ * @brief Non-owning string view supporting advanced format specifiers.
+ */
 class as_string_view {
 public:
+  /**
+   * @brief Constructs the view over a string_view.
+   * @param str Text to format.
+   */
   constexpr explicit as_string_view(std::string_view str) noexcept
       : str_(str) {}
 
+  /**
+   * @brief Returns the underlying string view.
+   * @return Referenced text.
+   */
   [[nodiscard]] constexpr std::string_view get() const noexcept { return str_; }
 
 private:
+  /// Referenced text.
   std::string_view str_;
 };
 
@@ -191,16 +261,34 @@ private:
 // Factory Functions: microfmt::as_string(...)
 // ============================================================================
 
+/**
+ * @brief Wraps a string_view for advanced string formatting.
+ * @param sv Text to format.
+ * @return An @ref as_string_view.
+ */
 [[nodiscard]] constexpr as_string_view as_string(std::string_view sv) noexcept {
   return as_string_view{sv};
 }
 
+/**
+ * @brief Wraps a `std::basic_string` for advanced string formatting.
+ * @tparam CharT Character type.
+ * @tparam Traits Character trait type.
+ * @tparam Alloc Allocator type.
+ * @param str String to format.
+ * @return An @ref as_string_view over the string's contents.
+ */
 template <typename CharT, typename Traits, typename Alloc>
 [[nodiscard]] as_string_view
 as_string(const std::basic_string<CharT, Traits, Alloc> &str) noexcept {
   return as_string_view{std::string_view(str.data(), str.size())};
 }
 
+/**
+ * @brief Wraps a null-terminated C string for advanced string formatting.
+ * @param str String to format, or `nullptr` (rendered as `(null)`).
+ * @return An @ref as_string_view.
+ */
 [[nodiscard]] constexpr as_string_view as_string(const char *str) noexcept {
   return as_string_view{str ? std::string_view(str)
                             : std::string_view("(null)")};
@@ -210,13 +298,29 @@ as_string(const std::basic_string<CharT, Traits, Alloc> &str) noexcept {
 // Formatter for as_string_view
 // ============================================================================
 
+/**
+ * @brief Formatter for @ref as_string_view supporting fill, alignment, width,
+ * precision, and debug escaping.
+ */
 template <> struct formatter<as_string_view> {
+  /**
+   * @brief Parsed format state carried from @ref parse to @ref format.
+   */
   detail::parsed_string_spec spec_{};
 
+  /**
+   * @brief Parses the advanced string specifier.
+   * @param ctx Format parse context exposing the specifier text.
+   */
   constexpr void parse(format_parse_context &ctx) noexcept {
     spec_ = detail::parse_advanced_string_spec(ctx.spec());
   }
 
+  /**
+   * @brief Renders the string with the requested alignment/padding/escaping.
+   * @param val The string view to format.
+   * @param out Destination sink.
+   */
   void format(const as_string_view &val, const sink &out) const noexcept {
     std::string_view sv = val.get();
 

@@ -19,17 +19,35 @@ namespace microfmt {
 
 namespace detail {
 
+/**
+ * @brief SFINAE trait detecting `timespec`-like types with `tv_sec`/`tv_nsec`.
+ * @tparam T Candidate type.
+ */
 template <typename T, typename = void>
 struct is_timespec_like : std::false_type {};
 
+/**
+ * @brief Specialization enabling @ref is_timespec_like for types exposing
+ * `tv_sec` and `tv_nsec` members.
+ * @tparam T Candidate type.
+ */
 template <typename T>
 struct is_timespec_like<T, std::void_t<decltype(std::declval<T>().tv_sec),
                                        decltype(std::declval<T>().tv_nsec)>>
     : std::true_type {};
 
+/**
+ * @brief SFINAE trait detecting `timeval`-like types with `tv_sec`/`tv_usec`.
+ * @tparam T Candidate type.
+ */
 template <typename T, typename = void>
 struct is_timeval_like : std::false_type {};
 
+/**
+ * @brief Specialization enabling @ref is_timeval_like for types exposing
+ * `tv_sec` and `tv_usec` members.
+ * @tparam T Candidate type.
+ */
 template <typename T>
 struct is_timeval_like<T, std::void_t<decltype(std::declval<T>().tv_sec),
                                       decltype(std::declval<T>().tv_usec)>>
@@ -37,10 +55,18 @@ struct is_timeval_like<T, std::void_t<decltype(std::declval<T>().tv_sec),
 
 } // namespace detail
 
+/**
+ * @brief Variable template for @ref detail::is_timespec_like.
+ * @tparam T Candidate type.
+ */
 template <typename T>
 inline constexpr bool is_timespec_v =
     detail::is_timespec_like<std::remove_cvref_t<T>>::value;
 
+/**
+ * @brief Variable template for @ref detail::is_timeval_like.
+ * @tparam T Candidate type.
+ */
 template <typename T>
 inline constexpr bool is_timeval_v =
     detail::is_timeval_like<std::remove_cvref_t<T>>::value;
@@ -49,10 +75,28 @@ inline constexpr bool is_timeval_v =
 // Formatter for struct timespec (.tv_sec, .tv_nsec)
 // ============================================================================
 
+/**
+ * @brief Formatter for `struct timespec`-like types (`tv_sec`, `tv_nsec`).
+ *
+ * Accepts the `m`/`3`, `u`/`6`, `n`/`9` precision suffixes and the `r`/`R`
+ * flag to suppress the trailing `s` unit.
+ *
+ * @tparam T Type satisfying @ref is_timespec_v.
+ */
 template <typename T> struct formatter<T, std::enable_if_t<is_timespec_v<T>>> {
+  /**
+   * @brief Fractional-digit precision (default 9 = nanoseconds).
+   */
   uint8_t precision{9}; // default: 9 digits (nanoseconds)
+  /**
+   * @brief Set to `false` (via `r`/`R`) for raw seconds without `s` suffix.
+   */
   bool show_unit{true}; // 'r' -> raw numbers without 's' suffix
 
+  /**
+   * @brief Parses precision and unit flags from the format specifier.
+   * @param ctx Format parse context exposing the specifier text.
+   */
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();
     if (!spec.empty() && spec.front() == ':') {
@@ -70,6 +114,11 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timespec_v<T>>> {
     }
   }
 
+  /**
+   * @brief Renders a `timespec` as `sec.frac` with optional `s` unit.
+   * @param ts The value to format (read-only via @p tv_sec/@p tv_nsec).
+   * @param out Destination sink.
+   */
   void format(const T &ts, const sink &out) const noexcept {
     int64_t sec = static_cast<int64_t>(ts.tv_sec);
     uint32_t nsec = static_cast<uint32_t>(ts.tv_nsec);
@@ -100,10 +149,28 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timespec_v<T>>> {
 // Formatter for struct timeval (.tv_sec, .tv_usec)
 // ============================================================================
 
+/**
+ * @brief Formatter for `struct timeval`-like types (`tv_sec`, `tv_usec`).
+ *
+ * Accepts the `m`/`3`, `u`/`6` precision suffixes and the `r`/`R` flag to
+ * suppress the trailing `s` unit.
+ *
+ * @tparam T Type satisfying @ref is_timeval_v.
+ */
 template <typename T> struct formatter<T, std::enable_if_t<is_timeval_v<T>>> {
+  /**
+   * @brief Fractional-digit precision (default 6 = microseconds).
+   */
   uint8_t precision{6}; // default: 6 digits (microseconds)
+  /**
+   * @brief Set to `false` (via `r`/`R`) for raw seconds without `s` suffix.
+   */
   bool show_unit{true};
 
+  /**
+   * @brief Parses precision and unit flags from the format specifier.
+   * @param ctx Format parse context exposing the specifier text.
+   */
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();
     if (!spec.empty() && spec.front() == ':') {
@@ -119,6 +186,11 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timeval_v<T>>> {
     }
   }
 
+  /**
+   * @brief Renders a `timeval` as `sec.frac` with optional `s` unit.
+   * @param tv The value to format (read-only via @p tv_sec/@p tv_usec).
+   * @param out Destination sink.
+   */
   void format(const T &tv, const sink &out) const noexcept {
     int64_t sec = static_cast<int64_t>(tv.tv_sec);
     uint32_t usec = static_cast<uint32_t>(tv.tv_usec);

@@ -16,13 +16,36 @@ namespace microfmt {
 // Unified Unwind Frame Type
 // ============================================================================
 
+/**
+ * @brief Classifies a @ref hybrid_frame as either a normal stack frame or a
+ * trap transition.
+ */
 enum class frame_kind : uint8_t { standard = 0, trap_transition };
 
+/**
+ * @brief One frame record produced during hybrid unwinding.
+ */
 struct hybrid_frame {
+  /**
+   * @brief Zero-based frame index (depth).
+   */
   uint32_t frame_index{0};
+  /**
+   * @brief Frame/saved-stack pointer of the frame.
+   */
   uintptr_t fp{0};
+  /**
+   * @brief Program counter (return address) of the frame.
+   */
   uintptr_t pc{0};
+  /**
+   * @brief Frame classification.
+   */
   frame_kind kind{frame_kind::standard};
+  /**
+   * @brief Trap context, valid when @ref kind is
+   * @ref frame_kind::trap_transition.
+   */
   trap_context trap{}; // Valid when kind == frame_kind::trap_transition
 };
 
