@@ -11,8 +11,9 @@
 #include "address_space.hpp"
 #include "dwarf_abi.hpp"
 #include "memory_classifier.hpp"
-#include "microfmt.hpp"
 #include "register_context.hpp"
+#include "../formatters/hexdump.hpp"
+#include "../microfmt.hpp"
 #include <cstdint>
 
 namespace microfmt {
@@ -65,13 +66,14 @@ public:
                             memory_classifier_ref classifier,
                             register_context_ref reg_ctx,
                             span<const uintptr_t> raw_addresses,
-                            const sink &out, size_t dump_bytes = 8) noexcept {
+                            const sink &out, size_t dump_bytes = 80) noexcept {
     size_t index = 0;
 
-    // If a register context is provided, scan all GPR registers from
-    // AbiTraits::register_traits
+    // If a register context is provided, scan the architecture's ordered
+    // pointer-bearing GPR candidates.
     if (reg_ctx) {
-      for (const auto &reg_desc : AbiTraits::register_traits::gpr_registers) {
+      for (const auto &reg_desc :
+           AbiTraits::register_traits::address_registers()) {
         typename AbiTraits::register_type reg_val = 0;
         if (reg_ctx.read_raw(reg_desc.index, &reg_val, sizeof(reg_val)) &&
             reg_val != 0) {
@@ -95,7 +97,7 @@ public:
   static void scan_and_dump(address_space_ref space,
                             memory_classifier_ref classifier,
                             address_source_ref source, const sink &out,
-                            size_t dump_bytes = 8) noexcept {
+                            size_t dump_bytes = 80) noexcept {
     if (!source)
       return;
 
@@ -127,8 +129,8 @@ private:
 
     // Determine whether dereferencing (memory reading/dumping) is permitted for
     // this type
-    bool allow_deref = true;
-    if (classified) {
+    bool allow_deref = classified && info.readable;
+    if (allow_deref) {
       switch (info.type) {
       case memory_region_type::kernel_code:
       case memory_region_type::direct_map:
@@ -145,17 +147,30 @@ private:
       }
     }
 
-    if (space && dump_bytes > 0 && allow_deref) {
-      size_t bytes_to_read = (dump_bytes > 16) ? 16 : dump_bytes;
-      uint8_t buffer[16]{};
-      if (space.read_bytes(addr, buffer, bytes_to_read)) {
-        out.write(" | hex: ");
-        for (size_t i = 0; i < bytes_to_read; ++i) {
-          microfmt::format_to(out, MICROFMT_STRING("{:02x} "), buffer[i]);
-        }
-      }
-    }
     out.write("\n");
+
+    if (!space || dump_bytes == 0 || !allow_deref)
+      return;
+
+    size_t bytes_to_dump = (dump_bytes > 80) ? 80 : dump_bytes;
+    if (classified && info.end_address > addr) {
+      const size_t bytes_in_region =
+          static_cast<size_t>(info.end_address - addr);
+      if (bytes_to_dump > bytes_in_region)
+        bytes_to_dump = bytes_in_region;
+    }
+
+    auto reader = [](void *context, uintptr_t source_address, uint8_t *buffer,
+                     size_t size) noexcept -> size_t {
+      if (!context)
+        return 0;
+      const auto &target_space =
+          *static_cast<const address_space_ref *>(context);
+      return target_space.read_bytes(source_address, buffer, size) ? size : 0;
+    };
+    formatter<hexdump_view> dump_formatter;
+    dump_formatter.format(
+        hexdump_checked(addr, bytes_to_dump, reader, &space, 16, true), out);
   }
 
   static void print_region_type(const sink &out,
