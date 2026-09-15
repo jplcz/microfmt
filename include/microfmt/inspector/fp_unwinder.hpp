@@ -52,8 +52,7 @@ struct microfmt::frame_unwinder_traits<microfmt::fp_unwinder_tag<AbiTraits>> {
     }
 
     next_fp = static_cast<uintptr_t>(saved_fp);
-    next_pc = static_cast<uintptr_t>(
-        saved_ra & ~static_cast<typename AbiTraits::register_type>(1));
+    next_pc = AbiTraits::normalize_pc(static_cast<uintptr_t>(saved_ra));
     return true;
   }
 };

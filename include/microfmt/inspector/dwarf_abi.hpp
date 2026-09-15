@@ -52,6 +52,12 @@ struct arm_abi_traits {
     return reg == fp_reg ||
            reg == 7; // Support both R11 and R7 (Thumb frame pointer)
   }
+
+  [[nodiscard]] static constexpr uintptr_t
+  normalize_pc(uintptr_t raw_ra) noexcept {
+    // Clear the Thumb-2 mode bit (bit 0)
+    return raw_ra & ~static_cast<uintptr_t>(1);
+  }
 };
 
 // ============================================================================
@@ -94,6 +100,22 @@ struct aarch64_abi_traits {
   [[nodiscard]] static constexpr bool
   is_frame_pointer_register(uint32_t reg) noexcept {
     return reg == fp_reg;
+  }
+
+  [[nodiscard]] static constexpr uintptr_t
+  normalize_pc(uintptr_t raw_ra) noexcept {
+    uintptr_t pc = raw_ra & ~static_cast<uintptr_t>(1); // Clear Thumb bit
+
+    // Check if it's a kernel-space address (higher-half check: top bit set)
+    const bool is_kernel = (pc & (1ULL << 63)) != 0;
+
+    if (is_kernel) {
+      return (pc & 0x0000FFFF'FFFFFFFFULL) | 0xFFFF0000'00000000ULL;
+    } else {
+      // User-space PAC masking
+      constexpr uintptr_t user_pac_mask = 0x0000FFFF'FFFFFFFFULL;
+      return pc & user_pac_mask;
+    }
   }
 };
 
@@ -141,6 +163,11 @@ struct riscv32_abi_traits {
   is_frame_pointer_register(uint32_t reg) noexcept {
     return reg == fp_reg;
   }
+
+  [[nodiscard]] static constexpr uintptr_t
+  normalize_pc(uintptr_t raw_ra) noexcept {
+    return raw_ra;
+  }
 };
 
 // ============================================================================
@@ -183,6 +210,11 @@ struct riscv64_abi_traits {
   [[nodiscard]] static constexpr bool
   is_frame_pointer_register(uint32_t reg) noexcept {
     return reg == fp_reg;
+  }
+
+  [[nodiscard]] static constexpr uintptr_t
+  normalize_pc(uintptr_t raw_ra) noexcept {
+    return raw_ra;
   }
 };
 
@@ -231,6 +263,11 @@ struct x86_abi_traits {
   is_frame_pointer_register(uint32_t reg) noexcept {
     return reg == fp_reg;
   }
+
+  [[nodiscard]] static constexpr uintptr_t
+  normalize_pc(uintptr_t raw_ra) noexcept {
+    return raw_ra;
+  }
 };
 
 // ============================================================================
@@ -274,6 +311,11 @@ struct x86_64_abi_traits {
   [[nodiscard]] static constexpr bool
   is_frame_pointer_register(uint32_t reg) noexcept {
     return reg == fp_reg;
+  }
+
+  [[nodiscard]] static constexpr uintptr_t
+  normalize_pc(uintptr_t raw_ra) noexcept {
+    return raw_ra;
   }
 };
 

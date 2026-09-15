@@ -350,8 +350,7 @@ public:
       return false;
 
     out_fp = static_cast<uintptr_t>(saved_fp);
-    out_pc = static_cast<uintptr_t>(
-        saved_ra & ~1U); // Clean thumb/instruction alignment bits if needed
+    out_pc = AbiTraits::normalize_pc(saved_ra);
 
     return true;
   }
