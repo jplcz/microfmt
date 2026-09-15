@@ -242,10 +242,9 @@ enum : uint32_t {
   R10 = 10,
   R11 = 11,
   R12 = 12,
-  SP = 13, // R13
-  LR = 14, // R14
-  PC = 15, // R15
-
+  R13 = 13,
+  R14 = 14,
+  R15 = 15,
   // Semantic Platform Aliases
   FP = R11,
   SP = R13,
