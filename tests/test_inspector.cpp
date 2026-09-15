@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 #include <microfmt/inspector/fp_unwinder.hpp>
 #include <microfmt/inspector/register_context.hpp>
+#include <microfmt/inspector/register_view.hpp>
 #include <microfmt/inspector/remote_binary_tree.hpp>
 #include <microfmt/inspector/remote_forward_list.hpp>
 #include <microfmt/inspector/remote_hash_table.hpp>
@@ -80,6 +81,106 @@ bool write_fake_register(void *opaque_state,
 
   std::memcpy(&state.value, in_value, value_size);
   return true;
+}
+
+struct sparse_register_state {
+  uint32_t index;
+  uint64_t value;
+  size_t value_size;
+};
+
+bool read_sparse_register(const void *opaque_state,
+                          microfmt::address_space_ref, uint32_t dwarf_reg_index,
+                          void *out_value, size_t value_size) noexcept {
+  const auto &state =
+      *static_cast<const sparse_register_state *>(opaque_state);
+  if (dwarf_reg_index != state.index || value_size != state.value_size)
+    return false;
+  std::memcpy(out_value, &state.value, value_size);
+  return true;
+}
+
+TEST(DwarfRegisterTraits, DefinesAllArchitectureRegisterCatalogs) {
+  using arm_traits = microfmt::dwarf::arm32::register_traits;
+  using aarch64_traits = microfmt::dwarf::aarch64::register_traits;
+  using x86_traits = microfmt::dwarf::x86::register_traits;
+  using x86_64_traits = microfmt::dwarf::x86_64::register_traits;
+  using riscv_traits = microfmt::dwarf::riscv::register_traits;
+
+  static_assert(arm_traits::gpr_registers.size() == 16);
+  static_assert(aarch64_traits::gpr_registers.size() == 33);
+  static_assert(x86_traits::gpr_registers.size() == 9);
+  static_assert(x86_64_traits::gpr_registers.size() == 17);
+  static_assert(riscv_traits::gpr_registers.size() == 33);
+  static_assert(microfmt::dwarf::arm32::CNTFRQ ==
+                microfmt::dwarf::generic_timer::CNTFRQ);
+  static_assert(microfmt::dwarf::aarch64::CNTFRQ_EL0 ==
+                microfmt::dwarf::generic_timer::CNTFRQ);
+  static_assert(microfmt::dwarf::aarch64::CNTHVS_CVAL_EL2 ==
+                microfmt::dwarf::generic_timer::CNTHVS_CVAL);
+
+  EXPECT_EQ(arm_traits::gpr_registers.front().name, "R0");
+  EXPECT_EQ(arm_traits::gpr_registers.back().name, "PC");
+  EXPECT_EQ(aarch64_traits::gpr_registers.front().index,
+            microfmt::dwarf::aarch64::X0);
+  EXPECT_EQ(aarch64_traits::gpr_registers.back().index,
+            microfmt::dwarf::aarch64::PC);
+  EXPECT_GT(arm_traits::system_registers.size(), 40u);
+  EXPECT_GT(aarch64_traits::system_registers.size(), 60u);
+  EXPECT_EQ(x86_traits::system_registers.back().name, "CR4");
+  EXPECT_EQ(x86_64_traits::system_registers.back().name, "DR7");
+  EXPECT_EQ(riscv_traits::system_registers.front().name, "sstatus");
+  EXPECT_EQ(riscv_traits::gpr_registers[28].name, "t3");
+}
+
+TEST(RegisterContextView, UsesArchitectureSystemRegisterTraits) {
+  std::byte scratch[8]{};
+
+  sparse_register_state arm_state{microfmt::dwarf::arm32::CNTVCT, 0x1234, 4};
+  microfmt::register_context_ref arm_context(
+      &arm_state, {&read_sparse_register, nullptr}, local_space(), scratch);
+  EXPECT_EQ(
+      microfmt::format<64>(
+          "{}", microfmt::register_context_view<microfmt::arm_abi_traits>(
+                    arm_context))
+          .view(),
+      "CNTVCT=0x00001234");
+
+  sparse_register_state aarch64_state{
+      microfmt::dwarf::aarch64::CNTHCTL_EL2, UINT64_C(0x1122334455667788), 8};
+  microfmt::register_context_ref aarch64_context(
+      &aarch64_state, {&read_sparse_register, nullptr}, local_space(),
+      scratch);
+  EXPECT_EQ(
+      microfmt::format<64>(
+          "{}",
+          microfmt::register_context_view<microfmt::aarch64_abi_traits>(
+              aarch64_context))
+          .view(),
+      "CNTHCTL_EL2=0x1122334455667788");
+
+  sparse_register_state x86_state{microfmt::dwarf::x86::CR3, 0x12345000, 4};
+  microfmt::register_context_ref x86_context(
+      &x86_state, {&read_sparse_register, nullptr}, local_space(), scratch);
+  EXPECT_EQ(
+      microfmt::format<64>(
+          "{}",
+          microfmt::register_context_view<microfmt::x86_abi_traits>(
+              x86_context))
+          .view(),
+      "CR3=0x12345000");
+
+  sparse_register_state riscv_state{microfmt::dwarf::riscv::SATP,
+                                    UINT64_C(0x8000000000012345), 8};
+  microfmt::register_context_ref riscv_context(
+      &riscv_state, {&read_sparse_register, nullptr}, local_space(), scratch);
+  EXPECT_EQ(
+      microfmt::format<64>(
+          "{}",
+          microfmt::register_context_view<microfmt::riscv64_abi_traits>(
+              riscv_context))
+          .view(),
+      "satp=0x8000000000012345");
 }
 
 TEST(RegisterContextRef, ReportsNullAndSupportedOperations) {

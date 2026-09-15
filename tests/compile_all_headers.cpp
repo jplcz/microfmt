@@ -38,6 +38,7 @@
 #include <microfmt/sinks/stdio.hpp>
 #include <microfmt/sinks/styled_sink.hpp>
 #include <microfmt/sinks/tee_sink.hpp>
+#include <microfmt/inspector/register_view.hpp>
 
 #if MICROFMT_HEADER_CHECK_STANDARD >= 20
 #include <microfmt/log/logger.hpp>

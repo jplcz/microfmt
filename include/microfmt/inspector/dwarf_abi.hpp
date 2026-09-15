@@ -19,6 +19,8 @@ namespace microfmt {
 struct arm_abi_traits {
   /// Register value width.
   using register_type = uint32_t;
+  /// Architecture register name/index catalog.
+  using register_traits = dwarf::arm32::register_traits;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 4;
 
@@ -72,6 +74,8 @@ struct arm_abi_traits {
 struct aarch64_abi_traits {
   /// Register value width.
   using register_type = uint64_t;
+  /// Architecture register name/index catalog.
+  using register_traits = dwarf::aarch64::register_traits;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 8;
 
@@ -131,6 +135,8 @@ struct aarch64_abi_traits {
 struct riscv32_abi_traits {
   /// Register value width.
   using register_type = uint32_t;
+  /// Architecture register name/index catalog.
+  using register_traits = dwarf::riscv::register_traits;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 4;
 
@@ -182,6 +188,8 @@ struct riscv32_abi_traits {
 struct riscv64_abi_traits {
   /// Register value width.
   using register_type = uint64_t;
+  /// Architecture register name/index catalog.
+  using register_traits = dwarf::riscv::register_traits;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 8;
 
@@ -230,6 +238,8 @@ struct riscv64_abi_traits {
 struct x86_abi_traits {
   /// Register value width.
   using register_type = uint32_t;
+  /// Architecture register name/index catalog.
+  using register_traits = dwarf::x86::register_traits;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 4;
 
@@ -281,6 +291,8 @@ struct x86_abi_traits {
 struct x86_64_abi_traits {
   /// Register value width.
   using register_type = uint64_t;
+  /// Architecture register name/index catalog.
+  using register_traits = dwarf::x86_64::register_traits;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 8;
 
