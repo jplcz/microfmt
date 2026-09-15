@@ -76,14 +76,22 @@ TEST(LoggerConfigurationTest, CompileTimeFormatStringsUseLoggerOverloads) {
       "enabled=true");
 
   captured = {};
-  MICROFMT_LOGGER_ERROR(application_logger,
-                        MICROFMT_STRING("code={:02X}"), 0x2a);
+  MICROFMT_LOGGER_ERROR(application_logger, "code={:02X}", 0x2a);
 
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::err);
   EXPECT_EQ(
       std::string_view(captured.message.data(), captured.message_size),
       "code=2A");
+
+  captured = {};
+  MICROFMT_LOGGER_DEBUG(application_logger, "ready");
+
+  EXPECT_EQ(captured.count, 1U);
+  EXPECT_EQ(captured.level, microfmt::log::level::debug);
+  EXPECT_EQ(
+      std::string_view(captured.message.data(), captured.message_size),
+      "ready");
 
   microfmt::log::set_default_logger(nullptr);
 }
