@@ -80,9 +80,9 @@ Changes to core formatting and sink code must preserve these properties:
 
 Use `MICROFMT_STRING("...")` for literal, header-internal format strings.
 This selects compile-time parsing and unrolled dispatch. Keep
-`std::string_view` paths for caller-provided runtime formats. Logging macros
-are intentionally literal-only: they wrap their format argument internally
-with `MICROFMT_STRING`.
+`microfmt::string_view` paths for caller-provided runtime formats. Logging
+macros are intentionally literal-only: they wrap their format argument
+internally with `MICROFMT_STRING`.
 
 When adding a new view or formatter, avoid hidden allocation and keep
 temporary buffers explicit, caller-owned, and bounded. Prefer a lightweight

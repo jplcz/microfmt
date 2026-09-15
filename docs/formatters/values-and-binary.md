@@ -225,7 +225,7 @@ build metadata. Construct it with `version(...)`, `from_packed32(...)`, or
 | `#`, `v`, `V` | Add a leading `v` |
 | `c`, `C` | Compact output without prerelease/build metadata |
 
-The metadata fields are borrowed `std::string_view` values. See
+The metadata fields are borrowed `microfmt::string_view` values. See
 `examples/semver_demo.cpp`.
 
 ## `string.hpp`

@@ -69,7 +69,7 @@ Each ABI exposes its catalog as `AbiTraits::register_traits`. A catalog uses:
 
 ```cpp
 struct register_descriptor {
-  std::string_view name;
+  microfmt::string_view name;
   uint32_t index;
 };
 ```

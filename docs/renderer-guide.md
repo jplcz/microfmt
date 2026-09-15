@@ -45,7 +45,7 @@ template <> struct microfmt::formatter<packet> {
     char decoded[256]; // Avoid: increases the formatter's stack frame.
     const size_t size = decode_packet(value, decoded, sizeof(decoded));
     microfmt::format_to(out, MICROFMT_STRING("{}"),
-                        std::string_view{decoded, size});
+                        microfmt::string_view{decoded, size});
   }
 };
 ```
@@ -72,7 +72,7 @@ public:
     const size_t size =
         decoded < scratch_.size() ? decoded : scratch_.size();
     microfmt::format_to(out, MICROFMT_STRING("{}"),
-                        std::string_view{scratch_.data(), size});
+                        microfmt::string_view{scratch_.data(), size});
   }
 
 private:

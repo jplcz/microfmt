@@ -24,6 +24,7 @@ Start with the guide that matches what you are building:
 | Guide | Covers |
 |---|---|
 | [Using microfmt](docs/usage.md) | Installation, core formatting, sinks, compile-time strings, custom formatters, and logging |
+| [Hardened containers](docs/hardened-containers.md) | Checked views and results, non-trapping access, assertion handling, and explicit security opt-out |
 | [Formatter guide](docs/formatters.md) | Binary and diagnostic values, ranges, time, units, protocols, structured output, and presentation |
 | [Inspector framework](docs/inspector.md) | Remote memory, objects, containers, symbols, registers, and stack unwinding |
 | [Writing low-stack renderers](docs/renderer-guide.md) | Caller-owned scratch storage and small formatter/view design |
@@ -52,8 +53,8 @@ bounded sink truncates excess output instead of allocating or throwing.
 
 Use `MICROFMT_STRING(...)` for literals. It validates and parses the format
 string during constant evaluation and selects unrolled argument dispatch.
-Runtime `std::string_view` formats remain available for configuration-driven
-text.
+Runtime `microfmt::string_view` formats remain available for
+configuration-driven text.
 
 The core supports C++17 and later. Features that depend on newer standard
 library APIs are enabled only when available.
@@ -74,7 +75,7 @@ adapters cover:
 ```cpp
 #include <microfmt/microfmt.hpp>
 
-void uart_write(void *, std::string_view chunk) noexcept {
+void uart_write(void *, microfmt::string_view chunk) noexcept {
   for (char ch : chunk)
     uart_putc(ch);
 }

@@ -40,7 +40,7 @@ Optional formatters and sinks each have their own headers. For example,
 ## Format into a bounded buffer
 
 `format<N>` returns a `buffer_sink<N>` with inline storage. Its output is a
-non-owning `std::string_view`, and excess output is safely truncated.
+non-owning `microfmt::string_view`, and excess output is safely truncated.
 
 ```cpp
 #include <microfmt/microfmt.hpp>
@@ -48,7 +48,7 @@ non-owning `std::string_view`, and excess output is safely truncated.
 const auto message = microfmt::format<64>(
     MICROFMT_STRING("sensor={}, value=0x{:04X}"), 7, 0x2a);
 
-std::string_view text = message.view();
+microfmt::string_view text = message.view();
 // "sensor=7, value=0x002A"
 ```
 
@@ -63,8 +63,12 @@ microfmt::format_to(output.as_sink(), MICROFMT_STRING("state={}"), "ready");
 ```
 
 `span_sink` and `buffer_sink` do not append a null terminator. Use their
-`view()` results as `std::string_view`, or use `c_string_sink<N>` when a
+`view()` results as `microfmt::string_view`, or use `c_string_sink<N>` when a
 null-terminated buffer is required.
+
+See [Hardened containers and views](hardened-containers.md) for checked access,
+non-trapping `try_*` operations, assertion handling, and the explicit security
+opt-out.
 
 ## Stream to a sink
 
@@ -73,7 +77,7 @@ callback. It is suitable for device drivers, protocol writers, and logging
 backends.
 
 ```cpp
-void uart_write(void *, std::string_view chunk) noexcept {
+void uart_write(void *, microfmt::string_view chunk) noexcept {
   for (char ch : chunk) {
     uart_putc(ch);
   }
@@ -104,7 +108,7 @@ with strict stack budgets. Runtime format strings remain supported where the
 format text is not known at compile time:
 
 ```cpp
-std::string_view format_from_configuration = "id={}";
+microfmt::string_view format_from_configuration = "id={}";
 microfmt::format_to(output.as_sink(), format_from_configuration, id);
 ```
 
@@ -163,7 +167,7 @@ MICROFMT_LOGGER_INFO(logger, "sensor={} online", 7);
 ```
 
 Macro format arguments must be literals; use the logger member functions or
-free helpers for a runtime `std::string_view` format string. Define
+free helpers for a runtime `microfmt::string_view` format string. Define
 `MICROFMT_DEFAULT_LOGGER` before including `macros.hpp` to enable
 `MICROFMT_LOG_INFO(...)` and the related default-logger macros.
 
