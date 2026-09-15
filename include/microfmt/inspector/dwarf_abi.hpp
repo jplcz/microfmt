@@ -277,4 +277,24 @@ struct x86_64_abi_traits {
   }
 };
 
+template <typename Traits> struct validate_abi_traits {
+  static_assert(
+      sizeof(typename Traits::register_type) == Traits::pointer_size,
+      "AbiTraits error: register_type size must exactly match pointer_size!");
+
+  static_assert(
+      Traits::pointer_size == 4 || Traits::pointer_size == 8,
+      "AbiTraits error: pointer_size must be either 4 (32-bit) or 8 (64-bit)!");
+
+  static constexpr bool value = true;
+};
+
+// Enforce validation checks for all built-in traits at compile time
+static_assert(validate_abi_traits<arm_abi_traits>::value, "");
+static_assert(validate_abi_traits<aarch64_abi_traits>::value, "");
+static_assert(validate_abi_traits<riscv32_abi_traits>::value, "");
+static_assert(validate_abi_traits<riscv64_abi_traits>::value, "");
+static_assert(validate_abi_traits<x86_abi_traits>::value, "");
+static_assert(validate_abi_traits<x86_64_abi_traits>::value, "");
+
 } // namespace microfmt
