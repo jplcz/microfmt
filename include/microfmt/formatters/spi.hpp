@@ -121,7 +121,7 @@ template <> struct formatter<spi_transfer_view> {
     }
   }
 
-  [[nodiscard]] static constexpr std::string_view
+  [[nodiscard]] static constexpr microfmt::string_view
   status_name(spi_status status) noexcept {
     switch (status) {
     case spi_status::ok:

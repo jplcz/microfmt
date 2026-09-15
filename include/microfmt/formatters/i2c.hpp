@@ -127,7 +127,7 @@ template <> struct formatter<i2c_msg_view> {
     }
   }
 
-  [[nodiscard]] static constexpr std::string_view
+  [[nodiscard]] static constexpr microfmt::string_view
   status_name(i2c_status status) noexcept {
     switch (status) {
     case i2c_status::ok:

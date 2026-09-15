@@ -31,8 +31,8 @@ void copy_to_buffer(std::string_view text, char *destination,
   }
 }
 
-void capture_journal(int priority, std::string_view identifier,
-                     std::string_view message) noexcept {
+void capture_journal(int priority, microfmt::string_view identifier,
+                     microfmt::string_view message) noexcept {
   captured_journal.priority = priority;
   copy_to_buffer(identifier, captured_journal.identifier.data(),
                  captured_journal.identifier.size(),

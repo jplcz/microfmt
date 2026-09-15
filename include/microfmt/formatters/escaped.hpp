@@ -28,9 +28,9 @@ struct escaped_view {
 // Factory Functions
 // ============================================================================
 
-// From std::string_view
+// From microfmt::string_view
 [[nodiscard]] constexpr escaped_view
-escaped(std::string_view sv, bool quote = true,
+escaped(microfmt::string_view sv, bool quote = true,
         bool escape_quotes = true) noexcept {
   return escaped_view{span<const char>(sv.data(), sv.size()), quote,
                       escape_quotes};

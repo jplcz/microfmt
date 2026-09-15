@@ -23,7 +23,7 @@ namespace {
 
 // Null sink to ensure operations are not optimized away while avoiding I/O
 // overhead
-inline void null_writer(void *, std::string_view) noexcept {}
+inline void null_writer(void *, microfmt::string_view) noexcept {}
 
 // Helper macro to prevent inlining and force distinct stack frame generation
 #if defined(__GNUC__) || defined(__clang__)

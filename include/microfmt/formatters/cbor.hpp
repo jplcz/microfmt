@@ -88,7 +88,7 @@ public:
 
   // Key emitters (supports both Text keys and Integer/Tag keys for compact
   // frames)
-  map_writer &key(std::string_view k) noexcept {
+  map_writer &key(microfmt::string_view k) noexcept {
     detail::encode_header(out_, detail::MT_TEXT, k.size());
     out_.write(k);
     return *this;
@@ -100,31 +100,31 @@ public:
   }
 
   // Key-Value primitives (String Key)
-  map_writer &kv(std::string_view k, std::string_view val) noexcept {
+  map_writer &kv(microfmt::string_view k, microfmt::string_view val) noexcept {
     key(k);
     detail::encode_header(out_, detail::MT_TEXT, val.size());
     out_.write(val);
     return *this;
   }
 
-  map_writer &kv(std::string_view k, const char *val) noexcept {
+  map_writer &kv(microfmt::string_view k, const char *val) noexcept {
     key(k);
     if (val == nullptr) {
       out_.put(static_cast<char>(detail::MT_SIMPLE | 22));
     } else {
       detail::encode_header(out_, detail::MT_TEXT,
-                            std::string_view(val).size());
+                            microfmt::string_view(val).size());
       out_.write(val);
     }
     return *this;
   }
 
   template <std::size_t N>
-  map_writer &kv(std::string_view k, const char (&val)[N]) noexcept {
-    return kv(k, std::string_view(val, N - 1));
+  map_writer &kv(microfmt::string_view k, const char (&val)[N]) noexcept {
+    return kv(k, microfmt::string_view(val, N - 1));
   }
 
-  map_writer &kv(std::string_view k, span<const uint8_t> bytes) noexcept {
+  map_writer &kv(microfmt::string_view k, span<const uint8_t> bytes) noexcept {
     key(k);
     detail::encode_header(out_, detail::MT_BYTES, bytes.size());
     for (uint8_t b : bytes)
@@ -132,14 +132,14 @@ public:
     return *this;
   }
 
-  map_writer &kv(std::string_view k, bool val) noexcept {
+  map_writer &kv(microfmt::string_view k, bool val) noexcept {
     key(k);
     out_.put(static_cast<char>(detail::MT_SIMPLE |
                                (val ? 21 : 20))); // 0xF5 (true), 0xF4 (false)
     return *this;
   }
 
-  map_writer &kv(std::string_view k, std::nullptr_t) noexcept {
+  map_writer &kv(microfmt::string_view k, std::nullptr_t) noexcept {
     key(k);
     out_.put(static_cast<char>(detail::MT_SIMPLE | 22)); // 0xF6 (null)
     return *this;
@@ -149,7 +149,7 @@ public:
             typename std::enable_if<std::is_integral<T>::value &&
                                         !std::is_same<T, bool>::value,
                                     int>::type = 0>
-  map_writer &kv(std::string_view k, T val) noexcept {
+  map_writer &kv(microfmt::string_view k, T val) noexcept {
     key(k);
     if constexpr (std::is_signed_v<T>) {
       if (val < 0) {
@@ -188,12 +188,12 @@ public:
     return *this;
   }
 
-  [[nodiscard]] map_writer nested_map(std::string_view k) noexcept {
+  [[nodiscard]] map_writer nested_map(microfmt::string_view k) noexcept {
     key(k);
     return map_writer(out_);
   }
 
-  [[nodiscard]] array_writer nested_array(std::string_view k) noexcept;
+  [[nodiscard]] array_writer nested_array(microfmt::string_view k) noexcept;
 
   void end() noexcept {
     if (!closed_) {
@@ -224,7 +224,7 @@ public:
     other.closed_ = true;
   }
 
-  array_writer &val(std::string_view v) noexcept {
+  array_writer &val(microfmt::string_view v) noexcept {
     detail::encode_header(out_, detail::MT_TEXT, v.size());
     out_.write(v);
     return *this;
@@ -234,7 +234,7 @@ public:
     if (v == nullptr) {
       out_.put(static_cast<char>(detail::MT_SIMPLE | 22));
     } else {
-      const std::string_view text(v);
+      const microfmt::string_view text(v);
       detail::encode_header(out_, detail::MT_TEXT, text.size());
       out_.write(text);
     }
@@ -242,7 +242,7 @@ public:
   }
 
   template <std::size_t N> array_writer &val(const char (&v)[N]) noexcept {
-    return val(std::string_view(v, N - 1));
+    return val(microfmt::string_view(v, N - 1));
   }
 
   array_writer &val(span<const uint8_t> bytes) noexcept {
@@ -296,7 +296,7 @@ private:
   bool closed_{false};
 };
 
-inline array_writer map_writer::nested_array(std::string_view k) noexcept {
+inline array_writer map_writer::nested_array(microfmt::string_view k) noexcept {
   key(k);
   return array_writer(out_);
 }

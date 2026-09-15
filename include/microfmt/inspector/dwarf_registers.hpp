@@ -11,7 +11,7 @@
 namespace microfmt::dwarf {
 
 struct register_descriptor {
-  std::string_view name;
+  microfmt::string_view name;
   uint32_t index;
 };
 

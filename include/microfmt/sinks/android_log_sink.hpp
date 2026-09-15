@@ -36,14 +36,15 @@ namespace microfmt::log {
 template <std::size_t MessageCapacity = 512, std::size_t TagCapacity = 64>
 /** @brief Adapter that writes structured records to Android logcat. */
 class android_log_sink {
-  static_assert(MessageCapacity > 0, "Message capacity must be at least 1 byte");
+  static_assert(MessageCapacity > 0,
+                "Message capacity must be at least 1 byte");
   static_assert(TagCapacity > 0, "Tag capacity must be at least 1 byte");
 
 public:
-  using write_fn_t = void (*)(int priority, std::string_view tag,
-                              std::string_view message) noexcept;
+  using write_fn_t = void (*)(int priority, microfmt::string_view tag,
+                              microfmt::string_view message) noexcept;
 
-  explicit android_log_sink(std::string_view tag = "microfmt",
+  explicit android_log_sink(microfmt::string_view tag = "microfmt",
                             write_fn_t write_fn = write_to_logcat) noexcept
       : write_fn_(write_fn) {
     set_tag(tag);
@@ -54,11 +55,10 @@ public:
                     [](void *ctx, const log_msg &msg) noexcept {
                       static_cast<android_log_sink *>(ctx)->log_impl(msg);
                     },
-                    nullptr,
-                    level::trace};
+                    nullptr, level::trace};
   }
 
-  void set_tag(std::string_view tag) noexcept {
+  void set_tag(microfmt::string_view tag) noexcept {
     tag_size_ = tag.size() < TagCapacity - 1 ? tag.size() : TagCapacity - 1;
     for (std::size_t i = 0; i < tag_size_; ++i) {
       tag_[i] = tag[i];
@@ -67,8 +67,8 @@ public:
   }
 
 private:
-  static void write_to_logcat(int priority, std::string_view tag,
-                              std::string_view message) noexcept {
+  static void write_to_logcat(int priority, microfmt::string_view tag,
+                              microfmt::string_view message) noexcept {
     ::__android_log_write(priority, tag.data(), message.data());
   }
 
@@ -104,8 +104,7 @@ private:
     }
     format_to(out, MICROFMT_STRING("{}"), msg.payload);
     write_fn_(priority_for(msg.lvl),
-              std::string_view(tag_, tag_size_),
-              buffer.view());
+              microfmt::string_view(tag_, tag_size_), buffer.view());
   }
 
   write_fn_t write_fn_;

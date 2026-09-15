@@ -39,14 +39,14 @@ void copy_to_buffer(std::string_view text, char *destination,
   }
 }
 
-void capture_syslog(int priority, std::string_view message) noexcept {
+void capture_syslog(int priority, microfmt::string_view message) noexcept {
   captured_syslog.priority = priority;
   copy_to_buffer(message, captured_syslog.message.data(),
                  captured_syslog.message.size(), captured_syslog.message_size);
 }
 
-void capture_android_log(int priority, std::string_view tag,
-                         std::string_view message) noexcept {
+void capture_android_log(int priority, microfmt::string_view tag,
+                         microfmt::string_view message) noexcept {
   captured_android_log.priority = priority;
   copy_to_buffer(tag, captured_android_log.tag.data(),
                  captured_android_log.tag.size(), captured_android_log.tag_size);

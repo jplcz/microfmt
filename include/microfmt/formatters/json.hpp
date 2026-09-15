@@ -48,7 +48,7 @@ template <typename T> void write_integer(const sink &out, T value) noexcept {
 
 /** @brief Writes a quoted, JSON-escaped string to @p out. */
 inline void write_escaped_string(const sink &out,
-                                 std::string_view str) noexcept {
+                                 microfmt::string_view str) noexcept {
   out.put('"');
   for (char c : str) {
     switch (c) {
@@ -119,20 +119,20 @@ public:
   }
 
   // Key-Value primitives
-  object_writer &key(std::string_view k) noexcept {
+  object_writer &key(microfmt::string_view k) noexcept {
     prefix();
     write_escaped_string(out_, k);
     out_.put(':');
     return *this;
   }
 
-  object_writer &kv(std::string_view k, std::string_view val) noexcept {
+  object_writer &kv(microfmt::string_view k, microfmt::string_view val) noexcept {
     key(k);
     write_escaped_string(out_, val);
     return *this;
   }
 
-  object_writer &kv(std::string_view k, const char *val) noexcept {
+  object_writer &kv(microfmt::string_view k, const char *val) noexcept {
     key(k);
     if (val == nullptr) {
       out_.write("null");
@@ -143,17 +143,17 @@ public:
   }
 
   template <std::size_t N>
-  object_writer &kv(std::string_view k, const char (&val)[N]) noexcept {
-    return kv(k, std::string_view(val, N - 1));
+  object_writer &kv(microfmt::string_view k, const char (&val)[N]) noexcept {
+    return kv(k, microfmt::string_view(val, N - 1));
   }
 
-  object_writer &kv(std::string_view k, bool val) noexcept {
+  object_writer &kv(microfmt::string_view k, bool val) noexcept {
     key(k);
     out_.write(val ? "true" : "false");
     return *this;
   }
 
-  object_writer &kv(std::string_view k, std::nullptr_t) noexcept {
+  object_writer &kv(microfmt::string_view k, std::nullptr_t) noexcept {
     key(k);
     out_.write("null");
     return *this;
@@ -163,20 +163,20 @@ public:
             typename std::enable_if<std::is_integral<T>::value &&
                                         !std::is_same<T, bool>::value,
                                     int>::type = 0>
-  object_writer &kv(std::string_view k, T val) noexcept {
+  object_writer &kv(microfmt::string_view k, T val) noexcept {
     key(k);
     detail::write_integer(out_, val);
     return *this;
   }
 
   // Nested Object
-  [[nodiscard]] object_writer nested_object(std::string_view k) noexcept {
+  [[nodiscard]] object_writer nested_object(microfmt::string_view k) noexcept {
     key(k);
     return object_writer(out_);
   }
 
   // Nested Array
-  [[nodiscard]] array_writer nested_array(std::string_view k) noexcept;
+  [[nodiscard]] array_writer nested_array(microfmt::string_view k) noexcept;
 
   void end() noexcept {
     if (!closed_) {
@@ -220,7 +220,7 @@ public:
     other.closed_ = true;
   }
 
-  array_writer &val(std::string_view v) noexcept {
+  array_writer &val(microfmt::string_view v) noexcept {
     prefix();
     write_escaped_string(out_, v);
     return *this;
@@ -237,7 +237,7 @@ public:
   }
 
   template <std::size_t N> array_writer &val(const char (&v)[N]) noexcept {
-    return val(std::string_view(v, N - 1));
+    return val(microfmt::string_view(v, N - 1));
   }
 
   array_writer &val(bool v) noexcept {
@@ -287,7 +287,7 @@ private:
   bool closed_{false};
 };
 
-inline array_writer object_writer::nested_array(std::string_view k) noexcept {
+inline array_writer object_writer::nested_array(microfmt::string_view k) noexcept {
   key(k);
   return array_writer(out_);
 }

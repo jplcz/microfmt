@@ -27,7 +27,7 @@ struct raw_resolved_symbol {
   /**
    * @brief Nearest symbol name (may be empty when stripped).
    */
-  std::string_view symbol_name{""};
+  microfmt::string_view symbol_name{""};
   /**
    * @brief Base address of the matched symbol.
    */
@@ -40,7 +40,7 @@ struct raw_resolved_symbol {
   /**
    * @brief Owning image/module name.
    */
-  std::string_view image_name{""};
+  microfmt::string_view image_name{""};
   /**
    * @brief Load base of the owning image.
    */
@@ -54,7 +54,7 @@ struct resolved_symbol_info {
   /**
    * @brief Nearest symbol name (may be empty when stripped).
    */
-  std::string_view symbol_name{""};
+  microfmt::string_view symbol_name{""};
   /**
    * @brief Base address of the matched symbol.
    */
@@ -71,7 +71,7 @@ struct resolved_symbol_info {
   /**
    * @brief Owning image/module name.
    */
-  std::string_view image_name{""};
+  microfmt::string_view image_name{""};
   /**
    * @brief Load base of the owning image.
    */

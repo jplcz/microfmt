@@ -36,7 +36,7 @@ template <typename T>
 }
 
 template <typename T, size_t N> struct formatter<vec_view<T, N>> {
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     forwarded_spec = ctx.spec();
@@ -58,7 +58,7 @@ template <typename T, size_t N> struct formatter<vec_view<T, N>> {
 };
 
 template <typename T> struct formatter<vec3_view<T>> {
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     forwarded_spec = ctx.spec();
@@ -94,7 +94,7 @@ template <typename T, size_t Rows, size_t Cols>
 
 template <typename T, size_t Rows, size_t Cols>
 struct formatter<matrix_view<T, Rows, Cols>> {
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     forwarded_spec = ctx.spec();

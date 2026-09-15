@@ -90,12 +90,12 @@ template <typename Location> struct formatter<basic_source_loc_view<Location>> {
 
   void format(const basic_source_loc_view<Location> &sv,
               const sink &out) const noexcept {
-    std::string_view file = sv.loc.file_name();
+    microfmt::string_view file = sv.loc.file_name();
 
     if (sv.file_basename_only) {
       // Extract filename after last '/' or '\'
       size_t last_slash = file.find_last_of("/\\");
-      if (last_slash != std::string_view::npos) {
+      if (last_slash != microfmt::string_view::npos) {
         file = file.substr(last_slash + 1);
       }
     }

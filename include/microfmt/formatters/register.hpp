@@ -26,7 +26,7 @@ struct reg_field {
   /**
    * @brief Human-readable field name.
    */
-  std::string_view name;
+  microfmt::string_view name;
   /**
    * @brief Bit offset of the field within the register word.
    */
@@ -53,7 +53,7 @@ template <size_t N> struct reg_descriptor {
   /**
    * @brief Register name.
    */
-  std::string_view name;
+  microfmt::string_view name;
   /**
    * @brief Register width in bytes (1, 2, 4, or 8).
    */
@@ -68,7 +68,7 @@ template <size_t N> struct reg_descriptor {
  * @brief Deduction guide deriving the field count for @ref reg_descriptor.
  */
 template <typename... Fields>
-reg_descriptor(std::string_view, size_t, Fields...)
+reg_descriptor(microfmt::string_view, size_t, Fields...)
     -> reg_descriptor<sizeof...(Fields)>;
 
 // ============================================================================

@@ -10,7 +10,7 @@
 
 // Hardware callback example: streams formatted characters directly to
 // stdout/UART
-static void uart_write_callback(void * /*ctx*/, std::string_view sv) noexcept {
+static void uart_write_callback(void * /*ctx*/, microfmt::string_view sv) noexcept {
   std::fwrite(sv.data(), 1, sv.size(), stdout);
 }
 

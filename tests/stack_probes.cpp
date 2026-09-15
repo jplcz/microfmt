@@ -13,7 +13,7 @@ struct volatile_sink {
   volatile uint8_t dummy{0};
 
   [[nodiscard]] microfmt::sink as_sink() noexcept {
-    return microfmt::sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return microfmt::sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                             auto *self = static_cast<volatile_sink *>(ctx);
                             for (char c : sv) {
                               self->dummy = static_cast<uint8_t>(c);
@@ -70,7 +70,7 @@ probe_stack_6_mixed_log(uint32_t timestamp, const char *module, char severity,
 
 __attribute__((noinline)) void probe_stack_10_mixed_system_state(
     uint8_t id, int16_t temp, uint32_t voltage, const char *sensor_name,
-    std::string_view status, bool calibrated, uint64_t uptime, void *dma_buffer,
+    microfmt::string_view status, bool calibrated, uint64_t uptime, void *dma_buffer,
     char rev_letter, uint32_t checksum) {
   volatile_sink vs;
   microfmt::format_to(vs.as_sink(),
@@ -130,7 +130,7 @@ probe_stack_compiled_6_mixed_log(uint32_t timestamp, const char *module,
 
 __attribute__((noinline)) void probe_stack_compiled_10_mixed_system_state(
     uint8_t id, int16_t temp, uint32_t voltage, const char *sensor_name,
-    std::string_view status, bool calibrated, uint64_t uptime, void *dma_buffer,
+    microfmt::string_view status, bool calibrated, uint64_t uptime, void *dma_buffer,
     char rev_letter, uint32_t checksum) {
   volatile_sink vs;
   microfmt::format_to(

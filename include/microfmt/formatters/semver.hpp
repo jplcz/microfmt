@@ -20,8 +20,8 @@ struct semver {
   uint16_t major{0};
   uint16_t minor{0};
   uint16_t patch{0};
-  std::string_view prerelease{}; // e.g. "rc.1", "alpha"
-  std::string_view build{};      // e.g. "20260913", "armv7"
+  microfmt::string_view prerelease{}; // e.g. "rc.1", "alpha"
+  microfmt::string_view build{};      // e.g. "20260913", "armv7"
   bool show_v_prefix{false};     // e.g. "v1.2.3"
 };
 
@@ -32,8 +32,8 @@ struct semver {
 // Explicit components
 [[nodiscard]] constexpr semver version(uint16_t major, uint16_t minor,
                                        uint16_t patch,
-                                       std::string_view prerelease = "",
-                                       std::string_view build = "",
+                                       microfmt::string_view prerelease = "",
+                                       microfmt::string_view build = "",
                                        bool show_v = false) noexcept {
   return semver{major, minor, patch, prerelease, build, show_v};
 }

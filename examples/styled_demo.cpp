@@ -9,7 +9,7 @@
 
 namespace {
 
-void stdout_write(void * /*context*/, std::string_view text) noexcept {
+void stdout_write(void * /*context*/, microfmt::string_view text) noexcept {
   std::fwrite(text.data(), 1, text.size(), stdout);
 }
 

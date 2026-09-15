@@ -29,16 +29,16 @@ template <typename OutputIt> struct format_to_n_result {
   size_t size;
 };
 
-using string_view = std::string_view;
+using string_view = microfmt::string_view;
 
 // Parse context emulating fmt::format_parse_context
 struct format_parse_context {
-  std::string_view spec;
+  microfmt::string_view spec;
 
   constexpr auto begin() const noexcept { return spec.begin(); }
   constexpr auto end() const noexcept { return spec.end(); }
-  constexpr void advance_to(std::string_view::iterator it) noexcept {
-    spec = std::string_view(it, static_cast<size_t>(spec.end() - it));
+  constexpr void advance_to(microfmt::string_view::iterator it) noexcept {
+    spec = microfmt::string_view(it, static_cast<size_t>(spec.end() - it));
   }
 };
 
@@ -94,7 +94,7 @@ struct formatter;
 
 template <typename... Args>
 format_to_n_result<char *> format_to_n(char *out, size_t n,
-                                       std::string_view fmt_str,
+                                       microfmt::string_view fmt_str,
                                        const Args &...args) noexcept {
   struct BoundedBufferState {
     char *data;
@@ -102,7 +102,7 @@ format_to_n_result<char *> format_to_n(char *out, size_t n,
     size_t size;
   } state{out, n, 0};
 
-  microfmt::sink s{&state, [](void *ctx, std::string_view sv) noexcept {
+  microfmt::sink s{&state, [](void *ctx, microfmt::string_view sv) noexcept {
                      auto *st = static_cast<BoundedBufferState *>(ctx);
                      if (st->data != nullptr && st->size < st->capacity) {
                        const size_t available = st->capacity - st->size;
@@ -132,13 +132,13 @@ template <typename OutputIt, typename... Args,
                   std::is_same_v<
                       std::remove_cv_t<std::remove_pointer_t<OutputIt>>, char>,
               int> = 0>
-OutputIt format_to(OutputIt out, std::string_view fmt_str,
+OutputIt format_to(OutputIt out, microfmt::string_view fmt_str,
                    const Args &...args) noexcept {
   struct PtrSinkState {
     char *ptr;
   } state{out};
 
-  microfmt::sink s{&state, [](void *ctx, std::string_view sv) noexcept {
+  microfmt::sink s{&state, [](void *ctx, microfmt::string_view sv) noexcept {
                      auto *st = static_cast<PtrSinkState *>(ctx);
                      for (char c : sv) {
                        *st->ptr++ = c;
@@ -155,14 +155,14 @@ OutputIt format_to(OutputIt out, std::string_view fmt_str,
 
 // Explicit capacity version: fmt::format<256>("...", ...)
 template <size_t Capacity, typename... Args>
-[[nodiscard]] auto format(std::string_view fmt_str,
+[[nodiscard]] auto format(microfmt::string_view fmt_str,
                           const Args &...args) noexcept {
   return microfmt::format<Capacity>(fmt_str, args...);
 }
 
 // Default capacity version: fmt::format("...", ...)
 template <typename... Args>
-[[nodiscard]] auto format(std::string_view fmt_str,
+[[nodiscard]] auto format(microfmt::string_view fmt_str,
                           const Args &...args) noexcept {
   return microfmt::format<DEFAULT_FORMAT_BUFFER_SIZE>(fmt_str, args...);
 }
@@ -171,24 +171,24 @@ template <typename... Args>
 // fmt::print & fmt::println
 // ============================================================================
 
-inline void stdout_writer(void *, std::string_view sv) noexcept {
+inline void stdout_writer(void *, microfmt::string_view sv) noexcept {
   std::fwrite(sv.data(), 1, sv.size(), stdout);
 }
 
-inline void stderr_writer(void *, std::string_view sv) noexcept {
+inline void stderr_writer(void *, microfmt::string_view sv) noexcept {
   std::fwrite(sv.data(), 1, sv.size(), stderr);
 }
 
 template <typename... Args>
-void print(std::string_view fmt_str, const Args &...args) noexcept {
+void print(microfmt::string_view fmt_str, const Args &...args) noexcept {
   microfmt::sink term{nullptr, stdout_writer};
   microfmt::format_to(term, fmt_str, args...);
 }
 
 template <typename... Args>
-void print(std::FILE *f, std::string_view fmt_str,
+void print(std::FILE *f, microfmt::string_view fmt_str,
            const Args &...args) noexcept {
-  microfmt::sink term{f, [](void *ctx, std::string_view sv) noexcept {
+  microfmt::sink term{f, [](void *ctx, microfmt::string_view sv) noexcept {
                         std::fwrite(sv.data(), 1, sv.size(),
                                     static_cast<std::FILE *>(ctx));
                       }};
@@ -196,16 +196,16 @@ void print(std::FILE *f, std::string_view fmt_str,
 }
 
 template <typename... Args>
-void println(std::string_view fmt_str, const Args &...args) noexcept {
+void println(microfmt::string_view fmt_str, const Args &...args) noexcept {
   microfmt::sink term{nullptr, stdout_writer};
   microfmt::format_to(term, fmt_str, args...);
   term.put('\n');
 }
 
 template <typename... Args>
-void println(std::FILE *f, std::string_view fmt_str,
+void println(std::FILE *f, microfmt::string_view fmt_str,
              const Args &...args) noexcept {
-  microfmt::sink term{f, [](void *ctx, std::string_view sv) noexcept {
+  microfmt::sink term{f, [](void *ctx, microfmt::string_view sv) noexcept {
                         std::fwrite(sv.data(), 1, sv.size(),
                                     static_cast<std::FILE *>(ctx));
                       }};
@@ -219,13 +219,13 @@ void println(std::FILE *f, std::string_view fmt_str,
 
 template <typename Range>
 [[nodiscard]] constexpr auto join(const Range &range,
-                                  std::string_view delimiter) noexcept {
+                                  microfmt::string_view delimiter) noexcept {
   return microfmt::join(range, delimiter);
 }
 
 template <typename It, typename Sentinel>
 [[nodiscard]] constexpr auto join(It first, Sentinel last,
-                                  std::string_view delimiter) noexcept {
+                                  microfmt::string_view delimiter) noexcept {
   return microfmt::join(first, last, delimiter);
 }
 

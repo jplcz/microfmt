@@ -220,8 +220,8 @@ template <> struct microfmt::exception_frame_traits<trap_x86_64_tag> {
   // ==========================================================================
   // Human-readable descriptions for x86-64 CPU exception vectors
   // ==========================================================================
-  static std::string_view describe_reason(const void *,
-                                          uint64_t vector_or_reason) noexcept {
+  static microfmt::string_view
+  describe_reason(const void *, uint64_t vector_or_reason) noexcept {
     switch (vector_or_reason) {
     case 0x00:
       return "Divide Error (#DE)";

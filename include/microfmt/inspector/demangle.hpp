@@ -23,7 +23,7 @@ public:
    * @brief Constructs a demangler over an Itanium-mangled symbol.
    * @param mangled Source symbol (must start with `_Z`).
    */
-  constexpr explicit itanium_demangler(std::string_view mangled) noexcept
+  constexpr explicit itanium_demangler(microfmt::string_view mangled) noexcept
       : src_(mangled), pos_(0) {}
 
   /**
@@ -65,7 +65,7 @@ public:
    * @param sym Mangled symbol to demangle.
    * @param out Destination sink.
    */
-  static void format_symbol(std::string_view sym, const sink &out) noexcept {
+  static void format_symbol(microfmt::string_view sym, const sink &out) noexcept {
     itanium_demangler d(sym);
     if (!d.demangle_to(out)) {
       out.write(sym); // Fallback to raw symbol
@@ -74,7 +74,7 @@ public:
 
 private:
   /// Mangled source.
-  std::string_view src_;
+  microfmt::string_view src_;
   /// Read position within the source.
   size_t pos_{0};
   /// Recursion guard depth.
@@ -113,7 +113,7 @@ private:
   /**
    * @brief Consumes @p p if it matches at the current position.
    */
-  constexpr bool match_prefix(std::string_view p) noexcept {
+  constexpr bool match_prefix(microfmt::string_view p) noexcept {
     if (detail::starts_with(src_.substr(pos_), p)) {
       pos_ += p.size();
       return true;
@@ -511,7 +511,7 @@ private:
  */
 struct demangle_view {
   /// Mangled symbol.
-  std::string_view symbol;
+  microfmt::string_view symbol;
 };
 
 /**
@@ -519,7 +519,7 @@ struct demangle_view {
  * @param sym Mangled symbol.
  * @return A @ref demangle_view over the symbol.
  */
-[[nodiscard]] constexpr auto as_demangled(std::string_view sym) noexcept {
+[[nodiscard]] constexpr auto as_demangled(microfmt::string_view sym) noexcept {
   return demangle_view{sym};
 }
 

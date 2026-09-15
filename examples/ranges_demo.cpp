@@ -10,7 +10,7 @@
 #include <microfmt/formatters/ranges.hpp>
 #include <string_view>
 
-static void terminal_write(void * /*ctx*/, std::string_view sv) noexcept {
+static void terminal_write(void * /*ctx*/, microfmt::string_view sv) noexcept {
   std::fwrite(sv.data(), 1, sv.size(), stdout);
 }
 
@@ -26,7 +26,7 @@ int main() {
   microfmt::format_to(term, "Default delimiter : [{}]\n",
                       microfmt::join(pin_numbers));
 
-  const std::string_view breadcrumbs[] = {"sys", "bus", "i2c", "devices",
+  const microfmt::string_view breadcrumbs[] = {"sys", "bus", "i2c", "devices",
                                           "0-0048"};
   microfmt::format_to(term, "Custom delimiter  : /{}/\n\n",
                       microfmt::join(breadcrumbs, "/"));

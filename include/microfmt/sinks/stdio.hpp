@@ -24,7 +24,7 @@ namespace microfmt {
 // ============================================================================
 
 [[nodiscard]] inline sink file_sink(std::FILE *file) noexcept {
-  return sink{file, [](void *ctx, std::string_view sv) noexcept {
+  return sink{file, [](void *ctx, microfmt::string_view sv) noexcept {
                 if (ctx != nullptr && !sv.empty()) {
                   std::fwrite(sv.data(), 1, sv.size(),
                               static_cast<std::FILE *>(ctx));
@@ -44,7 +44,7 @@ namespace microfmt {
 [[nodiscard]] inline sink fd_sink(int fd) noexcept {
   // Store fd inside the pointer context value without allocation
   return sink{reinterpret_cast<void *>(static_cast<intptr_t>(fd)),
-              [](void *ctx, std::string_view sv) noexcept {
+              [](void *ctx, microfmt::string_view sv) noexcept {
                 const int target_fd =
                     static_cast<int>(reinterpret_cast<intptr_t>(ctx));
                 if (target_fd >= 0 && !sv.empty()) {
@@ -85,13 +85,13 @@ inline void println(compile_string_holder<StrProvider> fmt,
 
 // Runtime stdout overloads
 template <typename... Args>
-inline void print(std::string_view fmt_str, const Args &...args) noexcept {
+inline void print(microfmt::string_view fmt_str, const Args &...args) noexcept {
   auto s = stdout_sink();
   format_to(s, fmt_str, args...);
 }
 
 template <typename... Args>
-inline void println(std::string_view fmt_str, const Args &...args) noexcept {
+inline void println(microfmt::string_view fmt_str, const Args &...args) noexcept {
   auto s = stdout_sink();
   format_to(s, fmt_str, args...);
   s.put('\n');
@@ -119,14 +119,14 @@ inline void println(std::FILE *file, compile_string_holder<StrProvider> fmt,
 
 // Runtime FILE* overloads
 template <typename... Args>
-inline void print(std::FILE *file, std::string_view fmt_str,
+inline void print(std::FILE *file, microfmt::string_view fmt_str,
                   const Args &...args) noexcept {
   auto s = file_sink(file);
   format_to(s, fmt_str, args...);
 }
 
 template <typename... Args>
-inline void println(std::FILE *file, std::string_view fmt_str,
+inline void println(std::FILE *file, microfmt::string_view fmt_str,
                     const Args &...args) noexcept {
   auto s = file_sink(file);
   format_to(s, fmt_str, args...);
@@ -156,14 +156,14 @@ inline void println(int fd, compile_string_holder<StrProvider> fmt,
 
 // Runtime FD overloads
 template <typename... Args>
-inline void print(int fd, std::string_view fmt_str,
+inline void print(int fd, microfmt::string_view fmt_str,
                   const Args &...args) noexcept {
   auto s = fd_sink(fd);
   format_to(s, fmt_str, args...);
 }
 
 template <typename... Args>
-inline void println(int fd, std::string_view fmt_str,
+inline void println(int fd, microfmt::string_view fmt_str,
                     const Args &...args) noexcept {
   auto s = fd_sink(fd);
   format_to(s, fmt_str, args...);
@@ -191,13 +191,13 @@ inline void println(sink s, compile_string_holder<StrProvider> fmt,
 
 // Runtime Sink overloads
 template <typename... Args>
-inline void print(sink s, std::string_view fmt_str,
+inline void print(sink s, microfmt::string_view fmt_str,
                   const Args &...args) noexcept {
   format_to(s, fmt_str, args...);
 }
 
 template <typename... Args>
-inline void println(sink s, std::string_view fmt_str,
+inline void println(sink s, microfmt::string_view fmt_str,
                     const Args &...args) noexcept {
   format_to(s, fmt_str, args...);
   s.put('\n');

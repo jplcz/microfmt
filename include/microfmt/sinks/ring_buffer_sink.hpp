@@ -36,7 +36,7 @@ public:
   // ==========================================================================
 
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   static_cast<ring_buffer_sink *>(ctx)->write(sv);
                 }};
   }
@@ -51,7 +51,7 @@ public:
     count_.fetch_add(1, std::memory_order_relaxed);
   }
 
-  void write(std::string_view sv) noexcept {
+  void write(microfmt::string_view sv) noexcept {
     for (char c : sv) {
       put(c);
     }
@@ -82,8 +82,8 @@ public:
   // ==========================================================================
 
   struct dump_slices {
-    std::string_view first;
-    std::string_view second; // Empty if buffer hasn't wrapped
+    microfmt::string_view first;
+    microfmt::string_view second; // Empty if buffer hasn't wrapped
   };
 
   // Inspects data chronologically from oldest to newest without copying
@@ -95,7 +95,7 @@ public:
 
     if (total_written <= Capacity) {
       // Linear layout (not yet wrapped)
-      return {std::string_view(buffer_.data(), total_written), {}};
+      return {microfmt::string_view(buffer_.data(), total_written), {}};
     }
 
     // Wrapped: oldest data starts at (head_ & Mask)
@@ -103,8 +103,8 @@ public:
     const size_t first_len = Capacity - tail;
     const size_t second_len = tail;
 
-    return {std::string_view(buffer_.data() + tail, first_len),
-            std::string_view(buffer_.data(), second_len)};
+    return {microfmt::string_view(buffer_.data() + tail, first_len),
+            microfmt::string_view(buffer_.data(), second_len)};
   }
 
   // Flushes full ring buffer content chronologically to an external sink

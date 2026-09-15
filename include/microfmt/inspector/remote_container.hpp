@@ -26,13 +26,13 @@ struct container_options {
   /// Whether value components of entries are rendered.
   bool print_value{true};
   /// Text separating a key from its value.
-  std::string_view kv_separator{": "};
+  microfmt::string_view kv_separator{": "};
   /// Text separating adjacent entries.
-  std::string_view entry_separator{", "};
+  microfmt::string_view entry_separator{", "};
   /// Opening delimiter for the rendered container.
-  std::string_view open_bracket{"{"};
+  microfmt::string_view open_bracket{"{"};
   /// Closing delimiter for the rendered container.
-  std::string_view close_bracket{"}"};
+  microfmt::string_view close_bracket{"}"};
   /// Maximum number of entries to render before truncating.
   size_t max_print{64};
 };

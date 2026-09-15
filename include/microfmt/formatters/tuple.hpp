@@ -49,8 +49,8 @@ struct is_tuple_like<
     : std::integral_constant<bool, !has_data<remove_cvref_t<T>>::value> {};
 
 template <typename Tuple, size_t... Is>
-void format_tuple_impl(const Tuple &t, const sink &out, std::string_view sep,
-                       std::string_view spec,
+void format_tuple_impl(const Tuple &t, const sink &out, microfmt::string_view sep,
+                       microfmt::string_view spec,
                        std::index_sequence<Is...>) noexcept {
   size_t idx = 0;
   auto format_elem = [&](const auto &elem) noexcept {
@@ -79,8 +79,8 @@ template <typename T>
 struct formatter<T, std::enable_if_t<detail::is_tuple_like<T>::value>> {
   char open_delim{'('};
   char close_delim{')'};
-  std::string_view separator{", "};
-  std::string_view forwarded_spec{""};
+  microfmt::string_view separator{", "};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();

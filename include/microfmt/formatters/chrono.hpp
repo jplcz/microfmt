@@ -22,29 +22,29 @@ namespace microfmt {
 namespace detail {
 
 template <typename Period> struct duration_suffix {
-  static constexpr std::string_view value = " [custom]";
+  static constexpr microfmt::string_view value = " [custom]";
 };
 
 template <> struct duration_suffix<std::nano> {
-  static constexpr std::string_view value = "ns";
+  static constexpr microfmt::string_view value = "ns";
 };
 template <> struct duration_suffix<std::micro> {
-  static constexpr std::string_view value = "us";
+  static constexpr microfmt::string_view value = "us";
 };
 template <> struct duration_suffix<std::milli> {
-  static constexpr std::string_view value = "ms";
+  static constexpr microfmt::string_view value = "ms";
 };
 template <> struct duration_suffix<std::ratio<1>> {
-  static constexpr std::string_view value = "s";
+  static constexpr microfmt::string_view value = "s";
 };
 template <> struct duration_suffix<std::ratio<60>> {
-  static constexpr std::string_view value = "min";
+  static constexpr microfmt::string_view value = "min";
 };
 template <> struct duration_suffix<std::ratio<3600>> {
-  static constexpr std::string_view value = "h";
+  static constexpr microfmt::string_view value = "h";
 };
 template <> struct duration_suffix<std::ratio<86400>> {
-  static constexpr std::string_view value = "d";
+  static constexpr microfmt::string_view value = "d";
 };
 
 // Days to civil date conversion (Howard Hinnant algorithm, zero-float /

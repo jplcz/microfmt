@@ -8,7 +8,34 @@
 
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <string_view>
+#include <type_traits>
+
+static_assert(
+    !std::is_constructible_v<microfmt::string_view, std::string &&>,
+    "microfmt::string_view must reject temporary owning strings");
+
+TEST(CoreStringView, InteroperatesWithStandardStringViews) {
+  const std::string storage = "interop";
+  const std::string_view standard = storage;
+  const microfmt::string_view custom = standard;
+  const std::string_view roundtrip = custom;
+
+  EXPECT_EQ(custom, "interop");
+  EXPECT_EQ(roundtrip, standard);
+  EXPECT_EQ(microfmt::string_view(storage), custom);
+}
+
+TEST(CoreStringView, ProvidesCheckedOperations) {
+  microfmt::string_view view = "value";
+
+  ASSERT_TRUE(view.try_front().has_value());
+  EXPECT_EQ(view.try_front().value().get(), 'v');
+  ASSERT_TRUE(view.try_substr(1, 3).has_value());
+  EXPECT_EQ(view.try_substr(1, 3).value(), "alu");
+  EXPECT_FALSE(view.try_at(view.size()).has_value());
+}
 
 // ============================================================================
 // span Tests (C++17 Replacement View & C++20 std::span Interop)
@@ -122,7 +149,8 @@ TEST(CoreSink, TypeErasedCustomCallbackSink) {
   } ctx{&write_call_count, &total_bytes};
 
   microfmt::sink custom_sink{&ctx,
-                             [](void *context, std::string_view sv) noexcept {
+                             [](void *context,
+                                microfmt::string_view sv) noexcept {
                                auto *c = static_cast<TestContext *>(context);
                                (*c->calls)++;
                                *c->bytes += sv.size();

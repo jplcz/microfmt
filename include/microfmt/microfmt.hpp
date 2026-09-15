@@ -15,6 +15,7 @@
 #include <type_traits>
 
 #include "detail/span.hpp"
+#include "string_view.hpp"
 
 // Attribute compatibility
 #if defined(__has_cpp_attribute) && __has_cpp_attribute(no_unique_address) &&  \
@@ -47,7 +48,7 @@ struct sink {
    * @param ctx Opaque user context pointer passed through from the sink.
    * @param sv  Non-owning view of the character slice to write.
    */
-  using write_fn_t = void (*)(void *ctx, std::string_view sv) noexcept;
+   using write_fn_t = void (*)(void *ctx, microfmt::string_view sv) noexcept;
 
   /**
    * @brief Opaque pointer to caller-defined state/context.
@@ -67,7 +68,7 @@ struct sink {
    *
    * @param sv String view containing characters to write.
    */
-  void write(std::string_view sv) const noexcept {
+  void write(microfmt::string_view sv) const noexcept {
     if (write_fn && !sv.empty()) {
       write_fn(ctx, sv);
     }
@@ -78,7 +79,7 @@ struct sink {
    *
    * @param c Character to write.
    */
-  void put(char c) const noexcept { write(std::string_view(&c, 1)); }
+  void put(char c) const noexcept { write(microfmt::string_view(&c, 1)); }
 };
 
 // ============================================================================
@@ -123,7 +124,7 @@ public:
    * to this buffer.
    */
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<span_sink *>(ctx);
                   const size_t avail = (self->m_pos < self->m_buf.size())
                                            ? (self->m_buf.size() - self->m_pos)
@@ -141,8 +142,8 @@ public:
    *
    * @return Non-owning view of the formatted output.
    */
-  [[nodiscard]] constexpr std::string_view view() const noexcept {
-    return std::string_view(m_buf.data(), m_pos);
+  [[nodiscard]] constexpr microfmt::string_view view() const noexcept {
+    return microfmt::string_view(m_buf.data(), m_pos);
   }
 
   /**
@@ -195,7 +196,7 @@ public:
    * to this buffer.
    */
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<buffer_sink<N> *>(ctx);
                   const std::size_t avail =
                       (self->m_pos < N) ? (N - self->m_pos) : 0;
@@ -212,8 +213,8 @@ public:
    *
    * @return Non-owning view of the formatted output.
    */
-  [[nodiscard]] constexpr std::string_view view() const noexcept {
-    return std::string_view(m_data, m_pos);
+  [[nodiscard]] constexpr microfmt::string_view view() const noexcept {
+    return microfmt::string_view(m_data, m_pos);
   }
 
   /**
@@ -296,7 +297,7 @@ public:
    * forward writes.
    */
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<iterator_sink<OutputIt> *>(ctx);
                   self->m_it = std::copy(sv.begin(), sv.end(), self->m_it);
                 }};
@@ -334,7 +335,7 @@ public:
    * counter.
    */
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<counting_sink *>(ctx);
                   self->m_count += sv.size();
                 }};
@@ -371,7 +372,7 @@ public:
    * @return A @ref sink struct with a no-op write callback.
    */
   [[nodiscard]] static constexpr sink as_sink() noexcept {
-    return sink{nullptr, [](void *, std::string_view) noexcept {}};
+    return sink{nullptr, [](void *, microfmt::string_view) noexcept {}};
   }
 };
 
@@ -400,7 +401,7 @@ public:
    * null-terminate.
    */
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<c_string_sink<N> *>(ctx);
                   constexpr std::size_t max_payload = N - 1;
 
@@ -430,8 +431,8 @@ public:
    *
    * @return Non-owning view of formatted text.
    */
-  [[nodiscard]] constexpr std::string_view view() const noexcept {
-    return std::string_view(m_data, m_pos);
+  [[nodiscard]] constexpr microfmt::string_view view() const noexcept {
+    return microfmt::string_view(m_data, m_pos);
   }
 
   /**
@@ -469,7 +470,7 @@ private:
  * @brief Output sink that adapts any callable object (lambda, functor) to a
  * @ref sink.
  *
- * @tparam Callable A callable accepting `(std::string_view)` or `(const char*,
+ * @tparam Callable A callable accepting `(microfmt::string_view)` or `(const char*,
  * std::size_t)`.
  */
 template <typename Callable> class callback_sink {
@@ -488,7 +489,7 @@ public:
    * @return A lightweight @ref sink struct forwarding writes to the callable.
    */
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{m_fn, [](void *ctx, std::string_view sv) noexcept {
+    return sink{m_fn, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *fn = static_cast<Callable *>(ctx);
                   (*fn)(sv);
                 }};
@@ -594,7 +595,7 @@ inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
     }
   }
 
-  out.write(std::string_view(&buf[idx], digits_len));
+  out.write(microfmt::string_view(&buf[idx], digits_len));
 }
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -628,16 +629,16 @@ inline void format_signed(const sink &out, int64_t val,
 
 class format_parse_context {
 public:
-  using iterator = std::string_view::const_iterator;
-  using const_iterator = std::string_view::const_iterator;
+  using iterator = microfmt::string_view::const_iterator;
+  using const_iterator = microfmt::string_view::const_iterator;
   using value_type = char;
   using size_type = std::size_t;
 
-  constexpr explicit format_parse_context(std::string_view spec) noexcept
+  constexpr explicit format_parse_context(microfmt::string_view spec) noexcept
       : m_spec(spec) {}
 
   // --- Core Accessors ---
-  [[nodiscard]] constexpr std::string_view spec() const noexcept {
+  [[nodiscard]] constexpr microfmt::string_view spec() const noexcept {
     return m_spec;
   }
   [[nodiscard]] constexpr bool empty() const noexcept { return m_spec.empty(); }
@@ -695,7 +696,7 @@ public:
   }
 
   [[nodiscard]] constexpr bool
-  starts_with(std::string_view prefix) const noexcept {
+  starts_with(microfmt::string_view prefix) const noexcept {
 #if __cplusplus >= 202002L
     return m_spec.starts_with(prefix);
 #else
@@ -709,14 +710,14 @@ public:
     return m_spec.find(ch, pos);
   }
 
-  [[nodiscard]] constexpr std::string_view
+  [[nodiscard]] constexpr microfmt::string_view
   substr(size_type pos = 0,
-         size_type count = std::string_view::npos) const noexcept {
+         size_type count = microfmt::string_view::npos) const noexcept {
     return m_spec.substr(pos, count);
   }
 
 private:
-  std::string_view m_spec;
+  microfmt::string_view m_spec;
 };
 
 template <typename T, typename Enable = void> struct formatter;
@@ -726,17 +727,24 @@ template <typename T, typename Enable = void> struct formatter;
 // ============================================================================
 
 // Strings (const char*, string_view)
+template <> struct formatter<microfmt::string_view> {
+  constexpr void parse(format_parse_context &) noexcept {}
+  void format(microfmt::string_view val, const sink &out) const noexcept {
+    out.write(val);
+  }
+};
+
 template <> struct formatter<std::string_view> {
   constexpr void parse(format_parse_context &) noexcept {}
   void format(std::string_view val, const sink &out) const noexcept {
-    out.write(val);
+    out.write(microfmt::string_view(val));
   }
 };
 
 template <> struct formatter<const char *> {
   constexpr void parse(format_parse_context &) noexcept {}
   void format(const char *val, const sink &out) const noexcept {
-    out.write(val ? std::string_view(val) : "(null)");
+    out.write(val ? microfmt::string_view(val) : "(null)");
   }
 };
 
@@ -744,21 +752,21 @@ template <> struct formatter<const char *> {
 template <size_t N> struct formatter<char[N]> {
   constexpr void parse(format_parse_context &) noexcept {}
   void format(const char *val, const sink &out) const noexcept {
-    out.write(val ? std::string_view(val) : "(null)");
+    out.write(val ? microfmt::string_view(val) : "(null)");
   }
 };
 
 template <size_t N> struct formatter<const char[N]> {
   constexpr void parse(format_parse_context &) noexcept {}
   void format(const char *val, const sink &out) const noexcept {
-    out.write(val ? std::string_view(val) : "(null)");
+    out.write(val ? microfmt::string_view(val) : "(null)");
   }
 };
 
 template <> struct formatter<char *> {
   constexpr void parse(format_parse_context &) noexcept {}
   void format(const char *val, const sink &out) const noexcept {
-    out.write(val ? std::string_view(val) : "(null)");
+    out.write(val ? microfmt::string_view(val) : "(null)");
   }
 };
 
@@ -846,7 +854,7 @@ __attribute__((always_inline))
 #endif
 inline void emit_formatted_int(const sink &out, const char *digits,
                                size_t digits_len, bool is_negative,
-                               std::string_view prefix, uint8_t width,
+                               microfmt::string_view prefix, uint8_t width,
                                bool zero_pad) noexcept {
   const size_t prefix_len = prefix.size();
   const size_t total_content_len =
@@ -878,7 +886,7 @@ inline void emit_formatted_int(const sink &out, const char *digits,
     }
   }
 
-  out.write(std::string_view(digits, digits_len));
+  out.write(microfmt::string_view(digits, digits_len));
 }
 
 } // namespace detail
@@ -900,7 +908,7 @@ struct formatter<
   } flags{}; // Zero-initializes all bit-field members to 0
 
   constexpr void parse(format_parse_context &ctx) noexcept {
-    std::string_view spec = ctx.spec();
+    microfmt::string_view spec = ctx.spec();
     if (spec.empty())
       return;
 
@@ -957,7 +965,7 @@ struct formatter<
       uval = val;
     }
 
-    std::string_view prefix{};
+    microfmt::string_view prefix{};
     if (flags.is_hex) {
       start = detail::format_hex_backward(end, uval, flags.uppercase);
       if (flags.alt_form) {
@@ -993,7 +1001,7 @@ struct formatter<T *, std::enable_if_t<!std::is_same_v<T, const char> &&
   int width{0};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
-    std::string_view s = ctx.spec();
+    microfmt::string_view s = ctx.spec();
     size_t p = 0;
     if (!s.empty() && s[p] == '0')
       ++p;
@@ -1021,13 +1029,13 @@ template <> struct formatter<std::nullptr_t> {
 // Static Trampoline & Type Table Machinery
 // ============================================================================
 
-using format_fn_t = void (*)(const void *val_ptr, std::string_view spec,
+using format_fn_t = void (*)(const void *val_ptr, microfmt::string_view spec,
                              const sink &out) noexcept;
 
 namespace detail {
 
 template <typename T>
-inline void format_type_thunk(const void *val_ptr, std::string_view spec,
+inline void format_type_thunk(const void *val_ptr, microfmt::string_view spec,
                               const sink &out) noexcept {
   // std::decay_t converts char[N] -> const char*, float[] -> float*, etc.
   using DecayedT = std::decay_t<T>;
@@ -1054,13 +1062,13 @@ using microfmt_remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 #endif
 
 // C++17 string_view prefix helper
-constexpr bool starts_with(std::string_view sv,
-                           std::string_view prefix) noexcept {
+constexpr bool starts_with(microfmt::string_view sv,
+                           microfmt::string_view prefix) noexcept {
   return sv.size() >= prefix.size() &&
          sv.compare(0, prefix.size(), prefix) == 0;
 }
 
-constexpr bool starts_with(std::string_view sv, char c) noexcept {
+constexpr bool starts_with(microfmt::string_view sv, char c) noexcept {
   return !sv.empty() && sv.front() == c;
 }
 
@@ -1080,8 +1088,8 @@ template <> struct format_type_table<> {
 
 // Represents a pre-parsed action in the format string
 struct compiled_piece {
-  std::string_view literal{}; // Static literal text to emit directly
-  std::string_view spec{};    // Format specifier (e.g. ":08x")
+  microfmt::string_view literal{}; // Static literal text to emit directly
+  microfmt::string_view spec{};    // Format specifier (e.g. ":08x")
   size_t arg_index{0};        // Which argument index to format
   bool is_arg{false};         // true = format arg, false = write literal
 };
@@ -1093,7 +1101,7 @@ template <size_t MaxPieces = 32> struct compiled_format {
 
 template <size_t MaxPieces = 32>
 constexpr compiled_format<MaxPieces>
-compile_format_string(std::string_view str) noexcept {
+compile_format_string(microfmt::string_view str) noexcept {
   compiled_format<MaxPieces> result{};
   size_t arg_idx = 0;
   size_t lit_start = 0;
@@ -1118,12 +1126,12 @@ compile_format_string(std::string_view str) noexcept {
         ++end;
       }
 
-      const std::string_view replacement =
+      const microfmt::string_view replacement =
           str.substr(i + 1, end - (i + 1));
       const size_t colon_pos = replacement.find(':');
-      const std::string_view spec =
-          colon_pos == std::string_view::npos
-              ? std::string_view{}
+      const microfmt::string_view spec =
+          colon_pos == microfmt::string_view::npos
+              ? microfmt::string_view{}
               : replacement.substr(colon_pos + 1);
       result.pieces[result.count++] = compiled_piece{{}, spec, arg_idx++, true};
 
@@ -1206,7 +1214,7 @@ inline void unrolled_format_impl(const sink &out, std::index_sequence<Is...>,
 // Core Execution Loop
 // ============================================================================
 
-inline void vformat_to(const sink &out, std::string_view fmt,
+inline void vformat_to(const sink &out, microfmt::string_view fmt,
                        span<const void *const> arg_ptrs,
                        span<const format_fn_t> arg_fns) noexcept {
   size_t arg_idx = 0;
@@ -1222,7 +1230,7 @@ inline void vformat_to(const sink &out, std::string_view fmt,
         continue;
       }
 
-      std::string_view spec{};
+      microfmt::string_view spec{};
       size_t close_pos = i + 1;
 
       while (close_pos < fmt.size() && fmt[close_pos] != '}') {
@@ -1263,7 +1271,7 @@ inline void vformat_to(const sink &out, std::string_view fmt,
 // ============================================================================
 
 template <typename... Args>
-inline void format_to(const sink &out, std::string_view fmt,
+inline void format_to(const sink &out, microfmt::string_view fmt,
                       const Args &...args) noexcept {
   if constexpr (sizeof...(Args) == 0) {
     vformat_to(out, fmt, {}, {});
@@ -1277,7 +1285,7 @@ inline void format_to(const sink &out, std::string_view fmt,
 }
 
 template <typename OutputIt, typename... Args>
-inline OutputIt format_to(OutputIt it, std::string_view fmt,
+inline OutputIt format_to(OutputIt it, microfmt::string_view fmt,
                           const Args &...args) noexcept {
   iterator_sink<OutputIt> isink(it);
   format_to(isink.as_sink(), fmt, args...);
@@ -1285,7 +1293,7 @@ inline OutputIt format_to(OutputIt it, std::string_view fmt,
 }
 
 template <size_t N, typename... Args>
-[[nodiscard]] inline buffer_sink<N> format(std::string_view fmt,
+[[nodiscard]] inline buffer_sink<N> format(microfmt::string_view fmt,
                                            const Args &...args) noexcept {
   buffer_sink<N> buf;
   format_to(buf.as_sink(), fmt, args...);
@@ -1295,7 +1303,7 @@ template <size_t N, typename... Args>
 template <typename Provider> struct compile_string_holder {
   using provider_type = Provider;
 
-  [[nodiscard]] constexpr std::string_view get() const noexcept {
+  [[nodiscard]] constexpr microfmt::string_view get() const noexcept {
     return Provider::get();
   }
 };
@@ -1304,8 +1312,8 @@ template <typename Provider> struct compile_string_holder {
 #define MICROFMT_STRING(s)                                                     \
   ([] {                                                                        \
     struct str_provider {                                                      \
-      static constexpr std::string_view get() noexcept {                       \
-        return std::string_view{s, sizeof(s) - 1};                             \
+      static constexpr microfmt::string_view get() noexcept {                       \
+        return microfmt::string_view{s, sizeof(s) - 1};                             \
       }                                                                        \
     };                                                                         \
     return ::microfmt::compile_string_holder<str_provider>{};                  \

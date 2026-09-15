@@ -32,7 +32,7 @@ template <typename WordType, size_t N> struct reg_grid_desc {
   /**
    * @brief Optional grid title rendered as `=== title ===`.
    */
-  std::string_view title;
+  microfmt::string_view title;
   /**
    * @brief Number of register entries rendered per row (defaults to `4`).
    */
@@ -40,7 +40,7 @@ template <typename WordType, size_t N> struct reg_grid_desc {
   /**
    * @brief Per-entry names, one per register word.
    */
-  std::string_view names[N];
+  microfmt::string_view names[N];
 };
 
 /**
@@ -53,7 +53,7 @@ template <typename T> struct type_tag {};
  * @brief Deduction guide deriving the entry count for @ref reg_grid_desc.
  */
 template <typename WordType, typename... Names>
-reg_grid_desc(type_tag<WordType>, std::string_view, uint8_t, Names...)
+reg_grid_desc(type_tag<WordType>, microfmt::string_view, uint8_t, Names...)
     -> reg_grid_desc<WordType, sizeof...(Names)>;
 
 // ============================================================================
@@ -143,7 +143,7 @@ struct formatter<reg_grid_view<WordType, N>> {
     const uint8_t cols = (d.columns > 0) ? d.columns : 4;
 
     for (size_t i = 0; i < N; ++i) {
-      std::string_view name = d.names[i];
+      microfmt::string_view name = d.names[i];
       out.write(name);
 
       // Pad name column to 5 characters for clean alignment

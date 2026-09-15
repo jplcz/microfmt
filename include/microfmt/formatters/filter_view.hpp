@@ -29,7 +29,7 @@ template <typename Range, typename Predicate> struct filtered_range_view {
   Predicate predicate;
   char open_delim{'['};
   char close_delim{']'};
-  std::string_view separator{", "};
+  microfmt::string_view separator{", "};
 };
 
 /** Non-owning pointer/count range plus predicate configuration. */
@@ -39,7 +39,7 @@ template <typename T, typename Predicate> struct filtered_pointer_range_view {
   Predicate predicate;
   char open_delim{'['};
   char close_delim{']'};
-  std::string_view separator{", "};
+  microfmt::string_view separator{", "};
 };
 
 /** Create a filtered view over @p rng using @p pred. */
@@ -73,7 +73,7 @@ template <typename Range, typename Predicate>
 struct formatter<filtered_range_view<Range, Predicate>> {
   char open_c{'['};
   char close_c{']'};
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();
@@ -135,7 +135,7 @@ template <typename T, typename Predicate>
 struct formatter<filtered_pointer_range_view<T, Predicate>> {
   char open_c{'['};
   char close_c{']'};
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();

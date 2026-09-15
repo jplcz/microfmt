@@ -30,10 +30,10 @@ struct map_range_view {
   Sentinel last;
   KeyExtractor key_fn;
   ValExtractor val_fn;
-  std::string_view open_delim{"{"};
-  std::string_view close_delim{"}"};
-  std::string_view sep{", "};
-  std::string_view kv_sep{": "};
+  microfmt::string_view open_delim{"{"};
+  microfmt::string_view close_delim{"}"};
+  microfmt::string_view sep{", "};
+  microfmt::string_view kv_sep{": "};
 };
 
 namespace detail {
@@ -160,7 +160,7 @@ struct formatter<
     map_range_view<KeyExtractor, ValExtractor, Iterator, Sentinel>> {
   char open_c{'{'};
   char close_c{'}'};
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();

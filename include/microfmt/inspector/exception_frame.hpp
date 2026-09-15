@@ -97,7 +97,7 @@ public:
      * @brief Describes a vector/reason code. See
      * @ref exception_frame_ref::describe_reason.
      */
-    std::string_view (*describe_reason)(const void *ctx,
+    microfmt::string_view (*describe_reason)(const void *ctx,
                                         uint64_t vector_or_reason) noexcept;
   };
 
@@ -199,7 +199,7 @@ public:
    * @param vector_or_reason Vector number or reason code.
    * @return Human-readable description, or an empty view when unavailable.
    */
-  [[nodiscard]] std::string_view
+  [[nodiscard]] microfmt::string_view
   describe_reason(uint64_t vector_or_reason) const noexcept {
     if (!vtbl_ || !vtbl_->describe_reason)
       return {};
@@ -219,7 +219,11 @@ private:
   static constexpr vtable s_vtbl{
       &exception_frame_traits<ArchTag>::decode,
       &exception_frame_traits<ArchTag>::next_trap_frame,
-      &exception_frame_traits<ArchTag>::describe_reason};
+      [](const void *ctx, uint64_t vector_or_reason) noexcept {
+        return microfmt::string_view(
+            exception_frame_traits<ArchTag>::describe_reason(
+                ctx, vector_or_reason));
+      }};
 
   const void *ctx_{nullptr};
   const vtable *vtbl_{nullptr};
@@ -460,7 +464,7 @@ template <> struct formatter<remote_trap_view> {
    */
   void format(const remote_trap_view &view, const sink &out) const noexcept {
     const auto &trap = view.trap();
-    std::string_view desc =
+    microfmt::string_view desc =
         view.decoder().describe_reason(trap.vector_or_reason);
 
     microfmt::format_to(

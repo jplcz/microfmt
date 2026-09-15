@@ -19,10 +19,10 @@ template <std::size_t TagCapacity = 64> class tizen_dlog_sink {
   static_assert(TagCapacity > 0, "Tag capacity must be at least 1 byte");
 
 public:
-  using write_fn_t = void (*)(int priority, std::string_view tag,
-                              std::string_view message) noexcept;
+  using write_fn_t = void (*)(int priority, microfmt::string_view tag,
+                              microfmt::string_view message) noexcept;
 
-  explicit tizen_dlog_sink(std::string_view tag = "microfmt",
+  explicit tizen_dlog_sink(microfmt::string_view tag = "microfmt",
                            write_fn_t write_fn = write_to_dlog) noexcept
       : write_fn_(write_fn) {
     set_tag(tag);
@@ -33,11 +33,10 @@ public:
                     [](void *ctx, const log_msg &msg) noexcept {
                       static_cast<tizen_dlog_sink *>(ctx)->log_impl(msg);
                     },
-                    nullptr,
-                    level::trace};
+                    nullptr, level::trace};
   }
 
-  void set_tag(std::string_view tag) noexcept {
+  void set_tag(microfmt::string_view tag) noexcept {
     tag_size_ = tag.size() < TagCapacity - 1 ? tag.size() : TagCapacity - 1;
     for (std::size_t i = 0; i < tag_size_; ++i) {
       tag_[i] = tag[i];
@@ -46,8 +45,8 @@ public:
   }
 
 private:
-  static void write_to_dlog(int priority, std::string_view tag,
-                            std::string_view message) noexcept {
+  static void write_to_dlog(int priority, microfmt::string_view tag,
+                            microfmt::string_view message) noexcept {
     ::dlog_print(static_cast<::log_priority>(priority), tag.data(), "%.*s",
                  static_cast<int>(message.size()), message.data());
   }
@@ -73,7 +72,7 @@ private:
 
   void log_impl(const log_msg &msg) noexcept {
     if (msg.lvl != level::off) {
-      write_fn_(priority_for(msg.lvl), std::string_view(tag_, tag_size_),
+      write_fn_(priority_for(msg.lvl), microfmt::string_view(tag_, tag_size_),
                 msg.payload);
     }
   }

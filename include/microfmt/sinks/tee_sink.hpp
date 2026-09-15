@@ -33,7 +33,7 @@ public:
   tee_sink &operator=(tee_sink &&) noexcept = default;
 
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   static_cast<tee_sink *>(ctx)->write(sv);
                 }};
   }
@@ -52,7 +52,7 @@ public:
     }
   }
 
-  void write(std::string_view sv) const noexcept {
+  void write(microfmt::string_view sv) const noexcept {
     for (size_t i = 0; i < count_; ++i) {
       targets_[i].write(sv);
     }

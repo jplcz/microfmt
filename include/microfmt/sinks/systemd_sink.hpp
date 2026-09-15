@@ -16,18 +16,21 @@
 
 namespace microfmt::log {
 
-template <std::size_t MessageCapacity = 512, std::size_t IdentifierCapacity = 64>
+template <std::size_t MessageCapacity = 512,
+          std::size_t IdentifierCapacity = 64>
 /** @brief Adapter that writes structured records to the systemd journal. */
 class systemd_sink {
-  static_assert(MessageCapacity > 0, "Message capacity must be at least 1 byte");
+  static_assert(MessageCapacity > 0,
+                "Message capacity must be at least 1 byte");
   static_assert(IdentifierCapacity > 0,
                 "Identifier capacity must be at least 1 byte");
 
 public:
-  using write_fn_t = void (*)(int priority, std::string_view identifier,
-                              std::string_view message) noexcept;
+  using write_fn_t = void (*)(int priority, microfmt::string_view identifier,
+                              microfmt::string_view message) noexcept;
 
-  explicit constexpr systemd_sink(write_fn_t write_fn = write_to_journal) noexcept
+  explicit constexpr systemd_sink(
+      write_fn_t write_fn = write_to_journal) noexcept
       : write_fn_(write_fn) {}
 
   [[nodiscard]] log_sink as_sink() noexcept {
@@ -35,13 +38,12 @@ public:
                     [](void *ctx, const log_msg &msg) noexcept {
                       static_cast<systemd_sink *>(ctx)->log_impl(msg);
                     },
-                    nullptr,
-                    level::trace};
+                    nullptr, level::trace};
   }
 
 private:
-  static void write_to_journal(int priority, std::string_view identifier,
-                               std::string_view message) noexcept {
+  static void write_to_journal(int priority, microfmt::string_view identifier,
+                               microfmt::string_view message) noexcept {
     if (::sd_booted() <= 0) {
       write_to_stdio(identifier, message);
       return;
@@ -64,15 +66,16 @@ private:
         {priority_field, sizeof(priority_field) - 1},
         {const_cast<char *>(identifier_field.view().data()),
          identifier_field.view().size()},
-        {const_cast<char *>(message_field.view().data()), message_field.view().size()},
+        {const_cast<char *>(message_field.view().data()),
+         message_field.view().size()},
     };
     if (::sd_journal_sendv(fields, 3) < 0) {
       write_to_stdio(identifier, message);
     }
   }
 
-  static void write_to_stdio(std::string_view identifier,
-                             std::string_view message) noexcept {
+  static void write_to_stdio(microfmt::string_view identifier,
+                             microfmt::string_view message) noexcept {
     buffer_sink<MessageCapacity + IdentifierCapacity + 4> output;
     const auto out = output.as_sink();
     if (!identifier.empty()) {

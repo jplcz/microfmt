@@ -21,21 +21,21 @@ enum class bit_type : uint8_t {
 struct bit_field {
   uint32_t mask;
   uint8_t shift{0};
-  std::string_view name{};
+  microfmt::string_view name{};
   bit_type type{bit_type::flag};
 };
 
 struct bitfield_view {
   uint32_t raw_value{0};
   span<const bit_field> fields{};
-  std::string_view separator{" | "};
+  microfmt::string_view separator{" | "};
   bool show_raw_hex{true};
 };
 
 // Convenience helper to construct a bitfield_view
 [[nodiscard]] constexpr bitfield_view
 bits(uint32_t raw_val, span<const bit_field> fields, bool show_raw_hex = true,
-     std::string_view sep = " | ") noexcept {
+     microfmt::string_view sep = " | ") noexcept {
   return bitfield_view{raw_val, fields, sep, show_raw_hex};
 }
 

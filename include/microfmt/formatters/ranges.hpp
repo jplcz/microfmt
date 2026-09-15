@@ -36,8 +36,8 @@ template <size_t N> struct fixed_string {
     buf[N] = '\0';
   }
 
-  [[nodiscard]] constexpr std::string_view view() const noexcept {
-    return std::string_view(buf, N);
+  [[nodiscard]] constexpr microfmt::string_view view() const noexcept {
+    return microfmt::string_view(buf, N);
   }
 };
 
@@ -53,7 +53,7 @@ template <size_t N> fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
 template <typename It, typename Sentinel = It> struct join_view {
   It first;
   Sentinel last;
-  std::string_view delimiter{", "};
+  microfmt::string_view delimiter{", "};
   // Custom per-element specifier (e.g. "02x")
 };
 
@@ -76,17 +76,17 @@ struct join_as_view {
 
 // Standard join view
 template <typename It, typename Sentinel,
-          std::enable_if_t<!std::is_convertible_v<Sentinel, std::string_view>,
+          std::enable_if_t<!std::is_convertible_v<Sentinel, microfmt::string_view>,
                            int> = 0>
 [[nodiscard]] constexpr auto join(It first, Sentinel last,
-                                  std::string_view delimiter = ", ") noexcept {
+                                  microfmt::string_view delimiter = ", ") noexcept {
   return join_view<It, Sentinel>{first, last, delimiter};
 }
 
 template <typename Range,
           std::enable_if_t<detail::is_range<Range>::value, int> = 0>
 [[nodiscard]] constexpr auto join(const Range &range,
-                                  std::string_view delimiter = ", ") noexcept {
+                                  microfmt::string_view delimiter = ", ") noexcept {
   using std::begin;
   using std::end;
   return join_view<decltype(begin(range)), decltype(end(range))>{
@@ -100,7 +100,7 @@ template <
             detail::is_range<std::remove_reference_t<Range>>::value,
         int> = 0>
 [[nodiscard]] constexpr auto join(Range &&,
-                                  std::string_view = ", ") noexcept = delete;
+                                  microfmt::string_view = ", ") noexcept = delete;
 
 #if __cplusplus >= 202002L
 // Compile-time join_as (zero runtime overhead)
@@ -125,7 +125,7 @@ template <
 
 template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "",
           typename It, typename Sentinel,
-          std::enable_if_t<!std::is_convertible_v<Sentinel, std::string_view>,
+          std::enable_if_t<!std::is_convertible_v<Sentinel, microfmt::string_view>,
                            int> = 0>
 [[nodiscard]] constexpr auto join_as(It first, Sentinel last) noexcept {
   return join_as_view<It, Sentinel, Delim, ElemSpec>{first, last};
@@ -138,7 +138,7 @@ template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "",
 
 template <typename It, typename Sentinel>
 struct formatter<join_view<It, Sentinel>> {
-  std::string_view elem_spec{""};
+  microfmt::string_view elem_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     elem_spec = ctx.spec();
@@ -172,7 +172,7 @@ struct formatter<join_view<It, Sentinel>> {
 template <typename It, typename Sentinel, detail::fixed_string Delim,
           detail::fixed_string ElemSpec>
 struct formatter<join_as_view<It, Sentinel, Delim, ElemSpec>> {
-  std::string_view runtime_spec{""};
+  microfmt::string_view runtime_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     runtime_spec = ctx.spec();
@@ -183,8 +183,8 @@ struct formatter<join_as_view<It, Sentinel, Delim, ElemSpec>> {
     using ValueType = std::remove_cv_t<
         std::remove_reference_t<decltype(*std::declval<It>())>>;
 
-    constexpr std::string_view ct_elem_spec = ElemSpec.view();
-    const std::string_view effective_spec =
+    constexpr microfmt::string_view ct_elem_spec = ElemSpec.view();
+    const microfmt::string_view effective_spec =
         !ct_elem_spec.empty() ? ct_elem_spec : runtime_spec;
 
     formatter<ValueType> element_fmt;

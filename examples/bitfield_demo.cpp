@@ -9,7 +9,7 @@
 #include <string_view>
 
 // Hardware callback example: streams output directly to stdout/UART
-static void terminal_write(void * /*ctx*/, std::string_view sv) noexcept {
+static void terminal_write(void * /*ctx*/, microfmt::string_view sv) noexcept {
   std::fwrite(sv.data(), 1, sv.size(), stdout);
 }
 

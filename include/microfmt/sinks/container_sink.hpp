@@ -79,14 +79,14 @@ public:
   container_sink &operator=(container_sink &&) noexcept = default;
 
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   static_cast<container_sink *>(ctx)->write(sv);
                 }};
   }
 
   void put(char c) { target_->push_back(c); }
 
-  void write(std::string_view sv) {
+  void write(microfmt::string_view sv) {
     if constexpr (detail::has_append<Container>::value) {
       target_->append(sv.data(), sv.size());
     } else if constexpr (detail::has_range_insert<Container>::value) {
@@ -117,7 +117,7 @@ template <typename Container,
 // Appends formatted text to an existing growable character container.
 template <typename Container, typename... Args>
 typename std::enable_if<is_growable_char_container<Container>, void>::type
-format_to_container(Container &dest, std::string_view fmt_str,
+format_to_container(Container &dest, microfmt::string_view fmt_str,
                     const Args &...args) {
   container_sink<Container> cs(dest);
   auto out = cs.as_sink();
@@ -128,7 +128,7 @@ format_to_container(Container &dest, std::string_view fmt_str,
 template <typename Container = std::string, typename... Args>
 [[nodiscard]] typename std::enable_if<is_growable_char_container<Container>,
                                       Container>::type
-format_as_container(std::string_view fmt_str, const Args &...args) {
+format_as_container(microfmt::string_view fmt_str, const Args &...args) {
   Container result;
   format_to_container(result, fmt_str, args...);
   return result;

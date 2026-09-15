@@ -49,7 +49,7 @@ public:
 
   /** Return a type-erased sink suitable for @ref format_to. */
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   static_cast<transform_sink *>(ctx)->write(sv);
                 }};
   }
@@ -59,7 +59,7 @@ public:
 
   void put(char c) noexcept { target_.put(apply_char(c)); }
 
-  void write(std::string_view sv) noexcept {
+  void write(microfmt::string_view sv) noexcept {
     for (char c : sv) {
       target_.put(apply_char(c));
     }
@@ -103,7 +103,7 @@ class prefix_sink {
 public:
   /** Create a line-prefix adapter that forwards to @p target. */
   explicit constexpr prefix_sink(sink target,
-                                 std::string_view prefix = "  ") noexcept
+                                 microfmt::string_view prefix = "  ") noexcept
       : target_(target), prefix_(prefix) {}
 
   prefix_sink(const prefix_sink &) = delete;
@@ -113,13 +113,13 @@ public:
 
   /** Return a type-erased sink suitable for @ref format_to. */
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   static_cast<prefix_sink *>(ctx)->write(sv);
                 }};
   }
 
   /** Change the prefix used for subsequent lines. */
-  void set_prefix(std::string_view p) noexcept { prefix_ = p; }
+  void set_prefix(microfmt::string_view p) noexcept { prefix_ = p; }
 
   void put(char c) noexcept {
     if (at_line_start_) {
@@ -134,7 +134,7 @@ public:
     }
   }
 
-  void write(std::string_view sv) noexcept {
+  void write(microfmt::string_view sv) noexcept {
     for (char c : sv) {
       put(c);
     }
@@ -142,7 +142,7 @@ public:
 
 private:
   sink target_;
-  std::string_view prefix_{"  "};
+  microfmt::string_view prefix_{"  "};
   bool at_line_start_{true};
 };
 
@@ -160,7 +160,7 @@ public:
 
   /** Return a type-erased sink suitable for @ref format_to. */
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   static_cast<limit_sink *>(ctx)->write(sv);
                 }};
   }
@@ -172,7 +172,7 @@ public:
     }
   }
 
-  void write(std::string_view sv) noexcept {
+  void write(microfmt::string_view sv) noexcept {
     if (remaining_ == 0 || sv.empty())
       return;
 

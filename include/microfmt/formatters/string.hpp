@@ -78,7 +78,7 @@ struct parsed_string_spec {
  * @return Parsed @ref parsed_string_spec.
  */
 inline constexpr parsed_string_spec
-parse_advanced_string_spec(std::string_view spec) noexcept {
+parse_advanced_string_spec(microfmt::string_view spec) noexcept {
   parsed_string_spec res{};
   if (spec.empty()) {
     return res;
@@ -152,7 +152,7 @@ inline void write_fill_chars(const sink &out, char fill,
   std::fill_n(buf, std::min<size_t>(count, sizeof(buf)), fill);
   while (count > 0) {
     size_t chunk = std::min<size_t>(count, sizeof(buf));
-    out.write(std::string_view(buf, chunk));
+    out.write(microfmt::string_view(buf, chunk));
     count -= chunk;
   }
 }
@@ -189,9 +189,9 @@ inline void write_escaped_character(const sink &out, char ch) noexcept {
       char hex[4] = {'\\', 'x',
                      hex_chars[(static_cast<unsigned char>(ch) >> 4) & 0x0F],
                      hex_chars[static_cast<unsigned char>(ch) & 0x0F]};
-      out.write(std::string_view(hex, 4));
+      out.write(microfmt::string_view(hex, 4));
     } else {
-      out.write(std::string_view(&ch, 1));
+      out.write(microfmt::string_view(&ch, 1));
     }
     break;
   }
@@ -202,7 +202,7 @@ inline void write_escaped_character(const sink &out, char ch) noexcept {
  * @param sv String to measure (including the surrounding quotes).
  * @return Rendered length in characters.
  */
-inline size_t calculate_escaped_len(std::string_view sv) noexcept {
+inline size_t calculate_escaped_len(microfmt::string_view sv) noexcept {
   size_t len = 2; // Surrounding quotes
   for (char ch : sv) {
     switch (ch) {
@@ -242,18 +242,18 @@ public:
    * @brief Constructs the view over a string_view.
    * @param str Text to format.
    */
-  constexpr explicit as_string_view(std::string_view str) noexcept
+  constexpr explicit as_string_view(microfmt::string_view str) noexcept
       : str_(str) {}
 
   /**
    * @brief Returns the underlying string view.
    * @return Referenced text.
    */
-  [[nodiscard]] constexpr std::string_view get() const noexcept { return str_; }
+  [[nodiscard]] constexpr microfmt::string_view get() const noexcept { return str_; }
 
 private:
   /// Referenced text.
-  std::string_view str_;
+  microfmt::string_view str_;
 };
 
 // ============================================================================
@@ -265,7 +265,7 @@ private:
  * @param sv Text to format.
  * @return An @ref as_string_view.
  */
-[[nodiscard]] constexpr as_string_view as_string(std::string_view sv) noexcept {
+[[nodiscard]] constexpr as_string_view as_string(microfmt::string_view sv) noexcept {
   return as_string_view{sv};
 }
 
@@ -280,7 +280,7 @@ private:
 template <typename CharT, typename Traits, typename Alloc>
 [[nodiscard]] as_string_view
 as_string(const std::basic_string<CharT, Traits, Alloc> &str) noexcept {
-  return as_string_view{std::string_view(str.data(), str.size())};
+  return as_string_view{microfmt::string_view(str.data(), str.size())};
 }
 
 template <typename CharT, typename Traits, typename Alloc>
@@ -293,8 +293,8 @@ as_string(std::basic_string<CharT, Traits, Alloc> &&) noexcept = delete;
  * @return An @ref as_string_view.
  */
 [[nodiscard]] constexpr as_string_view as_string(const char *str) noexcept {
-  return as_string_view{str ? std::string_view(str)
-                            : std::string_view("(null)")};
+  return as_string_view{str ? microfmt::string_view(str)
+                            : microfmt::string_view("(null)")};
 }
 
 // ============================================================================
@@ -325,7 +325,7 @@ template <> struct formatter<as_string_view> {
    * @param out Destination sink.
    */
   void format(const as_string_view &val, const sink &out) const noexcept {
-    std::string_view sv = val.get();
+    microfmt::string_view sv = val.get();
 
     // 1. Truncate to precision if requested
     if (spec_.precision != size_t(-1) && sv.size() > spec_.precision) {

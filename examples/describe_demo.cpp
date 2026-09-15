@@ -44,7 +44,7 @@ struct SystemState {
 };
 BOOST_DESCRIBE_STRUCT(SystemState, (), (node_id, verbosity, sensor, net))
 
-static void terminal_write(void *, std::string_view sv) noexcept {
+static void terminal_write(void *, microfmt::string_view sv) noexcept {
   std::fwrite(sv.data(), 1, sv.size(), stdout);
 }
 

@@ -37,8 +37,8 @@ public:
    * @param show_index When `true`, include the alternative index.
    */
   constexpr explicit variant_view(const variant_type &var,
-                                  std::string_view prefix = "",
-                                  std::string_view suffix = "",
+                                  microfmt::string_view prefix = "",
+                                  microfmt::string_view suffix = "",
                                   bool show_index = false) noexcept
       : var_(var), prefix_(prefix), suffix_(suffix), show_index_(show_index) {}
 
@@ -53,14 +53,14 @@ public:
    * @brief Returns the prefix decoration.
    * @return Text emitted before the active alternative.
    */
-  [[nodiscard]] constexpr std::string_view prefix() const noexcept {
+  [[nodiscard]] constexpr microfmt::string_view prefix() const noexcept {
     return prefix_;
   }
   /**
    * @brief Returns the suffix decoration.
    * @return Text emitted after the active alternative.
    */
-  [[nodiscard]] constexpr std::string_view suffix() const noexcept {
+  [[nodiscard]] constexpr microfmt::string_view suffix() const noexcept {
     return suffix_;
   }
   /**
@@ -75,9 +75,9 @@ private:
   /// Referenced variant.
   const variant_type &var_;
   /// Prefix decoration.
-  std::string_view prefix_;
+  microfmt::string_view prefix_;
   /// Suffix decoration.
-  std::string_view suffix_;
+  microfmt::string_view suffix_;
   /// Whether to include the active alternative index.
   bool show_index_;
 };
@@ -107,8 +107,8 @@ as_variant(const std::variant<Ts...> &var) noexcept {
  */
 template <typename... Ts>
 [[nodiscard]] constexpr auto as_variant(const std::variant<Ts...> &var,
-                                        std::string_view prefix,
-                                        std::string_view suffix) noexcept {
+                                        microfmt::string_view prefix,
+                                        microfmt::string_view suffix) noexcept {
   return variant_view<Ts...>(var, prefix, suffix, false);
 }
 
@@ -145,7 +145,7 @@ template <typename... Ts> struct formatter<variant_view<Ts...>> {
   /**
    * @brief Element specifier forwarded to the active alternative.
    */
-  std::string_view elem_spec{""};
+  microfmt::string_view elem_spec{""};
 
   /**
    * @brief Parses the leading mode and the element specifier.

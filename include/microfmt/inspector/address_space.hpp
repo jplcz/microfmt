@@ -471,7 +471,7 @@ template <> struct formatter<remote_string_view> {
       if (chunk_len > 0) {
         size_t limit_left = view.max_limit() - total;
         size_t to_write = (chunk_len > limit_left) ? limit_left : chunk_len;
-        out.write(std::string_view(view.scratch().data(), to_write));
+        out.write(microfmt::string_view(view.scratch().data(), to_write));
         total += to_write;
         cur += to_write;
       }
@@ -496,7 +496,7 @@ template <typename T> struct formatter<remote_ref<T>> {
   /**
    * @brief Specifier forwarded to the loaded object's formatter.
    */
-  std::string_view spec_{""};
+  microfmt::string_view spec_{""};
 
   /**
    * @brief Captures the specifier for the element formatter.

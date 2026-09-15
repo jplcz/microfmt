@@ -30,7 +30,7 @@ enum class scale_base : uint16_t {
 // MHz")
 template <typename T> struct auto_unit_view {
   T value{0};
-  std::string_view unit_symbol{};
+  microfmt::string_view unit_symbol{};
   scale_base base{scale_base::decimal};
   uint8_t precision{2}; // Decimal places
 };
@@ -38,7 +38,7 @@ template <typename T> struct auto_unit_view {
 // Explicit Fixed Unit View (e.g., 42 "mA" -> "42 mA")
 template <typename T> struct unit_view {
   T value{0};
-  std::string_view unit_symbol{};
+  microfmt::string_view unit_symbol{};
 };
 
 // ============================================================================
@@ -47,7 +47,7 @@ template <typename T> struct unit_view {
 
 // Auto-scaling SI decimal units (Hz, W, V, etc.)
 template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
-[[nodiscard]] constexpr auto auto_si(T val, std::string_view unit,
+[[nodiscard]] constexpr auto auto_si(T val, microfmt::string_view unit,
                                      uint8_t precision = 2) noexcept {
   return auto_unit_view<T>{val, unit, scale_base::decimal, precision};
 }
@@ -61,7 +61,7 @@ template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
 
 // Fixed unit tag (no scaling)
 template <typename T>
-[[nodiscard]] constexpr auto with_unit(T val, std::string_view unit) noexcept {
+[[nodiscard]] constexpr auto with_unit(T val, microfmt::string_view unit) noexcept {
   return unit_view<T>{val, unit};
 }
 
@@ -77,7 +77,7 @@ template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
 
 // --- Fixed Unit Formatter ---
 template <typename T> struct formatter<unit_view<T>> {
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     forwarded_spec = ctx.spec();

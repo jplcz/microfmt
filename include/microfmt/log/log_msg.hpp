@@ -21,7 +21,7 @@ namespace microfmt::log {
 /** @brief Shared log severity levels in ascending order. */
 enum class level : uint8_t { trace = 0, debug, info, warn, err, critical, off };
 
-[[nodiscard]] constexpr std::string_view to_string_view(level lvl) noexcept {
+[[nodiscard]] constexpr microfmt::string_view to_string_view(level lvl) noexcept {
   switch (lvl) {
   case level::trace:
     return "trace";
@@ -40,7 +40,7 @@ enum class level : uint8_t { trace = 0, debug, info, warn, err, critical, off };
   }
 }
 
-[[nodiscard]] constexpr std::string_view to_short_string(level lvl) noexcept {
+[[nodiscard]] constexpr microfmt::string_view to_short_string(level lvl) noexcept {
   switch (lvl) {
   case level::trace:
     return "T";
@@ -65,10 +65,10 @@ enum class level : uint8_t { trace = 0, debug, info, warn, err, critical, off };
 
 /** @brief Structured log record forwarded by a logger to each sink. */
 struct log_msg {
-  std::string_view logger_name{};
+  microfmt::string_view logger_name{};
   level lvl{level::info};
   std::chrono::system_clock::time_point time{std::chrono::system_clock::now()};
-  std::string_view payload{};
+  microfmt::string_view payload{};
   std::source_location loc{std::source_location::current()};
 };
 

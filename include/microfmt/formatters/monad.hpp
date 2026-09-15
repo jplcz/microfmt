@@ -34,7 +34,7 @@ namespace microfmt {
 // ============================================================================
 
 template <typename T> struct formatter<std::optional<T>> {
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     forwarded_spec = ctx.spec();
@@ -59,7 +59,7 @@ template <typename T> struct formatter<std::optional<T>> {
 // ============================================================================
 
 template <typename T, typename E> struct formatter<expected<T, E>> {
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     forwarded_spec = ctx.spec();
@@ -93,7 +93,7 @@ template <typename T, typename E> struct formatter<expected<T, E>> {
 #if MICROFMT_HAS_STD_EXPECTED
 
 template <typename T, typename E> struct formatter<std::expected<T, E>> {
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     forwarded_spec = ctx.spec();

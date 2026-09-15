@@ -31,8 +31,8 @@ void copy_to_buffer(std::string_view text, char *destination,
   }
 }
 
-void capture_dlog(int priority, std::string_view tag,
-                  std::string_view message) noexcept {
+void capture_dlog(int priority, microfmt::string_view tag,
+                  microfmt::string_view message) noexcept {
   captured_dlog.priority = priority;
   copy_to_buffer(tag, captured_dlog.tag.data(), captured_dlog.tag.size(),
                  captured_dlog.tag_size);

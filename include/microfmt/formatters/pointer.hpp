@@ -78,7 +78,7 @@ template <typename T>
 template <typename T> struct raw_range_view {
   const T *begin_ptr{nullptr};
   const T *end_ptr{nullptr};
-  std::string_view separator{", "};
+  microfmt::string_view separator{", "};
   char open_delim{'['};
   char close_delim{']'};
 
@@ -122,7 +122,7 @@ template <> struct formatter<raw_ptr_view> {
   bool show_prefix{true};
   ptr_width_mode mode{ptr_width_mode::native};
   size_t custom_width{0};
-  std::string_view null_representation{"(nil)"};
+  microfmt::string_view null_representation{"(nil)"};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();
@@ -217,7 +217,7 @@ template <> struct formatter<raw_ptr_view> {
 template <typename T> struct formatter<raw_range_view<T>> {
   char open_c{'['};
   char close_c{']'};
-  std::string_view forwarded_spec{""};
+  microfmt::string_view forwarded_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();

@@ -45,7 +45,7 @@ struct parsed_float_spec {
  * @return Parsed @ref parsed_float_spec describing the requested formatting.
  */
 inline constexpr parsed_float_spec
-parse_float_spec(std::string_view spec) noexcept {
+parse_float_spec(microfmt::string_view spec) noexcept {
   parsed_float_spec res{};
   if (spec.empty()) {
     return res;
@@ -150,14 +150,14 @@ inline void format_float_via_printf(T val, const parsed_float_spec &spec,
 
   if (written > 0) {
     if (static_cast<size_t>(written) < sizeof(buf)) {
-      out.write(std::string_view(buf, static_cast<size_t>(written)));
+      out.write(microfmt::string_view(buf, static_cast<size_t>(written)));
     } else {
       // Stack buffer overflow fallback (rare for extreme precision)
       size_t heap_size = static_cast<size_t>(written) + 1;
       auto *heap_buf = new (std::nothrow) char[heap_size];
       if (heap_buf) {
         (void)print_float(heap_buf, heap_size);
-        out.write(std::string_view(heap_buf, static_cast<size_t>(written)));
+        out.write(microfmt::string_view(heap_buf, static_cast<size_t>(written)));
         delete[] heap_buf;
       }
     }

@@ -44,7 +44,7 @@ enum class quote_style : uint8_t {
  *  @ref ellipsis appends three dots when @ref max_len is greater than three.
  */
 struct styled_str_view {
-  std::string_view text{};
+  microfmt::string_view text{};
   size_t width{0};
   char fill_char{' '};
   text_align align{text_align::left};
@@ -55,7 +55,7 @@ struct styled_str_view {
 };
 
 /** Pad text to at least @p width characters using the selected alignment. */
-[[nodiscard]] constexpr styled_str_view pad(std::string_view s, size_t width,
+[[nodiscard]] constexpr styled_str_view pad(microfmt::string_view s, size_t width,
                                             text_align a = text_align::left,
                                             char fill = ' ') noexcept {
   return {s, width, fill, a, text_case::none, quote_style::none, 0, false};
@@ -63,24 +63,24 @@ struct styled_str_view {
 
 /** Center text in a field of at least @p width characters. */
 [[nodiscard]] constexpr styled_str_view
-pad_center(std::string_view s, size_t width, char fill = ' ') noexcept {
+pad_center(microfmt::string_view s, size_t width, char fill = ' ') noexcept {
   return pad(s, width, text_align::center, fill);
 }
 
 /** Right-align text in a field of at least @p width characters. */
 [[nodiscard]] constexpr styled_str_view
-pad_right(std::string_view s, size_t width, char fill = ' ') noexcept {
+pad_right(microfmt::string_view s, size_t width, char fill = ' ') noexcept {
   return pad(s, width, text_align::right, fill);
 }
 
 /** Convert ASCII letters in text to uppercase while formatting. */
-[[nodiscard]] constexpr styled_str_view to_upper(std::string_view s) noexcept {
+[[nodiscard]] constexpr styled_str_view to_upper(microfmt::string_view s) noexcept {
   return {s, 0,    ' ', text_align::left, text_case::upper, quote_style::none,
           0, false};
 }
 
 /** Convert ASCII letters in text to lowercase while formatting. */
-[[nodiscard]] constexpr styled_str_view to_lower(std::string_view s) noexcept {
+[[nodiscard]] constexpr styled_str_view to_lower(microfmt::string_view s) noexcept {
   return {s, 0,    ' ', text_align::left, text_case::lower, quote_style::none,
           0, false};
 }
@@ -88,7 +88,7 @@ pad_right(std::string_view s, size_t width, char fill = ' ') noexcept {
 /** Limit text to @p max_chars, optionally replacing its final three characters
  *  with an ellipsis when it is truncated. */
 [[nodiscard]] constexpr styled_str_view
-truncate(std::string_view s, size_t max_chars,
+truncate(microfmt::string_view s, size_t max_chars,
          bool use_ellipsis = true) noexcept {
   return {s,
           0,
@@ -102,7 +102,7 @@ truncate(std::string_view s, size_t max_chars,
 
 /** Surround text with the selected pair of delimiters. */
 [[nodiscard]] constexpr styled_str_view
-quoted(std::string_view s,
+quoted(microfmt::string_view s,
        quote_style q = quote_style::double_quotes) noexcept {
   return {s, 0, ' ', text_align::left, text_case::none, q, 0, false};
 }
@@ -203,7 +203,7 @@ template <> struct formatter<styled_str_view> {
       s.ellipsis = cfg.ellipsis;
     }
 
-    std::string_view raw = s.text;
+    microfmt::string_view raw = s.text;
     bool truncated = false;
 
     if (s.max_len > 0 && raw.size() > s.max_len) {

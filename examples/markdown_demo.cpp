@@ -11,7 +11,7 @@
 
 // Hardware callback example: streams document directly to stdout / UART / SD
 // card
-static void stream_write(void * /*ctx*/, std::string_view sv) noexcept {
+static void stream_write(void * /*ctx*/, microfmt::string_view sv) noexcept {
   std::fwrite(sv.data(), 1, sv.size(), stdout);
 }
 

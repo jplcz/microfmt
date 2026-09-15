@@ -29,12 +29,12 @@ using vector = std::pmr::vector<char>;
 
 template <typename... Args>
 [[nodiscard]] std::pmr::string format(std::pmr::memory_resource *mr,
-                                      std::string_view fmt_str,
+                                      microfmt::string_view fmt_str,
                                       const Args &...args) {
   std::pmr::string result(mr);
 
   auto out_sink = sink{
-      &result, [](void *ctx, std::string_view sv) noexcept {
+      &result, [](void *ctx, microfmt::string_view sv) noexcept {
         auto *str = static_cast<std::pmr::string *>(ctx);
         str->append(sv.data(), sv.size());
       }};
@@ -49,12 +49,12 @@ template <typename... Args>
 
 template <typename... Args>
 [[nodiscard]] std::pmr::vector<char>
-format_vector(std::pmr::memory_resource *mr, std::string_view fmt_str,
+format_vector(std::pmr::memory_resource *mr, microfmt::string_view fmt_str,
               const Args &...args) {
   std::pmr::vector<char> result(mr);
 
   auto out_sink = sink{
-      &result, [](void *ctx, std::string_view sv) noexcept {
+      &result, [](void *ctx, microfmt::string_view sv) noexcept {
         auto *vec = static_cast<std::pmr::vector<char> *>(ctx);
         vec->insert(vec->end(), sv.begin(), sv.end());
       }};
@@ -104,7 +104,7 @@ public:
   }
 
   [[nodiscard]] sink as_sink() noexcept {
-    return sink{this, [](void *ctx, std::string_view sv) noexcept {
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   static_cast<arena_sink *>(ctx)->write(sv);
                 }};
   }
@@ -116,14 +116,14 @@ public:
     current_chunk_->data[size_++] = c;
   }
 
-  void write(std::string_view sv) {
+  void write(microfmt::string_view sv) {
     for (char c : sv) {
       put(c);
     }
   }
 
-  [[nodiscard]] std::string_view view() const noexcept {
-    return std::string_view(current_chunk_->data, size_);
+  [[nodiscard]] microfmt::string_view view() const noexcept {
+    return microfmt::string_view(current_chunk_->data, size_);
   }
 
 private:

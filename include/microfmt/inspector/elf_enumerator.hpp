@@ -24,7 +24,7 @@ struct elf_image_info {
   /**
    * @brief Human-readable image/module name.
    */
-  std::string_view image_name{""};
+  microfmt::string_view image_name{""};
   /**
    * @brief Load (base) address of the image in the target address space.
    */

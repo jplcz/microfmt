@@ -186,14 +186,14 @@ template <> struct formatter<memory_range_view> {
 enum class align_mode : uint8_t { left, right, center };
 
 struct aligned_text_view {
-  std::string_view text{};
+  microfmt::string_view text{};
   size_t width{0};
   align_mode mode{align_mode::left};
   char pad_char{' '};
 };
 
 [[nodiscard]] constexpr aligned_text_view
-align(std::string_view text, size_t width, align_mode mode = align_mode::left,
+align(microfmt::string_view text, size_t width, align_mode mode = align_mode::left,
       char pad_char = ' ') noexcept {
   return aligned_text_view{text, width, mode, pad_char};
 }
@@ -244,12 +244,12 @@ template <> struct formatter<aligned_text_view> {
  */
 template <typename T> struct joined_span_view {
   span<const T> items{};
-  std::string_view delimiter{", "};
+  microfmt::string_view delimiter{", "};
 };
 
 template <typename T>
 [[nodiscard]] constexpr joined_span_view<T>
-join(span<const T> items, std::string_view delim = ", ") noexcept {
+join(span<const T> items, microfmt::string_view delim = ", ") noexcept {
   return joined_span_view<T>{items, delim};
 }
 

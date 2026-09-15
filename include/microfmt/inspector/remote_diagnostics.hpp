@@ -288,7 +288,7 @@ template <typename T> struct formatter<remote_diag_ref<T>> {
   /**
    * @brief Specifier forwarded to the loaded object's formatter.
    */
-  std::string_view spec_{""};
+  microfmt::string_view spec_{""};
 
   /**
    * @brief Captures the specifier for the element formatter.

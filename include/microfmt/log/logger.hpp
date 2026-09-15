@@ -23,12 +23,12 @@ namespace microfmt::log {
 template <size_t MaxSinks = 4, size_t MsgBufferCapacity = 256>
 class basic_logger {
 public:
-  explicit constexpr basic_logger(std::string_view name) noexcept
+  explicit constexpr basic_logger(microfmt::string_view name) noexcept
       : name_(name) {}
 
   template <typename... Sinks>
     requires(sizeof...(Sinks) <= MaxSinks)
-  explicit constexpr basic_logger(std::string_view name,
+  explicit constexpr basic_logger(microfmt::string_view name,
                                   Sinks... sinks) noexcept
       : name_(name), sinks_{sinks...}, sink_count_(sizeof...(Sinks)) {}
 
@@ -41,14 +41,14 @@ public:
 
   void set_level(level l) noexcept { level_ = l; }
   [[nodiscard]] constexpr level get_level() const noexcept { return level_; }
-  [[nodiscard]] constexpr std::string_view name() const noexcept {
+  [[nodiscard]] constexpr microfmt::string_view name() const noexcept {
     return name_;
   }
 
   [[nodiscard]] bool should_log(level l) const noexcept { return l >= level_; }
 
   template <typename... Args>
-  void log(level lvl, std::string_view fmt_str, const Args &...args) noexcept {
+  void log(level lvl, microfmt::string_view fmt_str, const Args &...args) noexcept {
     log_impl(std::source_location::current(), lvl, fmt_str, args...);
   }
 
@@ -59,7 +59,7 @@ public:
   }
 
   template <typename... Args>
-  void trace(std::string_view fmt, const Args &...args) noexcept {
+  void trace(microfmt::string_view fmt, const Args &...args) noexcept {
     log(level::trace, fmt, args...);
   }
 
@@ -70,7 +70,7 @@ public:
   }
 
   template <typename... Args>
-  void debug(std::string_view fmt, const Args &...args) noexcept {
+  void debug(microfmt::string_view fmt, const Args &...args) noexcept {
     log(level::debug, fmt, args...);
   }
 
@@ -81,7 +81,7 @@ public:
   }
 
   template <typename... Args>
-  void info(std::string_view fmt, const Args &...args) noexcept {
+  void info(microfmt::string_view fmt, const Args &...args) noexcept {
     log(level::info, fmt, args...);
   }
 
@@ -92,7 +92,7 @@ public:
   }
 
   template <typename... Args>
-  void warn(std::string_view fmt, const Args &...args) noexcept {
+  void warn(microfmt::string_view fmt, const Args &...args) noexcept {
     log(level::warn, fmt, args...);
   }
 
@@ -103,7 +103,7 @@ public:
   }
 
   template <typename... Args>
-  void error(std::string_view fmt, const Args &...args) noexcept {
+  void error(microfmt::string_view fmt, const Args &...args) noexcept {
     log(level::err, fmt, args...);
   }
 
@@ -114,7 +114,7 @@ public:
   }
 
   template <typename... Args>
-  void critical(std::string_view fmt, const Args &...args) noexcept {
+  void critical(microfmt::string_view fmt, const Args &...args) noexcept {
     log(level::critical, fmt, args...);
   }
 
@@ -131,7 +131,7 @@ public:
   }
 
   template <typename... Args>
-  void log_loc(std::source_location loc, level lvl, std::string_view fmt_str,
+  void log_loc(std::source_location loc, level lvl, microfmt::string_view fmt_str,
                const Args &...args) noexcept {
     log_impl(loc, lvl, fmt_str, args...);
   }
@@ -167,7 +167,7 @@ private:
     }
   }
 
-  std::string_view name_{};
+  microfmt::string_view name_{};
   level level_{level::info};
   std::array<log_sink, MaxSinks> sinks_{};
   size_t sink_count_{0};
@@ -216,7 +216,7 @@ inline void set_default_logger(logger *instance) noexcept {
 }
 
 template <typename... Args>
-inline void trace(std::string_view fmt, const Args &...args) noexcept {
+inline void trace(microfmt::string_view fmt, const Args &...args) noexcept {
   if (logger *instance = default_logger()) {
     instance->trace(fmt, args...);
   }
@@ -231,7 +231,7 @@ inline void trace(compile_string_holder<StrProvider> fmt,
 }
 
 template <typename... Args>
-inline void debug(std::string_view fmt, const Args &...args) noexcept {
+inline void debug(microfmt::string_view fmt, const Args &...args) noexcept {
   if (logger *instance = default_logger()) {
     instance->debug(fmt, args...);
   }
@@ -246,7 +246,7 @@ inline void debug(compile_string_holder<StrProvider> fmt,
 }
 
 template <typename... Args>
-inline void info(std::string_view fmt, const Args &...args) noexcept {
+inline void info(microfmt::string_view fmt, const Args &...args) noexcept {
   if (logger *instance = default_logger()) {
     instance->info(fmt, args...);
   }
@@ -261,7 +261,7 @@ inline void info(compile_string_holder<StrProvider> fmt,
 }
 
 template <typename... Args>
-inline void warn(std::string_view fmt, const Args &...args) noexcept {
+inline void warn(microfmt::string_view fmt, const Args &...args) noexcept {
   if (logger *instance = default_logger()) {
     instance->warn(fmt, args...);
   }
@@ -276,7 +276,7 @@ inline void warn(compile_string_holder<StrProvider> fmt,
 }
 
 template <typename... Args>
-inline void error(std::string_view fmt, const Args &...args) noexcept {
+inline void error(microfmt::string_view fmt, const Args &...args) noexcept {
   if (logger *instance = default_logger()) {
     instance->error(fmt, args...);
   }
@@ -291,7 +291,7 @@ inline void error(compile_string_holder<StrProvider> fmt,
 }
 
 template <typename... Args>
-inline void critical(std::string_view fmt, const Args &...args) noexcept {
+inline void critical(microfmt::string_view fmt, const Args &...args) noexcept {
   if (logger *instance = default_logger()) {
     instance->critical(fmt, args...);
   }
