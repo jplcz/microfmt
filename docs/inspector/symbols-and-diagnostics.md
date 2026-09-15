@@ -58,6 +58,13 @@ should continue to render cleanly.
 into fault-aware diagnostic text. It is useful for return addresses, function
 references, and failures discovered by a remote renderer.
 
+`remote_diag_ref<T>::load()` returns
+`expected<T *, remote_load_error>`, using the same null-address,
+scratch-size/alignment, invalid-space, and read-failure diagnostics as
+`remote_ref<T>`. Its formatter converts a failed load into symbol-aware fault
+text, while direct callers can inspect the error and choose their own recovery
+policy.
+
 Pass a bounded scratch span to every symbol or diagnostic view. The span must
 remain exclusive to that formatting operation; nested symbol formatting needs
 a separate region so an inner resolver cannot overwrite text that an outer

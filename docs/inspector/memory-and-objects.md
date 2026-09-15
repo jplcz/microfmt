@@ -41,6 +41,34 @@ an invalid range. It should handle target byte order and address translation
 before copying into the supplied buffer. `address_space_ref` does not take
 ownership of its context.
 
+The trait callbacks retain their minimal `bool` ABI, while the public
+`address_space_ref` operations return `microfmt::expected`:
+
+```cpp
+auto result = space.read<uint32_t>(target_address);
+if (!result) {
+  switch (result.error()) {
+  case microfmt::address_space_error::invalid_handle:
+  case microfmt::address_space_error::invalid_address:
+  case microfmt::address_space_error::invalid_buffer:
+  case microfmt::address_space_error::empty_buffer:
+  case microfmt::address_space_error::read_failed:
+    // Apply transport-specific fault policy.
+    break;
+  }
+} else {
+  uint32_t value = *result;
+}
+```
+
+`read_bytes` and the output-parameter `read(address, object)` overload return
+`expected<void, address_space_error>`. The value-returning
+`read<T>(address)` returns `expected<T, address_space_error>` and requires a
+trivially copyable, nothrow default-constructible, nothrow move-constructible
+`T`. Backend callback failure is reported as `read_failed`; the wrapper
+distinguishes invalid handles, zero addresses, and invalid buffers before
+dispatch.
+
 `local_space_tag` is the built-in transport for local addresses. Use it in
 tests or self-inspection only; it does not make arbitrary addresses safe to
 read.
@@ -175,6 +203,12 @@ string in chunks through a supplied `span<char>`. The view contains the
 address, transport, scratch span, and maximum render length; it does not copy
 the complete string into a formatter-local buffer.
 
+Direct callers can use `address_space_ref::read_string_chunk`, which returns
+`expected<string_chunk, address_space_error>`. `string_chunk::length` reports
+the bytes copied and `string_chunk::null_terminated` reports whether that
+chunk encountered the terminator. An empty scratch span is reported as
+`address_space_error::empty_buffer`.
+
 Use `compat32.hpp` and the `string32_ptr`/pointer wrappers in
 `remote_object.hpp` when a 64-bit inspection host reads a 32-bit target. Keep
 target pointer and size types explicit in container-layout traits as well.
@@ -204,6 +238,20 @@ the registered structure size and correctly aligned for the structure.
 Allocate additional caller-owned bytes after the object region when field
 formatters need working storage, such as for remote strings or nested objects.
 
+For direct access, `remote_ref<T>::load()` returns
+`expected<T *, remote_load_error>` and `remote_object_view::load_raw()` returns
+`expected<const void *, remote_load_error>`. The error distinguishes a null
+target address, undersized or misaligned scratch storage, an invalid address
+space, and a backend read failure:
+
+```cpp
+auto loaded = remote.load();
+if (loaded) {
+  const task_info &task = **loaded;
+  // Use task only while the remote reference's scratch storage remains valid.
+}
+```
+
 `remote_field_traits<T>` is the extension point for custom field renderers.
 Specialize it for a wrapper type when reading a field needs target-aware logic.
 The default trait formats the locally loaded field using `formatter<T>`.
@@ -224,5 +272,7 @@ offsets.
 
 The remote-object view, address-space context, descriptors, and scratch span
 must all remain valid through formatting. If a required read fails, the
-formatter emits a fault marker. Do not rely on partial output as a successful
-remote-object read.
+formatter emits a fault marker. Direct loading APIs return
+`microfmt::expected`; inspect the error before retrying, switching transports,
+or using an emergency scratch pool. Do not rely on partial output as a
+successful remote-object read.

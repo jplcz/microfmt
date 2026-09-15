@@ -177,8 +177,9 @@ Its main features include:
 - Frame-pointer, DWARF-style, hybrid, chained, and ARM EHABI EXIDX unwinding.
 
 Inspector views keep traversal state and scratch storage explicit. Remote reads
-return failure instead of directly dereferencing untrusted target addresses,
-and container traversal is bounded by caller-selected limits.
+and object loads return typed `microfmt::expected` errors instead of directly
+dereferencing untrusted target addresses, and container traversal is bounded by
+caller-selected limits.
 
 ```cpp
 #include <microfmt/inspector/address_space.hpp>

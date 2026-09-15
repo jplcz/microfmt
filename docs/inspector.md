@@ -12,8 +12,10 @@ or an ABI-defined unwind table. It provides bounded, zero-allocation views over
 that data and formats them through the usual `microfmt::sink` interface.
 
 It is designed for diagnostic paths where target memory may be incomplete or
-unreadable. Inspector operations report failure through `bool` return values
-and format fault markers instead of dereferencing target pointers directly.
+unreadable. Address-space and remote-object loading operations report typed
+failures through `microfmt::expected`; predicates, iteration callbacks, and
+other control-flow-only operations continue to use `bool`. Formatters emit
+fault markers instead of dereferencing target pointers directly.
 
 ## Start here
 
@@ -82,7 +84,8 @@ reader.
 ## Common rules
 
 * Treat all target addresses and lengths as untrusted input.
-* Use fixed-capacity, caller-owned scratch buffers and check every read result.
+* Use fixed-capacity, caller-owned scratch buffers and check every
+  `microfmt::expected` read or load result before accessing its value.
 * Preserve pointer width explicitly with the compatibility wrappers when host
   and target ABIs differ.
 * Bound traversal with `container_options::max_print` and use fault-aware
