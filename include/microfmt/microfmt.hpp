@@ -14,12 +14,7 @@
 #include <tuple>
 #include <type_traits>
 
-#if __has_include(<span>) && __cplusplus >= 202002L
-#include <span>
-#define MICROFMT_HAS_STD_SPAN 1
-#else
-#define MICROFMT_HAS_STD_SPAN 0
-#endif
+#include "detail/span.hpp"
 
 // Attribute compatibility
 #if defined(__has_cpp_attribute) && __has_cpp_attribute(no_unique_address) &&  \
@@ -33,125 +28,6 @@
 #endif
 
 namespace microfmt {
-
-// ============================================================================
-// Minimal Span Replacement
-// ============================================================================
-
-/**
- * @brief A lightweight, non-owning contiguous view over a sequence of elements.
- *
- * Designed as a zero-allocation, minimal-footprint alternative to @c std::span
- * that works seamlessly across C++17 and C++20 freestanding/embedded targets.
- *
- * @tparam T The element type stored in the contiguous buffer.
- */
-template <typename T> class span {
-public:
-  using element_type = T;
-  using value_type = typename std::remove_cv<T>::type;
-  using size_type = std::size_t;
-  using difference_type = std::ptrdiff_t;
-  using pointer = T *;
-  using const_pointer = const T *;
-  using reference = T &;
-  using const_reference = const T &;
-  using iterator = T *;
-  using const_iterator = const T *;
-
-  /**
-   * @brief Constructs an empty span with `nullptr` data and `0` size.
-   */
-  constexpr span() noexcept : m_ptr(nullptr), m_size(0) {}
-
-  /**
-   * @brief Constructs a span from a pointer and an explicit size.
-   * @param ptr Pointer to the first element of the contiguous memory block.
-   * @param size Number of elements in the buffer.
-   */
-  constexpr span(T *ptr, std::size_t size) noexcept
-      : m_ptr(ptr), m_size(size) {}
-
-  /**
-   * @brief Constructs a span from a raw C-style array.
-   * @tparam N Size of the fixed array deduced at compile time.
-   * @param arr Reference to the array.
-   */
-  template <std::size_t N>
-  constexpr span(T (&arr)[N]) noexcept : m_ptr(arr), m_size(N) {}
-
-#if MICROFMT_HAS_STD_SPAN
-  /**
-   * @brief Constructs a `microfmt::span` from a standard `std::span`.
-   * @tparam Extent The static extent of the standard span.
-   * @param s The `std::span` instance to construct from.
-   */
-  template <std::size_t Extent>
-  constexpr span(std::span<T, Extent> s) noexcept
-      : m_ptr(s.data()), m_size(s.size()) {}
-
-  /**
-   * @brief Implicit conversion operator to `std::span<T>`.
-   * @return An equivalent `std::span<T>` covering the same buffer.
-   */
-  [[nodiscard]] constexpr operator std::span<T>() const noexcept {
-    return std::span<T>(m_ptr, m_size);
-  }
-#endif
-
-  /**
-   * @brief Returns a direct pointer to the beginning of the contiguous buffer.
-   * @return Raw pointer to the elements, or `nullptr` if empty.
-   */
-  [[nodiscard]] constexpr T *data() const noexcept { return m_ptr; }
-
-  /**
-   * @brief Returns the number of elements in the span.
-   * @return Element count.
-   */
-  [[nodiscard]] constexpr std::size_t size() const noexcept { return m_size; }
-
-  /**
-   * @brief Checks if the span contains zero elements.
-   * @return `true` if `size() == 0`, `false` otherwise.
-   */
-  [[nodiscard]] constexpr bool empty() const noexcept { return m_size == 0; }
-
-  /**
-   * @brief Accesses an element at a given index without bounds checking.
-   * @param idx Zero-based index of the element to access.
-   * @return Reference to the element at position @p idx.
-   */
-  [[nodiscard]] constexpr T &operator[](std::size_t idx) const noexcept {
-    return m_ptr[idx];
-  }
-
-  /**
-   * @brief Returns an iterator to the first element of the span.
-   */
-  [[nodiscard]] constexpr T *begin() const noexcept { return m_ptr; }
-
-  /**
-   * @brief Returns an iterator to one past the last element of the span.
-   */
-  [[nodiscard]] constexpr T *end() const noexcept { return m_ptr + m_size; }
-
-  /**
-   * @brief Returns a const iterator to the first element of the span.
-   */
-  [[nodiscard]] constexpr const T *cbegin() const noexcept { return m_ptr; }
-
-  /**
-   * @brief Returns a const iterator to one past the last element of the span.
-   */
-  [[nodiscard]] constexpr const T *cend() const noexcept {
-    return m_ptr + m_size;
-  }
-
-private:
-  T *m_ptr;
-  std::size_t m_size;
-};
 
 // ============================================================================
 // Type-Erased Callback Sink
