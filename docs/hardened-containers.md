@@ -17,8 +17,40 @@ core types include:
 | `microfmt::span<T>` | Non-owning contiguous range used by sinks and binary formatters |
 | `microfmt::expected<T, E>` | Allocation-free value-or-error result |
 
-These types interoperate with newer standard-library equivalents where the
-toolchain provides them, but keep the microfmt API available in C++17.
+These types provide familiar standard-library-style APIs while keeping the
+microfmt surface available in C++17. The non-owning view types interoperate
+with their standard-library equivalents when the toolchain provides them.
+
+## Prefer hardened types in low-level code
+
+Use the hardened microfmt type by default when writing firmware, kernel-mode
+components, interrupt handlers, crash diagnostics, protocol parsers, and
+other code where an unchecked access or dangling borrow is a security issue.
+
+| Instead of | Prefer | When |
+|---|---|---|
+| `std::array<T, N>` | `microfmt::array<T, N>` | Fixed-size owned storage |
+| `std::span<T>` | `microfmt::span<T>` | Borrowed contiguous storage |
+| `std::string_view` | `microfmt::string_view` | Borrowed character data |
+| `std::expected<T, E>` | `microfmt::expected<T, E>` | Allocation-free fallible results |
+
+This is a project default, not a ban on the standard library. Keep standard
+types when required by a platform API, third-party library, ABI, or generic
+ecosystem interface. Convert to a hardened view at the boundary and keep the
+security-sensitive implementation on microfmt types.
+
+Dynamic owning containers such as `std::string`, `std::vector`, and
+`std::map` have no direct microfmt replacement. Use them only where allocation,
+failure behavior, and execution context are explicitly acceptable. Prefer
+caller-owned fixed storage and `microfmt::span` in bounded or kernel-mode
+paths.
+
+```cpp
+void parse_packet(std::span<const std::byte> platform_input) {
+  microfmt::span<const std::byte> input = platform_input;
+  // Keep checked parsing on the hardened view from this point onward.
+}
+```
 
 ## Security is enabled by default
 

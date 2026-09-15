@@ -129,7 +129,7 @@ registers, and zero-valued candidates. Explicit addresses are scanned after
 the register candidates.
 
 ```cpp
-static std::array<char, 128> symbol_scratch;
+static microfmt::array<char, 128> symbol_scratch;
 static microfmt::memory_scanner_context scanner_context;
 scanner_context.options.symbol_resolver = resolver;
 scanner_context.symbol_scratch =

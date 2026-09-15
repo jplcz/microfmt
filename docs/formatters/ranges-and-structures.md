@@ -10,6 +10,11 @@ These formatters traverse existing values without collecting their output in
 an intermediate container. Their views borrow the underlying range,
 descriptor, predicate, or reflected object.
 
+For fixed storage in firmware and kernel-oriented code, prefer
+`microfmt::array` and expose it as a `microfmt::span` when an API needs a
+contiguous view. Standard ranges remain supported for interoperability and
+application code where their allocation and access behavior is intentional.
+
 ## Shared delimiter convention
 
 Several range-like formatters consume a leading delimiter flag and forward

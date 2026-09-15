@@ -78,6 +78,13 @@ Changes to core formatting and sink code must preserve these properties:
 * C++17 compatibility unless an API is conditionally enabled for C++20 or
   C++23.
 
+Use hardened microfmt containers for library-owned fixed storage and borrowed
+data: `microfmt::array`, `microfmt::span`, `microfmt::string_view`, and
+`microfmt::expected`. Introduce the corresponding standard type only for a
+documented interoperability requirement or functionality that microfmt does
+not provide. Convert standard views at the boundary rather than carrying
+unchecked access through core implementation code.
+
 Use `MICROFMT_STRING("...")` for literal, header-internal format strings.
 This selects compile-time parsing and unrolled dispatch. Keep
 `microfmt::string_view` paths for caller-provided runtime formats. Logging

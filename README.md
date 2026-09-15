@@ -33,6 +33,13 @@ Start with the guide that matches what you are building:
 The [`examples/`](examples) directory contains runnable programs for the core
 API and nearly every optional formatter, sink, and inspector subsystem.
 
+For firmware, kernel-mode, crash-path, and other security-sensitive code,
+prefer `microfmt::array`, `microfmt::span`, `microfmt::string_view`, and
+`microfmt::expected` over their standard-library counterparts. Their checked
+operations remain hardened in release builds and borrowing accessors reject
+unsafe temporaries. Use standard containers at explicit interoperability or
+dynamic-allocation boundaries where their behavior is intentional.
+
 ## Core formatting
 
 The core API provides sequential `{}` replacement fields, integer widths and

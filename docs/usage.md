@@ -178,6 +178,12 @@ the associated standard-library facilities are available. Public-header
 compatibility is checked by the project in C++17, C++20, and, when supported
 by the compiler, C++23.
 
+In low-level application code, prefer `microfmt::array`, `microfmt::span`,
+`microfmt::string_view`, and `microfmt::expected` over equivalent standard
+types. Keep standard containers at platform and third-party boundaries, then
+convert to hardened views before parsing or traversal. See
+[Hardened containers and views](hardened-containers.md).
+
 Keep allocation-sensitive code on the core sink APIs. Some optional bridges,
 such as PMR containers and `{fmt}` compatibility, intentionally use
 ecosystem types and may not have the same allocation properties.
