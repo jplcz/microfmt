@@ -117,6 +117,7 @@ if(MICROFMT_BUILD_TESTS)
     enable_testing()
 
     add_executable(microfmt_tests tests/test_core.cpp
+        tests/test_inspector.cpp
         tests/test_bitfield.cpp
         tests/test_can.cpp
         tests/test_cbor.cpp
