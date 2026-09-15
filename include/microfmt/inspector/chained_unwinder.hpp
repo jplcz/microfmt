@@ -3,7 +3,9 @@
 /** @file chained_unwinder.hpp @brief Cascaded/tiered frame unwinder combining
  * EXIDX, DWARF CFI, frame pointer, and unwind-hint strategies. */
 
+#include "dwarf_abi.hpp"
 #include "frame_pointer.hpp"
+#include "register_context.hpp"
 #include "unwind_hint.hpp"
 #include <cstdint>
 
@@ -11,8 +13,9 @@ namespace microfmt {
 
 /**
  * @brief Stateful context for the cascaded/tiered unwinder.
+ * @tparam AbiTraits Architecture-specific ABI traits.
  */
-struct chained_unwinder_context {
+template <typename AbiTraits> struct chained_unwinder_context {
   /// Address space to unwind in.
   address_space_ref space;
 
@@ -29,40 +32,40 @@ struct chained_unwinder_context {
 
   /// Type-erased unwind hint registry.
   unwind_hint_registry_ref hints{};
-
-  /**
-   * @brief Pointer to the current instruction pointer (PC) being unwound,
-   * allowing hint lookup without probing a non-existent/malformed stack frame.
-   */
-  uintptr_t *current_pc{nullptr};
 };
 
 /**
  * @brief Tag selecting the chained unwinder in the traits customization point.
+ * @tparam AbiTraits Architecture-specific ABI traits.
  */
-struct chained_unwinder_tag {};
+template <typename AbiTraits> struct chained_unwinder_tag {};
 
 /**
- * @brief Specializes @ref frame_unwinder_traits for the chained unwinder.
+ * @brief Specializes @ref frame_unwinder_traits for the architecture-aware
+ * chained unwinder.
+ * @tparam AbiTraits Architecture-specific ABI traits.
  */
-template <> struct frame_unwinder_traits<chained_unwinder_tag> {
+template <typename AbiTraits>
+struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
   /// Stateful context type.
-  using context_type = chained_unwinder_context;
+  using context_type = chained_unwinder_context<AbiTraits>;
 
   /**
    * @brief Walks one frame by trying each tier in order: EXIDX, DWARF CFI,
-   * frame pointer, then unwind-hint lookup.
+   * frame pointer, then unwind-hint lookup using AbiTraits register bindings.
+   *
    * @param ctx The @ref chained_unwinder_context.
-   * @param current_fp Frame pointer of the current frame.
+   * @param reg_ctx Target register context handle.
    * @param next_fp Receives the caller's frame pointer.
    * @param next_pc Receives the caller's program counter.
    * @return `true` when a tier produced the next frame.
    */
-  static bool step(const void *ctx, uintptr_t current_fp, uintptr_t &next_fp,
-                   uintptr_t &next_pc) noexcept {
-    if (!ctx || current_fp == 0)
+  static bool step(const void *ctx, register_context_ref reg_ctx,
+                   uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
+    if (!ctx || !reg_ctx)
       return false;
-    const auto &cfg = *static_cast<const chained_unwinder_context *>(ctx);
+    const auto &cfg =
+        *static_cast<const chained_unwinder_context<AbiTraits> *>(ctx);
 
     uintptr_t trial_fp = 0;
     uintptr_t trial_pc = 0;
@@ -71,7 +74,7 @@ template <> struct frame_unwinder_traits<chained_unwinder_tag> {
     // Attempt Primary: ARM EXIDX Unwinder
     // ========================================================================
     if (cfg.exidx_unwinder &&
-        cfg.exidx_unwinder.step(current_fp, trial_fp, trial_pc)) {
+        cfg.exidx_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
@@ -81,7 +84,7 @@ template <> struct frame_unwinder_traits<chained_unwinder_tag> {
     // Attempt Secondary: DWARF CFI Unwinder
     // ========================================================================
     if (cfg.dwarf_unwinder &&
-        cfg.dwarf_unwinder.step(current_fp, trial_fp, trial_pc)) {
+        cfg.dwarf_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
@@ -90,8 +93,7 @@ template <> struct frame_unwinder_traits<chained_unwinder_tag> {
     // ========================================================================
     // Attempt Tertiary: Standard Frame Pointer Unwinder
     // ========================================================================
-    if (cfg.fp_unwinder &&
-        cfg.fp_unwinder.step(current_fp, trial_fp, trial_pc)) {
+    if (cfg.fp_unwinder && cfg.fp_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
@@ -100,14 +102,27 @@ template <> struct frame_unwinder_traits<chained_unwinder_tag> {
     // ========================================================================
     // Attempt Quaternary: Unwind Hint Table Fallback (Direct PC Lookup)
     // ========================================================================
-    if (cfg.hints && cfg.current_pc && *cfg.current_pc != 0) {
-      unwind_hint hint{};
-      if (cfg.hints.find_hint(*cfg.current_pc, hint)) {
-        if (hint.routine != nullptr) {
-          // Delegate entirely to the hint's custom assembly/stub decoding
-          // routine
-          return hint.routine(cfg.space, current_fp, *cfg.current_pc, next_fp,
-                              next_pc);
+    if (cfg.hints) {
+      typename AbiTraits::register_type raw_pc = 0;
+      // Use DWARF/architecture standard return address or PC register index
+      // from traits
+      if (reg_ctx.read_raw(AbiTraits::ra_reg, &raw_pc,
+                           AbiTraits::pointer_size) &&
+          raw_pc != 0) {
+        uintptr_t current_pc =
+            AbiTraits::normalize_pc(static_cast<uintptr_t>(raw_pc));
+
+        unwind_hint hint{};
+        if (cfg.hints.find_hint(current_pc, hint)) {
+          if (hint.routine != nullptr) {
+            typename AbiTraits::register_type raw_fp = 0;
+            reg_ctx.read_raw(AbiTraits::fp_reg, &raw_fp,
+                             AbiTraits::pointer_size);
+            uintptr_t current_fp = static_cast<uintptr_t>(raw_fp);
+
+            return hint.routine(cfg.space, current_fp, current_pc, next_fp,
+                                next_pc);
+          }
         }
       }
     }

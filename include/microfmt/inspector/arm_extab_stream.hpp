@@ -93,20 +93,21 @@ private:
 class extab_stream_executor {
 public:
   /**
-   * @brief Runs the extab bytecode stream, updating SP and registers.
+   * @brief Runs the extab bytecode stream, updating SP and writing restored
+   * registers.
    *
    * Supports `vsp` add/sub adjustments, FINISH, integer-register pops, and
    * VFP double-precision register pops.
    *
-   * @param space Address space to read from.
+   * @param space Address space to read stack values from.
    * @param extab_addr Address of the `.ARM.extab` entry.
    * @param io_sp In/out: virtual stack pointer.
-   * @param out_regs Receives updated register state.
-   * @return `true` when the stream was consumed.
+   * @param reg_ctx Target register context handle to write recovered registers
+   * into.
+   * @return `true` when the stream was consumed successfully.
    */
   static bool execute(address_space_ref space, uintptr_t extab_addr,
-                      uintptr_t &io_sp, uintptr_t &,
-                      arm_register_state &out_regs) noexcept {
+                      uintptr_t &io_sp, register_context_ref reg_ctx) noexcept {
     extab_byte_stream stream(space, extab_addr);
     uint8_t opcode = 0;
 
@@ -138,7 +139,9 @@ public:
           if ((reg_mask & (1 << i)) != 0) {
             uint32_t val = 0;
             if (space.read_bytes(io_sp, &val, 4)) {
-              out_regs.r[4 + i] = val;
+              uint32_t dwarf_reg = dwarf::arm32::R4 + i;
+              if (!reg_ctx.write(dwarf_reg, val))
+                return false;
               io_sp += 4;
             }
           }
@@ -150,7 +153,9 @@ public:
         for (int i = 0; i <= count; ++i, io_sp += 8) {
           uint64_t val = 0;
           if (space.read_bytes(io_sp, &val, 8)) {
-            out_regs.d[8 + i] = static_cast<uint32_t>(val & 0xFFFFFFFF);
+            uint32_t dwarf_reg = dwarf::arm32::D0 + 8 + i;
+            if (!reg_ctx.write_raw(dwarf_reg, &val, 8))
+              return false;
           }
         }
       }

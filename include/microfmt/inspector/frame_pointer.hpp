@@ -8,6 +8,7 @@
  * cursor iteration, and backtrace views. */
 
 #include "address_space.hpp"
+#include "register_context.hpp"
 #include "remote_diagnostics.hpp"
 #include "symbol_resolver.hpp"
 #include <cstddef>
@@ -73,10 +74,10 @@ public:
    */
   struct vtable {
     /**
-     * @brief Advances one frame. See @ref frame_unwinder_ref::step.
+     * @brief Advances one frame using register context.
      */
-    bool (*step)(const void *ctx, uintptr_t current_fp, uintptr_t &next_fp,
-                 uintptr_t &next_pc) noexcept;
+    bool (*step)(const void *ctx, register_context_ref reg_ctx,
+                 uintptr_t &next_fp, uintptr_t &next_pc) noexcept;
   };
 
   /**
@@ -86,8 +87,6 @@ public:
 
   /**
    * @brief Constructs a handle for a stateless unwinder tag.
-   * @tparam ArchTag Unwinder tag type.
-   * @tparam Traits Specialized traits, enabled when `context_type` is `void`.
    */
   template <
       typename ArchTag, typename Traits = frame_unwinder_traits<ArchTag>,
@@ -97,11 +96,6 @@ public:
 
   /**
    * @brief Constructs a handle for a stateful unwinder tag.
-   * @tparam ArchTag Unwinder tag type.
-   * @tparam Context Concrete context type.
-   * @tparam Traits Specialized traits, enabled when `context_type` is non-void
-   * and @p Context converts to it.
-   * @param ctx Context object performing the unwinding.
    */
   template <typename ArchTag, typename Context,
             typename Traits = frame_unwinder_traits<ArchTag>,
@@ -113,12 +107,6 @@ public:
   constexpr frame_unwinder_ref(ArchTag, const Context &ctx) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<ArchTag>) {}
 
-  /**
-   * @brief Creates a handle for a stateless unwinder tag.
-   * @tparam ArchTag Unwinder tag type.
-   * @tparam Traits Specialized traits, enabled when `context_type` is `void`.
-   * @return An @ref frame_unwinder_ref for the tag.
-   */
   template <
       typename ArchTag, typename Traits = frame_unwinder_traits<ArchTag>,
       std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
@@ -126,14 +114,6 @@ public:
     return frame_unwinder_ref(ArchTag{});
   }
 
-  /**
-   * @brief Creates a handle for a stateful unwinder tag.
-   * @tparam ArchTag Unwinder tag type.
-   * @tparam Context Concrete context type.
-   * @tparam Traits Specialized traits, enabled when `context_type` is non-void.
-   * @param ctx Context object performing the unwinding.
-   * @return An @ref frame_unwinder_ref bound to @p ctx.
-   */
   template <
       typename ArchTag, typename Context,
       typename Traits = frame_unwinder_traits<ArchTag>,
@@ -144,24 +124,16 @@ public:
   }
 
   /**
-   * @brief Advances from the current frame to its caller.
-   * @param current_fp Frame pointer of the current frame.
-   * @param next_fp Receives the caller's frame pointer.
-   * @param next_pc Receives the caller's program counter.
-   * @return `true` on success, `false` when the handle is empty or the step
-   * fails.
+   * @brief Advances from the current frame to its caller using
+   * register_context_ref.
    */
-  [[nodiscard]] bool step(uintptr_t current_fp, uintptr_t &next_fp,
+  [[nodiscard]] bool step(register_context_ref reg_ctx, uintptr_t &next_fp,
                           uintptr_t &next_pc) const noexcept {
     if (!vtbl_)
       return false;
-    return vtbl_->step(ctx_, current_fp, next_fp, next_pc);
+    return vtbl_->step(ctx_, reg_ctx, next_fp, next_pc);
   }
 
-  /**
-   * @brief Reports whether the handle is bound to an unwinder.
-   * @return `true` when the handle is valid.
-   */
   [[nodiscard]] constexpr explicit operator bool() const noexcept {
     return vtbl_ != nullptr;
   }
@@ -179,58 +151,40 @@ private:
 // ============================================================================
 
 /**
- * @brief Forward-only cursor iterating over a stack walk.
+ * @brief Forward-only cursor iterating over a stack walk backed by register
+ * context.
  */
 class frame_pointer_iterator {
 public:
-  /**
-   * @brief Constructs an empty (invalid) iterator.
-   */
   constexpr frame_pointer_iterator() noexcept = default;
 
   /**
-   * @brief Constructs an iterator rooted at the given frame.
-   * @param unwinder Unwinder driving the walk.
-   * @param initial_fp Frame pointer of the starting frame.
-   * @param initial_pc Program counter of the starting frame.
+   * @brief Constructs an iterator rooted at the given frame and register
+   * context.
    */
   constexpr frame_pointer_iterator(frame_unwinder_ref unwinder,
+                                   register_context_ref reg_ctx,
                                    uintptr_t initial_fp,
                                    uintptr_t initial_pc) noexcept
-      : unwinder_(unwinder), frame_{0, initial_fp, initial_pc},
+      : unwinder_(unwinder), reg_ctx_(reg_ctx),
+        frame_{0, initial_fp, initial_pc},
         is_valid_(initial_fp != 0 && initial_pc != 0) {}
 
-  /**
-   * @brief Returns the current frame record.
-   * @return Reference to the current @ref stack_frame.
-   */
   [[nodiscard]] constexpr const stack_frame &operator*() const noexcept {
     return frame_;
   }
-  /**
-   * @brief Returns the current frame record.
-   * @return Pointer to the current @ref stack_frame.
-   */
   [[nodiscard]] constexpr const stack_frame *operator->() const noexcept {
     return &frame_;
   }
 
-  /**
-   * @brief Reports whether the iterator is positioned on a frame.
-   * @return `true` while the current frame is valid.
-   */
   [[nodiscard]] constexpr bool has_value() const noexcept { return is_valid_; }
-  /**
-   * @brief Reports whether the iterator is positioned on a frame.
-   * @return `true` while the current frame is valid.
-   */
   [[nodiscard]] constexpr explicit operator bool() const noexcept {
     return is_valid_;
   }
 
   /**
-   * @brief Steps to the next (caller) frame.
-   * @return `false` when the walk cannot advance further.
+   * @brief Steps to the next (caller) frame using the unwinder and register
+   * context.
    */
   bool next() noexcept {
     if (!is_valid_)
@@ -239,7 +193,7 @@ public:
     uintptr_t next_fp = 0;
     uintptr_t next_pc = 0;
 
-    if (!unwinder_.step(frame_.fp, next_fp, next_pc)) {
+    if (!unwinder_.step(reg_ctx_, next_fp, next_pc)) {
       is_valid_ = false;
       return false;
     }
@@ -250,22 +204,11 @@ public:
     return true;
   }
 
-  /**
-   * @brief Pre-increment advancing to the next frame.
-   * @return This iterator.
-   */
   frame_pointer_iterator &operator++() noexcept {
     next();
     return *this;
   }
 
-  /**
-   * @brief Visitor-style traversal over the frame chain.
-   * @tparam Visitor Callable accepting `const stack_frame &` and returning
-   * `bool` (`true` = continue).
-   * @param visitor Visitor invoked per frame.
-   * @param max_depth Maximum number of frames to visit.
-   */
   template <typename Visitor>
   void for_each_frame(Visitor &&visitor, uint32_t max_depth = 64) noexcept {
     while (is_valid_ && frame_.frame_index < max_depth) {
@@ -277,11 +220,9 @@ public:
   }
 
 private:
-  /// Unwinder driving the walk.
   frame_unwinder_ref unwinder_{};
-  /// Current frame record.
+  register_context_ref reg_ctx_{};
   stack_frame frame_{};
-  /// Validity flag.
   bool is_valid_{false};
 };
 
