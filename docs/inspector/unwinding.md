@@ -43,6 +43,76 @@ Set a practical maximum frame count. An unwinder must reject null, unaligned,
 non-advancing, and otherwise invalid caller frame data. These checks prevent a
 corrupt frame chain from becoming an infinite traversal.
 
+## Recover custom execution contexts with unwind hints
+
+`unwind_hint_registry_ref` is the fallback for code that cannot be unwound
+from an ordinary frame record. Its primary use case is a crash in a kernel
+context-switch routine, scheduler trampoline, interrupt return path, or other
+assembly/prologue sequence that has temporarily moved, swapped, or repurposed
+the normal stack and register state.
+
+In those regions, the value passed as `current_fp` may not identify a
+conventional frame chain. A matching `unwind_hint::routine` can instead treat
+it as the address of a saved-context record, read the target-specific register
+slots, select the saved stack pointer and return PC, and publish the recovered
+caller frame:
+
+```cpp
+bool recover_context_switch(microfmt::address_space_ref space,
+                            uintptr_t context_address, uintptr_t current_pc,
+                            uintptr_t &next_fp,
+                            uintptr_t &next_pc) noexcept {
+  saved_context context{};
+  if (!space.read(context_address, context)) {
+    return false;
+  }
+
+  next_fp = context.saved_stack_pointer;
+  next_pc = context.saved_return_pc;
+  return next_fp != 0 && next_pc != 0;
+}
+```
+
+The routine receives the target address space, the current frame value, and
+the current PC. It owns the target-specific interpretation: it may choose
+between task and interrupt stacks, recover a register from a switch frame,
+normalize an architecture-specific return address, or reject a context whose
+saved registers are not valid.
+
+Register a PC range with a custom routine in the fixed-capacity
+`unwind_hint_registry_context`:
+
+```cpp
+microfmt::unwind_hint_registry_context<4> hints;
+hints.add_hint({
+    .pc_start = context_switch_start,
+    .pc_end = context_switch_end,
+    .routine = recover_context_switch,
+});
+
+microfmt::unwind_hint_registry_ref hint_registry{
+    microfmt::unwind_hint_registry_tag{}, hints};
+```
+
+For a dynamic platform, bind `unwind_hint_registry_ref` to any caller-owned
+object or callable exposing
+`bool find_hint(uintptr_t pc, unwind_hint &out_hint) noexcept`. That resolver
+can select a recovery routine from the active image, scheduler configuration,
+or platform-specific PC map without heap allocation. The registry lookup is by
+PC; context-sensitive register recovery belongs in the selected routine.
+
+`chained_unwinder_context` tries EXIDX, DWARF, and frame-pointer strategies
+before consulting its hint registry. Set its `current_pc` pointer to the PC
+being unwound so a fallback lookup can occur. A hint is only reached after the
+earlier strategies fail, and the chained unwinder requires a non-zero
+`current_fp`; pass the address of the available saved-context record when no
+ordinary frame pointer exists.
+
+Hints are a recovery mechanism, not a reason to trust arbitrary context
+memory. Validate every target read and return `false` when the saved stack
+pointer or return PC is absent, outside the expected address range, or cannot
+advance the walk.
+
 ## Available backends
 
 | Header | Backend or supporting facility |
@@ -50,7 +120,7 @@ corrupt frame chain from becoming an infinite traversal.
 | `fp_unwinder.hpp` | Generic ABI-trait-driven frame-pointer stepper |
 | `dwarf_abi.hpp` | Architecture traits and register/frame conventions |
 | `dwarf_decoder.hpp` | Bounded DWARF call-frame instruction decoding |
-| `unwind_hint.hpp` | Architecture or platform hints used to recover frames |
+| `unwind_hint.hpp` | PC-range hints and custom routines for context-specific frame recovery |
 | `chained_unwinder.hpp` | Ordered fallback between multiple unwinders |
 | `hybrid_unwinder.hpp` | Combined strategies and rendered backtrace support |
 | `exception_frame.hpp` | Exception/trap frame decoding and trap summaries |

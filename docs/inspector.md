@@ -39,7 +39,7 @@ decoder state, or symbol buffers in formatter-local arrays. See the
 | [Memory and remote objects](inspector/memory-and-objects.md) | Target transports, foreign strings, ABI-width pointer wrappers, and reflected structures | `address_space.hpp`, `compat32.hpp`, `foreign_string_view.hpp`, `remote_object.hpp`, `remote_smart_ptr.hpp` |
 | [Remote containers](inspector/containers.md) | Vectors, linked lists, hash tables, binary trees, and custom container layouts | `remote_container.hpp`, `remote_vector.hpp`, `remote_forward_list.hpp`, `remote_hash_table.hpp`, `remote_binary_tree.hpp` |
 | [Symbols and diagnostics](inspector/symbols-and-diagnostics.md) | ELF image discovery, symbol resolution, demangling, and diagnostic views | `elf_enumerator.hpp`, `symbol_resolver.hpp`, `demangle.hpp`, `remote_diagnostics.hpp` |
-| [Generic unwinding](inspector/unwinding.md) | Frame cursors, backtraces, frame-pointer walkers, hints, and chained unwinders | `frame_pointer.hpp`, `fp_unwinder.hpp`, `dwarf_abi.hpp`, `dwarf_decoder.hpp`, `unwind_hint.hpp`, `chained_unwinder.hpp`, `hybrid_unwinder.hpp`, `exception_frame.hpp` |
+| [Generic unwinding](inspector/unwinding.md) | Frame cursors, backtraces, frame-pointer walkers, custom-context recovery hints, and chained unwinders | `frame_pointer.hpp`, `fp_unwinder.hpp`, `dwarf_abi.hpp`, `dwarf_decoder.hpp`, `unwind_hint.hpp`, `chained_unwinder.hpp`, `hybrid_unwinder.hpp`, `exception_frame.hpp` |
 | [ARM EXIDX unwinding](inspector/arm-unwinding.md) | ARM EHABI `.ARM.exidx` and `.ARM.extab` decoding | `arm_exidx_decoder.hpp`, `arm_exidx_search.hpp`, `arm_exidx_unwinder.hpp`, `arm_extab_decoder.hpp`, `arm_extab_stream.hpp` |
 
 ## Minimal remote-object example
