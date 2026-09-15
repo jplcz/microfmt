@@ -162,8 +162,8 @@ int main() {
 
   // A. Setup Mock .ARM.exidx Table at Offset 0x100
   uintptr_t exidx_table_base = 0x100;
-  auto *exidx_region =
-      reinterpret_cast<uint32_t *>(&target_memory[exidx_table_base]);
+  auto *exidx_region = static_cast<uint32_t *>(
+      static_cast<void *>(&target_memory[exidx_table_base]));
 
   uintptr_t fn0_target = 0x0800'1000;
   int32_t prel31_0 = static_cast<int32_t>(fn0_target - exidx_table_base);
@@ -214,7 +214,8 @@ int main() {
 
   // D. Setup Simulated Stack Frames at Offset 0x500
   uintptr_t stack_base = 0x500;
-  auto *stack_region = reinterpret_cast<uint32_t *>(&target_memory[stack_base]);
+  auto *stack_region = static_cast<uint32_t *>(
+      static_cast<void *>(&target_memory[stack_base]));
 
   // Frame 0: SensorData_Process (Handled by EXIDX unwinder)
   stack_region[0] = static_cast<uint32_t>(stack_base + 16); // Caller FP

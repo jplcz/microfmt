@@ -141,13 +141,12 @@ inline void format_float_via_printf(T val, const parsed_float_spec &spec,
   build_printf_float_format<T>(fmt_buf, spec);
 
   char buf[128];
-  int written = 0;
-
-  if (spec.precision >= 0) {
-    written = std::snprintf(buf, sizeof(buf), fmt_buf, spec.precision, val);
-  } else {
-    written = std::snprintf(buf, sizeof(buf), fmt_buf, val);
-  }
+  const auto print_float = [&](char *dest, size_t size) noexcept {
+    if (spec.precision >= 0)
+      return std::snprintf(dest, size, fmt_buf, spec.precision, val);
+    return std::snprintf(dest, size, fmt_buf, val);
+  };
+  const int written = print_float(buf, sizeof(buf));
 
   if (written > 0) {
     if (static_cast<size_t>(written) < sizeof(buf)) {
@@ -157,11 +156,7 @@ inline void format_float_via_printf(T val, const parsed_float_spec &spec,
       size_t heap_size = static_cast<size_t>(written) + 1;
       auto *heap_buf = new (std::nothrow) char[heap_size];
       if (heap_buf) {
-        if (spec.precision >= 0) {
-          std::snprintf(heap_buf, heap_size, fmt_buf, spec.precision, val);
-        } else {
-          std::snprintf(heap_buf, heap_size, fmt_buf, val);
-        }
+        (void)print_float(heap_buf, heap_size);
         out.write(std::string_view(heap_buf, static_cast<size_t>(written)));
         delete[] heap_buf;
       }

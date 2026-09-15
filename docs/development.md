@@ -36,6 +36,16 @@ The CMake options `MICROFMT_BUILD_TESTS`, `MICROFMT_BUILD_EXAMPLES`,
 `MICROFMT_BUILD_BENCHMARKS`, and `MICROFMT_BUILD_HEADER_CHECKS` can disable
 unneeded targets for a smaller local build.
 
+`MICROFMT_ENABLE_STRICT_WARNINGS` is enabled by default. It applies
+compiler-specific GCC or Clang warning sets, including conversion,
+sign-conversion, shadowing, alignment, and undefined-macro diagnostics, and
+treats them as errors for microfmt targets. Disable it only when integrating
+with a toolchain that cannot support the project warning policy:
+
+```bash
+cmake -B build -DMICROFMT_ENABLE_STRICT_WARNINGS=OFF
+```
+
 ## Test changes
 
 Tests use GoogleTest and are located in `tests/`. Add behavior-focused cases to

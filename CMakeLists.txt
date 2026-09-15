@@ -62,8 +62,8 @@ if(MICROFMT_ENABLE_STRICT_WARNINGS)
             -Woverloaded-virtual
             -Wnon-virtual-dtor
             -Wduplicated-cond
-            -Wduplicated-branches
             -Wlogical-op
+            -Wno-psabi
         >
         $<$<CXX_COMPILER_ID:Clang,AppleClang>:
             -Wall

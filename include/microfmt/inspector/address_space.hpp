@@ -28,6 +28,15 @@ constexpr uintptr_t add_address_offset(uintptr_t address,
   return address - magnitude;
 }
 
+template <typename T>
+T *scratch_object(span<std::byte> scratch) noexcept {
+  if (scratch.size() < sizeof(T) ||
+      reinterpret_cast<uintptr_t>(scratch.data()) % alignof(T) != 0) {
+    return nullptr;
+  }
+  return static_cast<T *>(static_cast<void *>(scratch.data()));
+}
+
 } // namespace detail
 
 // ============================================================================
@@ -392,12 +401,10 @@ public:
    * the read fails.
    */
   [[nodiscard]] bool load(T *&out_ptr) const noexcept {
-    if (scratch_.size() < sizeof(T))
-      return false;
-    if (reinterpret_cast<uintptr_t>(scratch_.data()) % alignof(T) != 0)
+    out_ptr = detail::scratch_object<T>(scratch_);
+    if (!out_ptr)
       return false;
 
-    out_ptr = reinterpret_cast<T *>(scratch_.data());
     return space_.read_bytes(addr_, out_ptr, sizeof(T));
   }
 

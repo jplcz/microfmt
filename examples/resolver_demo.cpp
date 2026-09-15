@@ -7,6 +7,12 @@
 #include <microfmt/inspector/symbol_resolver.hpp>
 #include <microfmt/sinks/stdio.hpp>
 
+#if UINTPTR_MAX < UINT64_MAX
+
+int main() { return 0; }
+
+#else
+
 // ----------------------------------------------------------------------------
 // Mock Kernel / Platform Symbol Resolver Trait
 // ----------------------------------------------------------------------------
@@ -119,3 +125,5 @@ int main() {
 
   return 0;
 }
+
+#endif

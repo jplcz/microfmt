@@ -161,8 +161,8 @@ int main() {
   std::memcpy(&simulated_ram[0x80], guest_comm, sizeof(guest_comm));
 
   // Place 32-bit guest struct at guest relative address 0x0000'0100
-  auto *guest_task_mem =
-      reinterpret_cast<Compat32GuestTask *>(&simulated_ram[0x100]);
+  auto *guest_task_mem = static_cast<Compat32GuestTask *>(
+      static_cast<void *>(&simulated_ram[0x100]));
   guest_task_mem->task_id = 1;
   guest_task_mem->priority = 100;
   guest_task_mem->state_flags = 0x0002;

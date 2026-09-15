@@ -183,9 +183,9 @@ struct forward_list_layout_traits_impl {
               formatter<remote_object_view> fmt;
               fmt.format(obj_view, out);
             } else {
-              if (scratch.size() < sizeof(T))
+              T *val_ptr = detail::scratch_object<T>(scratch);
+              if (!val_ptr)
                 return false;
-              T *val_ptr = reinterpret_cast<T *>(scratch.data());
               if (!space.read_bytes(elem_addr, val_ptr, sizeof(T)))
                 return false;
               formatter<T> fmt;

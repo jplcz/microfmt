@@ -57,9 +57,9 @@ public:
       remote_object_view obj_view(obj_addr, space_, type_tag<T>{}, scratch_);
       formatter<remote_object_view>().format(obj_view, out);
     } else {
-      if (scratch_.size() < sizeof(T))
+      T *val_ptr = detail::scratch_object<T>(scratch_);
+      if (!val_ptr)
         return false;
-      T *val_ptr = reinterpret_cast<T *>(scratch_.data());
       if (!space_.read_bytes(obj_addr, val_ptr, sizeof(T)))
         return false;
       formatter<T>().format(*val_ptr, out);
@@ -149,8 +149,7 @@ public:
       remote_object_view obj_view(obj_addr, space_, type_tag<T>{}, scratch_);
       formatter<remote_object_view>().format(obj_view, out);
     } else {
-      if (scratch_.size() >= sizeof(T)) {
-        T *val_ptr = reinterpret_cast<T *>(scratch_.data());
+      if (T *val_ptr = detail::scratch_object<T>(scratch_)) {
         if (space_.read_bytes(obj_addr, val_ptr, sizeof(T))) {
           formatter<T>().format(*val_ptr, out);
         } else {
@@ -232,8 +231,7 @@ public:
       remote_object_view obj_view(obj_addr, space_, type_tag<T>{}, scratch_);
       formatter<remote_object_view>().format(obj_view, out);
     } else {
-      if (scratch_.size() >= sizeof(T)) {
-        T *val_ptr = reinterpret_cast<T *>(scratch_.data());
+      if (T *val_ptr = detail::scratch_object<T>(scratch_)) {
         if (space_.read_bytes(obj_addr, val_ptr, sizeof(T))) {
           formatter<T>().format(*val_ptr, out);
         } else {

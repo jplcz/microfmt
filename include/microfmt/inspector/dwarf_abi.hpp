@@ -110,17 +110,20 @@ struct aarch64_abi_traits {
 
   [[nodiscard]] static constexpr uintptr_t
   normalize_pc(uintptr_t raw_ra) noexcept {
-    uintptr_t pc = raw_ra & ~static_cast<uintptr_t>(1); // Clear Thumb bit
+    if constexpr (sizeof(uintptr_t) < sizeof(uint64_t))
+      return raw_ra & ~static_cast<uintptr_t>(1);
+
+    const uint64_t pc = static_cast<uint64_t>(raw_ra) & ~UINT64_C(1);
 
     // Check if it's a kernel-space address (higher-half check: top bit set)
-    const bool is_kernel = (pc & (1ULL << 63)) != 0;
+    const bool is_kernel = (pc & (UINT64_C(1) << 63)) != 0;
 
     if (is_kernel) {
-      return (pc & 0x0000FFFF'FFFFFFFFULL) | 0xFFFF0000'00000000ULL;
+      return static_cast<uintptr_t>((pc & UINT64_C(0x0000FFFFFFFFFFFF)) |
+                                    UINT64_C(0xFFFF000000000000));
     } else {
       // User-space PAC masking
-      constexpr uintptr_t user_pac_mask = 0x0000FFFF'FFFFFFFFULL;
-      return pc & user_pac_mask;
+      return static_cast<uintptr_t>(pc & UINT64_C(0x0000FFFFFFFFFFFF));
     }
   }
 };

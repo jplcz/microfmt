@@ -139,7 +139,8 @@ template <> struct formatter<register_context_view<aarch64_abi_traits>> {
         uint64_t display_val = val;
         if (reg.index == dwarf::aarch64::LR ||
             reg.index == dwarf::aarch64::PC) {
-          display_val = aarch64_abi_traits::normalize_pc(val);
+          display_val = static_cast<uint64_t>(
+              aarch64_abi_traits::normalize_pc(static_cast<uintptr_t>(val)));
         }
         microfmt::format_to(out, MICROFMT_STRING("{}={:#018x}"), reg.name,
                             display_val);

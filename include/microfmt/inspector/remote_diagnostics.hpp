@@ -235,12 +235,10 @@ public:
    * @return `true` on success, `false` otherwise.
    */
   [[nodiscard]] bool load(T *&out_ptr) const noexcept {
-    if (scratch_.size() < sizeof(T))
-      return false;
-    if (reinterpret_cast<uintptr_t>(scratch_.data()) % alignof(T) != 0)
+    out_ptr = detail::scratch_object<T>(scratch_);
+    if (!out_ptr)
       return false;
 
-    out_ptr = reinterpret_cast<T *>(scratch_.data());
     return space_.read_bytes(addr_, out_ptr, sizeof(T));
   }
 

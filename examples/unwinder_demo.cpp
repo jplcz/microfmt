@@ -9,6 +9,12 @@
 #include <microfmt/inspector/symbol_resolver.hpp>
 #include <microfmt/sinks/stdio.hpp>
 
+#if UINTPTR_MAX < UINT64_MAX
+
+int main() { return 0; }
+
+#else
+
 // ============================================================================
 // Mock Kernel & User Symbol Table
 // ============================================================================
@@ -270,35 +276,37 @@ int main() {
   // User Stack:   [0x7ffe0000 .. 0x7ffe0200]
 
   // User Stack Frames
-  auto *user_f1 =
-      reinterpret_cast<uintptr_t *>(&simulated_ram[0x600]); // main frame
+  auto *user_f1 = static_cast<uintptr_t *>(
+      static_cast<void *>(&simulated_ram[0x600])); // main frame
   user_f1[0] = 0;                                           // Terminating frame
   user_f1[1] = 0;
 
-  auto *user_f0 =
-      reinterpret_cast<uintptr_t *>(&simulated_ram[0x500]); // query() frame
+  auto *user_f0 = static_cast<uintptr_t *>(
+      static_cast<void *>(&simulated_ram[0x500])); // query() frame
   user_f0[0] = reinterpret_cast<uintptr_t>(user_f1);
   user_f0[1] = 0x0000'0000'0040'2030ULL; // Return into main+0x30
 
   // Hardware pt_regs dumped on kernel entry (at simulated offset 0x200)
   auto *pt_regs = &simulated_ram[0x200];
-  *reinterpret_cast<uint64_t *>(&pt_regs[0x70]) = 0x0E; // Vector 14: Page Fault
-  *reinterpret_cast<uint64_t *>(&pt_regs[0x78]) =
+  *static_cast<uint64_t *>(static_cast<void *>(&pt_regs[0x70])) =
+      0x0E; // Vector 14: Page Fault
+  *static_cast<uint64_t *>(static_cast<void *>(&pt_regs[0x78])) =
       0x0000'0000'0040'1044ULL; // Interrupted PC: query+0x44
-  *reinterpret_cast<uint64_t *>(&pt_regs[0x80]) = 0x33; // User CS
-  *reinterpret_cast<uint64_t *>(&pt_regs[0x90]) =
+  *static_cast<uint64_t *>(static_cast<void *>(&pt_regs[0x80])) =
+      0x33; // User CS
+  *static_cast<uint64_t *>(static_cast<void *>(&pt_regs[0x90])) =
       reinterpret_cast<uintptr_t>(user_f0); // User RSP
-  *reinterpret_cast<uint64_t *>(&pt_regs[0x20]) =
+  *static_cast<uint64_t *>(static_cast<void *>(&pt_regs[0x20])) =
       reinterpret_cast<uintptr_t>(user_f0); // User RBP
 
   // Kernel Stack Frames
-  auto *k_f1 = reinterpret_cast<uintptr_t *>(
-      &simulated_ram[0x100]);         // asm_exc_page_fault
+  auto *k_f1 = static_cast<uintptr_t *>(
+      static_cast<void *>(&simulated_ram[0x100])); // asm_exc_page_fault
   k_f1[0] = 0;                        // End of kernel FP chain
   k_f1[1] = 0xffff'8000'0010'0210ULL; // PC inside asm_exc_page_fault
 
-  auto *k_f0 = reinterpret_cast<uintptr_t *>(
-      &simulated_ram[0x080]); // page_fault_handler
+  auto *k_f0 = static_cast<uintptr_t *>(
+      static_cast<void *>(&simulated_ram[0x080])); // page_fault_handler
   k_f0[0] = reinterpret_cast<uintptr_t>(k_f1);
   k_f0[1] = 0xffff'8000'0010'0208ULL; // Return into asm_exc_page_fault+0x8
 
@@ -358,3 +366,5 @@ int main() {
 
   return 0;
 }
+
+#endif

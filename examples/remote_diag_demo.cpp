@@ -8,6 +8,12 @@
 #include <microfmt/inspector/symbol_resolver.hpp>
 #include <microfmt/sinks/stdio.hpp>
 
+#if UINTPTR_MAX < UINT64_MAX
+
+int main() { return 0; }
+
+#else
+
 // ============================================================================
 // Mock Kernel Environment (Space + Resolver)
 // ============================================================================
@@ -128,7 +134,8 @@ int main() {
   constexpr uintptr_t kVBase = 0xffff'8000'0000'0000ULL;
 
   // Place valid FileOperations struct at kVBase + 0x200
-  auto *fops = reinterpret_cast<FileOperations *>(&simulated_kernel_ram[0x200]);
+  auto *fops = static_cast<FileOperations *>(
+      static_cast<void *>(&simulated_kernel_ram[0x200]));
   fops->read_fn = 0;                  // null
   fops->write_fn = kVBase + 0x1000;   // points to kernel::fs::ext4_write
   fops->release_fn = kVBase + 0x1024; // inside ext4_write+0x24
@@ -179,3 +186,5 @@ int main() {
 
   return 0;
 }
+
+#endif

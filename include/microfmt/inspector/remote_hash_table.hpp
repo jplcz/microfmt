@@ -225,9 +225,9 @@ struct hash_table_layout_traits_impl {
                                             scratch);
                 formatter<remote_object_view>().format(key_view, out);
               } else {
-                if (scratch.size() < sizeof(Key))
+                Key *k_ptr = detail::scratch_object<Key>(scratch);
+                if (!k_ptr)
                   return false;
-                Key *k_ptr = reinterpret_cast<Key *>(scratch.data());
                 if (!space.read_bytes(key_addr, k_ptr, sizeof(Key)))
                   return false;
                 formatter<Key>().format(*k_ptr, out);
@@ -244,9 +244,9 @@ struct hash_table_layout_traits_impl {
                                             scratch);
                 formatter<remote_object_view>().format(val_view, out);
               } else {
-                if (scratch.size() < sizeof(Value))
+                Value *v_ptr = detail::scratch_object<Value>(scratch);
+                if (!v_ptr)
                   return false;
-                Value *v_ptr = reinterpret_cast<Value *>(scratch.data());
                 if (!space.read_bytes(val_addr, v_ptr, sizeof(Value)))
                   return false;
                 formatter<Value>().format(*v_ptr, out);
