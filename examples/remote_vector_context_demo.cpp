@@ -2,8 +2,8 @@
 #include <microfmt/sinks/stdio.hpp>
 #include <vector>
 
-// Simulated remote vector header structure
-struct RemoteVectorHeader {
+// Simulated standard vector layout
+struct MockVectorLayout {
   int *data;
   size_t size;
   size_t capacity;
@@ -14,76 +14,58 @@ int main() {
       microfmt::address_space_ref::make<microfmt::local_space_tag>();
   std::byte scratch[1024];
 
-  // Setup mock data in "remote" (local) memory
-  std::vector<int> remote_elements = {100, 200, 300, 400, 500};
-  RemoteVectorHeader remote_vec{remote_elements.data(), remote_elements.size(),
-                                remote_elements.capacity()};
-  uintptr_t vec_addr = reinterpret_cast<uintptr_t>(&remote_vec);
+  microfmt::container_options brackets_opts{.open_bracket = "[",
+                                            .close_bracket = "]"};
 
-  // Define the remote_vector_vtable using raw function pointers
-  microfmt::remote_vector_vtable vector_vtbl{
-      .get_size =
-          [](const void *state, microfmt::address_space_ref space,
-             microfmt::span<std::byte>, size_t &out_size) noexcept {
-            uintptr_t addr = *static_cast<const uintptr_t *>(state);
-            RemoteVectorHeader h;
-            if (!space.read_bytes(addr, &h, sizeof(RemoteVectorHeader)))
-              return false;
-            out_size = h.size;
-            return true;
-          },
-      .get_capacity =
-          [](const void *state, microfmt::address_space_ref space,
-             microfmt::span<std::byte>, size_t &out_cap) noexcept {
-            uintptr_t addr = *static_cast<const uintptr_t *>(state);
-            RemoteVectorHeader h;
-            if (!space.read_bytes(addr, &h, sizeof(RemoteVectorHeader)))
-              return false;
-            out_cap = h.capacity;
-            return true;
-          },
-      .get_element_address =
-          [](const void *state, microfmt::address_space_ref space,
-             microfmt::span<std::byte>, size_t index,
-             uintptr_t &out_elem_addr) noexcept {
-            uintptr_t addr = *static_cast<const uintptr_t *>(state);
-            RemoteVectorHeader h;
-            if (!space.read_bytes(addr, &h, sizeof(RemoteVectorHeader)))
-              return false;
-            out_elem_addr =
-                reinterpret_cast<uintptr_t>(h.data) + (index * sizeof(int));
-            return true;
-          },
-      .format_element =
-          [](const void *, microfmt::address_space_ref space,
-             microfmt::span<std::byte>, uintptr_t elem_addr,
-             const microfmt::sink &out) noexcept {
-            int val = 0;
-            if (!space.read(elem_addr, val))
-              return false;
-            microfmt::format_to(out, "{}", val);
-            return true;
-          }};
+  // =========================================================================
+  // Test 1: vector_layout (std::vector-like structure)
+  // =========================================================================
+  {
+    std::vector<int> vector_elements = {10, 20, 30, 40, 50};
+    MockVectorLayout remote_vec{vector_elements.data(), vector_elements.size(),
+                                vector_elements.capacity()};
+    uintptr_t vec_addr = reinterpret_cast<uintptr_t>(&remote_vec);
 
-  // Create the remote vector context using make_remote_vector_context
-  // We pass the container address as the initial user state.
-  auto vector_context =
-      microfmt::make_remote_vector_context(vec_addr, vec_addr, vector_vtbl);
+    // Obtain the context generator from vector_layout
+    auto vector_generator = microfmt::remote_vector_traits::vector_layout<int>(
+        offsetof(MockVectorLayout, data), offsetof(MockVectorLayout, size),
+        offsetof(MockVectorLayout, capacity));
 
-  // Configure formatting options (e.g., custom brackets and separators)
-  microfmt::container_options vector_opts{.entry_separator = ", ",
-                                          .open_bracket = "[",
-                                          .close_bracket = "]",
-                                          .max_print = 64};
+    // Generate the context by supplying the remote vector address
+    auto vector_context = vector_generator(vec_addr);
 
-  // Instantiate remote_container_view, binding to the context pointer
-  // (&vector_context)
-  microfmt::remote_container_view container_view(vec_addr, space_ref, scratch,
-                                                 &vector_context, vector_opts);
+    // Bind to remote_container_view
+    microfmt::remote_container_view vector_view(vec_addr, space_ref, scratch,
+                                                &vector_context, brackets_opts);
 
-  // Print the type-erased vector view safely
-  microfmt::print("Inspected Remote Vector: {}\n", container_view);
-  // Output: Inspected Remote Vector: [100, 200, 300, 400, 500]
+    // Print results
+    microfmt::print("Tested vector_layout: {}\n", vector_view);
+    // Expected Output: Tested vector_layout: [10, 20, 30, 40, 50]
+  }
+
+  // =========================================================================
+  // Test 2: carray_layout (C-style array)
+  // =========================================================================
+  {
+    int raw_c_array[4] = {100, 200, 300, 400};
+    uintptr_t array_addr = reinterpret_cast<uintptr_t>(raw_c_array);
+    size_t array_size = 4;
+
+    // Obtain the context generator from carray_layout with fixed size
+    auto carray_generator =
+        microfmt::remote_vector_traits::carray_layout<int>(array_size);
+
+    // Generate the context by supplying the array base address
+    auto carray_context = carray_generator(array_addr);
+
+    // Bind to remote_container_view
+    microfmt::remote_container_view carray_view(array_addr, space_ref, scratch,
+                                                &carray_context, brackets_opts);
+
+    // Print results
+    microfmt::print("Tested carray_layout: {}\n", carray_view);
+    // Expected Output: Tested carray_layout: [100, 200, 300, 400]
+  }
 
   return 0;
 }
