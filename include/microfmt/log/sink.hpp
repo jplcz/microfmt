@@ -69,32 +69,32 @@ private:
     auto out = buf.as_sink();
 
     // Timestamp: [HH:MM:SS.mmm]
-    format_to(out, "[{:t}] ", msg.time);
+    format_to(out, MICROFMT_STRING("[{:t}] "), msg.time);
 
     // Logger Tag
     if (!msg.logger_name.empty()) {
-      format_to(out, "[{}] ", msg.logger_name);
+      format_to(out, MICROFMT_STRING("[{}] "), msg.logger_name);
     }
 
     // Colorized Level Tag
     switch (msg.lvl) {
     case level::trace:
-      format_to(out, "[{}] ", ansi::gray("TRACE"));
+      format_to(out, MICROFMT_STRING("[{}] "), ansi::gray("TRACE"));
       break;
     case level::debug:
-      format_to(out, "[{}] ", ansi::cyan("DEBUG"));
+      format_to(out, MICROFMT_STRING("[{}] "), ansi::cyan("DEBUG"));
       break;
     case level::info:
-      format_to(out, "[{}] ", ansi::green("INFO "));
+      format_to(out, MICROFMT_STRING("[{}] "), ansi::green("INFO "));
       break;
     case level::warn:
-      format_to(out, "[{}] ", ansi::yellow("WARN "));
+      format_to(out, MICROFMT_STRING("[{}] "), ansi::yellow("WARN "));
       break;
     case level::err:
-      format_to(out, "[{}] ", ansi::red("ERROR"));
+      format_to(out, MICROFMT_STRING("[{}] "), ansi::red("ERROR"));
       break;
     case level::critical:
-      format_to(out, "[{}] ", ansi::styled(
+      format_to(out, MICROFMT_STRING("[{}] "), ansi::styled(
                                 "CRIT ",
                                 ansi::style{ansi::color::bright_white,
                                             ansi::color::red,
@@ -105,7 +105,7 @@ private:
     }
 
     // Message payload + newline
-    format_to(out, "{}\n", msg.payload);
+    format_to(out, MICROFMT_STRING("{}\n"), msg.payload);
 
     // Output to direct stdout file descriptor
     auto term = stdout_sink();

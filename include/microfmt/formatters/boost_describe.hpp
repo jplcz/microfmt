@@ -48,7 +48,7 @@ struct formatter<E, std::enable_if_t<detail::is_described_enum<E>::value>> {
     if (!found) {
       // Fallback: format raw underlying integer if value is unmapped/invalid
       using Underlying = std::underlying_type_t<E>;
-      format_to(out, "static_cast<{}>({})",
+      format_to(out, MICROFMT_STRING("static_cast<{}>({})"),
                 sizeof(Underlying) == 1   ? "uint8_t"
                 : sizeof(Underlying) == 2 ? "uint16_t"
                                           : "uint32_t",
@@ -82,7 +82,7 @@ struct formatter<T, std::enable_if_t<detail::is_described_struct<T>::value>> {
       out.write(": ");
 
       // Format member value recursively via microfmt
-      format_to(out, "{}", val.*D.pointer);
+      format_to(out, MICROFMT_STRING("{}"), val.*D.pointer);
     });
 
     out.put('}');

@@ -1116,7 +1116,13 @@ compile_format_string(std::string_view str) noexcept {
         ++end;
       }
 
-      std::string_view spec = str.substr(i + 1, end - (i + 1));
+      const std::string_view replacement =
+          str.substr(i + 1, end - (i + 1));
+      const size_t colon_pos = replacement.find(':');
+      const std::string_view spec =
+          colon_pos == std::string_view::npos
+              ? std::string_view{}
+              : replacement.substr(colon_pos + 1);
       result.pieces[result.count++] = compiled_piece{{}, spec, arg_idx++, true};
 
       i = end;

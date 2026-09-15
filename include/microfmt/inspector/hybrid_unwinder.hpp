@@ -401,18 +401,18 @@ template <> struct formatter<hybrid_backtrace_view> {
             } else {
               out.write("Nested Fault");
             }
-            microfmt::format_to(out, " (vec {:#x})] ---\n",
+            microfmt::format_to(out, MICROFMT_STRING(" (vec {:#x})] ---\n"),
                                 frame.trap.vector_or_reason);
           }
 
-          microfmt::format_to(out, "  #{:<2} fp={:#x}  pc=", frame.frame_index,
-                              frame.fp);
+          microfmt::format_to(out, MICROFMT_STRING("  #{:<2} fp={:#x}  pc="),
+                              frame.frame_index, frame.fp);
 
           remote_fn_ptr fn_sym(frame.pc, view.resolver(), view.scratch());
           if (mode == '#') {
-            microfmt::format_to(out, "{:#}", fn_sym);
+            microfmt::format_to(out, MICROFMT_STRING("{:#}"), fn_sym);
           } else {
-            microfmt::format_to(out, "{}", fn_sym);
+            microfmt::format_to(out, MICROFMT_STRING("{}"), fn_sym);
           }
           return true;
         },

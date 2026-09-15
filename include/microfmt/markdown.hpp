@@ -154,7 +154,7 @@ public:
   template <typename... Args>
   writer &numbered_item(size_t index, std::string_view fmt,
                         const Args &...args) noexcept {
-    print("{}. ", index);
+    format_to(m_sink, MICROFMT_STRING("{}. "), index);
     format_to(m_sink, fmt, args...);
     return newline();
   }
@@ -300,7 +300,8 @@ public:
                         span<const uint8_t> data) noexcept {
     return details(*this, summary, [&](writer &w) {
       w.code_block("text", [&](writer &cw) {
-        format_to(cw.get_sink(), "{}", microfmt::hexdump(data));
+        format_to(cw.get_sink(), MICROFMT_STRING("{}"),
+                  microfmt::hexdump(data));
       });
     });
   }

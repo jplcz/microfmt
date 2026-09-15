@@ -67,9 +67,9 @@ private:
     buffer_sink<Capacity> buffer;
     const auto out = buffer.as_sink();
     if (!msg.logger_name.empty()) {
-      format_to(out, "[{}] ", msg.logger_name);
+      format_to(out, MICROFMT_STRING("[{}] "), msg.logger_name);
     }
-    format_to(out, "{}", msg.payload);
+    format_to(out, MICROFMT_STRING("{}"), msg.payload);
     write_fn_(priority_for(msg.lvl), buffer.view());
   }
 

@@ -45,15 +45,17 @@ inline void format_remote_fault(const sink &out, uintptr_t addr,
 
       if (info.has_symbol()) {
         if (info.has_image()) {
-          microfmt::format_to(out, "{}!", info.image_name);
+          microfmt::format_to(out, MICROFMT_STRING("{}!"), info.image_name);
         }
-        microfmt::format_to(out, "{}", as_demangled(info.symbol_name));
+        microfmt::format_to(out, MICROFMT_STRING("{}"),
+                            as_demangled(info.symbol_name));
         if (info.offset_from_symbol > 0) {
-          microfmt::format_to(out, "+{:#x}", info.offset_from_symbol);
+          microfmt::format_to(out, MICROFMT_STRING("+{:#x}"),
+                              info.offset_from_symbol);
         }
       } else {
         // Module known, symbol stripped: e.g. "faulty_driver.ko+0x4200"
-        microfmt::format_to(out, "{}+{:#x}", info.image_name,
+        microfmt::format_to(out, MICROFMT_STRING("{}+{:#x}"), info.image_name,
                             info.offset_from_image);
       }
 
@@ -63,7 +65,7 @@ inline void format_remote_fault(const sink &out, uintptr_t addr,
   }
 
   // Fallback raw hex address
-  microfmt::format_to(out, "<fault:{:#x}>", addr);
+  microfmt::format_to(out, MICROFMT_STRING("<fault:{:#x}>"), addr);
 }
 
 // ============================================================================
@@ -175,16 +177,16 @@ template <> struct formatter<remote_fn_ptr> {
     }
 
     if (mode == 'x' || mode == 'p' || !fn.resolver()) {
-      microfmt::format_to(out, "{:#x}", fn.address());
+      microfmt::format_to(out, MICROFMT_STRING("{:#x}"), fn.address());
       return;
     }
 
     auto sym_view =
         remote_symbol_view(fn.address(), fn.resolver(), fn.scratch(), true);
     if (mode == '#') {
-      microfmt::format_to(out, "{:#}", sym_view);
+      microfmt::format_to(out, MICROFMT_STRING("{:#}"), sym_view);
     } else {
-      microfmt::format_to(out, "{}", sym_view);
+      microfmt::format_to(out, MICROFMT_STRING("{}"), sym_view);
     }
   }
 };

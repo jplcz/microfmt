@@ -413,7 +413,7 @@ template <typename T, typename RP> struct formatter<remote_unique_ptr<T, RP>> {
     if (ptr.is_null()) {
       out.write("nullptr");
     } else {
-      microfmt::format_to(out, "0x{:x}", ptr.address());
+      microfmt::format_to(out, MICROFMT_STRING("0x{:x}"), ptr.address());
     }
   }
 };
@@ -426,7 +426,7 @@ struct formatter<remote_shared_ptr<T, RP, RRC>> {
     if (ptr.is_null()) {
       out.write("shared_ptr(nullptr)");
     } else {
-      microfmt::format_to(out, "0x{:x}", ptr.address());
+      microfmt::format_to(out, MICROFMT_STRING("0x{:x}"), ptr.address());
     }
   }
 };
@@ -439,7 +439,7 @@ struct formatter<remote_intrusive_ptr<T, RO, RP, RRC>> {
     if (ptr.is_null()) {
       out.write("intrusive_ptr(nullptr)");
     } else {
-      microfmt::format_to(out, "0x{:x}", ptr.address());
+      microfmt::format_to(out, MICROFMT_STRING("0x{:x}"), ptr.address());
     }
   }
 };

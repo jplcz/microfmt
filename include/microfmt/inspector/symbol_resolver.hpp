@@ -365,7 +365,7 @@ template <> struct formatter<remote_symbol_view> {
     }
 
     if (!view.resolver()) {
-      microfmt::format_to(out, "{:#x}", view.address());
+      microfmt::format_to(out, MICROFMT_STRING("{:#x}"), view.address());
       return;
     }
 
@@ -374,31 +374,34 @@ template <> struct formatter<remote_symbol_view> {
 
     // 1. Unresolved fallback
     if (!ok || (!info.has_symbol() && !info.has_image())) {
-      microfmt::format_to(out, "<unknown@{:#x}>", view.address());
+      microfmt::format_to(out, MICROFMT_STRING("<unknown@{:#x}>"),
+                          view.address());
       return;
     }
 
     // Precise or nearest symbol matched
     if (info.has_symbol()) {
       if (mode == '#' && info.has_image()) {
-        microfmt::format_to(out, "{}!", info.image_name);
+        microfmt::format_to(out, MICROFMT_STRING("{}!"), info.image_name);
       }
 
       if (view.demangle()) {
-        microfmt::format_to(out, "{}", as_demangled(info.symbol_name));
+        microfmt::format_to(out, MICROFMT_STRING("{}"),
+                            as_demangled(info.symbol_name));
       } else {
         out.write(info.symbol_name);
       }
 
       if (info.offset_from_symbol > 0) {
-        microfmt::format_to(out, "+{:#x}", info.offset_from_symbol);
+        microfmt::format_to(out, MICROFMT_STRING("+{:#x}"),
+                            info.offset_from_symbol);
       }
       return;
     }
 
     // Module/Image known, but symbol stripped (e.g. nvgpu.ko+0x1420)
     if (info.has_image()) {
-      microfmt::format_to(out, "{}+{:#x}", info.image_name,
+      microfmt::format_to(out, MICROFMT_STRING("{}+{:#x}"), info.image_name,
                           info.offset_from_image);
     }
   }

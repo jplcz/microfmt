@@ -131,7 +131,8 @@ template <> struct formatter<foreign_string_view> {
     }
 
     if (!view.space() || view.scratch().empty()) {
-      microfmt::format_to(out, "<invalid-foreign@{:#x}>", view.address());
+      microfmt::format_to(out, MICROFMT_STRING("<invalid-foreign@{:#x}>"),
+                          view.address());
       return;
     }
 
@@ -145,7 +146,8 @@ template <> struct formatter<foreign_string_view> {
       if (!view.space().read_string_chunk(cur, view.scratch(), chunk_len,
                                           null_term)) {
         if (total == 0) {
-          microfmt::format_to(out, "<fault@{:#x}>", view.address());
+          microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"),
+                              view.address());
         } else {
           out.write("<fault>");
         }

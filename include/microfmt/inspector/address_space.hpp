@@ -424,7 +424,8 @@ template <> struct formatter<remote_string_view> {
     }
 
     if (!view.space() || view.scratch().empty()) {
-      microfmt::format_to(out, "<invalid-space@{:#x}>", view.address());
+      microfmt::format_to(out, MICROFMT_STRING("<invalid-space@{:#x}>"),
+                          view.address());
       return;
     }
 
@@ -438,7 +439,8 @@ template <> struct formatter<remote_string_view> {
       if (!view.space().read_string_chunk(cur, view.scratch(), chunk_len,
                                           null_term)) {
         if (total == 0) {
-          microfmt::format_to(out, "<fault@{:#x}>", view.address());
+          microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"),
+                              view.address());
         } else {
           out.write("<fault>");
         }
@@ -496,7 +498,8 @@ template <typename T> struct formatter<remote_ref<T>> {
 
     T *staged = nullptr;
     if (!view.load(staged)) {
-      microfmt::format_to(out, "<fault@{:#x}>", view.address());
+      microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"),
+                          view.address());
       return;
     }
 

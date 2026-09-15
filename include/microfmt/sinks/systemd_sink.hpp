@@ -76,9 +76,9 @@ private:
     buffer_sink<MessageCapacity + IdentifierCapacity + 4> output;
     const auto out = output.as_sink();
     if (!identifier.empty()) {
-      format_to(out, "[{}] ", identifier);
+      format_to(out, MICROFMT_STRING("[{}] "), identifier);
     }
-    format_to(out, "{}\n", message);
+    format_to(out, MICROFMT_STRING("{}\n"), message);
     stdout_sink().write(output.view());
   }
 

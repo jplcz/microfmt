@@ -463,31 +463,33 @@ template <> struct formatter<remote_trap_view> {
     std::string_view desc =
         view.decoder().describe_reason(trap.vector_or_reason);
 
-    microfmt::format_to(out, "[Trap Level {} @ {:#x}] Mode: {}\n",
-                        trap.trap_level, trap.trap_frame_addr,
-                        trap.is_user_mode ? "User" : "Kernel");
+    microfmt::format_to(
+        out, MICROFMT_STRING("[Trap Level {} @ {:#x}] Mode: {}\n"),
+        trap.trap_level, trap.trap_frame_addr,
+        trap.is_user_mode ? "User" : "Kernel");
 
     if (!desc.empty()) {
-      microfmt::format_to(out, "  Reason : {} ({:#x})\n", desc,
+      microfmt::format_to(out, MICROFMT_STRING("  Reason : {} ({:#x})\n"), desc,
                           trap.vector_or_reason);
     } else if (trap.vector_or_reason != 0) {
-      microfmt::format_to(out, "  Vector : {:#x}\n", trap.vector_or_reason);
+      microfmt::format_to(out, MICROFMT_STRING("  Vector : {:#x}\n"),
+                          trap.vector_or_reason);
     }
 
-    microfmt::format_to(out, "  PC     : ");
+    microfmt::format_to(out, MICROFMT_STRING("  PC     : "));
     remote_fn_ptr pc_sym(trap.pc, view.resolver(), view.scratch());
     if (mode == '#') {
-      microfmt::format_to(out, "{:#}\n", pc_sym);
+      microfmt::format_to(out, MICROFMT_STRING("{:#}\n"), pc_sym);
     } else {
-      microfmt::format_to(out, "{}\n", pc_sym);
+      microfmt::format_to(out, MICROFMT_STRING("{}\n"), pc_sym);
     }
 
-    microfmt::format_to(out, "  SP     : {:#x}\n", trap.sp);
-    microfmt::format_to(out, "  FP     : {:#x}", trap.fp);
+    microfmt::format_to(out, MICROFMT_STRING("  SP     : {:#x}\n"), trap.sp);
+    microfmt::format_to(out, MICROFMT_STRING("  FP     : {:#x}"), trap.fp);
     if (trap.lr != 0) {
-      microfmt::format_to(out, "\n  LR     : ");
+      microfmt::format_to(out, MICROFMT_STRING("\n  LR     : "));
       remote_fn_ptr lr_sym(trap.lr, view.resolver(), view.scratch());
-      microfmt::format_to(out, "{}", lr_sym);
+      microfmt::format_to(out, MICROFMT_STRING("{}"), lr_sym);
     }
   }
 };
