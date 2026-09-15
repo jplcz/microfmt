@@ -29,6 +29,10 @@ struct arm_abi_traits {
   static constexpr uint32_t fp_reg =
       11; // R11 (Traditional ARM; note: some thumb variants use R7 = 7)
 
+  // Frame pointer layout offsets relative to current FP
+  static constexpr ptrdiff_t fp_slot_offset = 0; // Saved FP is at [FP + 0]
+  static constexpr ptrdiff_t ra_slot_offset = 4; // Saved LR is at [FP + 4]
+
   /**
    * @brief Reports whether a register holds the return address.
    * @param reg DWARF register number.
@@ -70,6 +74,9 @@ struct aarch64_abi_traits {
   /// X29 (FP) register number.
   static constexpr uint32_t fp_reg = 29; // X29 (FP / Frame Pointer)
 
+  static constexpr ptrdiff_t fp_slot_offset = 0; // Saved FP is at [FP + 0]
+  static constexpr ptrdiff_t ra_slot_offset = 8; // Saved LR is at [FP + 8]
+
   /**
    * @brief Reports whether a register holds the return address.
    * @param reg DWARF register number.
@@ -110,6 +117,12 @@ struct riscv32_abi_traits {
   /// x8 (s0/fp) register number.
   static constexpr uint32_t fp_reg = 8;
 
+  // Standard RISC-V convention (saves s0/fp and ra in the frame):
+  // [FP + 0] -> saved frame pointer (s0 / x8)
+  // [FP + 4] -> saved return address (ra / x1)
+  static constexpr ptrdiff_t fp_slot_offset = 0;
+  static constexpr ptrdiff_t ra_slot_offset = 4;
+
   /**
    * @brief Reports whether a register holds the return address.
    * @param reg DWARF register number.
@@ -149,6 +162,9 @@ struct riscv64_abi_traits {
   static constexpr uint32_t ra_reg = 1;
   /// x8 (s0/fp) register number.
   static constexpr uint32_t fp_reg = 8;
+
+  static constexpr ptrdiff_t fp_slot_offset = 0; // Saved FP (s0) is at [FP + 0]
+  static constexpr ptrdiff_t ra_slot_offset = 8; // Saved RA is at [FP + 8]
 
   /**
    * @brief Reports whether a register holds the return address.
@@ -191,6 +207,12 @@ struct x86_abi_traits {
   /// EBP (register 5) number.
   static constexpr uint32_t fp_reg = 5; // EBP (Register 5)
 
+  // On 32-bit x86:
+  // [EBP + 0] -> stores the saved previous EBP (Frame Pointer)
+  // [EBP + 4] -> stores the return address (EIP)
+  static constexpr ptrdiff_t fp_slot_offset = 0;
+  static constexpr ptrdiff_t ra_slot_offset = 4;
+
   /**
    * @brief Reports whether a register holds the return address.
    * @param reg DWARF register number.
@@ -231,6 +253,9 @@ struct x86_64_abi_traits {
       16; // RIP (Register 16 - Return address slot)
   /// RBP (register 6) number.
   static constexpr uint32_t fp_reg = 6; // RBP (Register 6)
+
+  static constexpr ptrdiff_t fp_slot_offset = 0; // Saved RBP is at [RBP + 0]
+  static constexpr ptrdiff_t ra_slot_offset = 8; // Saved RIP is at [RBP + 8]
 
   /**
    * @brief Reports whether a register holds the return address.
