@@ -25,6 +25,8 @@ TEST(CoreStringView, InteroperatesWithStandardStringViews) {
   EXPECT_EQ(custom, "interop");
   EXPECT_EQ(roundtrip, standard);
   EXPECT_EQ(microfmt::string_view(storage), custom);
+  EXPECT_EQ(std::hash<microfmt::string_view>{}(custom),
+            std::hash<std::string_view>{}(standard));
 }
 
 TEST(CoreStringView, ProvidesCheckedOperations) {
@@ -194,7 +196,7 @@ TEST(CoreFormat, CharAndBoolOutput) {
 TEST(CoreFormat, StringAndNullStringHandling) {
   const char *valid_str = "embedded";
   const char *null_str = nullptr;
-  std::string_view sv = "system";
+  microfmt::string_view sv = "system";
 
   EXPECT_EQ(microfmt::format<32>("{} {}", valid_str, sv).view(),
             "embedded system");

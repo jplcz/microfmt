@@ -3,9 +3,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <gtest/gtest.h>
-
 #include <string>
-#include <string_view>
+#include <string>
 #include <vector>
 
 #include <microfmt/sinks/container_sink.hpp>
@@ -19,8 +18,8 @@ public:
   [[nodiscard]] const char *data() const noexcept { return storage_.data(); }
   [[nodiscard]] std::size_t size() const noexcept { return storage_.size(); }
 
-  [[nodiscard]] std::string_view view() const noexcept {
-    return std::string_view(storage_.data(), storage_.size());
+  [[nodiscard]] microfmt::string_view view() const noexcept {
+    return microfmt::string_view(storage_.data(), storage_.size());
   }
 
 private:

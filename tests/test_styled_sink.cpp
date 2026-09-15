@@ -27,7 +27,7 @@ TEST(StyledSinkTest, SanitizesAsciiControlCharacters) {
   const char input[] = {'A', '\x01', 'B', '\n', 'C', '\t',
                         'D', '\r',   'E', '\x7f', 'F'};
 
-  sanitized.write(std::string_view(input, sizeof(input)));
+  sanitized.write(microfmt::string_view(input, sizeof(input)));
 
   EXPECT_EQ(output.view(), "A.B\nC\tD\rE.F");
 }

@@ -7,7 +7,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <string_view>
 
 #include "microfmt/microfmt.hpp"
 #include "microfmt/sinks/stdio.hpp"
@@ -45,8 +44,8 @@ static size_t g_tests_failed = 0;
 
 template <size_t N>
 void assert_sink_eq(const microfmt::buffer_sink<N> &buf,
-                    std::string_view expected, const char *test_name) {
-  const std::string_view actual = buf.view();
+                    microfmt::string_view expected, const char *test_name) {
+  const microfmt::string_view actual = buf.view();
   if (actual == expected) {
     microfmt::println(MICROFMT_STRING("  [PASS] {}"), test_name);
     ++g_tests_passed;
@@ -115,7 +114,7 @@ void test_stress_wide_argument_packs() {
   const bool b_true = true;
   const bool b_false = false;
   const char *raw_str = "C-Str";
-  const std::string_view sv_str = "StringView";
+  const microfmt::string_view sv_str = "StringView";
   const void *ptr = reinterpret_cast<const void *>(0x20000000);
 
   auto buf = microfmt::format<512>(
@@ -126,7 +125,7 @@ void test_stress_wide_argument_packs() {
 
   // Validate that buffer formatted without truncating
   if (buf.size() > 0 &&
-      buf.view().find("123456789") != std::string_view::npos) {
+      buf.view().find("123456789") != microfmt::string_view::npos) {
     microfmt::println(MICROFMT_STRING("  [PASS] 14-argument heterogeneous "
                                       "unrolled pack formatted ({} bytes)"),
                       buf.size());
@@ -149,7 +148,7 @@ void test_stress_nested_custom_types() {
       MICROFMT_STRING("Telemetry Batch: primary={}, secondary={}"), sensor1,
       sensor2);
 
-  const std::string_view expected =
+  const microfmt::string_view expected =
       "Telemetry Batch: primary=[Sensor #1 @ 10500ms: 24 C, status=VALID], "
       "secondary=[Sensor #2 @ 10520ms: -5 C, status=FAULT]";
 
@@ -182,7 +181,7 @@ void test_stress_sink_backends() {
         microfmt::format_to(raw_array, MICROFMT_STRING("Iter: 0x{:X}"), 0xCAFE);
     *end_ptr = '\0';
 
-    if (std::string_view(raw_array) == "Iter: 0xCAFE") {
+    if (microfmt::string_view(raw_array) == "Iter: 0xCAFE") {
       microfmt::println(
           MICROFMT_STRING("  [PASS] iterator_sink unrolled format"));
       ++g_tests_passed;

@@ -6,9 +6,6 @@
 #include <cstdio>
 #include <microfmt/formatters/escaped.hpp>
 #include <microfmt/microfmt.hpp>
-#include <string_view>
-
-using namespace std::string_view_literals;
 
 static void terminal_write(void * /*ctx*/, microfmt::string_view sv) noexcept {
   std::fwrite(sv.data(), 1, sv.size(), stdout);
@@ -23,16 +20,19 @@ int main() {
   microfmt::format_to(term, "=== 1. Cellular / AT Command Logging ===\n");
 
   // Standard AT command with carriage return and line feed
-  const auto at_cmd = "AT+CSQ\r\n"sv;
+  const microfmt::string_view at_cmd = "AT+CSQ\r\n";
   microfmt::format_to(term, "TX Command  : {}\n", microfmt::escaped(at_cmd));
 
   // Modem response containing multiple control characters and null padding
-  const auto at_response = "\r\n+CSQ: 28,99\r\n\r\nOK\r\n\0\0"sv;
+  const microfmt::string_view at_response{
+      "\r\n+CSQ: 28,99\r\n\r\nOK\r\n\0\0",
+      sizeof("\r\n+CSQ: 28,99\r\n\r\nOK\r\n\0\0") - 1};
   microfmt::format_to(term, "RX Response : {}\n",
                       microfmt::escaped(at_response));
 
   // Command configuration containing inner quotes
-  const auto at_apn = "AT+CGDCONT=1,\"IP\",\"internet.carrier.com\"\r"sv;
+  const microfmt::string_view at_apn =
+      "AT+CGDCONT=1,\"IP\",\"internet.carrier.com\"\r";
   microfmt::format_to(term, "APN Config  : {}\n\n", microfmt::escaped(at_apn));
 
   // ------------------------------------------------------------------------

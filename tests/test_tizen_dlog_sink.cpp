@@ -6,7 +6,6 @@
 
 #include <array>
 #include <cstddef>
-#include <string_view>
 
 #include <microfmt/log/log_msg.hpp>
 #include <microfmt/sinks/tizen_dlog_sink.hpp>
@@ -23,7 +22,7 @@ struct dlog_record {
 
 dlog_record captured_dlog;
 
-void copy_to_buffer(std::string_view text, char *destination,
+void copy_to_buffer(microfmt::string_view text, char *destination,
                     std::size_t capacity, std::size_t &size) noexcept {
   size = text.size() < capacity ? text.size() : capacity;
   for (std::size_t i = 0; i < size; ++i) {
@@ -54,10 +53,12 @@ TEST(TizenDlogSinkTest, MapsSeverityAndForwardsLogRecord) {
   });
 
   EXPECT_EQ(captured_dlog.priority, DLOG_FATAL);
-  EXPECT_EQ(std::string_view(captured_dlog.tag.data(), captured_dlog.tag_size),
+  EXPECT_EQ(microfmt::string_view(captured_dlog.tag.data(),
+                                  captured_dlog.tag_size),
             "microfmt");
   EXPECT_EQ(
-      std::string_view(captured_dlog.message.data(), captured_dlog.message_size),
+      microfmt::string_view(captured_dlog.message.data(),
+                            captured_dlog.message_size),
       "sensor failure");
 }
 

@@ -13,7 +13,7 @@ namespace {
 
 constexpr uintptr_t high_address = UINT64_C(0x123456789ABCDEF0);
 
-std::string_view native_address() {
+microfmt::string_view native_address() {
   return sizeof(uintptr_t) == 8 ? "0x123456789abcdef0" : "0x9abcdef0";
 }
 

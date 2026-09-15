@@ -15,7 +15,7 @@
 
 namespace {
 
-nlohmann::json parse_cbor(std::string_view encoded) {
+nlohmann::json parse_cbor(microfmt::string_view encoded) {
   std::vector<uint8_t> bytes(encoded.begin(), encoded.end());
   return nlohmann::json::from_cbor(bytes);
 }
@@ -59,7 +59,7 @@ TEST(CborWriterTest, EncodesCompactIntegerKey) {
     document.kv(uint32_t{1}, uint8_t{7});
   }
 
-  const std::string_view encoded = output.view();
+  const microfmt::string_view encoded = output.view();
   ASSERT_EQ(encoded.size(), 4U);
   EXPECT_EQ(static_cast<uint8_t>(encoded[0]), 0xBF);
   EXPECT_EQ(static_cast<uint8_t>(encoded[1]), 0x01);

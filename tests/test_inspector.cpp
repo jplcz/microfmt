@@ -473,22 +473,23 @@ TEST(MemoryScanner, ScansRawAddressesAndSuppressesUnsafeRegions) {
   const auto data_type_position = rendered.find("type=user_data");
   const auto data_symbol_position = rendered.find("symbol=global_data");
   const auto data_dump_position = rendered.find("00 01 02 03");
-  EXPECT_NE(data_type_position, std::string_view::npos);
-  EXPECT_NE(data_symbol_position, std::string_view::npos);
-  EXPECT_NE(data_dump_position, std::string_view::npos);
+  EXPECT_NE(data_type_position, microfmt::string_view::npos);
+  EXPECT_NE(data_symbol_position, microfmt::string_view::npos);
+  EXPECT_NE(data_dump_position, microfmt::string_view::npos);
   EXPECT_LT(data_type_position, data_symbol_position);
   EXPECT_LT(data_symbol_position, data_dump_position);
   EXPECT_NE(rendered.find("00 01 02 03 04 05 06 07  08 09 0a 0b 0c 0d 0e 0f "
                           " |................|"),
-            std::string_view::npos);
+            microfmt::string_view::npos);
   EXPECT_NE(rendered.find("40 41 42 43 44 45 46 47  48 49 4a 4b 4c 4d 4e 4f "
                           " |@ABCDEFGHIJKLMNO|"),
-            std::string_view::npos);
-  EXPECT_EQ(rendered.find("50 51 52 53"), std::string_view::npos);
-  EXPECT_NE(rendered.find("type=kernel_code"), std::string_view::npos);
-  EXPECT_NE(rendered.find("symbol=kernel_entry"), std::string_view::npos);
-  EXPECT_EQ(rendered.find("aa bb cc dd"), std::string_view::npos);
-  EXPECT_NE(rendered.find("type=unknown/unmapped"), std::string_view::npos);
+            microfmt::string_view::npos);
+  EXPECT_EQ(rendered.find("50 51 52 53"), microfmt::string_view::npos);
+  EXPECT_NE(rendered.find("type=kernel_code"), microfmt::string_view::npos);
+  EXPECT_NE(rendered.find("symbol=kernel_entry"), microfmt::string_view::npos);
+  EXPECT_EQ(rendered.find("aa bb cc dd"), microfmt::string_view::npos);
+  EXPECT_NE(rendered.find("type=unknown/unmapped"),
+            microfmt::string_view::npos);
   EXPECT_EQ(symbol_context.calls, 2u);
   EXPECT_TRUE(symbol_context.used_external_scratch);
   EXPECT_TRUE(symbol_context.used_external_raw_symbol);
@@ -536,10 +537,10 @@ TEST(MemoryScanner, ScansOrderedAddressRegistersAndAbstractSources) {
       {}, {}, registers, {}, *scanner_context, register_output.as_sink());
 
   const auto register_text = register_output.view();
-  EXPECT_NE(register_text.find("[FP] ->"), std::string_view::npos);
-  EXPECT_NE(register_text.find("[X0] ->"), std::string_view::npos);
+  EXPECT_NE(register_text.find("[FP] ->"), microfmt::string_view::npos);
+  EXPECT_NE(register_text.find("[X0] ->"), microfmt::string_view::npos);
   EXPECT_LT(register_text.find("[FP] ->"), register_text.find("[X0] ->"));
-  EXPECT_EQ(register_text.find("[SP] ->"), std::string_view::npos);
+  EXPECT_EQ(register_text.find("[SP] ->"), microfmt::string_view::npos);
 
   const uintptr_t source_addresses[]{0x4444, 0x5555};
   address_sequence sequence{source_addresses,
@@ -551,9 +552,9 @@ TEST(MemoryScanner, ScansOrderedAddressRegistersAndAbstractSources) {
       {}, {}, source, *scanner_context, source_output.as_sink());
   EXPECT_EQ(sequence.index, 2u);
   EXPECT_NE(source_output.view().find("addr=0x0000000000004444"),
-            std::string_view::npos);
+            microfmt::string_view::npos);
   EXPECT_NE(source_output.view().find("addr=0x0000000000005555"),
-            std::string_view::npos);
+            microfmt::string_view::npos);
 
   microfmt::address_source_ref empty_source;
   microfmt::buffer_sink<32> empty_output;

@@ -6,7 +6,6 @@
 
 #include <array>
 #include <cstddef>
-#include <string_view>
 
 #include <microfmt/log/log_msg.hpp>
 #include <microfmt/sinks/android_log_sink.hpp>
@@ -31,7 +30,7 @@ struct android_record {
 syslog_record captured_syslog;
 android_record captured_android_log;
 
-void copy_to_buffer(std::string_view text, char *destination,
+void copy_to_buffer(microfmt::string_view text, char *destination,
                     std::size_t capacity, std::size_t &size) noexcept {
   size = text.size() < capacity ? text.size() : capacity;
   for (std::size_t i = 0; i < size; ++i) {
@@ -70,8 +69,8 @@ TEST(PlatformLogSinkTest, SyslogMapsLevelAndIncludesLoggerName) {
   output.log(message);
 
   EXPECT_EQ(captured_syslog.priority, LOG_WARNING);
-  EXPECT_EQ(std::string_view(captured_syslog.message.data(),
-                             captured_syslog.message_size),
+  EXPECT_EQ(microfmt::string_view(captured_syslog.message.data(),
+                                  captured_syslog.message_size),
             "[daemon] connection lost");
 }
 
@@ -96,10 +95,10 @@ TEST(PlatformLogSinkTest, AndroidMapsLevelsAndHonorsSinkThreshold) {
   });
 
   EXPECT_EQ(captured_android_log.priority, ANDROID_LOG_ERROR);
-  EXPECT_EQ(std::string_view(captured_android_log.tag.data(),
-                             captured_android_log.tag_size),
+  EXPECT_EQ(microfmt::string_view(captured_android_log.tag.data(),
+                                  captured_android_log.tag_size),
             "microfmt");
-  EXPECT_EQ(std::string_view(captured_android_log.message.data(),
-                             captured_android_log.message_size),
+  EXPECT_EQ(microfmt::string_view(captured_android_log.message.data(),
+                                  captured_android_log.message_size),
             "[sensor] overheat");
 }

@@ -6,7 +6,6 @@
 #include <functional>
 #include <iostream>
 #include <string>
-#include <string_view>
 #include <vector>
 
 #include <microfmt/formatters/hash.hpp>
@@ -95,7 +94,7 @@ void demo_collection_hashing() {
   microfmt::println(" 3. Batch Hashing with Range Views");
   microfmt::println("=================================================");
 
-  std::vector<std::string_view> endpoints = {
+  std::vector<microfmt::string_view> endpoints = {
       "/api/v1/login", "/api/v1/users", "/api/v1/checkout", "/api/v1/health"};
 
   // Transform collection to hash views on the fly

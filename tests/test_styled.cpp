@@ -9,9 +9,9 @@
 namespace {
 
 template <typename... Args>
-std::string_view format_styled(microfmt::buffer_sink<128> &output,
-                               std::string_view fmt,
-                               const Args &...args) {
+microfmt::string_view format_styled(microfmt::buffer_sink<128> &output,
+                                    microfmt::string_view fmt,
+                                    const Args &...args) {
   output.reset();
   microfmt::format_to(output.as_sink(), fmt, args...);
   return output.view();

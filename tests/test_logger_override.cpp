@@ -49,7 +49,7 @@ TEST(LoggerConfigurationTest, DefaultMacrosUseApplicationLoggerOverride) {
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::info);
   EXPECT_EQ(
-      std::string_view(captured.message.data(), captured.message_size),
+      microfmt::string_view(captured.message.data(), captured.message_size),
       "value=42");
 }
 
@@ -62,7 +62,7 @@ TEST(LoggerConfigurationTest, CompileTimeFormatStringsUseLoggerOverloads) {
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::info);
   EXPECT_EQ(
-      std::string_view(captured.message.data(), captured.message_size),
+      microfmt::string_view(captured.message.data(), captured.message_size),
       "value=002a");
 
   captured = {};
@@ -72,7 +72,7 @@ TEST(LoggerConfigurationTest, CompileTimeFormatStringsUseLoggerOverloads) {
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::warn);
   EXPECT_EQ(
-      std::string_view(captured.message.data(), captured.message_size),
+      microfmt::string_view(captured.message.data(), captured.message_size),
       "enabled=true");
 
   captured = {};
@@ -81,7 +81,7 @@ TEST(LoggerConfigurationTest, CompileTimeFormatStringsUseLoggerOverloads) {
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::err);
   EXPECT_EQ(
-      std::string_view(captured.message.data(), captured.message_size),
+      microfmt::string_view(captured.message.data(), captured.message_size),
       "code=2A");
 
   captured = {};
@@ -90,7 +90,7 @@ TEST(LoggerConfigurationTest, CompileTimeFormatStringsUseLoggerOverloads) {
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::debug);
   EXPECT_EQ(
-      std::string_view(captured.message.data(), captured.message_size),
+      microfmt::string_view(captured.message.data(), captured.message_size),
       "ready");
 
   microfmt::log::set_default_logger(nullptr);
@@ -111,7 +111,7 @@ TEST(LoggerConfigurationTest, DefaultLoggerCanBeSetOrCleared) {
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::info);
   EXPECT_EQ(
-      std::string_view(captured.message.data(), captured.message_size),
+      microfmt::string_view(captured.message.data(), captured.message_size),
       "configured=true");
 
   microfmt::log::set_default_logger(nullptr);

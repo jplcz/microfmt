@@ -6,7 +6,6 @@
 
 #include <array>
 #include <cstddef>
-#include <string_view>
 
 #include <microfmt/log/log_msg.hpp>
 #include <microfmt/sinks/systemd_sink.hpp>
@@ -23,7 +22,7 @@ struct journal_record {
 
 journal_record captured_journal;
 
-void copy_to_buffer(std::string_view text, char *destination,
+void copy_to_buffer(microfmt::string_view text, char *destination,
                     std::size_t capacity, std::size_t &size) noexcept {
   size = text.size() < capacity ? text.size() : capacity;
   for (std::size_t i = 0; i < size; ++i) {
@@ -55,11 +54,11 @@ TEST(SystemdSinkTest, MapsSeverityAndForwardsStructuredFields) {
   });
 
   EXPECT_EQ(captured_journal.priority, LOG_ERR);
-  EXPECT_EQ(std::string_view(captured_journal.identifier.data(),
-                             captured_journal.identifier_size),
+  EXPECT_EQ(microfmt::string_view(captured_journal.identifier.data(),
+                                  captured_journal.identifier_size),
             "telemetry");
-  EXPECT_EQ(std::string_view(captured_journal.message.data(),
-                             captured_journal.message_size),
+  EXPECT_EQ(microfmt::string_view(captured_journal.message.data(),
+                                  captured_journal.message_size),
             "sensor timeout");
 }
 

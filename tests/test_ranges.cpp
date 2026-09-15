@@ -7,7 +7,6 @@
 #include <gtest/gtest.h>
 #include <microfmt/microfmt.hpp>
 #include <microfmt/formatters/ranges.hpp>
-#include <string_view>
 
 TEST(JoinTest, EmptyRange) {
   microfmt::buffer_sink<64> buf;
@@ -48,7 +47,7 @@ TEST(JoinTest, CustomDelimiter) {
   EXPECT_EQ(buf.view(), "0:26:43:60:77:94");
 
   buf.reset();
-  const std::string_view tags[] = {"sensor", "temp", "ch1"};
+  const microfmt::string_view tags[] = {"sensor", "temp", "ch1"};
   microfmt::format_to(buf.as_sink(), "{}", microfmt::join(tags, " -> "));
   EXPECT_EQ(buf.view(), "sensor -> temp -> ch1");
 }

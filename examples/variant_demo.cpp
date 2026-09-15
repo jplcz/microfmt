@@ -7,7 +7,6 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -55,7 +54,7 @@ template <> struct formatter<EndOfStream> {
 };
 
 template <> struct formatter<GeoLocation> {
-  std::string_view float_spec{""};
+  microfmt::string_view float_spec{""};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     float_spec = ctx.spec();
@@ -79,11 +78,12 @@ template <> struct formatter<GeoLocation> {
 
 // Stream packet tokens
 using StreamToken =
-    std::variant<HeaderToken, uint32_t, double, std::string_view, EndOfStream>;
+    std::variant<HeaderToken, uint32_t, double, microfmt::string_view,
+                 EndOfStream>;
 
 // Sensor readings and telemetry state
 using TelemetryValue = std::variant<std::monostate, int32_t, double,
-                                    std::string_view, GeoLocation>;
+                                    microfmt::string_view, GeoLocation>;
 
 // Configuration value model
 using ConfigValue = std::variant<bool, int64_t, double, std::string>;
@@ -102,7 +102,7 @@ void demo_stream_tokens_with_runtime_join() {
       uint32_t(0xDEADBEEF),
       uint32_t(0xCAFE),
       3.14159,
-      std::string_view("PAYLOAD_READY"),
+      microfmt::string_view("PAYLOAD_READY"),
       EndOfStream{4096}};
 
   // Default join
@@ -131,7 +131,7 @@ void demo_telemetry_batch_with_monostate() {
                                             int32_t(255),
                                             23.456,
                                             GeoLocation{52.2297, 21.0122},
-                                            std::string_view("SENSOR_OK")};
+                                            microfmt::string_view("SENSOR_OK")};
 
   // Join array elements
   microfmt::println("Readings: {}", microfmt::join(readings, " -> "));
@@ -148,7 +148,8 @@ void demo_compile_time_nttp_join_as() {
   microfmt::println("=================================================");
 
   std::vector<StreamToken> tokens = {uint32_t(0xAA), uint32_t(0xBB),
-                                     uint32_t(0xCC), std::string_view("SYNC")};
+                                     uint32_t(0xCC),
+                                     microfmt::string_view("SYNC")};
 
   // Zero-overhead compile-time delimiter
   microfmt::println("NTTP Joined : {}", microfmt::join_as<" // ">(tokens));

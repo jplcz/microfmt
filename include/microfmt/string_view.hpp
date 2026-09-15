@@ -304,3 +304,15 @@ using string_view = basic_string_view<char>;
 using wstring_view = basic_string_view<wchar_t>;
 
 } // namespace microfmt
+
+namespace std {
+
+template <typename CharT, typename TraitsT>
+struct hash<microfmt::basic_string_view<CharT, TraitsT>> {
+  [[nodiscard]] size_t
+  operator()(microfmt::basic_string_view<CharT, TraitsT> value) const noexcept {
+    return hash<std::basic_string_view<CharT, TraitsT>>{}(value.to_std());
+  }
+};
+
+} // namespace std

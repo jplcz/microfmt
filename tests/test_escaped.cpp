@@ -6,9 +6,6 @@
 #include <gtest/gtest.h>
 #include <microfmt/formatters/escaped.hpp>
 #include <microfmt/microfmt.hpp>
-#include <string_view>
-
-using namespace std::string_view_literals;
 
 TEST(EscapedTest, PrintableAscii) {
   microfmt::buffer_sink<64> buf;
@@ -26,8 +23,8 @@ TEST(EscapedTest, PrintableAscii) {
 TEST(EscapedTest, ControlCharacters) {
   microfmt::buffer_sink<64> buf;
 
-  // Use ""sv literal to include null bytes past \0
-  const auto at_cmd = "AT+CGATT=1\r\n\0OK\t\x1B"sv;
+  const microfmt::string_view at_cmd{"AT+CGATT=1\r\n\0OK\t\x1B",
+                                     sizeof("AT+CGATT=1\r\n\0OK\t\x1B") - 1};
   microfmt::format_to(buf.as_sink(), "{}",
                       microfmt::escaped(at_cmd, /*quote=*/true));
 
@@ -38,7 +35,7 @@ TEST(EscapedTest, QuoteAndBackslashEscaping) {
   microfmt::buffer_sink<64> buf;
 
   // String with nested quotes and backslashes
-  const std::string_view payload = R"(key="val\1")";
+  const microfmt::string_view payload = R"(key="val\1")";
   microfmt::format_to(buf.as_sink(), "{}", microfmt::escaped(payload));
   EXPECT_EQ(buf.view(), "\"key=\\\"val\\\\1\\\"\"");
 }

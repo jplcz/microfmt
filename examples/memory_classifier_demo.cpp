@@ -7,7 +7,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <string_view>
 
 struct demo_classifier_tag {};
 
@@ -38,7 +37,7 @@ struct microfmt::memory_classifier_traits<demo_classifier_tag> {
   }
 };
 
-constexpr std::string_view
+constexpr microfmt::string_view
 region_name(microfmt::memory_region_type type) noexcept {
   using enum microfmt::memory_region_type;
   switch (type) {

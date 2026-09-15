@@ -56,9 +56,10 @@ TEST(JsonFormatterTest, HandlesMinimumSignedIntegerWithoutOverflow) {
 
 TEST(JsonFormatterTest, ComplexEscapedPayloadRoundTrips) {
   const char *null_text = nullptr;
-  const std::string_view escaped = "quote=\" slash=\\ newline=\n tab=\t "
-                                   "backspace=\b formfeed=\f control=\x01";
-  const std::string_view unicode = "temperature: 23 \xC2\xB0" "C";
+  const microfmt::string_view escaped =
+      "quote=\" slash=\\ newline=\n tab=\t "
+      "backspace=\b formfeed=\f control=\x01";
+  const microfmt::string_view unicode = "temperature: 23 \xC2\xB0" "C";
   microfmt::buffer_sink<2048> output;
   {
     microfmt::json::object_writer document(output.as_sink());
@@ -90,12 +91,14 @@ TEST(JsonFormatterTest, ComplexEscapedPayloadRoundTrips) {
 
   EXPECT_EQ(document["empty"], "");
   EXPECT_TRUE(document["null_text"].is_null());
-  EXPECT_EQ(document["escaped"], escaped);
+  EXPECT_EQ(document["escaped"].get<std::string>(),
+            std::string(escaped.data(), escaped.size()));
   EXPECT_EQ(document["minimum"], std::numeric_limits<int64_t>::min());
   EXPECT_EQ(document["maximum"], std::numeric_limits<uint64_t>::max());
   EXPECT_EQ(document["metadata"]["path"], "/dev/sensor\\primary");
   EXPECT_EQ(document["metadata"]["enabled"], false);
-  EXPECT_EQ(document["metadata"]["unicode"], unicode);
+  EXPECT_EQ(document["metadata"]["unicode"].get<std::string>(),
+            std::string(unicode.data(), unicode.size()));
   EXPECT_TRUE(document["readings"][0].is_null());
   EXPECT_TRUE(document["readings"][1].is_null());
   EXPECT_EQ(document["readings"][2], "");
@@ -111,7 +114,7 @@ TEST(JsonFormatterTest, EmbedsLambdaGeneratedObjectInFormatString) {
       }));
 
   const auto document = nlohmann::json::parse(
-      std::string(formatted.view().substr(std::string_view("event=").size())));
+      std::string(formatted.view().substr(microfmt::string_view("event=").size())));
   EXPECT_EQ(document["kind"], "boot");
   EXPECT_EQ(document["sequence"], 7);
 }
