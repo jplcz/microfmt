@@ -7,6 +7,7 @@
 /** @file span.hpp
  * @brief Minimal C++17-compatible non-owning view of contiguous elements. */
 
+#include "assert.hpp"
 #include <cstddef>
 #include <type_traits>
 
@@ -54,7 +55,10 @@ public:
    * @param size Number of elements in the buffer.
    */
   constexpr span(T *ptr, std::size_t size) noexcept
-      : m_ptr(ptr), m_size(size) {}
+      : m_ptr(ptr), m_size(size) {
+    MICROFMT_DEBUG_ASSERT(ptr != nullptr || size == 0,
+                          "non-empty span requires non-null data");
+  }
 
   /**
    * @brief Constructs a span from a pointer pair (range).
@@ -62,7 +66,15 @@ public:
    * @param last Pointer to one past the last element.
    */
   constexpr span(T *first, T *last) noexcept
-      : m_ptr(first), m_size(static_cast<std::size_t>(last - first)) {}
+      : m_ptr(first), m_size(0) {
+    MICROFMT_DEBUG_ASSERT(first != nullptr || last == nullptr,
+                          "non-empty span requires non-null data");
+    MICROFMT_DEBUG_ASSERT(last >= first,
+                          "span end must not precede span begin");
+    if (first != last) {
+      m_size = static_cast<std::size_t>(last - first);
+    }
+  }
 
   /**
    * @brief Constructs a span from a raw C-style array.
@@ -106,12 +118,16 @@ public:
   [[nodiscard]] constexpr span<T>
   subspan(std::size_t offset,
           std::size_t count = static_cast<std::size_t>(-1)) const noexcept {
+    MICROFMT_DEBUG_ASSERT(offset <= m_size,
+                          "subspan offset exceeds span size");
     if (offset > m_size) {
-      return span<T>(m_ptr + m_size, static_cast<std::size_t>(0));
+      return span<T>(m_size == 0 ? m_ptr : m_ptr + m_size, std::size_t{0});
     }
-    std::size_t rem = m_size - offset;
-    std::size_t actual_count = (count < rem) ? count : rem;
-    return span<T>(m_ptr + offset, actual_count);
+    const std::size_t rem = m_size - offset;
+    MICROFMT_DEBUG_ASSERT(count == static_cast<std::size_t>(-1) || count <= rem,
+                          "subspan count exceeds remaining span size");
+    const std::size_t actual_count = (count < rem) ? count : rem;
+    return span<T>(offset == 0 ? m_ptr : m_ptr + offset, actual_count);
   }
 
   /**
@@ -121,12 +137,16 @@ public:
    */
   template <std::size_t Count>
   [[nodiscard]] constexpr span<T> subspan(std::size_t offset) const noexcept {
+    MICROFMT_DEBUG_ASSERT(offset <= m_size,
+                          "subspan offset exceeds span size");
     if (offset > m_size) {
-      return span<T>(m_ptr + m_size, static_cast<std::size_t>(0));
+      return span<T>(m_size == 0 ? m_ptr : m_ptr + m_size, std::size_t{0});
     }
-    std::size_t rem = m_size - offset;
-    std::size_t actual_count = (Count < rem) ? Count : rem;
-    return span<T>(m_ptr + offset, actual_count);
+    const std::size_t rem = m_size - offset;
+    MICROFMT_DEBUG_ASSERT(Count <= rem,
+                          "subspan count exceeds remaining span size");
+    const std::size_t actual_count = (Count < rem) ? Count : rem;
+    return span<T>(offset == 0 ? m_ptr : m_ptr + offset, actual_count);
   }
 
   /**
@@ -153,6 +173,7 @@ public:
    * @return Reference to the element at position @p idx.
    */
   [[nodiscard]] constexpr T &operator[](std::size_t idx) const noexcept {
+    MICROFMT_DEBUG_ASSERT(idx < m_size, "span index out of bounds");
     return m_ptr[idx];
   }
 
@@ -164,7 +185,9 @@ public:
   /**
    * @brief Returns an iterator to one past the last element of the span.
    */
-  [[nodiscard]] constexpr T *end() const noexcept { return m_ptr + m_size; }
+  [[nodiscard]] constexpr T *end() const noexcept {
+    return m_size == 0 ? m_ptr : m_ptr + m_size;
+  }
 
   /**
    * @brief Returns a const iterator to the first element of the span.
@@ -175,7 +198,7 @@ public:
    * @brief Returns a const iterator to one past the last element of the span.
    */
   [[nodiscard]] constexpr const T *cend() const noexcept {
-    return m_ptr + m_size;
+    return m_size == 0 ? m_ptr : m_ptr + m_size;
   }
 
 private:

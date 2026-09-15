@@ -535,6 +535,8 @@ __attribute__((always_inline))
 inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
                                 uint32_t radix, bool uppercase,
                                 int min_width) noexcept {
+  MICROFMT_DEBUG_ASSERT(radix == 2 || radix == 10 || radix == 16,
+                        "integer radix must be 2, 10, or 16");
   char buf[24]; // Reclaimed immediately upon leaf exit
   size_t idx = sizeof(buf);
 
