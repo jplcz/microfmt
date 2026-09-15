@@ -912,8 +912,9 @@ TEST(RegisterContextRef, DispatchesTypedAndRawReadsAndWrites) {
   EXPECT_EQ(state.value & UINT64_C(0xffff), UINT64_C(0x1234));
 
   EXPECT_TRUE(context.space());
-  EXPECT_EQ(context.scratch().data(), scratch);
-  EXPECT_EQ(context.scratch().size(), sizeof(scratch));
+  const auto context_scratch = context.scratch();
+  EXPECT_EQ(context_scratch.data(), scratch);
+  EXPECT_EQ(context_scratch.size(), sizeof(scratch));
 }
 
 TEST(RegisterContextRef, PropagatesCallbackFailuresAndSupportsConstState) {

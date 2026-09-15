@@ -77,15 +77,29 @@ if (auto payload = input.try_substr(header_size)) {
 result with `has_value()` or its boolean conversion before accessing the
 active alternative.
 
+`microfmt::span<T>` follows the same model:
+
+| Tier | Examples |
+|---|---|
+| Checked | `operator[]`, `front()`, `back()`, `subspan()`, `first()`, `last()` |
+| Non-trapping | `try_at()`, `try_front()`, `try_back()`, `try_subspan()`, `try_first()`, `try_last()` |
+| Explicitly unsafe | `unsafe_at()`, `unsafe_front()`, `unsafe_back()`, `unsafe_subspan()`, `unsafe_first()`, `unsafe_last()` |
+
+Fallible span operations return `microfmt::expected` with a `span_error`.
+`as_bytes()` creates a read-only byte view without copying the represented
+storage.
+
 ## Debug checks and unsafe operations
 
 `MICROFMT_DEBUG_ASSERT` protects lower-level operations whose contracts are
 intended to be established by nearby code. It is active in debug builds and
 when `MICROFMT_DEBUG` is defined, but it is disabled by `NDEBUG` otherwise.
 
-`microfmt::span<T>` indexing and construction use this debug-check tier.
-`microfmt::string_view` names the corresponding fast paths with an
-`unsafe_*` prefix so security-sensitive call sites remain visible in review.
+Only operations explicitly named `unsafe_*` use this debug-check tier.
+Checked `microfmt::span<T>` indexing and subviews remain hardened in release
+builds. Both `microfmt::span<T>` and `microfmt::string_view` name their fast
+paths with an `unsafe_*` prefix so security-sensitive call sites remain
+visible in review.
 
 ```cpp
 if (!field.empty()) {
@@ -102,8 +116,9 @@ trust boundaries.
 
 `microfmt::expected` deletes dereference and pointer-style accessors on
 temporary result objects where the returned value could dangle after the full
-expression. `microfmt::string_view` also rejects construction from a temporary
-owning string.
+expression. `microfmt::span<T>` similarly rejects indexing, pointer access,
+and iterator access on temporary span objects. `microfmt::string_view` also
+rejects construction from a temporary owning string.
 
 ```cpp
 std::string storage = load_name();

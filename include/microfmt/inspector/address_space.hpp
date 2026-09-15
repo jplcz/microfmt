@@ -471,7 +471,8 @@ template <> struct formatter<remote_string_view> {
       if (chunk_len > 0) {
         size_t limit_left = view.max_limit() - total;
         size_t to_write = (chunk_len > limit_left) ? limit_left : chunk_len;
-        out.write(microfmt::string_view(view.scratch().data(), to_write));
+        const auto scratch = view.scratch();
+        out.write(microfmt::string_view(scratch.data(), to_write));
         total += to_write;
         cur += to_write;
       }

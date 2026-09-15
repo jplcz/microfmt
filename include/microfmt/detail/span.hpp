@@ -5,10 +5,14 @@
 #pragma once
 
 /** @file span.hpp
- * @brief Minimal C++17-compatible non-owning view of contiguous elements. */
+ * @brief Hardened C++17-compatible non-owning contiguous view. */
 
+#include "../expected.hpp"
+#include "../rvalue_safety.hpp"
 #include "assert.hpp"
 #include <cstddef>
+#include <functional>
+#include <iterator>
 #include <type_traits>
 
 #if __has_include(<span>) && __cplusplus >= 202002L
@@ -18,16 +22,22 @@
 #define MICROFMT_HAS_STD_SPAN 0
 #endif
 
-#if MICROFMT_HAS_STD_SPAN
-#include <span>
-#endif
-
 namespace microfmt {
+
+enum class span_error {
+  out_of_bounds,
+  container_empty,
+};
 
 /**
  * @brief A lightweight, dynamic-extent view over a contiguous element range.
  *
- * This C++17 fallback interoperates with @c std::span when it is available.
+ * Accessors are ref-qualified to prevent pointers, references, and iterators
+ * from being borrowed from temporary span objects. Checked access remains
+ * enabled in release builds unless assertions are explicitly disabled.
+ *
+ * This C++17 implementation interoperates with @c std::span when it is
+ * available.
  *
  * @tparam T Element type, optionally const-qualified.
  */
@@ -43,6 +53,10 @@ public:
   using const_reference = const T &;
   using iterator = T *;
   using const_iterator = const T *;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+  MICROFMT_BLOCK_RVALUE_ACCESS(T);
 
   /**
    * @brief Constructs an empty span with `nullptr` data and `0` size.
@@ -55,10 +69,7 @@ public:
    * @param size Number of elements in the buffer.
    */
   constexpr span(T *ptr, std::size_t size) noexcept
-      : m_ptr(ptr), m_size(size) {
-    MICROFMT_DEBUG_ASSERT(ptr != nullptr || size == 0,
-                          "non-empty span requires non-null data");
-  }
+      : m_ptr(ptr), m_size(ptr == nullptr ? 0 : size) {}
 
   /**
    * @brief Constructs a span from a pointer pair (range).
@@ -67,11 +78,13 @@ public:
    */
   constexpr span(T *first, T *last) noexcept
       : m_ptr(first), m_size(0) {
-    MICROFMT_DEBUG_ASSERT(first != nullptr || last == nullptr,
-                          "non-empty span requires non-null data");
-    MICROFMT_DEBUG_ASSERT(last >= first,
-                          "span end must not precede span begin");
-    if (first != last) {
+    MICROFMT_ASSERT(first != nullptr || last == nullptr,
+                    "non-empty span requires non-null data");
+    MICROFMT_ASSERT(last != nullptr || first == nullptr,
+                    "span end must not be null");
+    if (first != nullptr && last != nullptr) {
+      MICROFMT_ASSERT(last >= first,
+                      "span end must not precede span begin");
       m_size = static_cast<std::size_t>(last - first);
     }
   }
@@ -83,6 +96,16 @@ public:
    */
   template <std::size_t N>
   constexpr span(T (&arr)[N]) noexcept : m_ptr(arr), m_size(N) {}
+
+  /**
+   * @brief Constructs a span from a compatible microfmt span.
+   * @tparam U Source element type.
+   * @param other Source span.
+   */
+  template <typename U,
+            std::enable_if_t<std::is_convertible_v<U (*)[], T (*)[]>, int> = 0>
+  constexpr span(const span<U> &other) noexcept
+      : m_ptr(other.data()), m_size(other.size()) {}
 
 #if MICROFMT_HAS_STD_SPAN
   /**
@@ -102,9 +125,11 @@ public:
    * @return An equivalent dynamic-extent `std::span<T>` covering the same
    * buffer.
    */
-  [[nodiscard]] constexpr operator std::span<T>() const noexcept {
+  [[nodiscard]] constexpr operator std::span<T>() const & noexcept {
     return std::span<T>(m_ptr, m_size);
   }
+
+  operator std::span<T>() const && = delete;
 #endif
 
   /**
@@ -117,17 +142,14 @@ public:
    */
   [[nodiscard]] constexpr span<T>
   subspan(std::size_t offset,
-          std::size_t count = static_cast<std::size_t>(-1)) const noexcept {
-    MICROFMT_DEBUG_ASSERT(offset <= m_size,
-                          "subspan offset exceeds span size");
-    if (offset > m_size) {
-      return span<T>(m_size == 0 ? m_ptr : m_ptr + m_size, std::size_t{0});
-    }
+          std::size_t count = static_cast<std::size_t>(-1)) const & noexcept {
+    MICROFMT_ASSERT(offset <= m_size, "subspan offset exceeds span size");
     const std::size_t rem = m_size - offset;
-    MICROFMT_DEBUG_ASSERT(count == static_cast<std::size_t>(-1) || count <= rem,
-                          "subspan count exceeds remaining span size");
-    const std::size_t actual_count = (count < rem) ? count : rem;
-    return span<T>(offset == 0 ? m_ptr : m_ptr + offset, actual_count);
+    const std::size_t actual_count =
+        count == static_cast<std::size_t>(-1) ? rem : count;
+    MICROFMT_ASSERT(actual_count <= rem,
+                    "subspan count exceeds remaining span size");
+    return span<T>(pointer_at(offset), actual_count);
   }
 
   /**
@@ -136,24 +158,74 @@ public:
    * @param offset Zero-based index at which the subspan begins.
    */
   template <std::size_t Count>
-  [[nodiscard]] constexpr span<T> subspan(std::size_t offset) const noexcept {
+  [[nodiscard]] constexpr span<T>
+  subspan(std::size_t offset) const & noexcept {
+    MICROFMT_ASSERT(offset <= m_size, "subspan offset exceeds span size");
+    const std::size_t rem = m_size - offset;
+    MICROFMT_ASSERT(Count <= rem,
+                    "subspan count exceeds remaining span size");
+    return span<T>(pointer_at(offset), Count);
+  }
+
+  /**
+   * @brief Attempts to create a subspan without trapping.
+   * @param offset Zero-based starting index.
+   * @param count Requested number of elements, or all remaining elements.
+   * @return The requested span or @ref span_error::out_of_bounds.
+   */
+  [[nodiscard]] expected<span<T>, span_error>
+  try_subspan(std::size_t offset,
+              std::size_t count = static_cast<std::size_t>(-1)) const
+      & noexcept {
+    if (offset > m_size)
+      return unexpected(span_error::out_of_bounds);
+    const std::size_t rem = m_size - offset;
+    const std::size_t actual_count =
+        count == static_cast<std::size_t>(-1) ? rem : count;
+    if (actual_count > rem)
+      return unexpected(span_error::out_of_bounds);
+    return span<T>(pointer_at(offset), actual_count);
+  }
+
+  /**
+   * @brief Creates a subspan with debug-only precondition checks.
+   */
+  [[nodiscard]] constexpr span<T>
+  unsafe_subspan(std::size_t offset,
+                 std::size_t count = static_cast<std::size_t>(-1)) const
+      & noexcept {
     MICROFMT_DEBUG_ASSERT(offset <= m_size,
                           "subspan offset exceeds span size");
-    if (offset > m_size) {
-      return span<T>(m_size == 0 ? m_ptr : m_ptr + m_size, std::size_t{0});
-    }
     const std::size_t rem = m_size - offset;
-    MICROFMT_DEBUG_ASSERT(Count <= rem,
+    const std::size_t actual_count =
+        count == static_cast<std::size_t>(-1) ? rem : count;
+    MICROFMT_DEBUG_ASSERT(actual_count <= rem,
                           "subspan count exceeds remaining span size");
-    const std::size_t actual_count = (Count < rem) ? Count : rem;
-    return span<T>(offset == 0 ? m_ptr : m_ptr + offset, actual_count);
+    return span<T>(pointer_at(offset), actual_count);
   }
 
   /**
    * @brief Returns a direct pointer to the beginning of the contiguous buffer.
    * @return Raw pointer to the elements, or `nullptr` if empty.
    */
-  [[nodiscard]] constexpr T *data() const noexcept { return m_ptr; }
+  [[nodiscard]] constexpr T *data() const & noexcept { return m_ptr; }
+
+  /**
+   * @brief Returns the data pointer when the span is non-empty.
+   */
+  [[nodiscard]] expected<T *, span_error> try_data() const & noexcept {
+    if (empty())
+      return unexpected(span_error::container_empty);
+    return m_ptr;
+  }
+
+  /**
+   * @brief Returns the data pointer with a debug-only non-empty check.
+   */
+  [[nodiscard]] constexpr T *unsafe_data() const & noexcept {
+    MICROFMT_DEBUG_ASSERT(!empty(), "span has no data");
+    return m_ptr;
+  }
 
   /**
    * @brief Returns the number of elements in the span.
@@ -162,46 +234,188 @@ public:
   [[nodiscard]] constexpr std::size_t size() const noexcept { return m_size; }
 
   /**
+   * @brief Returns the size of the viewed range in bytes.
+   */
+  [[nodiscard]] constexpr std::size_t size_bytes() const noexcept {
+    return m_size * sizeof(T);
+  }
+
+  /**
    * @brief Checks if the span contains zero elements.
    * @return `true` if `size() == 0`, `false` otherwise.
    */
   [[nodiscard]] constexpr bool empty() const noexcept { return m_size == 0; }
 
   /**
-   * @brief Accesses an element at a given index without bounds checking.
+   * @brief Accesses an element with an always-on bounds check.
    * @param idx Zero-based index of the element to access.
    * @return Reference to the element at position @p idx.
    */
-  [[nodiscard]] constexpr T &operator[](std::size_t idx) const noexcept {
+  [[nodiscard]] constexpr T &operator[](std::size_t idx) const & noexcept {
+    MICROFMT_ASSERT(idx < m_size, "span index out of bounds");
+    return m_ptr[idx];
+  }
+
+  /**
+   * @brief Attempts to access an element without trapping.
+   */
+  [[nodiscard]] expected<std::reference_wrapper<T>, span_error>
+  try_at(std::size_t idx) const & noexcept {
+    if (idx >= m_size)
+      return unexpected(span_error::out_of_bounds);
+    return std::ref(m_ptr[idx]);
+  }
+
+  /**
+   * @brief Accesses an element with a debug-only bounds check.
+   */
+  [[nodiscard]] constexpr T &unsafe_at(std::size_t idx) const & noexcept {
     MICROFMT_DEBUG_ASSERT(idx < m_size, "span index out of bounds");
     return m_ptr[idx];
+  }
+
+  [[nodiscard]] expected<std::reference_wrapper<T>, span_error>
+  try_front() const & noexcept {
+    if (empty())
+      return unexpected(span_error::container_empty);
+    return std::ref(*m_ptr);
+  }
+
+  [[nodiscard]] expected<std::reference_wrapper<T>, span_error>
+  try_back() const & noexcept {
+    if (empty())
+      return unexpected(span_error::container_empty);
+    return std::ref(m_ptr[m_size - 1]);
+  }
+
+  [[nodiscard]] constexpr T &front() const & noexcept {
+    MICROFMT_ASSERT(!empty(), "front() called on empty span");
+    return *m_ptr;
+  }
+
+  [[nodiscard]] constexpr T &back() const & noexcept {
+    MICROFMT_ASSERT(!empty(), "back() called on empty span");
+    return m_ptr[m_size - 1];
+  }
+
+  [[nodiscard]] constexpr T &unsafe_front() const & noexcept {
+    MICROFMT_DEBUG_ASSERT(!empty(), "front() called on empty span");
+    return *m_ptr;
+  }
+
+  T &unsafe_front() const && = delete;
+
+  [[nodiscard]] constexpr T &unsafe_back() const & noexcept {
+    MICROFMT_DEBUG_ASSERT(!empty(), "back() called on empty span");
+    return m_ptr[m_size - 1];
+  }
+
+  T &unsafe_back() const && = delete;
+
+  [[nodiscard]] constexpr span<T> first(std::size_t count) const & noexcept {
+    MICROFMT_ASSERT(count <= m_size, "first count exceeds span size");
+    return span<T>(m_ptr, count);
+  }
+
+  [[nodiscard]] constexpr span<T> last(std::size_t count) const & noexcept {
+    MICROFMT_ASSERT(count <= m_size, "last count exceeds span size");
+    return span<T>(pointer_at(m_size - count), count);
+  }
+
+  [[nodiscard]] expected<span<T>, span_error>
+  try_first(std::size_t count) const & noexcept {
+    if (count > m_size)
+      return unexpected(span_error::out_of_bounds);
+    return span<T>(m_ptr, count);
+  }
+
+  [[nodiscard]] expected<span<T>, span_error>
+  try_last(std::size_t count) const & noexcept {
+    if (count > m_size)
+      return unexpected(span_error::out_of_bounds);
+    return span<T>(pointer_at(m_size - count), count);
+  }
+
+  [[nodiscard]] constexpr span<T>
+  unsafe_first(std::size_t count) const & noexcept {
+    MICROFMT_DEBUG_ASSERT(count <= m_size,
+                          "first count exceeds span size");
+    return span<T>(m_ptr, count);
+  }
+
+  [[nodiscard]] constexpr span<T>
+  unsafe_last(std::size_t count) const & noexcept {
+    MICROFMT_DEBUG_ASSERT(count <= m_size, "last count exceeds span size");
+    return span<T>(pointer_at(m_size - count), count);
+  }
+
+  /**
+   * @brief Returns a read-only byte view of the represented range.
+   */
+  [[nodiscard]] span<const std::byte> as_bytes() const & noexcept {
+    return span<const std::byte>(
+        reinterpret_cast<const std::byte *>(m_ptr), size_bytes());
   }
 
   /**
    * @brief Returns an iterator to the first element of the span.
    */
-  [[nodiscard]] constexpr T *begin() const noexcept { return m_ptr; }
+  [[nodiscard]] constexpr iterator begin() & noexcept { return m_ptr; }
+  [[nodiscard]] constexpr iterator begin() const & noexcept {
+    return m_ptr;
+  }
 
   /**
    * @brief Returns an iterator to one past the last element of the span.
    */
-  [[nodiscard]] constexpr T *end() const noexcept {
-    return m_size == 0 ? m_ptr : m_ptr + m_size;
+  [[nodiscard]] constexpr iterator end() & noexcept {
+    return pointer_at(m_size);
+  }
+  [[nodiscard]] constexpr iterator end() const & noexcept {
+    return pointer_at(m_size);
+  }
+
+  [[nodiscard]] constexpr reverse_iterator rbegin() & noexcept {
+    return reverse_iterator(end());
+  }
+  [[nodiscard]] constexpr reverse_iterator rbegin() const & noexcept {
+    return reverse_iterator(end());
+  }
+
+  [[nodiscard]] constexpr reverse_iterator rend() & noexcept {
+    return reverse_iterator(begin());
+  }
+  [[nodiscard]] constexpr reverse_iterator rend() const & noexcept {
+    return reverse_iterator(begin());
   }
 
   /**
    * @brief Returns a const iterator to the first element of the span.
    */
-  [[nodiscard]] constexpr const T *cbegin() const noexcept { return m_ptr; }
+  [[nodiscard]] constexpr const_iterator cbegin() const & noexcept {
+    return m_ptr;
+  }
 
   /**
    * @brief Returns a const iterator to one past the last element of the span.
    */
-  [[nodiscard]] constexpr const T *cend() const noexcept {
-    return m_size == 0 ? m_ptr : m_ptr + m_size;
+  [[nodiscard]] constexpr const_iterator cend() const & noexcept {
+    return pointer_at(m_size);
+  }
+
+  [[nodiscard]] constexpr const_reverse_iterator crbegin() const & noexcept {
+    return const_reverse_iterator(cend());
+  }
+
+  [[nodiscard]] constexpr const_reverse_iterator crend() const & noexcept {
+    return const_reverse_iterator(cbegin());
   }
 
 private:
+  [[nodiscard]] constexpr T *pointer_at(std::size_t offset) const noexcept {
+    return offset == 0 ? m_ptr : m_ptr + offset;
+  }
+
   T *m_ptr;
   std::size_t m_size;
 };
