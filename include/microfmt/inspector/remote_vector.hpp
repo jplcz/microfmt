@@ -151,11 +151,11 @@ struct vector_layout_traits_impl {
           [](const void *state, address_space_ref space, span<std::byte>,
              size_t &out_size) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-             uintptr_t size_addr =
-                 s->container_addr + static_cast<uintptr_t>(s->s_off);
-             RemoteSize remote_sz{};
-             if (!space.read(size_addr, remote_sz))
-               return false;
+            uintptr_t size_addr =
+                s->container_addr + static_cast<uintptr_t>(s->s_off);
+            RemoteSize remote_sz{};
+            if (!space.read(size_addr, remote_sz))
+              return false;
             out_size = static_cast<size_t>(remote_sz);
             return true;
           },
