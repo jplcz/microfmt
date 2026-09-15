@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 #include <gtest/gtest.h>
+#include <microfmt/inspector/address_translator.hpp>
 #include <microfmt/inspector/fp_unwinder.hpp>
 #include <microfmt/inspector/register_context.hpp>
 #include <microfmt/inspector/register_view.hpp>
@@ -18,6 +19,67 @@
 #include <cstring>
 #include <memory>
 
+struct stateless_translator_tag {};
+struct stateful_translator_tag {};
+
+struct translator_context {
+  uintptr_t virtual_base;
+  uintptr_t physical_base;
+  size_t size;
+  uint8_t space_id;
+  mutable size_t calls{0};
+  mutable uintptr_t last_virtual_address{0};
+};
+
+template <>
+struct microfmt::address_translator_traits<stateless_translator_tag> {
+  using context_type = void;
+
+  static bool translate(const void *, uintptr_t virtual_address,
+                        microfmt::translation_attributes &attributes) noexcept {
+    if (virtual_address < 0x1000 || virtual_address >= 0x2000)
+      return false;
+    attributes = {.physical_address = virtual_address + 0x8000,
+                  .space_id = 1,
+                  .is_secure = false,
+                  .readable = true,
+                  .writable = false,
+                  .executable = true,
+                  .user_accessible = true};
+    return true;
+  }
+};
+
+template <>
+struct microfmt::address_translator_traits<stateful_translator_tag> {
+  using context_type = translator_context;
+
+  static bool translate(const void *opaque_context, uintptr_t virtual_address,
+                        microfmt::translation_attributes &attributes) noexcept {
+    if (!opaque_context)
+      return false;
+    const auto &context =
+        *static_cast<const translator_context *>(opaque_context);
+    ++context.calls;
+    context.last_virtual_address = virtual_address;
+
+    if (virtual_address < context.virtual_base)
+      return false;
+    const uintptr_t offset = virtual_address - context.virtual_base;
+    if (offset >= context.size)
+      return false;
+
+    attributes = {.physical_address = context.physical_base + offset,
+                  .space_id = context.space_id,
+                  .is_secure = true,
+                  .readable = true,
+                  .writable = true,
+                  .executable = false,
+                  .user_accessible = false};
+    return true;
+  }
+};
+
 namespace {
 
 template <typename T> uintptr_t address_of(const T &object) noexcept {
@@ -26,6 +88,81 @@ template <typename T> uintptr_t address_of(const T &object) noexcept {
 
 microfmt::address_space_ref local_space() {
   return microfmt::address_space_ref(microfmt::local_space_tag{});
+}
+
+TEST(AddressTranslatorRef, ReportsAttributeValidity) {
+  microfmt::translation_attributes attributes;
+  EXPECT_FALSE(attributes.is_valid());
+
+  attributes.readable = true;
+  EXPECT_TRUE(attributes.is_valid());
+  attributes.readable = false;
+  attributes.writable = true;
+  EXPECT_TRUE(attributes.is_valid());
+  attributes.writable = false;
+  attributes.executable = true;
+  EXPECT_TRUE(attributes.is_valid());
+}
+
+TEST(AddressTranslatorRef, HandlesEmptyAndStatelessTranslators) {
+  microfmt::address_translator_ref empty;
+  EXPECT_FALSE(empty);
+
+  microfmt::translation_attributes attributes{
+      .physical_address = 0x55, .readable = true};
+  EXPECT_FALSE(empty.translate(0x1000, attributes));
+  EXPECT_EQ(attributes.physical_address, 0x55u);
+
+  microfmt::address_translator_ref translator(stateless_translator_tag{});
+  EXPECT_TRUE(translator);
+  EXPECT_TRUE(translator.translate(0x1234, attributes));
+  EXPECT_EQ(attributes.physical_address, 0x9234u);
+  EXPECT_EQ(attributes.space_id, 1u);
+  EXPECT_FALSE(attributes.is_secure);
+  EXPECT_TRUE(attributes.readable);
+  EXPECT_FALSE(attributes.writable);
+  EXPECT_TRUE(attributes.executable);
+  EXPECT_TRUE(attributes.user_accessible);
+
+  auto made =
+      microfmt::address_translator_ref::make<stateless_translator_tag>();
+  attributes = {};
+  EXPECT_TRUE(made.translate(0x1fff, attributes));
+  EXPECT_EQ(attributes.physical_address, 0x9fffu);
+  EXPECT_FALSE(made.translate(0x2000, attributes));
+}
+
+TEST(AddressTranslatorRef, ForwardsStateAndPropagatesFailures) {
+  translator_context context{.virtual_base = 0x4000,
+                             .physical_base = 0x100000,
+                             .size = 0x2000,
+                             .space_id = 7};
+  microfmt::address_translator_ref translator(stateful_translator_tag{},
+                                               context);
+  EXPECT_TRUE(translator);
+
+  microfmt::translation_attributes attributes;
+  EXPECT_TRUE(translator.translate(0x5234, attributes));
+  EXPECT_EQ(context.calls, 1u);
+  EXPECT_EQ(context.last_virtual_address, 0x5234u);
+  EXPECT_EQ(attributes.physical_address, 0x101234u);
+  EXPECT_EQ(attributes.space_id, 7u);
+  EXPECT_TRUE(attributes.is_secure);
+  EXPECT_TRUE(attributes.readable);
+  EXPECT_TRUE(attributes.writable);
+  EXPECT_FALSE(attributes.executable);
+  EXPECT_FALSE(attributes.user_accessible);
+
+  attributes = {.physical_address = 0xabc};
+  EXPECT_FALSE(translator.translate(0x3fff, attributes));
+  EXPECT_EQ(attributes.physical_address, 0xabcu);
+  EXPECT_FALSE(translator.translate(0x6000, attributes));
+  EXPECT_EQ(context.calls, 3u);
+
+  auto made =
+      microfmt::address_translator_ref::make<stateful_translator_tag>(context);
+  EXPECT_TRUE(made.translate(0x4000, attributes));
+  EXPECT_EQ(attributes.physical_address, 0x100000u);
 }
 
 struct fake_register_state {
