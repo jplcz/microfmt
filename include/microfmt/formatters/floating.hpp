@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file floating.hpp @brief Floating-point formatting backed by printf-style
+ * specifiers. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <cstdio>

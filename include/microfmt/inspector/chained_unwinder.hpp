@@ -1,5 +1,8 @@
 #pragma once
 
+/** @file chained_unwinder.hpp @brief Cascaded/tiered frame unwinder combining
+ * EXIDX, DWARF CFI, frame pointer, and unwind-hint strategies. */
+
 #include "frame_pointer.hpp"
 #include "unwind_hint.hpp"
 #include <cstdint>

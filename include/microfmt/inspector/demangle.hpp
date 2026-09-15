@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file demangle.hpp @brief Zero-allocation Itanium (GCC/Clang) name
+ * demangler. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <cstdint>

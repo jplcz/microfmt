@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file bintime.hpp @brief FreeBSD `bintime` and `sbintime_t` time formatting
+ * views. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <cstdint>

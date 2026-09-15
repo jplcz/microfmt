@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: MIT
 
 #pragma once
+
+/** @file arm_extab_decoder.hpp @brief `.ARM.extab` unwind descriptor
+ * resolution. */
+
 #include "arm_exidx_decoder.hpp"
 #include "arm_exidx_search.hpp"
 #include <cstdint>

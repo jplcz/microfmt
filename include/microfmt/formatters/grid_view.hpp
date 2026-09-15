@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file grid_view.hpp @brief Register grid and field descriptor formatting
+ * views. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <cstdint>

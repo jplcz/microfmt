@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file posix_time.hpp @brief POSIX `struct timespec` and `struct timeval`
+ * formatting views. */
+
 #include "../microfmt.hpp"
 #include <cstdint>
 #include <type_traits>

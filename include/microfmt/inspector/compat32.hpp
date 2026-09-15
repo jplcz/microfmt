@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file compat32.hpp @brief 32-bit compatibility pointers and remote view
+ * helpers for 64-bit hosts. */
+
 #include "address_space.hpp"
 #include <cstdint>
 #include <type_traits>

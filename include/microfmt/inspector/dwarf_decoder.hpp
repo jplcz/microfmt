@@ -1,5 +1,8 @@
 #pragma once
 
+/** @file dwarf_decoder.hpp @brief DWARF CFI (.debug_frame / .eh_frame) decoder
+ * and frame unwinder. */
+
 #include "address_space.hpp"
 #include "dwarf_abi.hpp"
 #include "elf_enumerator.hpp"

@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file variant.hpp @brief `std::variant` and non-owning variant view
+ * formatting. */
+
 #include "../microfmt.hpp"
 #include <string_view>
 #include <type_traits>

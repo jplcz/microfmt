@@ -1,5 +1,8 @@
 #pragma once
 
+/** @file dwarf_abi.hpp @brief Per-architecture ABI traits describing registers
+ * used during DWARF unwinding. */
+
 #include <cstddef>
 #include <cstdint>
 

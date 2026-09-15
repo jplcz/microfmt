@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file exception_frame.hpp @brief Trap/exception frame decoding, iteration,
+ * and formattable trap summaries. */
+
 #include "address_space.hpp"
 #include "frame_pointer.hpp"
 #include "symbol_resolver.hpp"

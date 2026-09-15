@@ -4,6 +4,8 @@
 
 #pragma once
 
+/** @file hash.hpp @brief `std::hash`-based non-owning hash formatting views. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <functional>

@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file arm_exidx_search.hpp @brief Binary search over sorted `.ARM.exidx`
+ * unwind tables. */
+
 #include "address_space.hpp"
 #include <cstdint>
 

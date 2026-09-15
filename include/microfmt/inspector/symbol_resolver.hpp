@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file symbol_resolver.hpp @brief Type-erased symbol resolution for remote
+ * addresses and formattable symbol views. */
+
 #include "address_space.hpp"
 #include "demangle.hpp"
 #include <cstddef>

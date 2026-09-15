@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file address_space.hpp @brief Type-erased remote address-space access and
+ * remote string/object views. */
+
 #include "../microfmt.hpp"
 
 #include <cstddef>

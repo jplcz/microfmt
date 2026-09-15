@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file frame_pointer.hpp @brief Type-erased frame unwinder handles, frame
+ * cursor iteration, and backtrace views. */
+
 #include "address_space.hpp"
 #include "remote_diagnostics.hpp"
 #include "symbol_resolver.hpp"

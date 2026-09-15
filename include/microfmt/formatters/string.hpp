@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file string.hpp @brief `std::basic_string` and advanced string formatting
+ * views (fill, align, width, precision, debug escaping). */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <string>

@@ -1,5 +1,8 @@
 #pragma once
 
+/** @file unwind_hint.hpp @brief PC-range unwind hint tables for direct,
+ * layout-based fallback unwinding. */
+
 #include <cstddef>
 #include <cstdint>
 

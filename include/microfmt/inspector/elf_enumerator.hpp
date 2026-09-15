@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file elf_enumerator.hpp @brief ELF image introspection, type-erased image
+ * enumeration, and fixed-capacity registries. */
+
 #include "../microfmt.hpp"
 #include <cstdint>
 #include <string_view>

@@ -3,6 +3,10 @@
 // SPDX-License-Identifier: MIT
 
 #pragma once
+
+/** @file arm_exidx_decoder.hpp @brief ARM EXIDX inline unwind bytecode
+ * decoder. */
+
 #include "address_space.hpp"
 #include <cstdint>
 

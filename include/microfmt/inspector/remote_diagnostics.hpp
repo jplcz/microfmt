@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file remote_diagnostics.hpp @brief Remote fault formatting and
+ * diagnostics-aware remote pointer/struct views. */
+
 #include "address_space.hpp"
 #include "symbol_resolver.hpp"
 #include <cstdint>

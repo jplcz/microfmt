@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file arm_extab_stream.hpp @brief Sequential multi-word `.ARM.extab`
+ * bytecode stream executor. */
+
 #include "address_space.hpp"
 #include "arm_exidx_decoder.hpp"
 #include <cstdint>

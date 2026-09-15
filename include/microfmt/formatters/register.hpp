@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file register.hpp @brief Static bitfield / register descriptor formatting
+ * views. */
+
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <cstdint>

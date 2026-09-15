@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file hybrid_unwinder.hpp @brief Hybrid stack unwinder combining standard
+ * frame pointers with exception/trap transition frames. */
+
 #include "exception_frame.hpp"
 #include "frame_pointer.hpp"
 

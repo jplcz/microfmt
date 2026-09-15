@@ -4,6 +4,9 @@
 
 #pragma once
 
+/** @file arm_exidx_unwinder.hpp @brief Frame unwinder driven by the ARM EXIDX
+ * exception-unwind tables. */
+
 #include "arm_exidx_decoder.hpp"
 #include "arm_exidx_search.hpp"
 #include "arm_extab_decoder.hpp"
