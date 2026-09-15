@@ -68,9 +68,11 @@ NOINLINE void run_on_isolated_stack(stack_arena &arena,
                                     void (*func)()) noexcept {
   paint_arena(arena);
 
-  uintptr_t new_sp =
+#if defined(__x86_64__) || defined(__aarch64__) || defined(__arm__)
+  const uintptr_t new_sp =
       (reinterpret_cast<uintptr_t>(arena.memory + sizeof(arena.memory)) &
-       ~0xFULL);
+       ~uintptr_t{0xF});
+#endif
 
 #if defined(__x86_64__)
   asm volatile("mov %%rsp, %%r12\n\t"
@@ -98,7 +100,8 @@ NOINLINE void run_on_isolated_stack(stack_arena &arena,
                : "r4", "memory");
 #else
   volatile uint8_t stack_space[1024];
-  std::memset((void *)stack_space, STACK_CANARY_BYTE, sizeof(stack_space));
+  for (size_t i = 0; i < sizeof(stack_space); ++i)
+    stack_space[i] = STACK_CANARY_BYTE;
   func();
 #endif
 }
