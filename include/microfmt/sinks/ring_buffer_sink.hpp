@@ -7,7 +7,6 @@
 /** @file ring_buffer_sink.hpp @brief Fixed-capacity circular output-buffer sink. */
 
 #include "../microfmt.hpp"
-#include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -121,7 +120,7 @@ public:
 private:
   static constexpr size_t Mask = Capacity - 1;
 
-  alignas(void *) std::array<char, Capacity> buffer_{};
+  alignas(void *) microfmt::array<char, Capacity> buffer_{};
   std::atomic<size_t> head_{0};
   std::atomic<size_t> count_{0};
 };

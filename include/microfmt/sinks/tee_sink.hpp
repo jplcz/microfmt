@@ -7,7 +7,6 @@
 /** @file tee_sink.hpp @brief Fan-out sink that writes to multiple destinations. */
 
 #include "../microfmt.hpp"
-#include <array>
 #include <cstddef>
 #include <string_view>
 
@@ -63,7 +62,7 @@ public:
   }
 
 private:
-  std::array<sink, N> targets_{};
+  microfmt::array<sink, N> targets_{};
   size_t count_{0};
 };
 

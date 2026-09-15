@@ -7,7 +7,7 @@
 /** @file logger.hpp @brief Configurable structured loggers and helper functions. */
 
 #include "sink.hpp"
-#include <array>
+#include "../array.hpp"
 #include <cstddef>
 #include <string_view>
 #include <utility>
@@ -169,7 +169,7 @@ private:
 
   microfmt::string_view name_{};
   level level_{level::info};
-  std::array<log_sink, MaxSinks> sinks_{};
+  microfmt::array<log_sink, MaxSinks> sinks_{};
   size_t sink_count_{0};
 };
 

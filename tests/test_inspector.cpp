@@ -652,12 +652,9 @@ bool read_register_range(const void *opaque_state,
   return true;
 }
 
-template <size_t CandidateCount, size_t RegisterCount>
+template <typename CandidateArray, typename RegisterArray>
 constexpr bool address_candidates_are_unique_gprs(
-    const std::array<microfmt::dwarf::register_descriptor, CandidateCount>
-        &candidates,
-    const std::array<microfmt::dwarf::register_descriptor, RegisterCount>
-        &registers) noexcept {
+    const CandidateArray &candidates, const RegisterArray &registers) noexcept {
   for (size_t i = 0; i < candidates.size(); ++i) {
     bool found = false;
     for (const auto &reg : registers) {

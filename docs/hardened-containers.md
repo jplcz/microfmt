@@ -12,6 +12,7 @@ core types include:
 
 | Type | Purpose |
 |---|---|
+| `microfmt::array<T, N>` | Fixed-size owning array with hardened element access |
 | `microfmt::string_view` | Non-owning character view with checked and non-trapping access |
 | `microfmt::span<T>` | Non-owning contiguous range used by sinks and binary formatters |
 | `microfmt::expected<T, E>` | Allocation-free value-or-error result |
@@ -88,6 +89,15 @@ active alternative.
 Fallible span operations return `microfmt::expected` with a `span_error`.
 `as_bytes()` creates a read-only byte view without copying the represented
 storage.
+
+`microfmt::array<T, N>` provides checked `operator[]`, fallible `try_at()`,
+explicit `unsafe_at()`, hardened iterators and data access, `as_span()`,
+compile-time `static_subspan<Offset, Count>()`, `fill()`, `swap()`, and
+allocation-free `map()`. It supports aggregate initialization, structured
+bindings, and zero-length arrays. Borrowing accessors, including `get<I>()`,
+are rejected on temporary arrays. Tuple traits are provided for structured
+bindings; use ADL `get` rather than expecting `std::get` or `std::apply`
+interoperability.
 
 ## Debug checks and unsafe operations
 

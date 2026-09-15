@@ -14,6 +14,7 @@
 #include <tuple>
 #include <type_traits>
 
+#include "array.hpp"
 #include "detail/span.hpp"
 #include "string_view.hpp"
 
@@ -1074,7 +1075,8 @@ constexpr bool starts_with(microfmt::string_view sv, char c) noexcept {
 
 template <typename... Args> struct format_type_table {
   // Static array living in flash / .rodata (Zero runtime RAM usage)
-  static inline constexpr std::array<format_fn_t, sizeof...(Args)> functions = {
+  static inline constexpr microfmt::array<format_fn_t, sizeof...(Args)>
+      functions = {
       &format_type_thunk<microfmt_remove_cvref_t<Args>>...};
 
   static inline constexpr span<const format_fn_t> dynamic_span{
@@ -1095,7 +1097,7 @@ struct compiled_piece {
 };
 
 template <size_t MaxPieces = 32> struct compiled_format {
-  std::array<compiled_piece, MaxPieces> pieces{};
+  microfmt::array<compiled_piece, MaxPieces> pieces{};
   size_t count{0};
 };
 

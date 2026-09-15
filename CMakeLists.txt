@@ -169,6 +169,7 @@ if(MICROFMT_BUILD_TESTS)
     enable_testing()
 
     add_executable(microfmt_tests tests/test_core.cpp
+        tests/test_array.cpp
         tests/test_inspector.cpp
         tests/test_bitfield.cpp
         tests/test_can.cpp
@@ -237,6 +238,18 @@ if(MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(microfmt_cxx17_container_sink_tests
         TEST_PREFIX "Cxx17ContainerSink.")
+
+    add_executable(microfmt_cxx17_array_tests tests/test_array.cpp)
+    target_link_libraries(microfmt_cxx17_array_tests PRIVATE
+        microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_array_tests)
+    set_target_properties(microfmt_cxx17_array_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    gtest_discover_tests(microfmt_cxx17_array_tests
+        TEST_PREFIX "Cxx17Array.")
 
     add_executable(microfmt_cxx17_pmr_sink_tests tests/test_pmr_sink.cpp)
     target_link_libraries(microfmt_cxx17_pmr_sink_tests PRIVATE

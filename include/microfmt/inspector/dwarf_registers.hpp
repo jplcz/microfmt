@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <array>
+#include "../array.hpp"
 #include <cstdint>
 #include <string_view>
 
@@ -119,7 +119,7 @@ enum : uint32_t {
 };
 
 struct register_traits {
-  inline static constexpr std::array gpr_registers{
+  inline static constexpr microfmt::array gpr_registers{
       register_descriptor{"RAX", RAX}, register_descriptor{"RCX", RCX},
       register_descriptor{"RDX", RDX}, register_descriptor{"RBX", RBX},
       register_descriptor{"RSP", RSP}, register_descriptor{"RBP", RBP},
@@ -130,7 +130,7 @@ struct register_traits {
       register_descriptor{"R14", R14}, register_descriptor{"R15", R15},
       register_descriptor{"RIP", RIP}};
 
-  [[nodiscard]] static constexpr std::array<register_descriptor, 15>
+  [[nodiscard]] static constexpr microfmt::array<register_descriptor, 15>
   address_registers() noexcept {
     return {{{"RBP", RBP}, {"RDI", RDI}, {"RSI", RSI}, {"RBX", RBX},
              {"R12", R12}, {"R13", R13}, {"R14", R14}, {"R15", R15},
@@ -138,7 +138,7 @@ struct register_traits {
              {"R9", R9}, {"R10", R10}, {"R11", R11}}};
   }
 
-  inline static constexpr std::array system_registers{
+  inline static constexpr microfmt::array system_registers{
       register_descriptor{"EFLAGS", EFLAGS},
       register_descriptor{"FS_BASE", FS_BASE},
       register_descriptor{"GS_BASE", GS_BASE},
@@ -212,20 +212,20 @@ enum : uint32_t {
 };
 
 struct register_traits {
-  inline static constexpr std::array gpr_registers{
+  inline static constexpr microfmt::array gpr_registers{
       register_descriptor{"EAX", EAX}, register_descriptor{"ECX", ECX},
       register_descriptor{"EDX", EDX}, register_descriptor{"EBX", EBX},
       register_descriptor{"ESP", ESP}, register_descriptor{"EBP", EBP},
       register_descriptor{"ESI", ESI}, register_descriptor{"EDI", EDI},
       register_descriptor{"EIP", EIP}};
 
-  [[nodiscard]] static constexpr std::array<register_descriptor, 7>
+  [[nodiscard]] static constexpr microfmt::array<register_descriptor, 7>
   address_registers() noexcept {
     return {{{"EBP", EBP}, {"ESI", ESI}, {"EDI", EDI}, {"EBX", EBX},
              {"EAX", EAX}, {"ECX", ECX}, {"EDX", EDX}}};
   }
 
-  inline static constexpr std::array system_registers{
+  inline static constexpr microfmt::array system_registers{
       register_descriptor{"GS_BASE", GS_BASE},
       register_descriptor{"FS_BASE", FS_BASE},
       register_descriptor{"CR0", CR0},
@@ -392,7 +392,7 @@ enum : uint32_t {
 };
 
 struct register_traits {
-  inline static constexpr std::array gpr_registers{
+  inline static constexpr microfmt::array gpr_registers{
       register_descriptor{"X0", X0},   register_descriptor{"X1", X1},
       register_descriptor{"X2", X2},   register_descriptor{"X3", X3},
       register_descriptor{"X4", X4},   register_descriptor{"X5", X5},
@@ -411,7 +411,7 @@ struct register_traits {
       register_descriptor{"LR", LR},   register_descriptor{"SP", SP},
       register_descriptor{"PC", PC}};
 
-  [[nodiscard]] static constexpr std::array<register_descriptor, 30>
+  [[nodiscard]] static constexpr microfmt::array<register_descriptor, 30>
   address_registers() noexcept {
     return {{{"FP", FP},   {"X0", X0},   {"X1", X1},   {"X2", X2},
              {"X3", X3},   {"X4", X4},   {"X5", X5},   {"X6", X6},
@@ -423,7 +423,7 @@ struct register_traits {
              {"X17", X17}, {"X18", X18}}};
   }
 
-  inline static constexpr std::array system_registers{
+  inline static constexpr microfmt::array system_registers{
       register_descriptor{"TPIDR_EL0", TPIDR_EL0},
       register_descriptor{"TPIDRRO_EL0", TPIDRRO_EL0},
       register_descriptor{"TPIDR_EL1", TPIDR_EL1},
@@ -631,7 +631,7 @@ enum : uint32_t {
 };
 
 struct register_traits {
-  inline static constexpr std::array gpr_registers{
+  inline static constexpr microfmt::array gpr_registers{
       register_descriptor{"R0", R0},   register_descriptor{"R1", R1},
       register_descriptor{"R2", R2},   register_descriptor{"R3", R3},
       register_descriptor{"R4", R4},   register_descriptor{"R5", R5},
@@ -641,14 +641,14 @@ struct register_traits {
       register_descriptor{"IP", R12},  register_descriptor{"SP", SP},
       register_descriptor{"LR", LR},   register_descriptor{"PC", PC}};
 
-  [[nodiscard]] static constexpr std::array<register_descriptor, 13>
+  [[nodiscard]] static constexpr microfmt::array<register_descriptor, 13>
   address_registers() noexcept {
     return {{{"FP", FP}, {"R0", R0}, {"R1", R1}, {"R2", R2}, {"R3", R3},
              {"R4", R4}, {"R5", R5}, {"R6", R6}, {"R7", R7}, {"R8", R8},
              {"R9", R9}, {"R10", R10}, {"IP", R12}}};
   }
 
-  inline static constexpr std::array system_registers{
+  inline static constexpr microfmt::array system_registers{
       register_descriptor{"TPIDRURW", TPIDRURW},
       register_descriptor{"TPIDRURO", TPIDRURO},
       register_descriptor{"TPIDRPRW", TPIDRPRW},
@@ -838,7 +838,7 @@ enum : uint32_t {
 };
 
 struct register_traits {
-  inline static constexpr std::array gpr_registers{
+  inline static constexpr microfmt::array gpr_registers{
       register_descriptor{"zero", ZERO}, register_descriptor{"ra", RA},
       register_descriptor{"sp", SP},     register_descriptor{"gp", GP},
       register_descriptor{"tp", TP},     register_descriptor{"t0", T0},
@@ -857,7 +857,7 @@ struct register_traits {
       register_descriptor{"t5", T5},     register_descriptor{"t6", T6},
       register_descriptor{"pc", PC}};
 
-  [[nodiscard]] static constexpr std::array<register_descriptor, 29>
+  [[nodiscard]] static constexpr microfmt::array<register_descriptor, 29>
   address_registers() noexcept {
     return {{{"s0", FP},  {"gp", GP},  {"tp", TP},   {"a0", A0},
              {"a1", A1},  {"a2", A2},  {"a3", A3},   {"a4", A4},
@@ -869,7 +869,7 @@ struct register_traits {
              {"t6", T6}}};
   }
 
-  inline static constexpr std::array system_registers{
+  inline static constexpr microfmt::array system_registers{
       register_descriptor{"sstatus", SSTATUS},
       register_descriptor{"sepc", SEPC},
       register_descriptor{"stval", STVAL},
