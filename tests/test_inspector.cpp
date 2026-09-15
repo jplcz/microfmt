@@ -100,6 +100,23 @@ bool read_sparse_register(const void *opaque_state,
   return true;
 }
 
+struct register_range_state {
+  uint32_t last_index;
+  uint64_t value;
+  size_t value_size;
+};
+
+bool read_register_range(const void *opaque_state,
+                         microfmt::address_space_ref, uint32_t dwarf_reg_index,
+                         void *out_value, size_t value_size) noexcept {
+  const auto &state =
+      *static_cast<const register_range_state *>(opaque_state);
+  if (dwarf_reg_index > state.last_index || value_size != state.value_size)
+    return false;
+  std::memcpy(out_value, &state.value, value_size);
+  return true;
+}
+
 TEST(DwarfRegisterTraits, DefinesAllArchitectureRegisterCatalogs) {
   using arm_traits = microfmt::dwarf::arm32::register_traits;
   using aarch64_traits = microfmt::dwarf::aarch64::register_traits;
@@ -181,6 +198,32 @@ TEST(RegisterContextView, UsesArchitectureSystemRegisterTraits) {
               riscv_context))
           .view(),
       "satp=0x8000000000012345");
+}
+
+TEST(RegisterContextView, GroupsRegistersByArchitectureWidth) {
+  std::byte scratch[8]{};
+
+  register_range_state arm_state{microfmt::dwarf::arm32::R3, 1, 4};
+  microfmt::register_context_ref arm_context(
+      &arm_state, {&read_register_range, nullptr}, local_space(), scratch);
+  EXPECT_EQ(
+      microfmt::format<128>(
+          "{}", microfmt::register_context_view<microfmt::arm_abi_traits>(
+                    arm_context))
+          .view(),
+      "R0=0x00000001  R1=0x00000001  R2=0x00000001\nR3=0x00000001");
+
+  register_range_state aarch64_state{microfmt::dwarf::aarch64::X2, 1, 8};
+  microfmt::register_context_ref aarch64_context(
+      &aarch64_state, {&read_register_range, nullptr}, local_space(), scratch);
+  EXPECT_EQ(
+      microfmt::format<128>(
+          "{}",
+          microfmt::register_context_view<microfmt::aarch64_abi_traits>(
+              aarch64_context))
+          .view(),
+      "X0=0x0000000000000001  X1=0x0000000000000001\n"
+      "X2=0x0000000000000001");
 }
 
 TEST(RegisterContextRef, ReportsNullAndSupportedOperations) {

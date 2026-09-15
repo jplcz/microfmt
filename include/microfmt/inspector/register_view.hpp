@@ -11,6 +11,7 @@
 #include "dwarf_abi.hpp"
 #include "dwarf_registers.hpp"
 #include "register_context.hpp"
+#include <cstddef>
 #include <cstdint>
 
 namespace microfmt {
@@ -34,6 +35,17 @@ private:
   register_context_ref reg_ctx_;
 };
 
+namespace detail {
+
+inline void write_register_separator(const sink &out, size_t printed,
+                                     size_t columns) noexcept {
+  if (printed == 0)
+    return;
+  out.write((printed % columns) == 0 ? "\n" : "  ");
+}
+
+} // namespace detail
+
 // ============================================================================
 // x86_64 (AMD64) Formatter
 // ============================================================================
@@ -50,16 +62,15 @@ template <> struct formatter<register_context_view<x86_64_abi_traits>> {
 
     using register_traits = x86_64_abi_traits::register_traits;
     uint64_t val = 0;
-    bool first = true;
+    size_t printed = 0;
 
     const auto format_registers = [&](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
-        if (!first)
-          out.write("  ");
+        detail::write_register_separator(out, printed, 2);
         microfmt::format_to(out, MICROFMT_STRING("{}={:#018x}"), reg.name, val);
-        first = false;
+        ++printed;
       }
     };
 
@@ -84,16 +95,15 @@ template <> struct formatter<register_context_view<x86_abi_traits>> {
 
     using register_traits = x86_abi_traits::register_traits;
     uint32_t val = 0;
-    bool first = true;
+    size_t printed = 0;
 
     const auto format_registers = [&](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
-        if (!first)
-          out.write("  ");
+        detail::write_register_separator(out, printed, 3);
         microfmt::format_to(out, MICROFMT_STRING("{}={:#010x}"), reg.name, val);
-        first = false;
+        ++printed;
       }
     };
 
@@ -118,14 +128,13 @@ template <> struct formatter<register_context_view<aarch64_abi_traits>> {
 
     using register_traits = aarch64_abi_traits::register_traits;
     uint64_t val = 0;
-    bool first = true;
+    size_t printed = 0;
 
     const auto format_registers = [&](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
-        if (!first)
-          out.write("\n");
+        detail::write_register_separator(out, printed, 2);
 
         uint64_t display_val = val;
         if (reg.index == dwarf::aarch64::LR ||
@@ -134,7 +143,7 @@ template <> struct formatter<register_context_view<aarch64_abi_traits>> {
         }
         microfmt::format_to(out, MICROFMT_STRING("{}={:#018x}"), reg.name,
                             display_val);
-        first = false;
+        ++printed;
       }
     };
 
@@ -159,16 +168,15 @@ template <> struct formatter<register_context_view<arm_abi_traits>> {
 
     using register_traits = arm_abi_traits::register_traits;
     uint32_t val = 0;
-    bool first = true;
+    size_t printed = 0;
 
     const auto format_registers = [&](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
-        if (!first)
-          out.write("  ");
+        detail::write_register_separator(out, printed, 3);
         microfmt::format_to(out, MICROFMT_STRING("{}={:#010x}"), reg.name, val);
-        first = false;
+        ++printed;
       }
     };
 
@@ -193,16 +201,15 @@ template <> struct formatter<register_context_view<riscv32_abi_traits>> {
 
     using register_traits = riscv32_abi_traits::register_traits;
     uint32_t val = 0;
-    bool first = true;
+    size_t printed = 0;
 
     const auto format_registers = [&](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
-        if (!first)
-          out.write("  ");
+        detail::write_register_separator(out, printed, 3);
         microfmt::format_to(out, MICROFMT_STRING("{}={:#010x}"), reg.name, val);
-        first = false;
+        ++printed;
       }
     };
 
@@ -227,16 +234,15 @@ template <> struct formatter<register_context_view<riscv64_abi_traits>> {
 
     using register_traits = riscv64_abi_traits::register_traits;
     uint64_t val = 0;
-    bool first = true;
+    size_t printed = 0;
 
     const auto format_registers = [&](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
-        if (!first)
-          out.write("  ");
+        detail::write_register_separator(out, printed, 2);
         microfmt::format_to(out, MICROFMT_STRING("{}={:#018x}"), reg.name, val);
-        first = false;
+        ++printed;
       }
     };
 
