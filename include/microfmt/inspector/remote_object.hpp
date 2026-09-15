@@ -40,6 +40,36 @@ struct remote_field_desc {
 };
 
 // ============================================================================
+// Remote Field Formatter Traits & Policies (Uniform Extension Point)
+// ============================================================================
+
+/**
+ * @brief Default field formatter policy.
+ * Can be specialized or overloaded for custom remote types, smart pointers,
+ * etc.
+ */
+template <typename T, typename Enable = void> struct remote_field_traits {
+  static void format(address_space_ref, const void *field_ptr, span<char>,
+                     const sink &out) noexcept {
+    const auto &val = *static_cast<const T *>(field_ptr);
+    formatter<T> fmt;
+    fmt.format(val, out);
+  }
+};
+
+class string_ptr; // forward declaration
+template <> struct remote_field_traits<string_ptr> {
+  static void format(address_space_ref space, const void *field_ptr,
+                     span<char> work_buf, const sink &out) noexcept;
+};
+
+class string32_ptr; // forward declaration
+template <> struct remote_field_traits<string32_ptr> {
+  static void format(address_space_ref space, const void *field_ptr,
+                     span<char> work_buf, const sink &out) noexcept;
+};
+
+// ============================================================================
 // Remote String Pointer Wrappers (Synthesizing Foreign String Views)
 // ============================================================================
 
@@ -77,6 +107,21 @@ public:
 private:
   uintptr_t addr_{0};
 };
+
+// Implementations of string formatting traits
+inline void remote_field_traits<string_ptr>::format(address_space_ref space,
+                                                    const void *field_ptr,
+                                                    span<char> work_buf,
+                                                    const sink &out) noexcept {
+  const auto &sptr = *static_cast<const string_ptr *>(field_ptr);
+  if (sptr.is_null()) {
+    out.write("(null)");
+    return;
+  }
+  foreign_string_view fsv = sptr.as_view(space, work_buf);
+  formatter<foreign_string_view> fmt;
+  fmt.format(fsv, out);
+}
 
 static_assert(sizeof(string_ptr) == sizeof(void *),
               "string_ptr must have correct size");
@@ -119,6 +164,19 @@ private:
   uint32_t addr_{0};
 };
 
+inline void remote_field_traits<string32_ptr>::format(
+    address_space_ref space, const void *field_ptr, span<char> work_buf,
+    const sink &out) noexcept {
+  const auto &sptr = *static_cast<const string32_ptr *>(field_ptr);
+  if (sptr.is_null()) {
+    out.write("(null)");
+    return;
+  }
+  foreign_string_view fsv = sptr.as_view(space, work_buf);
+  formatter<foreign_string_view> fmt;
+  fmt.format(fsv, out);
+}
+
 static_assert(sizeof(string32_ptr) == 4,
               "string32_ptr must be exactly 4 bytes");
 static_assert(alignof(string32_ptr) == 4,
@@ -130,7 +188,6 @@ static_assert(alignof(string32_ptr) == 4,
 
 template <> struct formatter<string_ptr> {
   constexpr void parse(format_parse_context &) noexcept {}
-
   void format(const string_ptr &ptr, const sink &out) const noexcept {
     if (ptr.is_null()) {
       out.write("(null)");
@@ -142,7 +199,6 @@ template <> struct formatter<string_ptr> {
 
 template <> struct formatter<string32_ptr> {
   constexpr void parse(format_parse_context &) noexcept {}
-
   void format(const string32_ptr &ptr, const sink &out) const noexcept {
     if (ptr.is_null()) {
       out.write("(null)");
@@ -163,54 +219,6 @@ template <typename T, typename Enable = void> struct remote_object_traits {
   static constexpr size_t struct_size = 0;
   static constexpr size_t struct_align = 1;
 };
-
-/**
- * @brief Default field formatter thunk for standard types (delegates to
- * `formatter<T>`).
- */
-template <typename T>
-inline void default_remote_field_formatter(address_space_ref,
-                                           const void *field_ptr, span<char>,
-                                           const sink &out) noexcept {
-  const auto &val = *static_cast<const T *>(field_ptr);
-  formatter<T> fmt;
-  fmt.format(val, out);
-}
-
-/**
- * @brief Specialized field formatter thunk for `string32_ptr` (synthesizes
- * `foreign_string_view`).
- */
-inline void string32_field_formatter(address_space_ref space,
-                                     const void *field_ptr, span<char> work_buf,
-                                     const sink &out) noexcept {
-  const auto &sptr = *static_cast<const string32_ptr *>(field_ptr);
-  if (sptr.is_null()) {
-    out.write("(null)");
-    return;
-  }
-  foreign_string_view fsv = sptr.as_view(space, work_buf);
-  formatter<foreign_string_view> fmt;
-  fmt.format(fsv, out);
-}
-
-/**
- * @brief Specialized field formatter thunk for `string_ptr` (synthesizes
- * `foreign_string_view`).
- */
-inline void string_ptr_field_formatter(address_space_ref space,
-                                       const void *field_ptr,
-                                       span<char> work_buf,
-                                       const sink &out) noexcept {
-  const auto &sptr = *static_cast<const string_ptr *>(field_ptr);
-  if (sptr.is_null()) {
-    out.write("(null)");
-    return;
-  }
-  foreign_string_view fsv = sptr.as_view(space, work_buf);
-  formatter<foreign_string_view> fmt;
-  fmt.format(fsv, out);
-}
 
 // ============================================================================
 // Remote Object View Container
@@ -338,16 +346,9 @@ template <> struct formatter<remote_object_view> {
       using CurrentStruct = StructName;                                        \
       static constexpr microfmt::remote_field_desc static_fields[] = {
 
-#define MICROFMT_REMOTE_FIELD(Type, Name)                                      \
+#define MICROFMT_REMOTE_FIELD(Name, ...)                                       \
   {#Name, offsetof(CurrentStruct, Name),                                       \
-   []() -> microfmt::remote_field_format_fn {                                  \
-     if constexpr (std::is_same_v<Type, microfmt::string32_ptr>)               \
-       return &microfmt::string32_field_formatter;                             \
-     else if constexpr (std::is_same_v<Type, microfmt::string_ptr>)            \
-       return &microfmt::string_ptr_field_formatter;                           \
-     else                                                                      \
-       return &microfmt::default_remote_field_formatter<Type>;                 \
-   }()},
+   &microfmt::remote_field_traits<__VA_ARGS__>::format},
 
 #define MICROFMT_REMOTE_STRUCT_END()                                           \
   }                                                                            \

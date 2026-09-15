@@ -15,9 +15,9 @@ struct RemoteProcessNode {
 };
 
 MICROFMT_REMOTE_STRUCT_BEGIN(RemoteProcessNode)
-MICROFMT_REMOTE_FIELD(uint32_t, pid)
-MICROFMT_REMOTE_FIELD(int32_t, state)
-MICROFMT_REMOTE_FIELD(microfmt::compat32_ptr<RemoteProcessNode>, next)
+MICROFMT_REMOTE_FIELD(pid, uint32_t)
+MICROFMT_REMOTE_FIELD(state, int32_t)
+MICROFMT_REMOTE_FIELD(next, microfmt::compat32_ptr<RemoteProcessNode>)
 MICROFMT_REMOTE_STRUCT_END()
 
 // Simple mock address space class

@@ -76,6 +76,7 @@ add_microfmt_example(remote_vector_context_demo remote_vector_context_demo.cpp)
 add_microfmt_example(remote_forward_list_demo remote_forward_list_demo.cpp)
 add_microfmt_example(remote_hash_table_demo remote_hash_table_demo.cpp)
 add_microfmt_example(remote_binary_tree_demo remote_binary_tree_demo.cpp)
+add_microfmt_example(remote_smart_ptr_demo remote_smart_ptr_demo.cpp)
 
 if(TARGET PkgConfig::MICROFMT_SYSTEMD)
   add_microfmt_example(systemd_demo systemd_demo.cpp)

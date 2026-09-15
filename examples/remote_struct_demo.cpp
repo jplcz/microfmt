@@ -15,10 +15,10 @@ struct RemoteProcessInfo {
 
 // Define the remote structure layout
 MICROFMT_REMOTE_STRUCT_BEGIN(RemoteProcessInfo)
-MICROFMT_REMOTE_FIELD(uint32_t, pid)
-MICROFMT_REMOTE_FIELD(microfmt::string32_ptr, name)
-MICROFMT_REMOTE_FIELD(int32_t, state)
-MICROFMT_REMOTE_FIELD(microfmt::compat32_ptr<uint32_t>, user_flags)
+MICROFMT_REMOTE_FIELD(pid, uint32_t)
+MICROFMT_REMOTE_FIELD(name, microfmt::string32_ptr)
+MICROFMT_REMOTE_FIELD(state, int32_t)
+MICROFMT_REMOTE_FIELD(user_flags, microfmt::compat32_ptr<uint32_t>)
 MICROFMT_REMOTE_STRUCT_END()
 
 // Define a custom stateful address space context representing "foreign
