@@ -1,0 +1,197 @@
+/*
+ * SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
+/* microfmt custom Doxygen theme */
+:root {
+  --microfmt-ink: #172033;
+  --microfmt-muted: #5a6780;
+  --microfmt-surface: #ffffff;
+  --microfmt-canvas: #f4f7fb;
+  --microfmt-border: #dbe3ee;
+  --microfmt-brand: #2457d6;
+  --microfmt-brand-dark: #193f9e;
+  --microfmt-code: #101827;
+}
+
+html,
+body {
+  background: var(--microfmt-canvas);
+  color-scheme: light;
+  color: var(--microfmt-ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+body {
+  line-height: 1.65;
+}
+
+#titlearea {
+  background: linear-gradient(125deg, #102a69, #2457d6 55%, #3979eb);
+  border: 0;
+  box-shadow: 0 2px 14px rgb(15 36 91 / 20%);
+}
+
+#projectname,
+#projectbrief,
+#projectnumber {
+  color: #fff;
+  font-family: inherit;
+}
+
+#projectname {
+  font-size: 2rem;
+  font-weight: 750;
+  letter-spacing: -0.04em;
+}
+
+#projectlogo img {
+  height: 3.5rem;
+  margin-right: 0.75rem;
+  width: 3.5rem;
+}
+
+#projectbrief {
+  opacity: 0.88;
+}
+
+.tabs,
+.tabs2,
+.tabs3,
+.tablist li {
+  background: #102a69;
+}
+
+.tablist li a {
+  background: transparent;
+  color: rgb(255 255 255 / 80%);
+  font-family: inherit;
+  font-weight: 650;
+  padding: 0.7rem 1rem;
+}
+
+.tablist li.current a,
+.tablist li a:hover {
+  background: rgb(255 255 255 / 14%);
+  color: #fff;
+  text-shadow: none;
+}
+
+div.header,
+div.contents {
+  background: var(--microfmt-surface);
+  border: 1px solid var(--microfmt-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgb(23 32 51 / 6%);
+  margin: 1.5rem auto;
+  max-width: 1180px;
+  padding: 1.5rem 2rem;
+}
+
+div.header {
+  padding-bottom: 0.75rem;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--microfmt-ink);
+  font-family: inherit;
+  font-weight: 720;
+  letter-spacing: -0.025em;
+}
+
+h1 {
+  border-bottom: 2px solid var(--microfmt-border);
+  padding-bottom: 0.5rem;
+}
+
+a,
+a.el {
+  color: var(--microfmt-brand);
+  font-weight: 600;
+}
+
+a:hover,
+a.el:hover {
+  color: var(--microfmt-brand-dark);
+}
+
+div.fragment,
+pre.fragment,
+.fragment {
+  background: #f1f5f9;
+  border: 1px solid var(--microfmt-border);
+  border-radius: 9px;
+  box-shadow: none;
+  color: var(--microfmt-ink);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  padding: 1rem 1.2rem;
+}
+
+div.fragment a,
+pre.fragment a,
+.fragment a {
+  color: var(--microfmt-brand);
+}
+
+div.fragment a:hover,
+pre.fragment a:hover,
+.fragment a:hover {
+  color: var(--microfmt-brand-dark);
+}
+
+table.memberdecls,
+table.directory {
+  border: 1px solid var(--microfmt-border);
+  border-collapse: separate;
+  border-radius: 9px;
+  border-spacing: 0;
+  overflow: hidden;
+}
+
+table.memberdecls td,
+table.directory td {
+  border-color: var(--microfmt-border);
+  padding: 0.55rem 0.75rem;
+}
+
+tr.memitem,
+tr.memdesc {
+  background: var(--microfmt-surface);
+}
+
+tr.memitem:hover {
+  background: #f0f5ff;
+}
+
+.memproto,
+.memdoc {
+  background: #f8faff;
+  border-color: var(--microfmt-border);
+}
+
+#nav-tree {
+  background: var(--microfmt-surface);
+  border-right: 1px solid var(--microfmt-border);
+}
+
+@media (max-width: 767px) {
+  #projectname {
+    font-size: 1.5rem;
+  }
+
+  div.header,
+  div.contents {
+    border-left: 0;
+    border-radius: 0;
+    border-right: 0;
+    margin: 0.75rem 0;
+    padding: 1rem;
+  }
+}
