@@ -8,6 +8,7 @@
  * customization point. */
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string_view>

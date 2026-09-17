@@ -7,6 +7,7 @@
 /** @file lifetime.hpp @brief Compiler-specific lifetime, access, nullability, and Clang safe-buffers annotations. */
 
 #include "detail/compat.hpp"
+#include <memory>
 #include <type_traits>
 #include <utility>
 
