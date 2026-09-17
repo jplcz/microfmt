@@ -11,6 +11,33 @@ to `jplcz_microfmt`. The library is header-only; changes to a public header must
 preserve the supported language-standard matrix and resource-constrained
 runtime model.
 
+## Editor and formatting integration
+
+The repository provides shared configuration for common editors and language
+tools:
+
+* `.editorconfig` defines UTF-8, LF line endings, final newlines, and
+  language-specific indentation.
+* `.clangd` enables background indexing, include diagnostics, focused
+  bug-prone/performance/portability checks, and include-aware completion.
+* `.clang-format` defines the C++ formatting style.
+* `.cmake-format.yaml` defines the CMake formatting style.
+
+Configure CMake with a compilation database so clangd receives the exact flags
+for each C++17, C++20, or C++23 target:
+
+```bash
+cmake -S . -B build -G Ninja \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+  -DCMAKE_CXX_COMPILER=clang++-24
+```
+
+clangd searches the `build/` directory automatically. Format CMake files with:
+
+```bash
+cmake-format -i CMakeLists.txt examples/CMakeLists.txt
+```
+
 ## Configure a build
 
 The default CMake configuration builds examples, benchmarks, tests, and
