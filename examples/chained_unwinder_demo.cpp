@@ -48,28 +48,30 @@ bool write_arm_register(void *ctx, microfmt::address_space_ref,
 template <> struct microfmt::address_space_traits<simulated_space_tag> {
   using context_type = simulated_space_context;
 
-  static bool read_bytes(const void *ctx, uintptr_t addr, void *dest,
+  static bool read_bytes(microfmt::value_ref<const context_type> context,
+                         uintptr_t addr, void *dest,
                          size_t size) noexcept {
-    if (!ctx || addr == 0 || !dest)
+    if (addr == 0 || !dest)
       return false;
-    const auto &g = *static_cast<const simulated_space_context *>(ctx);
-    if (addr > g.buffer_size || size > g.buffer_size - addr)
+    if (addr > context->buffer_size || size > context->buffer_size - addr)
       return false;
-    std::memcpy(dest, reinterpret_cast<const void *>(g.buffer_base + addr),
-                size);
+    std::memcpy(
+        dest, reinterpret_cast<const void *>(context->buffer_base + addr),
+        size);
     return true;
   }
 
-  static bool read_string(const void *ctx, uintptr_t addr, char *dest,
+  static bool read_string(microfmt::value_ref<const context_type> context,
+                          uintptr_t addr, char *dest,
                           size_t max_len, size_t &out_len,
                           bool &null_term) noexcept {
-    if (!ctx || addr == 0 || !dest || max_len == 0)
+    if (addr == 0 || !dest || max_len == 0)
       return false;
-    const auto &g = *static_cast<const simulated_space_context *>(ctx);
-    if (addr >= g.buffer_size)
+    if (addr >= context->buffer_size)
       return false;
-    const auto *src = reinterpret_cast<const char *>(g.buffer_base + addr);
-    size_t avail = g.buffer_size - addr;
+    const auto *src =
+        reinterpret_cast<const char *>(context->buffer_base + addr);
+    size_t avail = context->buffer_size - addr;
     size_t limit = (max_len < avail) ? max_len : avail;
     size_t i = 0;
     while (i < limit) {
@@ -92,17 +94,17 @@ struct standard_fp_unwinder_tag {};
 template <> struct microfmt::frame_unwinder_traits<standard_fp_unwinder_tag> {
   using context_type = microfmt::address_space_ref;
 
-  static bool step(const void *ctx, microfmt::register_context_ref reg_ctx,
+  static bool step(microfmt::value_ref<const context_type> context,
+                   microfmt::register_context_ref reg_ctx,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
     uint32_t current_fp = 0;
-    if (!ctx || !reg_ctx.read(microfmt::dwarf::arm32::fp, current_fp) ||
+    if (!reg_ctx.read(microfmt::dwarf::arm32::fp, current_fp) ||
         current_fp == 0 || (current_fp % 4) != 0)
       return false;
-    const auto &space = *static_cast<const microfmt::address_space_ref *>(ctx);
     uint32_t saved_fp = 0;
     uint32_t return_lr = 0;
-    if (!space.read_bytes(current_fp, &saved_fp, 4) ||
-        !space.read_bytes(current_fp + 4, &return_lr, 4) ||
+    if (!context->read_bytes(current_fp, &saved_fp, 4) ||
+        !context->read_bytes(current_fp + 4, &return_lr, 4) ||
         saved_fp <= current_fp || return_lr == 0)
       return false;
     next_fp = static_cast<uintptr_t>(saved_fp);
@@ -116,7 +118,7 @@ struct full_demo_sym_tag {};
 
 template <> struct microfmt::symbol_resolver_traits<full_demo_sym_tag> {
   using context_type = void;
-  static bool resolve(const void *, uintptr_t addr, microfmt::span<char>,
+  static bool resolve(uintptr_t addr, microfmt::span<char>,
                       microfmt::raw_resolved_symbol &out_raw) noexcept {
     if (addr >= 0x0800'1000 && addr < 0x0800'1500) {
       out_raw.image_name = "firmware.bin";

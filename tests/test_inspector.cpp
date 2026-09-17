@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 #include <microfmt/inspector/address_translator.hpp>
 #include <microfmt/inspector/elf_enumerator.hpp>
+#include <microfmt/inspector/exception_frame.hpp>
 #include <microfmt/inspector/fp_unwinder.hpp>
 #include <microfmt/inspector/hybrid_unwinder.hpp>
 #include <microfmt/inspector/memory_classifier.hpp>
@@ -34,6 +35,12 @@ struct stateful_classifier_tag {};
 struct scanner_space_tag {};
 struct writable_space_tag {};
 struct scanner_symbol_tag {};
+struct test_exception_frame_tag {};
+
+struct test_exception_frame_context {
+  uintptr_t pc;
+  mutable size_t decode_calls{0};
+};
 
 struct translator_context {
   uintptr_t virtual_base;
@@ -271,7 +278,7 @@ static_assert(!has_rvalue_container_view<
 template <> struct microfmt::address_translator_traits<stateless_translator_tag> {
   using context_type = void;
 
-  static bool translate(const void *, uintptr_t virtual_address,
+  static bool translate(uintptr_t virtual_address,
                         microfmt::translation_attributes &attributes) noexcept {
     if (virtual_address < 0x1000 || virtual_address >= 0x2000)
       return false;
@@ -289,22 +296,20 @@ template <> struct microfmt::address_translator_traits<stateless_translator_tag>
 template <> struct microfmt::address_translator_traits<stateful_translator_tag> {
   using context_type = translator_context;
 
-  static bool translate(const void *opaque_context, uintptr_t virtual_address,
+  static bool translate(microfmt::value_ref<const context_type> context,
+                        uintptr_t virtual_address,
                         microfmt::translation_attributes &attributes) noexcept {
-    if (!opaque_context)
-      return false;
-    const auto &context = *static_cast<const translator_context *>(opaque_context);
-    ++context.calls;
-    context.last_virtual_address = virtual_address;
+    ++context->calls;
+    context->last_virtual_address = virtual_address;
 
-    if (virtual_address < context.virtual_base)
+    if (virtual_address < context->virtual_base)
       return false;
-    const uintptr_t offset = virtual_address - context.virtual_base;
-    if (offset >= context.size)
+    const uintptr_t offset = virtual_address - context->virtual_base;
+    if (offset >= context->size)
       return false;
 
-    attributes = {.physical_address = context.physical_base + offset,
-                  .space_id = context.space_id,
+    attributes = {.physical_address = context->physical_base + offset,
+                  .space_id = context->space_id,
                   .is_secure = true,
                   .readable = true,
                   .writable = true,
@@ -317,7 +322,9 @@ template <> struct microfmt::address_translator_traits<stateful_translator_tag> 
 template <> struct microfmt::memory_classifier_traits<stateless_classifier_tag> {
   using context_type = void;
 
-  static bool classify_address(const void *, uintptr_t virtual_address, microfmt::memory_region_info &info) noexcept {
+  static bool classify_address(
+      uintptr_t virtual_address,
+      microfmt::memory_region_info &info) noexcept {
     if (virtual_address < 0x8000 || virtual_address >= 0x9000)
       return false;
     info = {.start_address = 0x8000,
@@ -334,17 +341,16 @@ template <> struct microfmt::memory_classifier_traits<stateless_classifier_tag> 
 template <> struct microfmt::memory_classifier_traits<stateful_classifier_tag> {
   using context_type = classifier_context;
 
-  static bool classify_address(const void *opaque_context, uintptr_t virtual_address,
+  static bool classify_address(
+      microfmt::value_ref<const context_type> context,
+      uintptr_t virtual_address,
                                microfmt::memory_region_info &info) noexcept {
-    if (!opaque_context)
-      return false;
-    const auto &context = *static_cast<const classifier_context *>(opaque_context);
-    ++context.calls;
-    context.last_virtual_address = virtual_address;
+    ++context->calls;
+    context->last_virtual_address = virtual_address;
 
-    for (size_t i = 0; i < context.region_count; ++i) {
-      if (context.regions[i].contains(virtual_address)) {
-        info = context.regions[i];
+    for (size_t i = 0; i < context->region_count; ++i) {
+      if (context->regions[i].contains(virtual_address)) {
+        info = context->regions[i];
         return true;
       }
     }
@@ -355,66 +361,69 @@ template <> struct microfmt::memory_classifier_traits<stateful_classifier_tag> {
 template <> struct microfmt::address_space_traits<scanner_space_tag> {
   using context_type = scanner_space_context;
 
-  static bool read_bytes(const void *opaque_context, uintptr_t address, void *destination, size_t size) noexcept {
-    if (!opaque_context || !destination)
+  static bool read_bytes(
+      microfmt::value_ref<const context_type> context, uintptr_t address,
+      void *destination, size_t size) noexcept {
+    if (!destination)
       return false;
-    const auto &context = *static_cast<const scanner_space_context *>(opaque_context);
-    ++context.read_calls;
-    if (size > context.largest_read)
-      context.largest_read = size;
-    context.last_read_address = address;
-    if (context.expected_read_buffer) {
-      context.used_external_read_buffer &= destination == context.expected_read_buffer;
+    ++context->read_calls;
+    if (size > context->largest_read)
+      context->largest_read = size;
+    context->last_read_address = address;
+    if (context->expected_read_buffer) {
+      context->used_external_read_buffer &=
+          destination == context->expected_read_buffer;
     }
 
-    if (size > 16 || address < context.virtual_base)
+    if (size > 16 || address < context->virtual_base)
       return false;
-    const uintptr_t offset = address - context.virtual_base;
-    if (offset > context.size || size > context.size - offset)
+    const uintptr_t offset = address - context->virtual_base;
+    if (offset > context->size || size > context->size - offset)
       return false;
-    std::memcpy(destination, context.data + offset, size);
+    std::memcpy(destination, context->data + offset, size);
     return true;
   }
 
-  static bool read_string(const void *, uintptr_t, char *, size_t, size_t &, bool &) noexcept { return false; }
+  static bool read_string(microfmt::value_ref<const context_type>, uintptr_t,
+                          char *, size_t, size_t &, bool &) noexcept {
+    return false;
+  }
 };
 
 template <> struct microfmt::address_space_traits<writable_space_tag> {
   using context_type = writable_space_context;
 
-  static bool read_bytes(const void *opaque_context, uintptr_t address,
+  static bool read_bytes(microfmt::value_ref<const context_type> context,
+                         uintptr_t address,
                          void *destination, size_t size) noexcept {
-    if (!opaque_context || !destination)
+    if (!destination)
       return false;
-    const auto &context =
-        *static_cast<const writable_space_context *>(opaque_context);
-    if (address < context.virtual_base)
+    if (address < context->virtual_base)
       return false;
-    const uintptr_t offset = address - context.virtual_base;
-    if (offset > context.size || size > context.size - offset)
+    const uintptr_t offset = address - context->virtual_base;
+    if (offset > context->size || size > context->size - offset)
       return false;
-    std::memcpy(destination, context.data + offset, size);
+    std::memcpy(destination, context->data + offset, size);
     return true;
   }
 
-  static bool write_bytes(const void *opaque_context, uintptr_t address,
+  static bool write_bytes(microfmt::value_ref<const context_type> context,
+                          uintptr_t address,
                           const void *source, size_t size) noexcept {
-    if (!opaque_context || !source)
+    if (!source)
       return false;
-    const auto &context =
-        *static_cast<const writable_space_context *>(opaque_context);
-    ++context.write_calls;
-    if (context.reject_writes || address < context.virtual_base)
+    ++context->write_calls;
+    if (context->reject_writes || address < context->virtual_base)
       return false;
-    const uintptr_t offset = address - context.virtual_base;
-    if (offset > context.size || size > context.size - offset)
+    const uintptr_t offset = address - context->virtual_base;
+    if (offset > context->size || size > context->size - offset)
       return false;
-    std::memcpy(context.data + offset, source, size);
+    std::memcpy(context->data + offset, source, size);
     return true;
   }
 
-  static bool read_string(const void *, uintptr_t, char *, size_t, size_t &,
-                          bool &) noexcept {
+  static bool read_string(microfmt::value_ref<const context_type>, uintptr_t,
+                          char *, size_t, size_t &, bool &) noexcept {
     return false;
   }
 };
@@ -422,22 +431,22 @@ template <> struct microfmt::address_space_traits<writable_space_tag> {
 template <> struct microfmt::symbol_resolver_traits<scanner_symbol_tag> {
   using context_type = scanner_symbol_context;
 
-  static bool resolve(const void *opaque_context, uintptr_t address, microfmt::span<char> scratch,
+  static bool resolve(microfmt::value_ref<const context_type> context,
+                      uintptr_t address, microfmt::span<char> scratch,
                       microfmt::raw_resolved_symbol &symbol) noexcept {
-    if (!opaque_context)
-      return false;
-    const auto &context = *static_cast<const scanner_symbol_context *>(opaque_context);
-    ++context.calls;
-    context.used_external_scratch &=
-        scratch.data() == context.expected_scratch && scratch.size() == context.expected_scratch_size;
-    context.used_external_raw_symbol &= &symbol == context.expected_raw_symbol;
+    ++context->calls;
+    context->used_external_scratch &=
+        scratch.data() == context->expected_scratch &&
+        scratch.size() == context->expected_scratch_size;
+    context->used_external_raw_symbol &=
+        &symbol == context->expected_raw_symbol;
 
     const char *name = nullptr;
     size_t name_size = 0;
-    if (address == context.data_address) {
+    if (address == context->data_address) {
       name = "global_data";
       name_size = 11;
-    } else if (address == context.code_address) {
+    } else if (address == context->code_address) {
       name = "kernel_entry";
       name_size = 12;
     } else {
@@ -453,6 +462,57 @@ template <> struct microfmt::symbol_resolver_traits<scanner_symbol_tag> {
     return true;
   }
 };
+
+template <>
+struct microfmt::exception_frame_traits<test_exception_frame_tag> {
+  using context_type = test_exception_frame_context;
+
+  static bool decode(microfmt::value_ref<const context_type> context,
+                     uintptr_t trap_frame_address,
+                     microfmt::trap_context &trap) noexcept {
+    ++context->decode_calls;
+    trap.trap_frame_addr = trap_frame_address;
+    trap.pc = context->pc;
+    return true;
+  }
+
+  static bool next_trap_frame(microfmt::value_ref<const context_type>,
+                              uintptr_t, uintptr_t &) noexcept {
+    return false;
+  }
+
+  static microfmt::string_view
+  describe_reason(microfmt::value_ref<const context_type>,
+                  uint64_t) noexcept {
+    return "test";
+  }
+};
+
+static_assert(!has_rvalue_ref_accessor<
+              microfmt::address_space<scanner_space_tag>>::value);
+static_assert(!has_rvalue_ref_accessor<
+              microfmt::address_translator<stateful_translator_tag>>::value);
+static_assert(!has_rvalue_ref_accessor<
+              microfmt::memory_classifier<stateful_classifier_tag>>::value);
+static_assert(!has_rvalue_ref_accessor<
+              microfmt::symbol_resolver<scanner_symbol_tag>>::value);
+static_assert(!has_rvalue_ref_accessor<
+              microfmt::exception_frame<test_exception_frame_tag>>::value);
+static_assert(!std::is_constructible_v<
+              microfmt::address_space_ref, scanner_space_tag,
+              scanner_space_context &&>);
+static_assert(!std::is_constructible_v<
+              microfmt::address_translator_ref, stateful_translator_tag,
+              translator_context &&>);
+static_assert(!std::is_constructible_v<
+              microfmt::memory_classifier_ref, stateful_classifier_tag,
+              classifier_context &&>);
+static_assert(!std::is_constructible_v<
+              microfmt::symbol_resolver_ref, scanner_symbol_tag,
+              scanner_symbol_context &&>);
+static_assert(!std::is_constructible_v<
+              microfmt::exception_frame_ref, test_exception_frame_tag,
+              test_exception_frame_context &&>);
 
 namespace {
 
@@ -484,11 +544,26 @@ TEST(AddressSpaceRef, ReturnsTypedReadErrorsAndValues) {
   EXPECT_EQ(*loaded, source);
 
   const uint8_t data[4]{};
-  scanner_space_context context{.virtual_base = 0x1000, .data = data, .size = sizeof(data)};
-  microfmt::address_space_ref scanner(scanner_space_tag{}, context);
+  microfmt::address_space<scanner_space_tag> owner{
+      scanner_space_context{
+          .virtual_base = 0x1000, .data = data, .size = sizeof(data)}};
+  auto scanner = owner.ref();
   auto failed_read = scanner.read_bytes(0x2000, &value, sizeof(value));
   ASSERT_FALSE(failed_read);
   EXPECT_EQ(failed_read.error(), microfmt::address_space_error::read_failed);
+  EXPECT_EQ(owner.context()->read_calls, 1U);
+}
+
+TEST(ExceptionFrameRef, OwningWrapperRetainsAndDispatchesContext) {
+  microfmt::exception_frame<test_exception_frame_tag> owner{
+      test_exception_frame_context{0x1234}};
+  auto decoder = owner.ref();
+  microfmt::trap_context trap;
+  EXPECT_TRUE(decoder.decode(0x8000, trap));
+  EXPECT_EQ(trap.trap_frame_addr, 0x8000U);
+  EXPECT_EQ(trap.pc, 0x1234U);
+  EXPECT_EQ(owner.context()->decode_calls, 1U);
+  EXPECT_EQ(decoder.describe_reason(0), "test");
 }
 
 TEST(AddressSpaceRef, WritesBytesAndTypedValues) {
@@ -650,14 +725,19 @@ TEST(AddressTranslatorRef, HandlesEmptyAndStatelessTranslators) {
 }
 
 TEST(AddressTranslatorRef, ForwardsStateAndPropagatesFailures) {
-  translator_context context{.virtual_base = 0x4000, .physical_base = 0x100000, .size = 0x2000, .space_id = 7};
-  microfmt::address_translator_ref translator(stateful_translator_tag{}, context);
+  microfmt::address_translator<stateful_translator_tag> owner{
+      translator_context{.virtual_base = 0x4000,
+                         .physical_base = 0x100000,
+                         .size = 0x2000,
+                         .space_id = 7}};
+  auto translator = owner.ref();
+  auto context = owner.context();
   EXPECT_TRUE(translator);
 
   microfmt::translation_attributes attributes;
   EXPECT_TRUE(translator.translate(0x5234, attributes));
-  EXPECT_EQ(context.calls, 1u);
-  EXPECT_EQ(context.last_virtual_address, 0x5234u);
+  EXPECT_EQ(context->calls, 1u);
+  EXPECT_EQ(context->last_virtual_address, 0x5234u);
   EXPECT_EQ(attributes.physical_address, 0x101234u);
   EXPECT_EQ(attributes.space_id, 7u);
   EXPECT_TRUE(attributes.is_secure);
@@ -670,9 +750,9 @@ TEST(AddressTranslatorRef, ForwardsStateAndPropagatesFailures) {
   EXPECT_FALSE(translator.translate(0x3fff, attributes));
   EXPECT_EQ(attributes.physical_address, 0xabcu);
   EXPECT_FALSE(translator.translate(0x6000, attributes));
-  EXPECT_EQ(context.calls, 3u);
+  EXPECT_EQ(context->calls, 3u);
 
-  auto made = microfmt::address_translator_ref::make<stateful_translator_tag>(context);
+  auto made = owner.ref();
   EXPECT_TRUE(made.translate(0x4000, attributes));
   EXPECT_EQ(attributes.physical_address, 0x100000u);
 }
@@ -729,14 +809,16 @@ TEST(MemoryClassifierRef, ForwardsStateAndClassifiesConfiguredRegions) {
                                                     .readable = true,
                                                     .writable = true,
                                                     .executable = false}};
-  classifier_context context{regions, sizeof(regions) / sizeof(regions[0])};
-  microfmt::memory_classifier_ref classifier(stateful_classifier_tag{}, context);
+  microfmt::memory_classifier<stateful_classifier_tag> owner{
+      classifier_context{regions, sizeof(regions) / sizeof(regions[0])}};
+  auto classifier = owner.ref();
+  auto context = owner.context();
   EXPECT_TRUE(classifier);
 
   microfmt::memory_region_info info;
   EXPECT_TRUE(classifier.classify_address(0x7123, info));
-  EXPECT_EQ(context.calls, 1u);
-  EXPECT_EQ(context.last_virtual_address, 0x7123u);
+  EXPECT_EQ(context->calls, 1u);
+  EXPECT_EQ(context->last_virtual_address, 0x7123u);
   EXPECT_EQ(info.type, microfmt::memory_region_type::process_stack);
   EXPECT_EQ(info.space_id, 42u);
   EXPECT_TRUE(info.readable);
@@ -746,9 +828,9 @@ TEST(MemoryClassifierRef, ForwardsStateAndClassifiesConfiguredRegions) {
   info = {.start_address = 0xaaaa, .type = microfmt::memory_region_type::unknown};
   EXPECT_FALSE(classifier.classify_address(0x3000, info));
   EXPECT_EQ(info.start_address, 0xaaaau);
-  EXPECT_EQ(context.calls, 2u);
+  EXPECT_EQ(context->calls, 2u);
 
-  auto made = microfmt::memory_classifier_ref::make<stateful_classifier_tag>(context);
+  auto made = owner.ref();
   EXPECT_TRUE(made.classify_address(0x1000, info));
   EXPECT_EQ(info.type, microfmt::memory_region_type::user_code);
   EXPECT_EQ(info.end_address, 0x2000u);
@@ -783,12 +865,14 @@ TEST(MemoryScanner, ScansRawAddressesAndSuppressesUnsafeRegions) {
   auto symbol_scratch = std::make_unique<char[]>(32);
   auto scanner_context = std::make_unique<microfmt::memory_scanner_context>();
   space_context.expected_read_buffer = scanner_context->dump_line_buffer;
-  scanner_symbol_context symbol_context{.data_address = data_address,
-                                        .code_address = code_address,
-                                        .expected_scratch = symbol_scratch.get(),
-                                        .expected_scratch_size = 32,
-                                        .expected_raw_symbol = &scanner_context->raw_symbol};
-  const auto resolver = microfmt::symbol_resolver_ref::make<scanner_symbol_tag>(symbol_context);
+  microfmt::symbol_resolver<scanner_symbol_tag> symbol_owner{
+      scanner_symbol_context{
+          .data_address = data_address,
+          .code_address = code_address,
+          .expected_scratch = symbol_scratch.get(),
+          .expected_scratch_size = 32,
+          .expected_raw_symbol = &scanner_context->raw_symbol}};
+  const auto resolver = symbol_owner.ref();
   scanner_context->options.dump_bytes = 96;
   scanner_context->options.symbol_resolver = resolver;
   scanner_context->symbol_scratch = {symbol_scratch.get(), 32};
@@ -817,9 +901,9 @@ TEST(MemoryScanner, ScansRawAddressesAndSuppressesUnsafeRegions) {
   EXPECT_NE(rendered.find("symbol=kernel_entry"), microfmt::string_view::npos);
   EXPECT_EQ(rendered.find("aa bb cc dd"), microfmt::string_view::npos);
   EXPECT_NE(rendered.find("type=unknown/unmapped"), microfmt::string_view::npos);
-  EXPECT_EQ(symbol_context.calls, 2u);
-  EXPECT_TRUE(symbol_context.used_external_scratch);
-  EXPECT_TRUE(symbol_context.used_external_raw_symbol);
+  EXPECT_EQ(symbol_owner.context()->calls, 2u);
+  EXPECT_TRUE(symbol_owner.context()->used_external_scratch);
+  EXPECT_TRUE(symbol_owner.context()->used_external_raw_symbol);
   EXPECT_EQ(scanner_context->region_info.type, microfmt::memory_region_type::unknown);
   EXPECT_EQ(space_context.read_calls, 5u);
   EXPECT_EQ(space_context.largest_read, 16u);
@@ -1551,6 +1635,13 @@ struct fake_fp_abi {
   static constexpr uintptr_t normalize_pc(uintptr_t raw_pc) noexcept { return raw_pc & ~static_cast<uintptr_t>(1); }
 };
 
+using fake_frame_unwinder_tag = microfmt::fp_unwinder_tag<fake_fp_abi>;
+static_assert(!has_rvalue_ref_accessor<
+              microfmt::frame_unwinder<fake_frame_unwinder_tag>>::value);
+static_assert(!std::is_constructible_v<
+              microfmt::frame_unwinder_ref, fake_frame_unwinder_tag,
+              microfmt::fp_unwinder_context<fake_fp_abi> &&>);
+
 TEST(InspectorFrameUnwinder, StepsFrameRecordsAndRejectsInvalidRecords) {
   struct frame_record {
     uintptr_t saved_fp;
@@ -1561,7 +1652,10 @@ TEST(InspectorFrameUnwinder, StepsFrameRecordsAndRejectsInvalidRecords) {
   frame_record &current = frames[0];
   frame_record &caller = frames[1];
   current = {address_of(caller), 0x101};
-  microfmt::fp_unwinder_context<fake_fp_abi> context{local_space()};
+  using tag = fake_frame_unwinder_tag;
+  microfmt::frame_unwinder<tag> owner{
+      microfmt::fp_unwinder_context<fake_fp_abi>{local_space()}};
+  const auto &const_owner = owner;
   fake_register_state register_state;
   register_state.value = address_of(current);
   std::byte register_scratch[sizeof(uintptr_t)]{};
@@ -1572,27 +1666,31 @@ TEST(InspectorFrameUnwinder, StepsFrameRecordsAndRejectsInvalidRecords) {
   uintptr_t next_fp = 0;
   uintptr_t next_pc = 0;
 
-  using tag = microfmt::fp_unwinder_tag<fake_fp_abi>;
-  EXPECT_TRUE(microfmt::frame_unwinder_traits<tag>::step(&context, register_context, next_fp, next_pc));
+  EXPECT_TRUE(microfmt::frame_unwinder_traits<tag>::step(
+      const_owner.context(), register_context, next_fp, next_pc));
   EXPECT_EQ(next_fp, address_of(caller));
   EXPECT_EQ(next_pc, 0x100u);
 
-  microfmt::frame_unwinder_ref unwinder(tag{}, context);
+  auto unwinder = owner.ref();
   EXPECT_TRUE(unwinder.step(register_context, next_fp, next_pc));
-  EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(nullptr, register_context, next_fp, next_pc));
   EXPECT_FALSE(
-      microfmt::frame_unwinder_traits<tag>::step(&context, microfmt::register_context_ref{}, next_fp, next_pc));
+      microfmt::frame_unwinder_traits<tag>::step(
+          const_owner.context(), microfmt::register_context_ref{}, next_fp,
+          next_pc));
 
   register_state.value = address_of(current) + 1;
-  EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(&context, register_context, next_fp, next_pc));
+  EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
+      const_owner.context(), register_context, next_fp, next_pc));
 
   frame_record non_advancing{0, 0x100};
   non_advancing.saved_fp = address_of(non_advancing);
   register_state.value = address_of(non_advancing);
-  EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(&context, register_context, next_fp, next_pc));
+  EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
+      const_owner.context(), register_context, next_fp, next_pc));
   frame_record no_return_address{address_of(caller), 0};
   register_state.value = address_of(no_return_address);
-  EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(&context, register_context, next_fp, next_pc));
+  EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
+      const_owner.context(), register_context, next_fp, next_pc));
 }
 
 } // namespace

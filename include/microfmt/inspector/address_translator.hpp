@@ -108,8 +108,13 @@ public:
                         const Context *, const typename Traits::context_type *>,
                 int> = 0>
   constexpr address_translator_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
+      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
+               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
+
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  constexpr address_translator_ref(Tag, Context &&) = delete;
 
   template <
       typename Tag, typename Traits = address_translator_traits<Tag>,
@@ -126,6 +131,10 @@ public:
   make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
     return address_translator_ref(Tag{}, ctx);
   }
+
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  static address_translator_ref make(Context &&) = delete;
 
   /**
    * @brief Translates a virtual address to physical address and populates
@@ -149,10 +158,68 @@ public:
 
 private:
   template <typename Tag>
-  static constexpr vtable s_vtbl{&address_translator_traits<Tag>::translate};
+  static bool translate_entry(const void *context, uintptr_t address,
+                              translation_attributes &attributes) noexcept {
+    using context_type = typename address_translator_traits<Tag>::context_type;
+    if constexpr (std::is_void_v<context_type>) {
+      return address_translator_traits<Tag>::translate(address, attributes);
+    } else {
+      const auto &typed_context =
+          *static_cast<const context_type *>(context);
+      return address_translator_traits<Tag>::translate(
+          value_ref<const context_type>(typed_context), address, attributes);
+    }
+  }
+
+  template <typename Tag>
+  static constexpr vtable s_vtbl{&translate_entry<Tag>};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
+};
+
+template <typename Tag,
+          bool Stateless = std::is_void_v<
+              typename address_translator_traits<Tag>::context_type>>
+class address_translator;
+
+template <typename Tag>
+class MICROFMT_OWNER address_translator<Tag, false> {
+public:
+  using traits_type = address_translator_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  constexpr explicit address_translator(context_type context) noexcept
+      : context_(std::move(context)) {}
+
+  [[nodiscard]] constexpr value_ref<context_type>
+  context() & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr value_ref<const context_type>
+  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<const context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr address_translator_ref
+  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return address_translator_ref(Tag{}, context_);
+  }
+
+  value_ref<context_type> context() && = delete;
+  value_ref<const context_type> context() const && = delete;
+  address_translator_ref ref() const && = delete;
+
+private:
+  context_type context_;
+};
+
+template <typename Tag> class address_translator<Tag, true> {
+public:
+  [[nodiscard]] static constexpr address_translator_ref ref() noexcept {
+    return address_translator_ref(Tag{});
+  }
 };
 
 } // namespace microfmt

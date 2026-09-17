@@ -105,8 +105,13 @@ public:
                         const Context *, const typename Traits::context_type *>,
                 int> = 0>
   constexpr frame_unwinder_ref(
-      ArchTag, const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
+      ArchTag, const Context &ctx MICROFMT_LIFETIMEBOUND
+                   MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<ArchTag>) {}
+
+  template <typename ArchTag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  constexpr frame_unwinder_ref(ArchTag, Context &&) = delete;
 
   template <
       typename ArchTag, typename Traits = frame_unwinder_traits<ArchTag>,
@@ -123,6 +128,10 @@ public:
   make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
     return frame_unwinder_ref(ArchTag{}, ctx);
   }
+
+  template <typename ArchTag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  static frame_unwinder_ref make(Context &&) = delete;
 
   /**
    * @brief Advances from the current frame to its caller using
@@ -141,10 +150,68 @@ public:
 
 private:
   template <typename ArchTag>
-  static constexpr vtable s_vtbl{&frame_unwinder_traits<ArchTag>::step};
+  static bool step_entry(const void *context, register_context_ref registers,
+                         uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
+    using context_type = typename frame_unwinder_traits<ArchTag>::context_type;
+    if constexpr (std::is_void_v<context_type>) {
+      return frame_unwinder_traits<ArchTag>::step(registers, next_fp, next_pc);
+    } else {
+      const auto &typed_context =
+          *static_cast<const context_type *>(context);
+      return frame_unwinder_traits<ArchTag>::step(
+          value_ref<const context_type>(typed_context), registers, next_fp,
+          next_pc);
+    }
+  }
+
+  template <typename ArchTag>
+  static constexpr vtable s_vtbl{&step_entry<ArchTag>};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
+};
+
+template <typename Tag,
+          bool Stateless =
+              std::is_void_v<typename frame_unwinder_traits<Tag>::context_type>>
+class frame_unwinder;
+
+template <typename Tag> class MICROFMT_OWNER frame_unwinder<Tag, false> {
+public:
+  using traits_type = frame_unwinder_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  constexpr explicit frame_unwinder(context_type context) noexcept
+      : context_(std::move(context)) {}
+
+  [[nodiscard]] constexpr value_ref<context_type>
+  context() & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr value_ref<const context_type>
+  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<const context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr frame_unwinder_ref
+  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return frame_unwinder_ref(Tag{}, context_);
+  }
+
+  value_ref<context_type> context() && = delete;
+  value_ref<const context_type> context() const && = delete;
+  frame_unwinder_ref ref() const && = delete;
+
+private:
+  context_type context_;
+};
+
+template <typename Tag> class frame_unwinder<Tag, true> {
+public:
+  [[nodiscard]] static constexpr frame_unwinder_ref ref() noexcept {
+    return frame_unwinder_ref(Tag{});
+  }
 };
 
 // ============================================================================

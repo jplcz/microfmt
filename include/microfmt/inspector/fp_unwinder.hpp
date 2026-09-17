@@ -48,18 +48,18 @@ struct microfmt::frame_unwinder_traits<microfmt::fp_unwinder_tag<AbiTraits>> {
    * The ABI traits provide the saved frame-pointer and return-address offsets
    * along with the standard frame pointer register index (`fp_reg`).
    *
-   * @param ctx Pointer to a @ref context_type.
+   * @param context Required borrow of the unwinder context.
    * @param reg_ctx Target register context handle.
    * @param next_fp Receives the caller's frame pointer.
    * @param next_pc Receives the normalized caller program counter.
    * @return `true` when both frame slots were read and form a valid caller
    * frame; otherwise `false`.
    */
-  static bool step(const void *ctx, register_context_ref reg_ctx,
+  static bool step(value_ref<const context_type> context,
+                   register_context_ref reg_ctx,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
-    if (!ctx || !reg_ctx)
+    if (!reg_ctx)
       return false;
-    const auto &cfg = *static_cast<const context_type *>(ctx);
 
     // Read current frame pointer dynamically from register context using
     // AbiTraits
@@ -87,9 +87,9 @@ struct microfmt::frame_unwinder_traits<microfmt::fp_unwinder_tag<AbiTraits>> {
     uintptr_t ra_addr = static_cast<uintptr_t>(
         static_cast<ptrdiff_t>(current_fp) + AbiTraits::ra_slot_offset);
 
-    if (!cfg.space.read_bytes(fp_addr, &saved_fp, ptr_size))
+    if (!context->space.read_bytes(fp_addr, &saved_fp, ptr_size))
       return false;
-    if (!cfg.space.read_bytes(ra_addr, &saved_ra, ptr_size))
+    if (!context->space.read_bytes(ra_addr, &saved_ra, ptr_size))
       return false;
 
     if (saved_fp <= current_fp || saved_ra == 0) {

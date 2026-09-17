@@ -23,19 +23,20 @@ struct simulated_guest_context {
 template <> struct microfmt::address_space_traits<simulated_guest_space_tag> {
   using context_type = simulated_guest_context;
 
-  static bool read_bytes(const void *ctx, uintptr_t addr, void *dest, size_t size) noexcept {
-    if (!ctx || addr == 0 || !dest)
+  static bool read_bytes(microfmt::value_ref<const context_type> context,
+                         uintptr_t addr, void *dest, size_t size) noexcept {
+    if (addr == 0 || !dest)
       return false;
-    const auto &vm = *static_cast<const simulated_guest_context *>(ctx);
 
     // Boundary check within simulated memory window
-    if (addr + size > vm.memory_limit || addr + size < addr) {
+    if (addr + size > context->memory_limit || addr + size < addr) {
       return false;
     }
 
     MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
 
-    const auto *src = reinterpret_cast<const void *>(vm.host_base_addr + addr);
+    const auto *src =
+        reinterpret_cast<const void *>(context->host_base_addr + addr);
     std::memcpy(dest, src, size);
 
     MICROFMT_END_UNSAFE_BUFFER_USAGE;
@@ -43,19 +44,20 @@ template <> struct microfmt::address_space_traits<simulated_guest_space_tag> {
     return true;
   }
 
-  static bool read_string(const void *ctx, uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
+  static bool read_string(microfmt::value_ref<const context_type> context,
+                          uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
                           bool &null_term) noexcept {
     MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
 
-    if (!ctx || addr == 0 || !dest || max_len == 0)
-      return false;
-    const auto &vm = *static_cast<const simulated_guest_context *>(ctx);
-
-    if (addr >= vm.memory_limit)
+    if (addr == 0 || !dest || max_len == 0)
       return false;
 
-    const auto *src = reinterpret_cast<const char *>(vm.host_base_addr + addr);
-    size_t available = vm.memory_limit - addr;
+    if (addr >= context->memory_limit)
+      return false;
+
+    const auto *src =
+        reinterpret_cast<const char *>(context->host_base_addr + addr);
+    size_t available = context->memory_limit - addr;
     size_t limit = (max_len < available) ? max_len : available;
 
     size_t i = 0;

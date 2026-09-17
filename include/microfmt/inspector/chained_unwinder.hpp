@@ -34,37 +34,37 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
    * Hint routines receive the same mutable register context used by the other
    * unwinder tiers. They may read or update GPRs and other target registers.
    */
-  static bool step(const void *ctx, register_context_ref reg_ctx,
+  static bool step(value_ref<const context_type> context,
+                   register_context_ref reg_ctx,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
-    if (!ctx || !reg_ctx)
+    if (!reg_ctx)
       return false;
-    const auto &cfg =
-        *static_cast<const chained_unwinder_context<AbiTraits> *>(ctx);
 
     uintptr_t trial_fp = 0;
     uintptr_t trial_pc = 0;
 
-    if (cfg.exidx_unwinder &&
-        cfg.exidx_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
+    if (context->exidx_unwinder &&
+        context->exidx_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
     }
 
-    if (cfg.dwarf_unwinder &&
-        cfg.dwarf_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
+    if (context->dwarf_unwinder &&
+        context->dwarf_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
     }
 
-    if (cfg.fp_unwinder && cfg.fp_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
+    if (context->fp_unwinder &&
+        context->fp_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
     }
 
-    if (!cfg.hints)
+    if (!context->hints)
       return false;
 
     typename AbiTraits::register_type raw_pc = 0;
@@ -75,13 +75,13 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
     const uintptr_t current_pc =
         AbiTraits::normalize_pc(static_cast<uintptr_t>(raw_pc));
     unwind_hint hint{};
-    if (!cfg.hints.find_hint(current_pc, hint) || !hint.routine)
+    if (!context->hints.find_hint(current_pc, hint) || !hint.routine)
       return false;
 
     // The hint receives reg_ctx directly. Do not snapshot only FP/PC here:
     // non-standard unwinders can keep addresses in, and recover values from,
     // any GPR. The routine may also mutate the register context in-place.
-    return hint.routine(cfg.space, reg_ctx, next_fp, next_pc);
+    return hint.routine(context->space, reg_ctx, next_fp, next_pc);
   }
 };
 

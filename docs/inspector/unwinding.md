@@ -24,14 +24,16 @@ struct platform_unwinder_tag {};
 template <> struct microfmt::frame_unwinder_traits<platform_unwinder_tag> {
   using context_type = platform_unwinder_context;
 
-  static bool step(const void *context,
+  static bool step(
+                   microfmt::value_ref<const context_type> context,
                    microfmt::register_context_ref registers,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept;
 };
 ```
 
-Create a `frame_unwinder_ref` from the tag and its context. The context is
-borrowed, so it must outlive the iterator or backtrace view.
+Create a `frame_unwinder<Tag>` to own the context and borrow its
+`frame_unwinder_ref` through `ref()`. The owner must outlive the iterator or
+backtrace view.
 
 ## Walk and render frames
 

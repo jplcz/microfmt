@@ -23,14 +23,12 @@ MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
 template <> struct microfmt::memory_classifier_traits<scanner_classifier_tag> {
   using context_type = scanner_classifier_context;
 
-  static bool classify_address(const void *opaque_context, uintptr_t address,
+  static bool classify_address(
+      microfmt::value_ref<const context_type> context, uintptr_t address,
                                microfmt::memory_region_info &info) noexcept {
-    if (!opaque_context)
-      return false;
-    const auto &context = *static_cast<const scanner_classifier_context *>(opaque_context);
-    for (size_t i = 0; i < context.region_count; ++i) {
-      if (context.regions[i].contains(address)) {
-        info = context.regions[i];
+    for (size_t i = 0; i < context->region_count; ++i) {
+      if (context->regions[i].contains(address)) {
+        info = context->regions[i];
         return true;
       }
     }
@@ -48,21 +46,21 @@ struct scanner_symbol_context {
 template <> struct microfmt::symbol_resolver_traits<scanner_symbol_tag> {
   using context_type = scanner_symbol_context;
 
-  static bool resolve(const void *opaque_context, uintptr_t address, microfmt::span<char>,
+  static bool resolve(microfmt::value_ref<const context_type> context,
+                      uintptr_t address, microfmt::span<char>,
                       microfmt::raw_resolved_symbol &symbol) noexcept {
-    if (!opaque_context)
-      return false;
-    const auto &context = *static_cast<const scanner_symbol_context *>(opaque_context);
-    if (address >= context.data_address && address < context.data_address + 80) {
+    if (address >= context->data_address &&
+        address < context->data_address + 80) {
       symbol.symbol_name = "demo_buffer";
-      symbol.symbol_base = context.data_address;
-      symbol.is_exact = address == context.data_address;
+      symbol.symbol_base = context->data_address;
+      symbol.is_exact = address == context->data_address;
       return true;
     }
-    if (address >= context.code_address && address < context.code_address + 8) {
+    if (address >= context->code_address &&
+        address < context->code_address + 8) {
       symbol.symbol_name = "demo_handler";
-      symbol.symbol_base = context.code_address;
-      symbol.is_exact = address == context.code_address;
+      symbol.symbol_base = context->code_address;
+      symbol.is_exact = address == context->code_address;
       return true;
     }
     return false;

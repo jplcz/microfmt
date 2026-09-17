@@ -68,18 +68,19 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
    * @brief Unwinds one frame using the module's `.ARM.exidx` tables and
    * register_context_ref.
    *
-   * @param ctx The @ref arm_exidx_unwinder_context.
+   * @param context The @ref arm_exidx_unwinder_context.
    * @param reg_ctx Target register context handle.
    * @param next_fp Receives the caller's frame pointer.
    * @param next_pc Receives the caller's program counter.
    * @return `true` on success.
    */
-  static bool step(const void *ctx, register_context_ref reg_ctx, uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
-    if (!ctx || !reg_ctx)
+  static bool step(value_ref<const context_type> context,
+                   register_context_ref reg_ctx, uintptr_t &next_fp,
+                   uintptr_t &next_pc) noexcept {
+    if (!reg_ctx)
       return false;
-    const auto &cfg = *static_cast<const arm_exidx_unwinder_context *>(ctx);
 
-    if (!cfg.elf_img_storage || !cfg.enumerator)
+    if (!context->elf_img_storage || !context->enumerator)
       return false;
 
     // Read current SP and LR from register context
@@ -94,11 +95,11 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
     uintptr_t virtual_sp = static_cast<uintptr_t>(current_sp);
     bool unwind_applied = false;
 
-    elf_image_info &img = *cfg.elf_img_storage;
+    elf_image_info &img = *context->elf_img_storage;
     img = {};
 
     // Query which loaded ELF module owns the faulting program counter
-    if (cfg.enumerator.find_by_pc(fault_pc, img) && img.has_exidx()) {
+    if (context->enumerator.find_by_pc(fault_pc, img) && img.has_exidx()) {
       uintptr_t exidx_start = img.exidx_start;
       uintptr_t exidx_end = img.exidx_end;
       size_t num_entries = (exidx_end - exidx_start) / 8;
@@ -112,7 +113,7 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
         size_t mid = low + (high - low) / 2;
         uintptr_t entry_addr = exidx_start + (mid * 8);
         uint32_t prel31 = 0;
-        if (!cfg.space.read_bytes(entry_addr, &prel31, 4))
+        if (!context->space.read_bytes(entry_addr, &prel31, 4))
           break;
 
         uintptr_t fn_addr = exidx_table_searcher::decode_prel31(entry_addr, prel31);
@@ -128,18 +129,21 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
         uintptr_t word2_address = exidx_start + (match_index * 8) + 4;
         uint32_t raw_unwind_data = 0;
 
-        if (cfg.space.read_bytes(word2_address, &raw_unwind_data, 4)) {
+        if (context->space.read_bytes(word2_address, &raw_unwind_data, 4)) {
           if (raw_unwind_data == 0x1)
             return false;
 
           if ((raw_unwind_data & 0x80000000U) != 0U) {
             uintptr_t extab_addr = exidx_table_searcher::decode_prel31(word2_address, raw_unwind_data);
-            unwind_applied = extab_stream_executor::execute(cfg.space, extab_addr, virtual_sp, reg_ctx);
+            unwind_applied = extab_stream_executor::execute(
+                context->space, extab_addr, virtual_sp, reg_ctx);
           } else {
             MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
 
             unwind_applied =
-                arm_exidx_bytecode_decoder::execute_bytecode(cfg.space, raw_unwind_data, virtual_sp, fault_pc, reg_ctx);
+                arm_exidx_bytecode_decoder::execute_bytecode(
+                    context->space, raw_unwind_data, virtual_sp, fault_pc,
+                    reg_ctx);
 
             MICROFMT_END_UNSAFE_BUFFER_USAGE;
           }

@@ -60,13 +60,31 @@ struct has_address_space_write_bytes : std::false_type {};
 template <typename Tag>
 struct has_address_space_write_bytes<
     Tag, std::void_t<decltype(address_space_traits<Tag>::write_bytes(
-             std::declval<const void *>(), std::declval<uintptr_t>(),
-             std::declval<const void *>(), std::declval<size_t>()))>>
+             std::declval<value_ref<const typename address_space_traits<
+                 Tag>::context_type>>(),
+             std::declval<uintptr_t>(), std::declval<const void *>(),
+             std::declval<size_t>()))>>
     : std::is_same<
           decltype(address_space_traits<Tag>::write_bytes(
-              std::declval<const void *>(), std::declval<uintptr_t>(),
-              std::declval<const void *>(), std::declval<size_t>())),
+              std::declval<value_ref<const typename address_space_traits<
+                  Tag>::context_type>>(),
+              std::declval<uintptr_t>(), std::declval<const void *>(),
+              std::declval<size_t>())),
           bool> {};
+
+template <typename Tag, typename = void>
+struct has_stateless_address_space_write_bytes : std::false_type {};
+
+template <typename Tag>
+struct has_stateless_address_space_write_bytes<
+    Tag, std::void_t<decltype(address_space_traits<Tag>::write_bytes(
+             std::declval<uintptr_t>(), std::declval<const void *>(),
+             std::declval<size_t>()))>>
+    : std::is_same<decltype(address_space_traits<Tag>::write_bytes(
+                       std::declval<uintptr_t>(),
+                       std::declval<const void *>(),
+                       std::declval<size_t>())),
+                   bool> {};
 
 } // namespace detail
 
@@ -105,7 +123,7 @@ template <> struct address_space_traits<local_space_tag> {
    * @param size Number of bytes to copy.
    * @return `true` on success, `false` for a null address.
    */
-  static bool read_bytes(const void *, uintptr_t addr, void *dest, size_t size) noexcept {
+  static bool read_bytes(uintptr_t addr, void *dest, size_t size) noexcept {
     if (addr == 0)
       return false;
     if (size == 0)
@@ -123,8 +141,7 @@ template <> struct address_space_traits<local_space_tag> {
    * @param size Number of bytes to copy.
    * @return `true` on success, `false` for a null address.
    */
-  static bool write_bytes(const void *, uintptr_t addr, const void *src,
-                          size_t size) noexcept {
+  static bool write_bytes(uintptr_t addr, const void *src, size_t size) noexcept {
     if (addr == 0)
       return false;
     if (size == 0)
@@ -144,7 +161,7 @@ template <> struct address_space_traits<local_space_tag> {
    * @param null_term Receives whether a null terminator was encountered.
    * @return `true` on success, `false` for a null address.
    */
-  static bool read_string(const void *, uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
+  static bool read_string(uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
                           bool &null_term) noexcept {
     if (addr == 0)
       return false;
@@ -227,8 +244,14 @@ public:
             std::enable_if_t<!std::is_void_v<typename Traits::context_type> &&
                                  std::is_convertible_v<const Context *, const typename Traits::context_type *>,
                              int> = 0>
-  constexpr address_space_ref(Tag, const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
+  constexpr address_space_ref(
+      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
+               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
+
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  constexpr address_space_ref(Tag, Context &&) = delete;
 
   /**
    * @brief Creates a handle for a stateless address-space tag.
@@ -255,6 +278,10 @@ public:
   [[nodiscard]] static constexpr address_space_ref make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
     return address_space_ref(Tag{}, ctx);
   }
+
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  static address_space_ref make(Context &&) = delete;
 
   /**
    * @brief Reads raw bytes from the remote address space.
@@ -384,20 +411,114 @@ public:
 private:
   template <typename Tag>
   [[nodiscard]] static constexpr auto write_bytes_entry() noexcept {
-    if constexpr (detail::has_address_space_write_bytes<Tag>::value)
-      return &address_space_traits<Tag>::write_bytes;
-    else
+    using context_type = typename address_space_traits<Tag>::context_type;
+    if constexpr (std::is_void_v<context_type>) {
+      if constexpr (detail::has_stateless_address_space_write_bytes<Tag>::value) {
+        return +[](const void *, uintptr_t address, const void *source,
+                   size_t size) noexcept {
+          return address_space_traits<Tag>::write_bytes(address, source, size);
+        };
+      } else {
+        return static_cast<bool (*)(const void *, uintptr_t, const void *,
+                                    size_t) noexcept>(nullptr);
+      }
+    } else if constexpr (detail::has_address_space_write_bytes<Tag>::value) {
+      return +[](const void *context, uintptr_t address, const void *source,
+                 size_t size) noexcept {
+        const auto &typed_context =
+            *static_cast<const context_type *>(context);
+        return address_space_traits<Tag>::write_bytes(
+            value_ref<const context_type>(typed_context), address, source,
+            size);
+      };
+    } else {
       return static_cast<bool (*)(const void *, uintptr_t, const void *,
                                   size_t) noexcept>(nullptr);
+    }
   }
 
   template <typename Tag>
-  static constexpr vtable s_vtbl{&address_space_traits<Tag>::read_bytes,
+  static bool read_bytes_entry(const void *context, uintptr_t address,
+                               void *destination, size_t size) noexcept {
+    using context_type = typename address_space_traits<Tag>::context_type;
+    if constexpr (std::is_void_v<context_type>) {
+      return address_space_traits<Tag>::read_bytes(address, destination, size);
+    } else {
+      const auto &typed_context =
+          *static_cast<const context_type *>(context);
+      return address_space_traits<Tag>::read_bytes(
+          value_ref<const context_type>(typed_context), address, destination,
+          size);
+    }
+  }
+
+  template <typename Tag>
+  static bool read_string_entry(const void *context, uintptr_t address,
+                                char *destination, size_t capacity,
+                                size_t &length, bool &terminated) noexcept {
+    using context_type = typename address_space_traits<Tag>::context_type;
+    if constexpr (std::is_void_v<context_type>) {
+      return address_space_traits<Tag>::read_string(
+          address, destination, capacity, length, terminated);
+    } else {
+      const auto &typed_context =
+          *static_cast<const context_type *>(context);
+      return address_space_traits<Tag>::read_string(
+          value_ref<const context_type>(typed_context), address, destination,
+          capacity, length, terminated);
+    }
+  }
+
+  template <typename Tag>
+  static constexpr vtable s_vtbl{&read_bytes_entry<Tag>,
                                  write_bytes_entry<Tag>(),
-                                 &address_space_traits<Tag>::read_string};
+                                 &read_string_entry<Tag>};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
+};
+
+template <typename Tag,
+          bool Stateless =
+              std::is_void_v<typename address_space_traits<Tag>::context_type>>
+class address_space;
+
+template <typename Tag> class MICROFMT_OWNER address_space<Tag, false> {
+public:
+  using traits_type = address_space_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  constexpr explicit address_space(context_type context) noexcept
+      : context_(std::move(context)) {}
+
+  [[nodiscard]] constexpr value_ref<context_type>
+  context() & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr value_ref<const context_type>
+  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<const context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr address_space_ref
+  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return address_space_ref(Tag{}, context_);
+  }
+
+  value_ref<context_type> context() && = delete;
+  value_ref<const context_type> context() const && = delete;
+  address_space_ref ref() const && = delete;
+
+private:
+  context_type context_;
+};
+
+template <typename Tag> class address_space<Tag, true> {
+public:
+  [[nodiscard]] static constexpr address_space_ref ref() noexcept {
+    return address_space_ref(Tag{});
+  }
 };
 
 // ============================================================================

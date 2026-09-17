@@ -38,23 +38,23 @@ namespace microfmt {
 template <> struct address_space_traits<SimulatedMemorySpace::tag> {
   using context_type = SimulatedMemorySpace;
 
-  static bool read_bytes(const void *ctx_ptr, uintptr_t addr, void *dest, size_t size) noexcept {
-    auto *ctx = static_cast<const SimulatedMemorySpace *>(ctx_ptr);
+  static bool read_bytes(microfmt::value_ref<const context_type> context,
+                         uintptr_t addr, void *dest, size_t size) noexcept {
     // If reading the struct address
     if (addr == 0x10002000) {
-      std::memcpy(dest, ctx->struct_ptr, size);
+      std::memcpy(dest, context->struct_ptr, size);
       return true;
     }
     return false;
   }
 
-  static bool read_string(const void *ctx_ptr, uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
+  static bool read_string(microfmt::value_ref<const context_type> context,
+                          uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
                           bool &null_term) noexcept {
-    auto *ctx = static_cast<const SimulatedMemorySpace *>(ctx_ptr);
-    if (addr == ctx->string_addr && ctx->string_data) {
-      size_t len = std::strlen(ctx->string_data);
+    if (addr == context->string_addr && context->string_data) {
+      size_t len = std::strlen(context->string_data);
       size_t copy_n = (len < max_len) ? len : max_len;
-      std::memcpy(dest, ctx->string_data, copy_n);
+      std::memcpy(dest, context->string_data, copy_n);
       if (copy_n < max_len) {
         dest[copy_n] = '\0';
         out_len = copy_n;

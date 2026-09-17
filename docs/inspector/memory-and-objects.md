@@ -11,10 +11,10 @@ foundation for every other inspector component.
 
 ## Address spaces
 
-`address_space_ref` is a small type-erased handle over byte reads, optional
-byte writes, and string reads. Specialize `address_space_traits<Tag>` for a
-transport tag, then construct an `address_space_ref` from the tag and, for a
-stateful transport, its context.
+`address_space<Tag>` owns a transport's typed context. Its `ref()` method
+returns a small type-erased `address_space_ref` over byte reads, optional byte
+writes, and string reads. Specialize `address_space_traits<Tag>` for a
+transport tag.
 
 ```cpp
 struct dump_reader_tag {};
@@ -25,17 +25,20 @@ struct dump_reader_context {
 template <> struct microfmt::address_space_traits<dump_reader_tag> {
   using context_type = dump_reader_context;
 
-  static bool read_bytes(const void *context, uintptr_t address,
+  static bool read_bytes(
+      microfmt::value_ref<const context_type> context, uintptr_t address,
                          void *destination, size_t size) noexcept;
-  static bool write_bytes(const void *context, uintptr_t address,
+  static bool write_bytes(
+      microfmt::value_ref<const context_type> context, uintptr_t address,
                           const void *source, size_t size) noexcept;
-  static bool read_string(const void *context, uintptr_t address,
+  static bool read_string(
+      microfmt::value_ref<const context_type> context, uintptr_t address,
                           char *destination, size_t capacity, size_t &size,
                           bool &terminated) noexcept;
 };
 
-dump_reader_context reader;
-auto space = microfmt::address_space_ref{dump_reader_tag{}, reader};
+microfmt::address_space<dump_reader_tag> reader{dump_reader_context{}};
+auto space = reader.ref();
 ```
 
 The transport owns address validation. It must return `false` rather than read
@@ -114,14 +117,15 @@ struct page_table_context {
 template <> struct microfmt::address_translator_traits<page_table_tag> {
   using context_type = page_table_context;
 
-  static bool
-  translate(const void *context, uintptr_t virtual_address,
-            microfmt::translation_attributes &attributes) noexcept;
+  static bool translate(
+      microfmt::value_ref<const context_type> context,
+      uintptr_t virtual_address,
+      microfmt::translation_attributes &attributes) noexcept;
 };
 
-page_table_context page_tables;
-auto translator =
-    microfmt::address_translator_ref::make<page_table_tag>(page_tables);
+microfmt::address_translator<page_table_tag> page_tables{
+    page_table_context{}};
+auto translator = page_tables.ref();
 ```
 
 On success, `translation_attributes` reports the physical address, target
@@ -201,7 +205,8 @@ template <> struct microfmt::memory_classifier_traits<layout_tag> {
   using context_type = layout_context;
 
   static bool classify_address(
-      const void *context, uintptr_t virtual_address,
+      microfmt::value_ref<const context_type> context,
+      uintptr_t virtual_address,
       microfmt::memory_region_info &region) noexcept;
 };
 ```

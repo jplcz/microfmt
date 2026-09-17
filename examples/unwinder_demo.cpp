@@ -100,27 +100,26 @@ struct arch_trap_context {
 template <> struct microfmt::frame_unwinder_traits<arch_x86_64_tag> {
   using context_type = arch_unwinder_context;
 
-  static bool step(const void *ctx, microfmt::register_context_ref reg_ctx, uintptr_t &next_fp,
+  static bool step(microfmt::value_ref<const context_type> context,
+                   microfmt::register_context_ref reg_ctx, uintptr_t &next_fp,
                    uintptr_t &next_pc) noexcept {
     uint64_t raw_fp = 0;
-    if (!ctx || !reg_ctx.read(microfmt::dwarf::x86_64::fp, raw_fp))
+    if (!reg_ctx.read(microfmt::dwarf::x86_64::fp, raw_fp))
       return false;
     uintptr_t current_fp = static_cast<uintptr_t>(raw_fp);
     if (current_fp == 0 || (current_fp % 8) != 0)
       return false;
-    const auto &cfg = *static_cast<const arch_unwinder_context *>(ctx);
-
-    if (cfg.stack_floor != 0 && current_fp < cfg.stack_floor)
+    if (context->stack_floor != 0 && current_fp < context->stack_floor)
       return false;
-    if (cfg.stack_ceil != 0 && (current_fp + 16) > cfg.stack_ceil)
+    if (context->stack_ceil != 0 && (current_fp + 16) > context->stack_ceil)
       return false;
 
     uint64_t saved_rbp = 0;
     uint64_t return_rip = 0;
 
-    if (!cfg.space.read_bytes(current_fp, &saved_rbp, 8))
+    if (!context->space.read_bytes(current_fp, &saved_rbp, 8))
       return false;
-    if (!cfg.space.read_bytes(current_fp + 8, &return_rip, 8))
+    if (!context->space.read_bytes(current_fp + 8, &return_rip, 8))
       return false;
 
     // Stack grows downwards -> Caller FP must be strictly greater
@@ -137,7 +136,7 @@ template <> struct microfmt::frame_unwinder_traits<arch_x86_64_tag> {
 struct symbol_tag {};
 template <> struct microfmt::symbol_resolver_traits<symbol_tag> {
   using context_type = void;
-  static bool resolve(const void *, uintptr_t addr, microfmt::span<char>,
+  static bool resolve(uintptr_t addr, microfmt::span<char>,
                       microfmt::raw_resolved_symbol &out_raw) noexcept {
     // Kernel symbols
     if (addr >= 0xffff'8000'0010'0000ULL && addr < 0xffff'8000'0010'0100ULL) {
@@ -176,13 +175,14 @@ template <> struct microfmt::exception_frame_traits<trap_x86_64_tag> {
   // ==========================================================================
   //  Decode x86-64 pt_regs memory layout into normalized trap_context
   // ==========================================================================
-  static bool decode(const void *ctx, uintptr_t trap_frame_addr, trap_context &out_trap) noexcept {
-    if (!ctx || trap_frame_addr == 0)
+  static bool decode(microfmt::value_ref<const context_type> context,
+                     uintptr_t trap_frame_addr,
+                     trap_context &out_trap) noexcept {
+    if (trap_frame_addr == 0)
       return false;
-    const auto &tctx = *static_cast<const arch_trap_context *>(ctx);
 
     // Ensure space reference is valid
-    if (!tctx.space)
+    if (!context->space)
       return false;
 
     uint64_t rip = 0;
@@ -204,17 +204,18 @@ template <> struct microfmt::exception_frame_traits<trap_x86_64_tag> {
     constexpr size_t kRspOffset = 0x90;
 
     // Safely read registers across the address space boundary
-    if (!tctx.space.read_bytes(trap_frame_addr + kRipOffset, &rip, sizeof(rip)))
+    if (!context->space.read_bytes(trap_frame_addr + kRipOffset, &rip, sizeof(rip)))
       return false;
-    if (!tctx.space.read_bytes(trap_frame_addr + kCsOffset, &cs, sizeof(cs)))
+    if (!context->space.read_bytes(trap_frame_addr + kCsOffset, &cs, sizeof(cs)))
       return false;
-    if (!tctx.space.read_bytes(trap_frame_addr + kRspOffset, &rsp, sizeof(rsp)))
+    if (!context->space.read_bytes(trap_frame_addr + kRspOffset, &rsp, sizeof(rsp)))
       return false;
-    if (!tctx.space.read_bytes(trap_frame_addr + kRbpOffset, &rbp, sizeof(rbp)))
+    if (!context->space.read_bytes(trap_frame_addr + kRbpOffset, &rbp, sizeof(rbp)))
       return false;
 
     // Non-fatal optional fields
-    std::ignore = tctx.space.read_bytes(trap_frame_addr + kOrigRaxOffset, &orig_rax, sizeof(orig_rax));
+    std::ignore = context->space.read_bytes(
+        trap_frame_addr + kOrigRaxOffset, &orig_rax, sizeof(orig_rax));
 
     // Populate the normalized target-agnostic trap snapshot
     out_trap.pc = static_cast<uintptr_t>(rip);
@@ -234,7 +235,8 @@ template <> struct microfmt::exception_frame_traits<trap_x86_64_tag> {
   // ==========================================================================
   // Optional: Chain to nested/outer trap frames if present on stack
   // ==========================================================================
-  static bool next_trap_frame(const void *, uintptr_t, uintptr_t &) noexcept {
+  static bool next_trap_frame(microfmt::value_ref<const context_type>,
+                              uintptr_t, uintptr_t &) noexcept {
     // Returning false indicates a single primary hardware frame (no nested IRQ
     // stack link)
     return false;
@@ -243,7 +245,9 @@ template <> struct microfmt::exception_frame_traits<trap_x86_64_tag> {
   // ==========================================================================
   // Human-readable descriptions for x86-64 CPU exception vectors
   // ==========================================================================
-  static microfmt::string_view describe_reason(const void *, uint64_t vector_or_reason) noexcept {
+  static microfmt::string_view
+  describe_reason(microfmt::value_ref<const context_type>,
+                  uint64_t vector_or_reason) noexcept {
     switch (vector_or_reason) {
     case 0x00:
       return "Divide Error (#DE)";

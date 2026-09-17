@@ -181,8 +181,13 @@ public:
                         const Context *, const typename Traits::context_type *>,
                 int> = 0>
   constexpr symbol_resolver_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
+      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
+               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
+
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  constexpr symbol_resolver_ref(Tag, Context &&) = delete;
 
   /**
    * @brief Creates a handle for a stateless resolver tag.
@@ -213,6 +218,10 @@ public:
   make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
     return symbol_resolver_ref(Tag{}, ctx);
   }
+
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  static symbol_resolver_ref make(Context &&) = delete;
 
   /**
    * @brief Resolves an address and computes the derived offsets.
@@ -281,10 +290,69 @@ public:
 
 private:
   template <typename Tag>
-  static constexpr vtable s_vtbl{&symbol_resolver_traits<Tag>::resolve};
+  static bool resolve_entry(const void *context, uintptr_t address,
+                            span<char> scratch,
+                            raw_resolved_symbol &result) noexcept {
+    using context_type = typename symbol_resolver_traits<Tag>::context_type;
+    if constexpr (std::is_void_v<context_type>) {
+      return symbol_resolver_traits<Tag>::resolve(address, scratch, result);
+    } else {
+      const auto &typed_context =
+          *static_cast<const context_type *>(context);
+      return symbol_resolver_traits<Tag>::resolve(
+          value_ref<const context_type>(typed_context), address, scratch,
+          result);
+    }
+  }
+
+  template <typename Tag>
+  static constexpr vtable s_vtbl{&resolve_entry<Tag>};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
+};
+
+template <typename Tag,
+          bool Stateless =
+              std::is_void_v<typename symbol_resolver_traits<Tag>::context_type>>
+class symbol_resolver;
+
+template <typename Tag> class MICROFMT_OWNER symbol_resolver<Tag, false> {
+public:
+  using traits_type = symbol_resolver_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  constexpr explicit symbol_resolver(context_type context) noexcept
+      : context_(std::move(context)) {}
+
+  [[nodiscard]] constexpr value_ref<context_type>
+  context() & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr value_ref<const context_type>
+  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<const context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr symbol_resolver_ref
+  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return symbol_resolver_ref(Tag{}, context_);
+  }
+
+  value_ref<context_type> context() && = delete;
+  value_ref<const context_type> context() const && = delete;
+  symbol_resolver_ref ref() const && = delete;
+
+private:
+  context_type context_;
+};
+
+template <typename Tag> class symbol_resolver<Tag, true> {
+public:
+  [[nodiscard]] static constexpr symbol_resolver_ref ref() noexcept {
+    return symbol_resolver_ref(Tag{});
+  }
 };
 
 // ============================================================================

@@ -30,32 +30,36 @@ struct kernel_memory_ctx {
 template <> struct microfmt::address_space_traits<kernel_space_tag> {
   using context_type = kernel_memory_ctx;
 
-  static bool read_bytes(const void *ctx, uintptr_t addr, void *dest, size_t size) noexcept {
-    const auto &kmem = *static_cast<const kernel_memory_ctx *>(ctx);
+  static bool read_bytes(microfmt::value_ref<const context_type> context,
+                         uintptr_t addr, void *dest, size_t size) noexcept {
     // Virtual kernel window: [0xffff800000000000 .. +ram_size]
     constexpr uintptr_t kKernelVBase = 0xffff'8000'0000'0000ULL;
 
-    if (addr < kKernelVBase || (addr + size) > (kKernelVBase + kmem.ram_size)) {
+    if (addr < kKernelVBase ||
+        (addr + size) > (kKernelVBase + context->ram_size)) {
       return false; // Fault outside valid mapped RAM
     }
 
     uintptr_t offset = addr - kKernelVBase;
-    std::memcpy(dest, reinterpret_cast<const void *>(kmem.ram_base + offset), size);
+    std::memcpy(
+        dest, reinterpret_cast<const void *>(context->ram_base + offset), size);
     return true;
   }
 
-  static bool read_string(const void *ctx, uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
+  static bool read_string(microfmt::value_ref<const context_type> context,
+                          uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
                           bool &null_term) noexcept {
-    const auto &kmem = *static_cast<const kernel_memory_ctx *>(ctx);
     constexpr uintptr_t kKernelVBase = 0xffff'8000'0000'0000ULL;
 
-    if (addr < kKernelVBase || addr >= (kKernelVBase + kmem.ram_size)) {
+    if (addr < kKernelVBase ||
+        addr >= (kKernelVBase + context->ram_size)) {
       return false;
     }
 
     uintptr_t offset = addr - kKernelVBase;
-    const auto *src = reinterpret_cast<const char *>(kmem.ram_base + offset);
-    size_t avail = kmem.ram_size - offset;
+    const auto *src =
+        reinterpret_cast<const char *>(context->ram_base + offset);
+    size_t avail = context->ram_size - offset;
     size_t limit = (max_len < avail) ? max_len : avail;
 
     size_t i = 0;
@@ -79,7 +83,7 @@ struct kernel_sym_tag {};
 template <> struct microfmt::symbol_resolver_traits<kernel_sym_tag> {
   using context_type = void;
 
-  static bool resolve(const void *, uintptr_t addr, microfmt::span<char>,
+  static bool resolve(uintptr_t addr, microfmt::span<char>,
                       microfmt::raw_resolved_symbol &out_raw) noexcept {
     // Exact handler symbols
     if (addr >= 0xffff'8000'0000'1000ULL && addr < 0xffff'8000'0000'1100ULL) {

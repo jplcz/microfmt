@@ -43,14 +43,11 @@ MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
 template <> struct microfmt::symbol_resolver_traits<mock_kernel_symbol_tag> {
   using context_type = mock_kernel_context;
 
-  static bool resolve(const void *ctx, uintptr_t addr, microfmt::span<char> /*scratch*/,
+  static bool resolve(microfmt::value_ref<const context_type> context,
+                      uintptr_t addr, microfmt::span<char> /*scratch*/,
                       microfmt::raw_resolved_symbol &out_raw) noexcept {
-    if (!ctx)
-      return false;
-    const auto &kctx = *static_cast<const mock_kernel_context *>(ctx);
-
-    for (size_t i = 0; i < kctx.image_count; ++i) {
-      const auto &img = kctx.images[i];
+    for (size_t i = 0; i < context->image_count; ++i) {
+      const auto &img = context->images[i];
       if (addr >= img.load_base && addr < (img.load_base + img.size)) {
         out_raw.image_name = img.name;
         out_raw.image_load_base = img.load_base;

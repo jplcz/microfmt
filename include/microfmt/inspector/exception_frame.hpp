@@ -133,8 +133,13 @@ public:
                         const Context *, const typename Traits::context_type *>,
                 int> = 0>
   constexpr exception_frame_ref(
-      ArchTag, const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
+      ArchTag, const Context &ctx MICROFMT_LIFETIMEBOUND
+                   MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<ArchTag>) {}
+
+  template <typename ArchTag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  constexpr exception_frame_ref(ArchTag, Context &&) = delete;
 
   /**
    * @brief Creates a handle for a stateless architecture tag.
@@ -165,6 +170,10 @@ public:
   make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
     return exception_frame_ref(ArchTag{}, ctx);
   }
+
+  template <typename ArchTag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  static exception_frame_ref make(Context &&) = delete;
 
   /**
    * @brief Decodes raw trap frame memory into a uniform @ref trap_context.
@@ -217,17 +226,100 @@ public:
 
 private:
   template <typename ArchTag>
-  static constexpr vtable s_vtbl{
-      &exception_frame_traits<ArchTag>::decode,
-      &exception_frame_traits<ArchTag>::next_trap_frame,
-      [](const void *ctx, uint64_t vector_or_reason) noexcept {
-        return microfmt::string_view(
-            exception_frame_traits<ArchTag>::describe_reason(
-                ctx, vector_or_reason));
-      }};
+  static bool decode_entry(const void *context, uintptr_t address,
+                           trap_context &trap) noexcept {
+    using context_type = typename exception_frame_traits<ArchTag>::context_type;
+    if constexpr (std::is_void_v<context_type>) {
+      return exception_frame_traits<ArchTag>::decode(address, trap);
+    } else {
+      const auto &typed_context =
+          *static_cast<const context_type *>(context);
+      return exception_frame_traits<ArchTag>::decode(
+          value_ref<const context_type>(typed_context), address, trap);
+    }
+  }
+
+  template <typename ArchTag>
+  static bool next_entry(const void *context, uintptr_t address,
+                         uintptr_t &next_address) noexcept {
+    using context_type = typename exception_frame_traits<ArchTag>::context_type;
+    if constexpr (std::is_void_v<context_type>) {
+      return exception_frame_traits<ArchTag>::next_trap_frame(address,
+                                                               next_address);
+    } else {
+      const auto &typed_context =
+          *static_cast<const context_type *>(context);
+      return exception_frame_traits<ArchTag>::next_trap_frame(
+          value_ref<const context_type>(typed_context), address, next_address);
+    }
+  }
+
+  template <typename ArchTag>
+  static microfmt::string_view
+  describe_entry(const void *context, uint64_t reason) noexcept {
+    using context_type = typename exception_frame_traits<ArchTag>::context_type;
+    if constexpr (std::is_void_v<context_type>) {
+      return microfmt::string_view(
+          exception_frame_traits<ArchTag>::describe_reason(reason));
+    } else {
+      const auto &typed_context =
+          *static_cast<const context_type *>(context);
+      return microfmt::string_view(
+          exception_frame_traits<ArchTag>::describe_reason(
+              value_ref<const context_type>(typed_context), reason));
+    }
+  }
+
+  template <typename ArchTag>
+  static constexpr vtable s_vtbl{&decode_entry<ArchTag>,
+                                 &next_entry<ArchTag>,
+                                 &describe_entry<ArchTag>};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
+};
+
+template <typename Tag,
+          bool Stateless =
+              std::is_void_v<typename exception_frame_traits<Tag>::context_type>>
+class exception_frame;
+
+template <typename Tag> class MICROFMT_OWNER exception_frame<Tag, false> {
+public:
+  using traits_type = exception_frame_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  constexpr explicit exception_frame(context_type context) noexcept
+      : context_(std::move(context)) {}
+
+  [[nodiscard]] constexpr value_ref<context_type>
+  context() & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr value_ref<const context_type>
+  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<const context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr exception_frame_ref
+  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return exception_frame_ref(Tag{}, context_);
+  }
+
+  value_ref<context_type> context() && = delete;
+  value_ref<const context_type> context() const && = delete;
+  exception_frame_ref ref() const && = delete;
+
+private:
+  context_type context_;
+};
+
+template <typename Tag> class exception_frame<Tag, true> {
+public:
+  [[nodiscard]] static constexpr exception_frame_ref ref() noexcept {
+    return exception_frame_ref(Tag{});
+  }
 };
 
 // ============================================================================

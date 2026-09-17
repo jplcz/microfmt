@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include "microfmt/inspector/remote_forward_list_view.hpp"
+#include "microfmt/inspector/remote_forward_list.hpp"
 #include "microfmt/sinks/stdio.hpp"
 #include <cstdint>
 #include <cstring>
@@ -22,6 +22,8 @@ MICROFMT_REMOTE_FIELD(next, microfmt::compat32_ptr<RemoteProcessNode>)
 MICROFMT_REMOTE_STRUCT_END()
 
 // Simple mock address space class
+MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+
 class MockAddressSpace {
 public:
   std::vector<std::byte> memory;
@@ -40,16 +42,14 @@ struct mock_space_tag {};
 template <> struct microfmt::address_space_traits<mock_space_tag> {
   using context_type = MockAddressSpace;
 
-  static bool read_bytes(const void *ctx, uintptr_t addr, void *dest,
+  static bool read_bytes(microfmt::value_ref<const context_type> context,
+                         uintptr_t addr, void *dest,
                          size_t size) noexcept {
-    if (!ctx)
-      return false;
-    return static_cast<const MockAddressSpace *>(ctx)->read_bytes(addr, dest,
-                                                                  size);
+    return context->read_bytes(addr, dest, size);
   }
 
-  static bool read_string(const void *, uintptr_t, char *, size_t, size_t &,
-                          bool &) noexcept {
+  static bool read_string(microfmt::value_ref<const context_type>, uintptr_t,
+                          char *, size_t, size_t &, bool &) noexcept {
     return false;
   }
 };
@@ -76,6 +76,9 @@ int main() {
   RemoteProcessNode node1{
       1, 1, microfmt::compat32_ptr<RemoteProcessNode>(uint32_t(node2_addr))};
   std::memcpy(target_space.memory.data() + node1_addr, &node1, sizeof(node1));
+  constexpr uintptr_t list_addr = 0x100;
+  const uint32_t head = static_cast<uint32_t>(node1_addr);
+  std::memcpy(target_space.memory.data() + list_addr, &head, sizeof(head));
 
   std::byte scratch[1024];
 
@@ -83,13 +86,14 @@ int main() {
   microfmt::address_space_ref space_ref =
       microfmt::address_space_ref::make<mock_space_tag>(target_space);
 
-  // Create a type-erased remote forward list reference using the factory helper
-  auto list_ref = microfmt::make_remote_forward_list_ref<RemoteProcessNode>(
-      node1_addr, space_ref, scratch,
-      [](const RemoteProcessNode &node) { return node.next.to_uintptr(); });
+  auto list = microfmt::make_remote_forward_list<RemoteProcessNode, uint32_t>(
+      list_addr, 0, offsetof(RemoteProcessNode, next), 0);
+  auto list_ref = list.view(space_ref, scratch);
 
   // Format and print the type-erased remote linked list chain cleanly
   microfmt::print("Type-Erased Remote Linked List:\n{}\n", list_ref);
 
   return 0;
 }
+
+MICROFMT_END_UNSAFE_BUFFER_USAGE

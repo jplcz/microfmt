@@ -19,7 +19,10 @@ The pattern has four parts:
 3. a concrete typed wrapper or caller-owned context retains state; and
 4. a `provider_ref` borrows that state and erases its concrete type.
 
-Examples include `address_space_traits<Tag>` with `address_space_ref`,
+Examples include `address_space_traits<Tag>` with `address_space<Tag>` and
+`address_space_ref`; `address_translator<Tag>`, `symbol_resolver<Tag>`,
+`memory_classifier<Tag>`, `frame_unwinder<Tag>`, and `exception_frame<Tag>`
+with their corresponding `*_ref` types;
 `register_context_traits<Tag>` with `register_context<Tag>` and
 `register_context_ref`, and the remote container, ELF enumerator, exception
 matcher, and unwind-hint registry APIs.
@@ -42,19 +45,17 @@ template <>
 struct microfmt::address_space_traits<process_memory_tag> {
   using context_type = process_memory_context;
 
-  static bool read_bytes(const void *opaque, uintptr_t address,
+  static bool read_bytes(
+      microfmt::value_ref<const context_type> context, uintptr_t address,
                          void *destination, size_t size) noexcept {
-    const auto &context =
-        *static_cast<const context_type *>(opaque);
-    return read_process_memory(context.handle, address, destination, size);
+    return read_process_memory(context->handle, address, destination, size);
   }
 
-  static bool read_string(const void *opaque, uintptr_t address,
+  static bool read_string(
+      microfmt::value_ref<const context_type> context, uintptr_t address,
                           char *destination, size_t capacity,
                           size_t &length, bool &terminated) noexcept {
-    const auto &context =
-        *static_cast<const context_type *>(opaque);
-    return read_process_string(context.handle, address, destination, capacity,
+    return read_process_string(context->handle, address, destination, capacity,
                                length, terminated);
   }
 };
@@ -65,17 +66,35 @@ accepts only contexts compatible with that declared type. It does not infer
 behavior from arbitrary member functions and does not accept a runtime table
 of function pointers.
 
-Some older low-level traits, including `address_space_traits`, use
-`const void *` in their static operation ABI. New provider traits use
-`value_ref<const context_type>` for required read-only state and
+Provider traits use `value_ref<const context_type>` for required read-only state and
 `value_ref<context_type>` for operations that may mutate state.
+
+For a provider with no state, declare `using context_type = void` and omit the
+context parameter:
+
+```cpp
+struct identity_translator_tag {};
+
+template <>
+struct microfmt::address_translator_traits<identity_translator_tag> {
+  using context_type = void;
+
+  static bool translate(
+      uintptr_t address,
+      microfmt::translation_attributes &attributes) noexcept;
+};
+
+auto translator =
+    microfmt::address_translator<identity_translator_tag>::ref();
+```
 
 ## Context ownership and borrowing
 
 Traits do not own state. Ownership belongs to either:
 
 * a caller-owned context object borrowed directly by a `*_ref`; or
-* a typed wrapper such as `remote_forward_list<Tag>`,
+* a typed wrapper such as `address_space<Tag>`,
+  `remote_forward_list<Tag>`,
   `unwind_hint_registry<Tag>`, `elf_image_enumerator<Tag>`,
   `exception_matcher<Tag>`, `address_source<Tag>`, or
   `register_context<Tag>`, which stores `traits::context_type` by value.
@@ -83,8 +102,9 @@ Traits do not own state. Ownership belongs to either:
 Direct borrowing is useful when one context is shared:
 
 ```cpp
-process_memory_context process{handle, low, high};
-microfmt::address_space_ref space{process_memory_tag{}, process};
+microfmt::address_space<process_memory_tag> process{
+    process_memory_context{handle, low, high}};
+microfmt::address_space_ref space = process.ref();
 ```
 
 An owning typed wrapper is useful when provider state naturally belongs to the

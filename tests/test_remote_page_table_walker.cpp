@@ -21,25 +21,24 @@ struct physical_space_context {
 template <> struct microfmt::address_space_traits<physical_space_tag> {
   using context_type = physical_space_context;
 
-  static bool read_bytes(const void *opaque, uintptr_t address,
+  static bool read_bytes(microfmt::value_ref<const context_type> context,
+                         uintptr_t address,
                          void *destination, size_t size) noexcept {
-    if (!opaque || !destination)
+    if (!destination)
       return false;
-    const auto &context =
-        *static_cast<const physical_space_context *>(opaque);
-    if (address < context.base)
+    if (address < context->base)
       return false;
-    const uintptr_t offset = address - context.base;
-    if (offset > context.size || size > context.size - offset)
+    const uintptr_t offset = address - context->base;
+    if (offset > context->size || size > context->size - offset)
       return false;
     MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
-    std::memcpy(destination, context.data + offset, size);
+    std::memcpy(destination, context->data + offset, size);
     MICROFMT_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
 
-  static bool read_string(const void *, uintptr_t, char *, size_t, size_t &,
-                          bool &) noexcept {
+  static bool read_string(microfmt::value_ref<const context_type>, uintptr_t,
+                          char *, size_t, size_t &, bool &) noexcept {
     return false;
   }
 };

@@ -401,13 +401,14 @@ struct microfmt::frame_unwinder_traits<
       microfmt::dwarf_unwinder_context<AbiTraits, MaxStateStackDepth>;
   using decoder_type = microfmt::dwarf_cfi_decoder<AbiTraits>;
 
-  static bool step(const void *ctx, register_context_ref reg_ctx,
+  static bool step(value_ref<const context_type> context,
+                   register_context_ref reg_ctx,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
-    if (!ctx || !reg_ctx)
+    if (!reg_ctx)
       return false;
-    const auto &cfg = *static_cast<const context_type *>(ctx);
 
-    if (!cfg.enumerator || !cfg.img_storage || !cfg.dwarf_scratch) {
+    if (!context->enumerator || !context->img_storage ||
+        !context->dwarf_scratch) {
       return false;
     }
 
@@ -423,23 +424,24 @@ struct microfmt::frame_unwinder_traits<
     uintptr_t fault_pc =
         AbiTraits::normalize_pc(static_cast<uintptr_t>(raw_pc));
 
-    microfmt::elf_image_info &img = *cfg.img_storage;
+    microfmt::elf_image_info &img = *context->img_storage;
     img = {};
 
-    if (!cfg.enumerator.find_by_pc(fault_pc, img) || !img.has_debug_frame()) {
+    if (!context->enumerator.find_by_pc(fault_pc, img) ||
+        !img.has_debug_frame()) {
       return false;
     }
 
     uintptr_t curr = img.debug_frame_start;
     while (curr < img.debug_frame_end) {
       uint32_t len = 0;
-      if (!cfg.space.read_bytes(curr, &len, 4))
+      if (!context->space.read_bytes(curr, &len, 4))
         break;
       if (len == 0)
         break;
 
       if (decoder_type::execute_fde(reg_ctx, curr, fault_pc, next_fp, next_pc,
-                                    *cfg.dwarf_scratch)) {
+                                    *context->dwarf_scratch)) {
         return true;
       }
 

@@ -28,16 +28,13 @@ struct demo_translator_context {
 template <> struct microfmt::address_translator_traits<demo_translator_tag> {
   using context_type = demo_translator_context;
 
-  static bool translate(const void *opaque_context, uintptr_t virtual_address,
+  static bool translate(microfmt::value_ref<const context_type> context,
+                        uintptr_t virtual_address,
                         microfmt::translation_attributes &attributes) noexcept {
-    if (!opaque_context)
-      return false;
-    const auto &context = *static_cast<const demo_translator_context *>(opaque_context);
-
-    for (size_t i = 0; i < context.mapping_count; ++i) {
+    for (size_t i = 0; i < context->mapping_count; ++i) {
       MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
 
-      const auto &mapping = context.mappings[i];
+      const auto &mapping = context->mappings[i];
 
       MICROFMT_END_UNSAFE_BUFFER_USAGE;
 

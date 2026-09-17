@@ -18,17 +18,15 @@ struct demo_classifier_context {
 template <> struct microfmt::memory_classifier_traits<demo_classifier_tag> {
   using context_type = demo_classifier_context;
 
-  static bool classify_address(const void *opaque_context, uintptr_t virtual_address,
+  static bool classify_address(
+      microfmt::value_ref<const context_type> context,
+      uintptr_t virtual_address,
                                microfmt::memory_region_info &info) noexcept {
-    if (!opaque_context)
-      return false;
-    const auto &context = *static_cast<const demo_classifier_context *>(opaque_context);
-
     MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
 
-    for (size_t i = 0; i < context.region_count; ++i) {
-      if (context.regions[i].contains(virtual_address)) {
-        info = context.regions[i];
+    for (size_t i = 0; i < context->region_count; ++i) {
+      if (context->regions[i].contains(virtual_address)) {
+        info = context->regions[i];
         return true;
       }
     }

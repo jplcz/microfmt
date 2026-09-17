@@ -50,27 +50,30 @@ bool write_arm_register(void *ctx, microfmt::address_space_ref, uint32_t dwarf_r
 template <> struct microfmt::address_space_traits<simulated_space_tag> {
   using context_type = simulated_space_context;
 
-  static bool read_bytes(const void *ctx, uintptr_t addr, void *dest, size_t size) noexcept {
-    if (!ctx || addr == 0 || !dest)
+  static bool read_bytes(microfmt::value_ref<const context_type> context,
+                         uintptr_t addr, void *dest, size_t size) noexcept {
+    if (addr == 0 || !dest)
       return false;
-    const auto &g = *static_cast<const simulated_space_context *>(ctx);
-    if (addr + size > g.buffer_size)
+    if (addr + size > context->buffer_size)
       return false;
 
-    std::memcpy(dest, reinterpret_cast<const void *>(g.buffer_base + addr), size);
+    std::memcpy(
+        dest, reinterpret_cast<const void *>(context->buffer_base + addr),
+        size);
     return true;
   }
 
-  static bool read_string(const void *ctx, uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
+  static bool read_string(microfmt::value_ref<const context_type> context,
+                          uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
                           bool &null_term) noexcept {
-    if (!ctx || addr == 0 || !dest || max_len == 0)
+    if (addr == 0 || !dest || max_len == 0)
       return false;
-    const auto &g = *static_cast<const simulated_space_context *>(ctx);
-    if (addr >= g.buffer_size)
+    if (addr >= context->buffer_size)
       return false;
 
-    const auto *src = reinterpret_cast<const char *>(g.buffer_base + addr);
-    size_t avail = g.buffer_size - addr;
+    const auto *src =
+        reinterpret_cast<const char *>(context->buffer_base + addr);
+    size_t avail = context->buffer_size - addr;
     size_t limit = (max_len < avail) ? max_len : avail;
 
     size_t i = 0;
@@ -97,7 +100,7 @@ struct exidx_demo_sym_tag {};
 
 template <> struct microfmt::symbol_resolver_traits<exidx_demo_sym_tag> {
   using context_type = void;
-  static bool resolve(const void *, uintptr_t addr, microfmt::span<char>,
+  static bool resolve(uintptr_t addr, microfmt::span<char>,
                       microfmt::raw_resolved_symbol &out_raw) noexcept {
     if (addr >= 0x0800'1000 && addr < 0x0800'1500) {
       out_raw.image_name = "firmware.bin";
