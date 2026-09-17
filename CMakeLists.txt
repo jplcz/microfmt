@@ -217,6 +217,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_gdb_protocol.cpp
         tests/test_gdb_registers.cpp
         tests/test_dwarf_registers.cpp
+        tests/test_register_context_with.cpp
         tests/test_remote_layout_accessor.cpp
         tests/test_remote_basic_string.cpp
         tests/test_gdb_register_array.cpp
@@ -330,6 +331,21 @@ if(MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(microfmt_cxx17_remote_layout_accessor_tests
         TEST_PREFIX "Cxx17RemoteLayoutAccessor.")
+
+    add_executable(microfmt_cxx17_register_context_with_tests
+        tests/test_register_context_with.cpp)
+    target_link_libraries(
+        microfmt_cxx17_register_context_with_tests PRIVATE
+        microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_register_context_with_tests)
+    set_target_properties(
+        microfmt_cxx17_register_context_with_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    gtest_discover_tests(microfmt_cxx17_register_context_with_tests
+        TEST_PREFIX "Cxx17RegisterContextWith.")
 
     add_executable(microfmt_cxx17_scratch_allocator_tests
         tests/test_scratch_allocator.cpp)

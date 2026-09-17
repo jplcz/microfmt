@@ -62,6 +62,7 @@
 #include <microfmt/inspector/memory_scanner.hpp>
 #include <microfmt/inspector/metadata_map.hpp>
 #include <microfmt/inspector/register_view.hpp>
+#include <microfmt/inspector/register_context.hpp>
 #include <microfmt/inspector/register_xml_printer.hpp>
 #include <microfmt/inspector/remote_basic_string.hpp>
 #include <microfmt/inspector/remote_binary_tree.hpp>

@@ -52,6 +52,102 @@ or failed target reads; register views skip unavailable entries.
 The state, address-space context, and scratch storage must outlive every
 unwinder or view that borrows the handle.
 
+### Bind register structures at compile time
+
+`register_context_ref_with<State, FieldTraits...>` adapts an existing C or C++
+register structure without writing a manual register vtable. For ordinary
+members, use `register_member_field` with a pointer to member and one or more
+register indexes:
+
+```cpp
+struct saved_registers {
+  uint32_t pc;
+  uint32_t sp;
+};
+
+using pc_field = microfmt::register_member_field<
+    &saved_registers::pc, microfmt::dwarf::arm32::pc>;
+using sp_field = microfmt::register_member_field<
+    &saved_registers::sp, microfmt::dwarf::arm32::sp>;
+
+saved_registers saved{};
+std::byte scratch[16]{};
+microfmt::register_context_ref_with<saved_registers, pc_field, sp_field>
+    mapped{saved, target_space, scratch};
+microfmt::register_context_ref context = mapped.ref();
+```
+
+Multiple indexes in one `register_member_field` alias the same member. Field
+traits are checked in declaration order, and the first matching trait handles
+the request.
+
+For nested structures, arrays, banked registers, or mode-dependent selection,
+use `register_selected_field` or define a custom field trait. A selected field
+receives functions that inspect the complete source state before returning the
+active member. For example, ARM code can select R7 or R11 as the frame pointer
+from CPSR.T:
+
+```cpp
+struct arm_saved_registers {
+  uint32_t cpsr;
+  uint32_t r7;
+  uint32_t r11;
+};
+
+const uint32_t *select_fp(const arm_saved_registers &state,
+                          uint32_t) noexcept {
+  return (state.cpsr & (1U << 5)) != 0 ? &state.r7 : &state.r11;
+}
+
+uint32_t *select_fp(arm_saved_registers &state, uint32_t) noexcept {
+  return (state.cpsr & (1U << 5)) != 0 ? &state.r7 : &state.r11;
+}
+
+using fp_field = microfmt::register_selected_field<
+    arm_saved_registers, uint32_t,
+    static_cast<const uint32_t *(*)(
+        const arm_saved_registers &, uint32_t) noexcept>(select_fp),
+    static_cast<uint32_t *(*)(
+        arm_saved_registers &, uint32_t) noexcept>(select_fp),
+    microfmt::dwarf::arm32::fp>;
+```
+
+Pass `nullptr` as the write selector for a read-only selected field. A fully
+custom trait can implement the same `state_type`, `value_type`,
+`matches(index)`, and `get(state, index)` surface to select nested arrays such
+as `other.child[index]`. Constructing the wrapper from a `const State` also
+disables all mapped writes. Register reads and writes require the requested
+byte width to exactly match the selected field type.
+
+Registers that are queried rather than stored can use
+`register_callback_field`. Its typed read callback receives the bound state,
+address space, register index, and output value. The optional write callback
+has the corresponding mutable signature; pass `nullptr` for registers that
+are read-only:
+
+```cpp
+bool read_status(const device &state, microfmt::address_space_ref,
+                 uint32_t, uint32_t &value) noexcept {
+  value = state.read_status_register();
+  return true;
+}
+
+using status_field = microfmt::register_callback_field<
+    device, uint32_t, read_status, nullptr, status_register_index>;
+```
+
+This callback form can execute a platform register-access primitive directly
+and can report that a value is temporarily unavailable by returning `false`.
+
+The constructor accepts an optional fallback `register_context_ref`. Unmatched
+registers are delegated to it, so wrappers can overlay a few fields on a
+platform context or chain several mapped structures. A matched field that
+rejects an operation does not fall through, preventing an invalid width or
+read-only field from being silently handled by a later context.
+
+The wrapper owns no register data. It and the bound state must outlive every
+`register_context_ref` returned by `ref()`.
+
 ## Architecture register catalogs
 
 `dwarf_registers.hpp` defines register namespaces for every supported ABI
