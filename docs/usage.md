@@ -43,6 +43,8 @@ target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 Embedded builds default all jplcz_microfmt development targets and install
 rules to off. They do not modify `CMAKE_CXX_STANDARD`; linking
 `jplcz_microfmt::microfmt` requests C++17 through target compile features.
+On MSVC, the target also propagates `/Zc:preprocessor`, which is required by
+the C++20 logging macros that use `__VA_OPT__`.
 
 ### Installable CMake package
 

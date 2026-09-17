@@ -76,6 +76,9 @@ endif()
 # Header-only interface target
 add_library(jplcz_microfmt INTERFACE)
 target_compile_features(jplcz_microfmt INTERFACE cxx_std_17)
+target_compile_options(jplcz_microfmt INTERFACE
+    $<$<CXX_COMPILER_ID:MSVC>:/Zc:preprocessor>
+)
 set_target_properties(jplcz_microfmt PROPERTIES EXPORT_NAME microfmt)
 
 target_include_directories(jplcz_microfmt INTERFACE
