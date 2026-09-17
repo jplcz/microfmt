@@ -103,9 +103,14 @@ for (const auto &reg : traits::address_registers()) {
 
 Each built-in ABI also exposes `AbiTraits::gdb_register_traits`, which maps
 GDB register numbers and names to the corresponding DWARF indexes and bit
-widths. The GDB register-array codec and target XML printer consume this
-binding directly, so callers select one ABI trait type for unwinding, register
-I/O, and GDB protocol output:
+widths. Its `layout()`, `extended_layout()`, and `non_standard_layout()`
+surfaces keep core `g`/`G` registers separate from floating-point/vector and
+target-specific system registers. Lookups by GDB number, DWARF index, or name
+search all three layouts.
+
+The GDB register-array codec uses the core layout, while the target XML printer
+publishes all three. Callers therefore select one ABI trait type for unwinding,
+register I/O, and GDB protocol output:
 
 ```cpp
 using abi = microfmt::aarch64_abi_traits;

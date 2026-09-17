@@ -61,14 +61,24 @@ public:
     out.write(feature_name);
     out.write("\">\n");
 
-    //  Iterate over compile-time layout and print each register
+    // Iterate over the core, architectural extension, and target-specific
+    // register layouts.
     for (const auto &reg : AbiTraits::gdb_register_traits::layout()) {
       out.write("    ");
       format_register(out, reg);
       out.write("\n");
     }
+    for (const auto &reg : AbiTraits::gdb_register_traits::extended_layout()) {
+      out.write("    ");
+      format_register(out, reg);
+      out.write("\n");
+    }
+    for (const auto &reg : AbiTraits::gdb_register_traits::non_standard_layout()) {
+      out.write("    ");
+      format_register(out, reg);
+      out.write("\n");
+    }
 
-    // 5. Close tags
     out.write("  </feature>\n");
     out.write("</target>\n");
   }

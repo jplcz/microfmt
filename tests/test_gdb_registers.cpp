@@ -12,24 +12,39 @@
 
 namespace {
 
-static_assert(std::is_same_v<
-              microfmt::arm_abi_traits::gdb_register_traits,
-              microfmt::gdb::register_traits<microfmt::gdb::tags::arm32>>);
-static_assert(std::is_same_v<
-              microfmt::aarch64_abi_traits::gdb_register_traits,
-              microfmt::gdb::register_traits<microfmt::gdb::tags::aarch64>>);
-static_assert(std::is_same_v<
-              microfmt::riscv32_abi_traits::gdb_register_traits,
-              microfmt::gdb::register_traits<microfmt::gdb::tags::riscv32>>);
-static_assert(std::is_same_v<
-              microfmt::riscv64_abi_traits::gdb_register_traits,
-              microfmt::gdb::register_traits<microfmt::gdb::tags::riscv64>>);
-static_assert(std::is_same_v<
-              microfmt::x86_abi_traits::gdb_register_traits,
-              microfmt::gdb::register_traits<microfmt::gdb::tags::x86>>);
-static_assert(std::is_same_v<
-              microfmt::x86_64_abi_traits::gdb_register_traits,
-              microfmt::gdb::register_traits<microfmt::gdb::tags::x86_64>>);
+template <typename Traits, typename DwarfTraits> void expect_system_registers_are_mapped() {
+  for (const auto &descriptor : DwarfTraits::system_registers) {
+    const auto *mapping = Traits::find_by_dwarf(descriptor.index);
+    ASSERT_NE(mapping, nullptr) << descriptor.name.data();
+  }
+}
+
+template <typename Traits> void expect_unique_mappings() {
+  const auto verify_layout = [](auto layout) {
+    for (const auto &mapping : layout) {
+      EXPECT_EQ(Traits::find_by_gdb(mapping.gdb_index), &mapping);
+      EXPECT_EQ(Traits::find_by_dwarf(mapping.dwarf_index), &mapping);
+      EXPECT_EQ(Traits::find_by_name(mapping.name), &mapping);
+    }
+  };
+
+  verify_layout(Traits::layout());
+  verify_layout(Traits::extended_layout());
+  verify_layout(Traits::non_standard_layout());
+}
+
+static_assert(std::is_same_v<microfmt::arm_abi_traits::gdb_register_traits,
+                             microfmt::gdb::register_traits<microfmt::gdb::tags::arm32>>);
+static_assert(std::is_same_v<microfmt::aarch64_abi_traits::gdb_register_traits,
+                             microfmt::gdb::register_traits<microfmt::gdb::tags::aarch64>>);
+static_assert(std::is_same_v<microfmt::riscv32_abi_traits::gdb_register_traits,
+                             microfmt::gdb::register_traits<microfmt::gdb::tags::riscv32>>);
+static_assert(std::is_same_v<microfmt::riscv64_abi_traits::gdb_register_traits,
+                             microfmt::gdb::register_traits<microfmt::gdb::tags::riscv64>>);
+static_assert(std::is_same_v<microfmt::x86_abi_traits::gdb_register_traits,
+                             microfmt::gdb::register_traits<microfmt::gdb::tags::x86>>);
+static_assert(std::is_same_v<microfmt::x86_64_abi_traits::gdb_register_traits,
+                             microfmt::gdb::register_traits<microfmt::gdb::tags::x86_64>>);
 
 TEST(GdbRegisterTraits, FindsX86RegistersAcrossNumberingSchemes) {
   using traits = microfmt::gdb::register_traits<microfmt::gdb::tags::x86_64>;
@@ -41,8 +56,7 @@ TEST(GdbRegisterTraits, FindsX86RegistersAcrossNumberingSchemes) {
   EXPECT_EQ(gdb_rbx->bit_size, 64U);
   EXPECT_EQ(gdb_rbx->gdb_type, "int64");
 
-  const auto *dwarf_rdx =
-      traits::find_by_dwarf(microfmt::dwarf::x86_64::RDX);
+  const auto *dwarf_rdx = traits::find_by_dwarf(microfmt::dwarf::x86_64::RDX);
   ASSERT_NE(dwarf_rdx, nullptr);
   EXPECT_EQ(dwarf_rdx->name, "rdx");
   EXPECT_EQ(dwarf_rdx->gdb_index, 3U);
@@ -65,15 +79,11 @@ TEST(GdbRegisterTraits, ReportsUnknownRegisters) {
 
 TEST(GdbRegisterTraits, ExposesExpectedArchitectureLayouts) {
   using x86 = microfmt::gdb::register_traits<microfmt::gdb::tags::x86>;
-  using x86_64 =
-      microfmt::gdb::register_traits<microfmt::gdb::tags::x86_64>;
+  using x86_64 = microfmt::gdb::register_traits<microfmt::gdb::tags::x86_64>;
   using arm32 = microfmt::gdb::register_traits<microfmt::gdb::tags::arm32>;
-  using aarch64 =
-      microfmt::gdb::register_traits<microfmt::gdb::tags::aarch64>;
-  using riscv32 =
-      microfmt::gdb::register_traits<microfmt::gdb::tags::riscv32>;
-  using riscv64 =
-      microfmt::gdb::register_traits<microfmt::gdb::tags::riscv64>;
+  using aarch64 = microfmt::gdb::register_traits<microfmt::gdb::tags::aarch64>;
+  using riscv32 = microfmt::gdb::register_traits<microfmt::gdb::tags::riscv32>;
+  using riscv64 = microfmt::gdb::register_traits<microfmt::gdb::tags::riscv64>;
 
   static_assert(x86::layout().size() == 9);
   static_assert(x86_64::layout().size() == 24);
@@ -81,6 +91,12 @@ TEST(GdbRegisterTraits, ExposesExpectedArchitectureLayouts) {
   static_assert(aarch64::layout().size() == 34);
   static_assert(riscv32::layout().size() == 33);
   static_assert(riscv64::layout().size() == 33);
+  static_assert(x86::extended_layout().size() == 16);
+  static_assert(x86_64::extended_layout().size() == 16);
+  static_assert(arm32::extended_layout().size() == 32);
+  static_assert(aarch64::extended_layout().size() == 32);
+  static_assert(riscv32::extended_layout().size() == 32);
+  static_assert(riscv64::extended_layout().size() == 32);
 
   constexpr auto arm32_layout = arm32::layout();
   constexpr auto aarch64_layout = aarch64::layout();
@@ -97,15 +113,35 @@ TEST(GdbRegisterTraits, ExposesExpectedArchitectureLayouts) {
   EXPECT_EQ(riscv64_layout.back().bit_size, 64U);
 }
 
-TEST(GdbRegisterTraits, LayoutAndLookupReturnSameEntries) {
-  using traits =
-      microfmt::gdb::register_traits<microfmt::gdb::tags::aarch64>;
+TEST(GdbRegisterTraits, MapsExtendedRegistersForEveryArchitecture) {
+  using namespace microfmt;
 
-  for (const auto &mapping : traits::layout()) {
-    EXPECT_EQ(traits::find_by_gdb(mapping.gdb_index), &mapping);
-    EXPECT_EQ(traits::find_by_dwarf(mapping.dwarf_index), &mapping);
-    EXPECT_EQ(traits::find_by_name(mapping.name), &mapping);
-  }
+  EXPECT_EQ(x86_abi_traits::gdb_register_traits::find_by_name("st0")->bit_size, 80U);
+  EXPECT_EQ(x86_64_abi_traits::gdb_register_traits::find_by_name("xmm15")->gdb_index, 55U);
+  EXPECT_EQ(arm_abi_traits::gdb_register_traits::find_by_name("d31")->gdb_type, "ieee_double");
+  EXPECT_EQ(aarch64_abi_traits::gdb_register_traits::find_by_name("v31")->bit_size, 128U);
+  EXPECT_EQ(riscv32_abi_traits::gdb_register_traits::find_by_name("f0")->gdb_type, "ieee_single");
+  EXPECT_EQ(riscv64_abi_traits::gdb_register_traits::find_by_name("f0")->gdb_type, "ieee_double");
+}
+
+TEST(GdbRegisterTraits, MapsEveryNonStandardSystemRegister) {
+  using namespace microfmt;
+
+  expect_system_registers_are_mapped<x86_abi_traits::gdb_register_traits, dwarf::x86::register_traits>();
+  expect_system_registers_are_mapped<x86_64_abi_traits::gdb_register_traits, dwarf::x86_64::register_traits>();
+  expect_system_registers_are_mapped<arm_abi_traits::gdb_register_traits, dwarf::arm32::register_traits>();
+  expect_system_registers_are_mapped<aarch64_abi_traits::gdb_register_traits, dwarf::aarch64::register_traits>();
+  expect_system_registers_are_mapped<riscv32_abi_traits::gdb_register_traits, dwarf::riscv::register_traits>();
+  expect_system_registers_are_mapped<riscv64_abi_traits::gdb_register_traits, dwarf::riscv::register_traits>();
+}
+
+TEST(GdbRegisterTraits, AllLayoutsAndLookupsReturnSameUniqueEntries) {
+  expect_unique_mappings<microfmt::gdb::register_traits<microfmt::gdb::tags::x86>>();
+  expect_unique_mappings<microfmt::gdb::register_traits<microfmt::gdb::tags::x86_64>>();
+  expect_unique_mappings<microfmt::gdb::register_traits<microfmt::gdb::tags::arm32>>();
+  expect_unique_mappings<microfmt::gdb::register_traits<microfmt::gdb::tags::aarch64>>();
+  expect_unique_mappings<microfmt::gdb::register_traits<microfmt::gdb::tags::riscv32>>();
+  expect_unique_mappings<microfmt::gdb::register_traits<microfmt::gdb::tags::riscv64>>();
 }
 
 } // namespace

@@ -74,8 +74,17 @@ const auto *dwarf_register =
     registers::find_by_dwarf(microfmt::dwarf::x86_64::RAX);
 ```
 
-The lookup functions return `nullptr` for unknown registers. `layout()` returns
-the complete register sequence in GDB `g`/`G` packet order.
+The lookup functions search all register groups and return `nullptr` for an
+unknown register. The groups are exposed separately:
+
+* `layout()` contains the core register sequence used by `g` and `G`.
+* `extended_layout()` contains standard floating-point and vector registers.
+* `non_standard_layout()` contains target-specific system, control, debug,
+  timer, and privileged registers.
+
+Standard GDB numbers are retained for core and architectural extension
+registers. Non-standard mappings use microfmt's stable extended DWARF indexes
+as their GDB numbers.
 
 `register_array_encoder` reads register bytes from a `register_context_ref`
 using the mapped DWARF indexes. Use the ABI trait for a complete `g` response,
@@ -119,9 +128,9 @@ accepted after all complete register values it contains have been written.
 
 ## Generate target-description XML
 
-`register_xml_printer` generates a complete target description from the same
-ABI binding. Serve this document when handling the target-description
-`qXfer` exchange:
+`register_xml_printer` generates a complete target description containing the
+core, extended, and non-standard layouts from the same ABI binding. Serve this
+document when handling the target-description `qXfer` exchange:
 
 ```cpp
 microfmt::buffer_sink<4096> xml;
