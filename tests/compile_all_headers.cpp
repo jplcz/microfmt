@@ -83,7 +83,9 @@
 #include <microfmt/log/logger.hpp>
 #include <microfmt/log/macros.hpp>
 #include <microfmt/sinks/android_log_sink.hpp>
+#if defined(MICROFMT_COMPILE_WITH_SYSLOG)
 #include <microfmt/sinks/syslog_sink.hpp>
+#endif
 #if defined(MICROFMT_COMPILE_WITH_SYSTEMD)
 #include <microfmt/sinks/systemd_sink.hpp>
 #endif

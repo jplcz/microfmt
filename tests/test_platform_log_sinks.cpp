@@ -9,15 +9,19 @@
 
 #include <microfmt/log/log_msg.hpp>
 #include <microfmt/sinks/android_log_sink.hpp>
+#if defined(MICROFMT_COMPILE_WITH_SYSLOG)
 #include <microfmt/sinks/syslog_sink.hpp>
+#endif
 
 namespace {
 
+#if defined(MICROFMT_COMPILE_WITH_SYSLOG)
 struct syslog_record {
   int priority{0};
   std::array<char, 128> message{};
   std::size_t message_size{0};
 };
+#endif
 
 struct android_record {
   int priority{0};
@@ -27,7 +31,9 @@ struct android_record {
   std::size_t message_size{0};
 };
 
+#if defined(MICROFMT_COMPILE_WITH_SYSLOG)
 syslog_record captured_syslog;
+#endif
 android_record captured_android_log;
 
 MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
@@ -40,10 +46,12 @@ void copy_to_buffer(microfmt::string_view text, char *destination, std::size_t c
 }
 MICROFMT_END_UNSAFE_BUFFER_USAGE
 
+#if defined(MICROFMT_COMPILE_WITH_SYSLOG)
 void capture_syslog(int priority, microfmt::string_view message) noexcept {
   captured_syslog.priority = priority;
   copy_to_buffer(message, captured_syslog.message.data(), captured_syslog.message.size(), captured_syslog.message_size);
 }
+#endif
 
 void capture_android_log(int priority, microfmt::string_view tag, microfmt::string_view message) noexcept {
   captured_android_log.priority = priority;
@@ -54,6 +62,7 @@ void capture_android_log(int priority, microfmt::string_view tag, microfmt::stri
 
 } // namespace
 
+#if defined(MICROFMT_COMPILE_WITH_SYSLOG)
 TEST(PlatformLogSinkTest, SyslogMapsLevelAndIncludesLoggerName) {
   captured_syslog = {};
   microfmt::log::syslog_sink<64> syslog(capture_syslog);
@@ -70,6 +79,7 @@ TEST(PlatformLogSinkTest, SyslogMapsLevelAndIncludesLoggerName) {
   EXPECT_EQ(microfmt::string_view(captured_syslog.message.data(), captured_syslog.message_size),
             "[daemon] connection lost");
 }
+#endif
 
 TEST(PlatformLogSinkTest, AndroidMapsLevelsAndHonorsSinkThreshold) {
   captured_android_log = {};
