@@ -34,6 +34,9 @@ option(JPLCZ_MICROFMT_INSTALL
 
 if(JPLCZ_MICROFMT_BUILD_TESTS OR JPLCZ_MICROFMT_BUILD_EXAMPLES OR
    JPLCZ_MICROFMT_BUILD_HEADER_CHECKS)
+    include(CheckIncludeFileCXX)
+    check_include_file_cxx(syslog.h JPLCZ_MICROFMT_HAS_SYSLOG)
+
     find_package(Boost 1.77 CONFIG QUIET)
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
@@ -178,6 +181,11 @@ if(JPLCZ_MICROFMT_BUILD_HEADER_CHECKS)
                 MICROFMT_ENABLE_BOOST_SOURCE_LOCATION=1)
         endif()
 
+        if(JPLCZ_MICROFMT_HAS_SYSLOG)
+            target_compile_definitions(jplcz_microfmt_headers_cxx${STANDARD}
+                PRIVATE MICROFMT_COMPILE_WITH_SYSLOG=1)
+        endif()
+
         if(STANDARD GREATER_EQUAL 20 AND TARGET PkgConfig::JPLCZ_MICROFMT_SYSTEMD)
             target_link_libraries(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
                 PkgConfig::JPLCZ_MICROFMT_SYSTEMD)
@@ -284,6 +292,10 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         nlohmann_json::nlohmann_json)
     target_compile_features(jplcz_microfmt_tests PRIVATE cxx_std_20)
     jplcz_microfmt_enable_warnings(jplcz_microfmt_tests)
+    if(JPLCZ_MICROFMT_HAS_SYSLOG)
+        target_compile_definitions(jplcz_microfmt_tests PRIVATE
+            MICROFMT_COMPILE_WITH_SYSLOG=1)
+    endif()
 
     include(GoogleTest)
     gtest_discover_tests(jplcz_microfmt_tests)
