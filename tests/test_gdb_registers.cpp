@@ -59,11 +59,11 @@ TEST(GdbRegisterTraits, FindsX86RegistersAcrossNumberingSchemes) {
   const auto *gdb_rbx = traits::find_by_gdb(1);
   ASSERT_NE(gdb_rbx, nullptr);
   EXPECT_EQ(gdb_rbx->name, "rbx");
-  EXPECT_EQ(gdb_rbx->dwarf_index, microfmt::dwarf::x86_64::RBX);
+  EXPECT_EQ(gdb_rbx->dwarf_index, microfmt::dwarf::x86_64::rbx);
   EXPECT_EQ(gdb_rbx->bit_size, 64U);
   EXPECT_EQ(gdb_rbx->gdb_type, "int64");
 
-  const auto *dwarf_rdx = traits::find_by_dwarf(microfmt::dwarf::x86_64::RDX);
+  const auto *dwarf_rdx = traits::find_by_dwarf(microfmt::dwarf::x86_64::rdx);
   ASSERT_NE(dwarf_rdx, nullptr);
   EXPECT_EQ(dwarf_rdx->name, "rdx");
   EXPECT_EQ(dwarf_rdx->gdb_index, 3U);
@@ -71,7 +71,7 @@ TEST(GdbRegisterTraits, FindsX86RegistersAcrossNumberingSchemes) {
   const auto *rip = traits::find_by_name("rip");
   ASSERT_NE(rip, nullptr);
   EXPECT_EQ(rip->gdb_index, 16U);
-  EXPECT_EQ(rip->dwarf_index, microfmt::dwarf::x86_64::RIP);
+  EXPECT_EQ(rip->dwarf_index, microfmt::dwarf::x86_64::rip);
   EXPECT_EQ(rip->gdb_type, "code_ptr");
 }
 
@@ -113,10 +113,10 @@ TEST(GdbRegisterTraits, ExposesExpectedArchitectureLayouts) {
   EXPECT_EQ(arm32_layout.back().name, "cpsr");
   EXPECT_EQ(arm32_layout.back().gdb_index, 25U);
   EXPECT_EQ(aarch64_layout[29].name, "x29");
-  EXPECT_EQ(aarch64_layout[29].dwarf_index, microfmt::dwarf::aarch64::FP);
-  EXPECT_EQ(riscv32_layout.back().dwarf_index, microfmt::dwarf::riscv::PC);
+  EXPECT_EQ(aarch64_layout[29].dwarf_index, microfmt::dwarf::aarch64::fp);
+  EXPECT_EQ(riscv32_layout.back().dwarf_index, microfmt::dwarf::riscv::pc);
   EXPECT_EQ(riscv32_layout.back().bit_size, 32U);
-  EXPECT_EQ(riscv64_layout.back().dwarf_index, microfmt::dwarf::riscv::PC);
+  EXPECT_EQ(riscv64_layout.back().dwarf_index, microfmt::dwarf::riscv::pc);
   EXPECT_EQ(riscv64_layout.back().bit_size, 64U);
 }
 

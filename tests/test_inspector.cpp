@@ -550,11 +550,11 @@ TEST(MemoryScanner, ScansOrderedAddressRegistersAndAbstractSources) {
       return false;
     const auto &state = *static_cast<const register_values *>(opaque_state);
     const uintptr_t *value = nullptr;
-    if (index == microfmt::dwarf::aarch64::FP)
+    if (index == microfmt::dwarf::aarch64::fp)
       value = &state.fp;
-    else if (index == microfmt::dwarf::aarch64::X0)
+    else if (index == microfmt::dwarf::aarch64::x0)
       value = &state.x0;
-    else if (index == microfmt::dwarf::aarch64::SP)
+    else if (index == microfmt::dwarf::aarch64::sp)
       value = &state.sp;
     if (!value)
       return false;
@@ -703,12 +703,12 @@ TEST(DwarfRegisterTraits, DefinesAllArchitectureRegisterCatalogs) {
   static_assert(x86_traits::gpr_registers.size() == 9);
   static_assert(x86_64_traits::gpr_registers.size() == 17);
   static_assert(riscv_traits::gpr_registers.size() == 33);
-  static_assert(static_cast<uint32_t>(microfmt::dwarf::arm32::CNTFRQ) ==
-                static_cast<uint32_t>(microfmt::dwarf::generic_timer::CNTFRQ));
-  static_assert(static_cast<uint32_t>(microfmt::dwarf::aarch64::CNTFRQ_EL0) ==
-                static_cast<uint32_t>(microfmt::dwarf::generic_timer::CNTFRQ));
-  static_assert(static_cast<uint32_t>(microfmt::dwarf::aarch64::CNTHVS_CVAL_EL2) ==
-                static_cast<uint32_t>(microfmt::dwarf::generic_timer::CNTHVS_CVAL));
+  static_assert(static_cast<uint32_t>(microfmt::dwarf::arm32::cntfrq) ==
+                static_cast<uint32_t>(microfmt::dwarf::generic_timer::cntfrq));
+  static_assert(static_cast<uint32_t>(microfmt::dwarf::aarch64::cntfrq_el0) ==
+                static_cast<uint32_t>(microfmt::dwarf::generic_timer::cntfrq));
+  static_assert(static_cast<uint32_t>(microfmt::dwarf::aarch64::cnthvs_cval_el2) ==
+                static_cast<uint32_t>(microfmt::dwarf::generic_timer::cnthvs_cval));
   static_assert(address_candidates_are_unique_gprs(arm_traits::address_registers(), arm_traits::gpr_registers));
   static_assert(address_candidates_are_unique_gprs(aarch64_traits::address_registers(), aarch64_traits::gpr_registers));
   static_assert(address_candidates_are_unique_gprs(x86_traits::address_registers(), x86_traits::gpr_registers));
@@ -717,8 +717,8 @@ TEST(DwarfRegisterTraits, DefinesAllArchitectureRegisterCatalogs) {
 
   EXPECT_EQ(arm_traits::gpr_registers.front().name, "R0");
   EXPECT_EQ(arm_traits::gpr_registers.back().name, "PC");
-  EXPECT_EQ(aarch64_traits::gpr_registers.front().index, microfmt::dwarf::aarch64::X0);
-  EXPECT_EQ(aarch64_traits::gpr_registers.back().index, microfmt::dwarf::aarch64::PC);
+  EXPECT_EQ(aarch64_traits::gpr_registers.front().index, microfmt::dwarf::aarch64::x0);
+  EXPECT_EQ(aarch64_traits::gpr_registers.back().index, microfmt::dwarf::aarch64::pc);
   EXPECT_GT(arm_traits::system_registers.size(), 40u);
   EXPECT_GT(aarch64_traits::system_registers.size(), 60u);
   EXPECT_EQ(x86_traits::system_registers.back().name, "CR4");
@@ -731,12 +731,12 @@ TEST(DwarfRegisterTraits, DefinesAllArchitectureRegisterCatalogs) {
   constexpr auto x86_addresses = x86_traits::address_registers();
   constexpr auto x86_64_addresses = x86_64_traits::address_registers();
   constexpr auto riscv_addresses = riscv_traits::address_registers();
-  EXPECT_EQ(arm_addresses[0].index, microfmt::dwarf::arm32::FP);
+  EXPECT_EQ(arm_addresses[0].index, microfmt::dwarf::arm32::fp);
   EXPECT_EQ(arm_addresses[0].name, "FP");
-  EXPECT_EQ(aarch64_addresses[0].index, microfmt::dwarf::aarch64::FP);
-  EXPECT_EQ(x86_addresses[0].index, microfmt::dwarf::x86::FP);
-  EXPECT_EQ(x86_64_addresses[0].index, microfmt::dwarf::x86_64::FP);
-  EXPECT_EQ(riscv_addresses[0].index, microfmt::dwarf::riscv::FP);
+  EXPECT_EQ(aarch64_addresses[0].index, microfmt::dwarf::aarch64::fp);
+  EXPECT_EQ(x86_addresses[0].index, microfmt::dwarf::x86::fp);
+  EXPECT_EQ(x86_64_addresses[0].index, microfmt::dwarf::x86_64::fp);
+  EXPECT_EQ(riscv_addresses[0].index, microfmt::dwarf::riscv::fp);
 
   const auto contains = [](const auto &registers, uint32_t index) noexcept {
     for (const auto &candidate : registers) {
@@ -745,43 +745,43 @@ TEST(DwarfRegisterTraits, DefinesAllArchitectureRegisterCatalogs) {
     }
     return false;
   };
-  EXPECT_FALSE(contains(arm_addresses, microfmt::dwarf::arm32::SP));
-  EXPECT_FALSE(contains(arm_addresses, microfmt::dwarf::arm32::LR));
-  EXPECT_FALSE(contains(arm_addresses, microfmt::dwarf::arm32::PC));
-  EXPECT_FALSE(contains(aarch64_addresses, microfmt::dwarf::aarch64::SP));
-  EXPECT_FALSE(contains(aarch64_addresses, microfmt::dwarf::aarch64::LR));
-  EXPECT_FALSE(contains(aarch64_addresses, microfmt::dwarf::aarch64::PC));
-  EXPECT_FALSE(contains(x86_addresses, microfmt::dwarf::x86::SP));
-  EXPECT_FALSE(contains(x86_addresses, microfmt::dwarf::x86::PC));
-  EXPECT_FALSE(contains(x86_64_addresses, microfmt::dwarf::x86_64::SP));
-  EXPECT_FALSE(contains(x86_64_addresses, microfmt::dwarf::x86_64::PC));
-  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::ZERO));
-  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::SP));
-  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::RA));
-  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::PC));
+  EXPECT_FALSE(contains(arm_addresses, microfmt::dwarf::arm32::sp));
+  EXPECT_FALSE(contains(arm_addresses, microfmt::dwarf::arm32::lr));
+  EXPECT_FALSE(contains(arm_addresses, microfmt::dwarf::arm32::pc));
+  EXPECT_FALSE(contains(aarch64_addresses, microfmt::dwarf::aarch64::sp));
+  EXPECT_FALSE(contains(aarch64_addresses, microfmt::dwarf::aarch64::lr));
+  EXPECT_FALSE(contains(aarch64_addresses, microfmt::dwarf::aarch64::pc));
+  EXPECT_FALSE(contains(x86_addresses, microfmt::dwarf::x86::sp));
+  EXPECT_FALSE(contains(x86_addresses, microfmt::dwarf::x86::pc));
+  EXPECT_FALSE(contains(x86_64_addresses, microfmt::dwarf::x86_64::sp));
+  EXPECT_FALSE(contains(x86_64_addresses, microfmt::dwarf::x86_64::pc));
+  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::zero));
+  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::sp));
+  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::ra));
+  EXPECT_FALSE(contains(riscv_addresses, microfmt::dwarf::riscv::pc));
 }
 
 TEST(RegisterContextView, UsesArchitectureSystemRegisterTraits) {
   std::byte scratch[8]{};
 
-  sparse_register_state arm_state{microfmt::dwarf::arm32::CNTVCT, 0x1234, 4};
+  sparse_register_state arm_state{microfmt::dwarf::arm32::cntvct, 0x1234, 4};
   microfmt::register_context_ref arm_context(&arm_state, {&read_sparse_register, nullptr}, local_space(), scratch);
   EXPECT_EQ(microfmt::format<64>("{}", microfmt::register_context_view<microfmt::arm_abi_traits>(arm_context)).view(),
             "CNTVCT=0x00001234");
 
-  sparse_register_state aarch64_state{microfmt::dwarf::aarch64::CNTHCTL_EL2, UINT64_C(0x1122334455667788), 8};
+  sparse_register_state aarch64_state{microfmt::dwarf::aarch64::cnthctl_el2, UINT64_C(0x1122334455667788), 8};
   microfmt::register_context_ref aarch64_context(&aarch64_state, {&read_sparse_register, nullptr}, local_space(),
                                                  scratch);
   EXPECT_EQ(
       microfmt::format<64>("{}", microfmt::register_context_view<microfmt::aarch64_abi_traits>(aarch64_context)).view(),
       "CNTHCTL_EL2=0x1122334455667788");
 
-  sparse_register_state x86_state{microfmt::dwarf::x86::CR3, 0x12345000, 4};
+  sparse_register_state x86_state{microfmt::dwarf::x86::cr3, 0x12345000, 4};
   microfmt::register_context_ref x86_context(&x86_state, {&read_sparse_register, nullptr}, local_space(), scratch);
   EXPECT_EQ(microfmt::format<64>("{}", microfmt::register_context_view<microfmt::x86_abi_traits>(x86_context)).view(),
             "CR3=0x12345000");
 
-  sparse_register_state riscv_state{microfmt::dwarf::riscv::SATP, UINT64_C(0x8000000000012345), 8};
+  sparse_register_state riscv_state{microfmt::dwarf::riscv::satp, UINT64_C(0x8000000000012345), 8};
   microfmt::register_context_ref riscv_context(&riscv_state, {&read_sparse_register, nullptr}, local_space(), scratch);
   EXPECT_EQ(
       microfmt::format<64>("{}", microfmt::register_context_view<microfmt::riscv64_abi_traits>(riscv_context)).view(),
@@ -791,12 +791,12 @@ TEST(RegisterContextView, UsesArchitectureSystemRegisterTraits) {
 TEST(RegisterContextView, GroupsRegistersByArchitectureWidth) {
   std::byte scratch[8]{};
 
-  register_range_state arm_state{microfmt::dwarf::arm32::R3, 1, 4};
+  register_range_state arm_state{microfmt::dwarf::arm32::r3, 1, 4};
   microfmt::register_context_ref arm_context(&arm_state, {&read_register_range, nullptr}, local_space(), scratch);
   EXPECT_EQ(microfmt::format<128>("{}", microfmt::register_context_view<microfmt::arm_abi_traits>(arm_context)).view(),
             "R0=0x00000001  R1=0x00000001  R2=0x00000001\nR3=0x00000001");
 
-  register_range_state aarch64_state{microfmt::dwarf::aarch64::X2, 1, 8};
+  register_range_state aarch64_state{microfmt::dwarf::aarch64::x2, 1, 8};
   microfmt::register_context_ref aarch64_context(&aarch64_state, {&read_register_range, nullptr}, local_space(),
                                                  scratch);
   EXPECT_EQ(microfmt::format<128>("{}", microfmt::register_context_view<microfmt::aarch64_abi_traits>(aarch64_context))

@@ -32,13 +32,13 @@ struct arm_abi_traits {
   static constexpr size_t pointer_size = 4;
 
   /// SP register number.
-  static constexpr uint32_t sp_reg = dwarf::arm32::SP; // R13
+  static constexpr uint32_t sp_reg = dwarf::arm32::sp; // R13
   /// LR register number.
-  static constexpr uint32_t lr_reg = dwarf::arm32::LR; // R14
+  static constexpr uint32_t lr_reg = dwarf::arm32::lr; // R14
   /// Return-address register number.
   static constexpr uint32_t ra_reg = lr_reg;
   /// FP register number.
-  static constexpr uint32_t fp_reg = dwarf::arm32::FP; // R11 (Traditional ARM)
+  static constexpr uint32_t fp_reg = dwarf::arm32::fp; // R11 (Traditional ARM)
 
   // Frame pointer layout offsets relative to current FP
   static constexpr ptrdiff_t fp_slot_offset = 0; // Saved FP is at [FP + 0]
@@ -89,11 +89,11 @@ struct aarch64_abi_traits {
   static constexpr size_t pointer_size = 8;
 
   /// SP register number.
-  static constexpr uint32_t sp_reg = dwarf::aarch64::SP; // X31 / SP
+  static constexpr uint32_t sp_reg = dwarf::aarch64::sp; // X31 / SP
   /// RA/LR register number.
-  static constexpr uint32_t ra_reg = dwarf::aarch64::LR; // X30 (LR)
+  static constexpr uint32_t ra_reg = dwarf::aarch64::lr; // X30 (LR)
   /// FP register number.
-  static constexpr uint32_t fp_reg = dwarf::aarch64::FP; // X29 (FP)
+  static constexpr uint32_t fp_reg = dwarf::aarch64::fp; // X29 (FP)
 
   static constexpr ptrdiff_t fp_slot_offset = 0; // Saved FP is at [FP + 0]
   static constexpr ptrdiff_t ra_slot_offset = 8; // Saved LR is at [FP + 8]
@@ -155,11 +155,11 @@ struct riscv32_abi_traits {
   static constexpr size_t pointer_size = 4;
 
   /// SP register number.
-  static constexpr uint32_t sp_reg = dwarf::riscv::SP; // x2
+  static constexpr uint32_t sp_reg = dwarf::riscv::sp; // x2
   /// RA register number.
-  static constexpr uint32_t ra_reg = dwarf::riscv::RA; // x1
+  static constexpr uint32_t ra_reg = dwarf::riscv::ra; // x1
   /// FP register number.
-  static constexpr uint32_t fp_reg = dwarf::riscv::FP; // x8 (s0/fp)
+  static constexpr uint32_t fp_reg = dwarf::riscv::fp; // x8 (s0/fp)
 
   // Standard RISC-V convention (saves s0/fp and ra in the frame):
   // [FP + 0] -> saved frame pointer (s0 / x8)
@@ -210,11 +210,11 @@ struct riscv64_abi_traits {
   static constexpr size_t pointer_size = 8;
 
   /// SP register number.
-  static constexpr uint32_t sp_reg = dwarf::riscv::SP; // x2
+  static constexpr uint32_t sp_reg = dwarf::riscv::sp; // x2
   /// RA register number.
-  static constexpr uint32_t ra_reg = dwarf::riscv::RA; // x1
+  static constexpr uint32_t ra_reg = dwarf::riscv::ra; // x1
   /// FP register number.
-  static constexpr uint32_t fp_reg = dwarf::riscv::FP; // x8 (s0/fp)
+  static constexpr uint32_t fp_reg = dwarf::riscv::fp; // x8 (s0/fp)
 
   static constexpr ptrdiff_t fp_slot_offset = 0; // Saved FP (s0) is at [FP + 0]
   static constexpr ptrdiff_t ra_slot_offset = 8; // Saved RA is at [FP + 8]
@@ -262,11 +262,11 @@ struct x86_abi_traits {
   static constexpr size_t pointer_size = 4;
 
   /// SP register number.
-  static constexpr uint32_t sp_reg = dwarf::x86::SP; // ESP (Register 4)
+  static constexpr uint32_t sp_reg = dwarf::x86::sp; // ESP (Register 4)
   /// RA register number.
-  static constexpr uint32_t ra_reg = dwarf::x86::PC; // EIP (Register 8)
+  static constexpr uint32_t ra_reg = dwarf::x86::pc; // EIP (Register 8)
   /// FP register number.
-  static constexpr uint32_t fp_reg = dwarf::x86::FP; // EBP (Register 5)
+  static constexpr uint32_t fp_reg = dwarf::x86::fp; // EBP (Register 5)
 
   // On 32-bit x86:
   // [EBP + 0] -> stores the saved previous EBP (Frame Pointer)
@@ -317,11 +317,11 @@ struct x86_64_abi_traits {
   static constexpr size_t pointer_size = 8;
 
   /// SP register number.
-  static constexpr uint32_t sp_reg = dwarf::x86_64::SP; // RSP (Register 7)
+  static constexpr uint32_t sp_reg = dwarf::x86_64::sp; // RSP (Register 7)
   /// RA register number.
-  static constexpr uint32_t ra_reg = dwarf::x86_64::PC; // RIP (Register 16)
+  static constexpr uint32_t ra_reg = dwarf::x86_64::pc; // RIP (Register 16)
   /// FP register number.
-  static constexpr uint32_t fp_reg = dwarf::x86_64::FP; // RBP (Register 6)
+  static constexpr uint32_t fp_reg = dwarf::x86_64::fp; // RBP (Register 6)
 
   static constexpr ptrdiff_t fp_slot_offset = 0; // Saved RBP is at [RBP + 0]
   static constexpr ptrdiff_t ra_slot_offset = 8; // Saved RIP is at [RBP + 8]

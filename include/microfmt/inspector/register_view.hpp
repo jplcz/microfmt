@@ -139,8 +139,8 @@ template <> struct formatter<register_context_view<aarch64_abi_traits>> {
         detail::write_register_separator(out, printed, 2);
 
         uint64_t display_val = val;
-        if (reg.index == dwarf::aarch64::LR ||
-            reg.index == dwarf::aarch64::PC) {
+        if (reg.index == dwarf::aarch64::lr ||
+            reg.index == dwarf::aarch64::pc) {
           display_val = static_cast<uint64_t>(
               aarch64_abi_traits::normalize_pc(static_cast<uintptr_t>(val)));
         }

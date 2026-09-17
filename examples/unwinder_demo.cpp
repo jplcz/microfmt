@@ -40,9 +40,9 @@ bool read_arch_register(const void *ctx, microfmt::address_space_ref, uint32_t d
     return false;
   const auto &state = *static_cast<const arch_register_state *>(ctx);
   const uint64_t *value = nullptr;
-  if (dwarf_reg == microfmt::dwarf::x86_64::FP)
+  if (dwarf_reg == microfmt::dwarf::x86_64::fp)
     value = &state.fp;
-  else if (dwarf_reg == microfmt::dwarf::x86_64::PC)
+  else if (dwarf_reg == microfmt::dwarf::x86_64::pc)
     value = &state.pc;
   if (!value)
     return false;
@@ -56,9 +56,9 @@ bool write_arch_register(void *ctx, microfmt::address_space_ref, uint32_t dwarf_
     return false;
   auto &state = *static_cast<arch_register_state *>(ctx);
   uint64_t *value = nullptr;
-  if (dwarf_reg == microfmt::dwarf::x86_64::FP)
+  if (dwarf_reg == microfmt::dwarf::x86_64::fp)
     value = &state.fp;
-  else if (dwarf_reg == microfmt::dwarf::x86_64::PC)
+  else if (dwarf_reg == microfmt::dwarf::x86_64::pc)
     value = &state.pc;
   if (!value)
     return false;
@@ -78,7 +78,7 @@ template <> struct microfmt::frame_unwinder_traits<arch_x86_64_tag> {
   static bool step(const void *ctx, microfmt::register_context_ref reg_ctx, uintptr_t &next_fp,
                    uintptr_t &next_pc) noexcept {
     uint64_t raw_fp = 0;
-    if (!ctx || !reg_ctx.read(microfmt::dwarf::x86_64::FP, raw_fp))
+    if (!ctx || !reg_ctx.read(microfmt::dwarf::x86_64::fp, raw_fp))
       return false;
     uintptr_t current_fp = static_cast<uintptr_t>(raw_fp);
     if (current_fp == 0 || (current_fp % 8) != 0)
@@ -104,8 +104,8 @@ template <> struct microfmt::frame_unwinder_traits<arch_x86_64_tag> {
 
     next_fp = static_cast<uintptr_t>(saved_rbp);
     next_pc = static_cast<uintptr_t>(return_rip);
-    return reg_ctx.write(microfmt::dwarf::x86_64::FP, saved_rbp) &&
-           reg_ctx.write(microfmt::dwarf::x86_64::PC, return_rip);
+    return reg_ctx.write(microfmt::dwarf::x86_64::fp, saved_rbp) &&
+           reg_ctx.write(microfmt::dwarf::x86_64::pc, return_rip);
   }
 };
 

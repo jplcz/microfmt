@@ -143,7 +143,7 @@ public:
           if ((reg_mask & (1U << static_cast<unsigned>(i))) != 0) {
             uint32_t val = 0;
             if (space.read_bytes(io_sp, &val, 4)) {
-              uint32_t dwarf_reg = static_cast<uint32_t>(dwarf::arm32::R4) + static_cast<uint32_t>(i);
+              uint32_t dwarf_reg = static_cast<uint32_t>(dwarf::arm32::r4) + static_cast<uint32_t>(i);
               if (!reg_ctx.write(dwarf_reg, val))
                 return false;
               io_sp += 4;
@@ -157,7 +157,7 @@ public:
         for (int i = 0; i <= count; ++i, io_sp += 8) {
           uint64_t val = 0;
           if (space.read_bytes(io_sp, &val, 8)) {
-            uint32_t dwarf_reg = static_cast<uint32_t>(dwarf::arm32::D0) + 8U + static_cast<uint32_t>(i);
+            uint32_t dwarf_reg = static_cast<uint32_t>(dwarf::arm32::d0) + 8U + static_cast<uint32_t>(i);
             if (!reg_ctx.write_raw(dwarf_reg, &val, 8))
               return false;
           }

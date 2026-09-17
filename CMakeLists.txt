@@ -216,6 +216,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_task_thread.cpp
         tests/test_gdb_protocol.cpp
         tests/test_gdb_registers.cpp
+        tests/test_dwarf_registers.cpp
         tests/test_gdb_register_array.cpp
         tests/test_register_xml_printer.cpp
         tests/test_inspector.cpp

@@ -95,7 +95,7 @@ template <> struct microfmt::frame_unwinder_traits<standard_fp_unwinder_tag> {
   static bool step(const void *ctx, microfmt::register_context_ref reg_ctx,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
     uint32_t current_fp = 0;
-    if (!ctx || !reg_ctx.read(microfmt::dwarf::arm32::FP, current_fp) ||
+    if (!ctx || !reg_ctx.read(microfmt::dwarf::arm32::fp, current_fp) ||
         current_fp == 0 || (current_fp % 4) != 0)
       return false;
     const auto &space = *static_cast<const microfmt::address_space_ref *>(ctx);
@@ -107,8 +107,8 @@ template <> struct microfmt::frame_unwinder_traits<standard_fp_unwinder_tag> {
       return false;
     next_fp = static_cast<uintptr_t>(saved_fp);
     next_pc = static_cast<uintptr_t>(return_lr & ~1U);
-    return reg_ctx.write(microfmt::dwarf::arm32::FP, saved_fp) &&
-           reg_ctx.write(microfmt::dwarf::arm32::LR, return_lr);
+    return reg_ctx.write(microfmt::dwarf::arm32::fp, saved_fp) &&
+           reg_ctx.write(microfmt::dwarf::arm32::lr, return_lr);
   }
 };
 
@@ -174,12 +174,12 @@ int main() {
         uint32_t context_address = 0;
         uint32_t saved_fp = 0;
         uint32_t saved_lr = 0;
-        if (!reg_ctx.read(microfmt::dwarf::arm32::R0, context_address) ||
+        if (!reg_ctx.read(microfmt::dwarf::arm32::r0, context_address) ||
             !space.read_bytes(context_address, &saved_fp, 4) ||
             !space.read_bytes(context_address + 4, &saved_lr, 4))
           return false;
-        if (!reg_ctx.write(microfmt::dwarf::arm32::FP, saved_fp) ||
-            !reg_ctx.write(microfmt::dwarf::arm32::LR, saved_lr))
+        if (!reg_ctx.write(microfmt::dwarf::arm32::fp, saved_fp) ||
+            !reg_ctx.write(microfmt::dwarf::arm32::lr, saved_lr))
           return false;
         next_fp = static_cast<uintptr_t>(saved_fp);
         next_pc = static_cast<uintptr_t>(saved_lr & ~1U);
@@ -219,9 +219,9 @@ int main() {
   uintptr_t initial_fp = stack_base;
   uintptr_t initial_pc = 0x0800'1081;
   arm_register_file register_file;
-  register_file.values[microfmt::dwarf::arm32::FP] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::SP] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::LR] = initial_pc;
+  register_file.values[microfmt::dwarf::arm32::fp] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::lr] = initial_pc;
   std::byte register_scratch[sizeof(uint64_t)]{};
   microfmt::register_context_ref register_context(
       &register_file, {&read_arm_register, &write_arm_register}, space,
@@ -231,9 +231,9 @@ int main() {
   microfmt::remote_backtrace_view bt(it, resolver, symbol_context);
   microfmt::println("\nChained Unwinder Backtrace Result:\n{}", bt);
 
-  register_file.values[microfmt::dwarf::arm32::FP] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::SP] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::LR] = initial_pc;
+  register_file.values[microfmt::dwarf::arm32::fp] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::lr] = initial_pc;
   microfmt::frame_pointer_iterator verbose_it(robust_unwinder, register_context,
                                               initial_fp, initial_pc);
   microfmt::remote_backtrace_view verbose_bt(verbose_it, resolver,

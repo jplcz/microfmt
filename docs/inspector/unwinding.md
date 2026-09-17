@@ -77,8 +77,8 @@ bool old_hint(microfmt::address_space_ref space,
 
 must be changed to the new four-parameter form. Read the old FP or PC inside
 the callback using the architecture's register numbers. For example, on
-ARM32, use `microfmt::dwarf::arm32::FP` and `LR`; on AArch64, use
-`microfmt::dwarf::aarch64::FP` and `LR`.
+ARM32, use `microfmt::dwarf::arm32::fp` and `lr`; on AArch64, use
+`microfmt::dwarf::aarch64::fp` and `lr`.
 
 ### Reading and modifying registers
 
@@ -92,7 +92,7 @@ bool recover_context_switch(microfmt::address_space_ref space,
   uint32_t saved_lr = 0;
 
   // The saved-context address is in a GPR rather than in the FP slot.
-  if (!registers.read(microfmt::dwarf::arm32::R0, context_address) ||
+  if (!registers.read(microfmt::dwarf::arm32::r0, context_address) ||
       !space.read_bytes(context_address, &saved_fp, sizeof(saved_fp)) ||
       !space.read_bytes(context_address + sizeof(saved_fp), &saved_lr,
                         sizeof(saved_lr)))
@@ -100,8 +100,8 @@ bool recover_context_switch(microfmt::address_space_ref space,
 
   // Publish the recovered values in the register context as well as in the
   // frame outputs. A later consumer sees the updated state.
-  if (!registers.write(microfmt::dwarf::arm32::FP, saved_fp) ||
-      !registers.write(microfmt::dwarf::arm32::LR, saved_lr))
+  if (!registers.write(microfmt::dwarf::arm32::fp, saved_fp) ||
+      !registers.write(microfmt::dwarf::arm32::lr, saved_lr))
     return false;
 
   next_fp = static_cast<uintptr_t>(saved_fp);

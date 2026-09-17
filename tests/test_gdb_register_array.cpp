@@ -64,15 +64,15 @@ microfmt::register_context_ref make_context(
 
 TEST(GdbRegisterArray, EncodesAndDecodesSingleRegister) {
   register_state source;
-  source.values[microfmt::dwarf::x86_64::RAX][0] = 0x01;
-  source.values[microfmt::dwarf::x86_64::RAX][1] = 0x23;
-  source.values[microfmt::dwarf::x86_64::RAX][2] = 0xab;
-  source.values[microfmt::dwarf::x86_64::RAX][3] = 0xcd;
-  source.values[microfmt::dwarf::x86_64::RAX][4] = 0xef;
-  source.values[microfmt::dwarf::x86_64::RAX][5] = 0x45;
-  source.values[microfmt::dwarf::x86_64::RAX][6] = 0x67;
-  source.values[microfmt::dwarf::x86_64::RAX][7] = 0x89;
-  source.sizes[microfmt::dwarf::x86_64::RAX] = 8;
+  source.values[microfmt::dwarf::x86_64::rax][0] = 0x01;
+  source.values[microfmt::dwarf::x86_64::rax][1] = 0x23;
+  source.values[microfmt::dwarf::x86_64::rax][2] = 0xab;
+  source.values[microfmt::dwarf::x86_64::rax][3] = 0xcd;
+  source.values[microfmt::dwarf::x86_64::rax][4] = 0xef;
+  source.values[microfmt::dwarf::x86_64::rax][5] = 0x45;
+  source.values[microfmt::dwarf::x86_64::rax][6] = 0x67;
+  source.values[microfmt::dwarf::x86_64::rax][7] = 0x89;
+  source.sizes[microfmt::dwarf::x86_64::rax] = 8;
   auto source_context = make_context(source);
   const auto *mapping =
       microfmt::gdb::register_traits<microfmt::gdb::tags::x86_64>::
@@ -89,9 +89,9 @@ TEST(GdbRegisterArray, EncodesAndDecodesSingleRegister) {
   EXPECT_TRUE(microfmt::gdb::register_array_decoder::decode_single_register(
       "0123ABCDEF456789", destination_context, *mapping));
   EXPECT_EQ(destination.write_count, 1U);
-  EXPECT_EQ(destination.sizes[microfmt::dwarf::x86_64::RAX], 8U);
-  EXPECT_EQ(destination.values[microfmt::dwarf::x86_64::RAX],
-            source.values[microfmt::dwarf::x86_64::RAX]);
+  EXPECT_EQ(destination.sizes[microfmt::dwarf::x86_64::rax], 8U);
+  EXPECT_EQ(destination.values[microfmt::dwarf::x86_64::rax],
+            source.values[microfmt::dwarf::x86_64::rax]);
 }
 
 TEST(GdbRegisterArray, RoundTripsCompleteX86Layout) {

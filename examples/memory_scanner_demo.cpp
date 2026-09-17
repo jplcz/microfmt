@@ -81,11 +81,11 @@ bool read_demo_register(const void *opaque_state, microfmt::address_space_ref, u
     return false;
   const auto &registers = *static_cast<const demo_registers *>(opaque_state);
   const uintptr_t *value = nullptr;
-  if (index == microfmt::dwarf::aarch64::FP)
+  if (index == microfmt::dwarf::aarch64::fp)
     value = &registers.fp;
-  else if (index == microfmt::dwarf::aarch64::X0)
+  else if (index == microfmt::dwarf::aarch64::x0)
     value = &registers.x0;
-  else if (index == microfmt::dwarf::aarch64::X1)
+  else if (index == microfmt::dwarf::aarch64::x1)
     value = &registers.x1;
   if (!value)
     return false;

@@ -416,7 +416,7 @@ struct microfmt::frame_unwinder_traits<
     typename AbiTraits::register_type raw_pc = 0;
     if (!reg_ctx.read_raw(AbiTraits::ra_reg, &raw_pc,
                           AbiTraits::pointer_size)) {
-      if (!reg_ctx.read_raw(dwarf::x86_64::PC, &raw_pc,
+      if (!reg_ctx.read_raw(dwarf::x86_64::pc, &raw_pc,
                             AbiTraits::pointer_size))
         return false;
     }

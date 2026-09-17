@@ -74,6 +74,12 @@ struct register_descriptor {
 };
 ```
 
+Register-number identifiers are lowercase, for example
+`dwarf::x86_64::rax`, `dwarf::arm32::r0`, and
+`dwarf::aarch64::tpidr_el0`. This avoids collisions with architecture headers
+that define uppercase register-name macros. Descriptor names remain uppercase
+for conventional debugger and diagnostic output.
+
 The following constexpr surfaces are available:
 
 * `register_traits::gpr_registers` contains the architecture's printable
@@ -132,10 +138,10 @@ The architecture-neutral `dwarf::generic_timer` namespace assigns stable
 extended indexes for the architectural timer families. ARM32 and AArch64
 provide their conventional names as aliases, for example:
 
-* `arm32::CNTFRQ`, `arm32::CNTPCT`, and `arm32::CNTV_CTL`;
-* `aarch64::CNTFRQ_EL0`, `aarch64::CNTPCT_EL0`, and
-  `aarch64::CNTV_CTL_EL0`;
-* hypervisor timer controls such as `CNTHCTL`, `CNTHP_CVAL`, and their
+* `arm32::cntfrq`, `arm32::cntpct`, and `arm32::cntv_ctl`;
+* `aarch64::cntfrq_el0`, `aarch64::cntpct_el0`, and
+  `aarch64::cntv_ctl_el0`;
+* hypervisor timer controls such as `cnthctl`, `cnthp_cval`, and their
   AArch64 `_EL2` aliases.
 
 These indexes identify logical registers for inspector callbacks; they are not
@@ -167,7 +173,8 @@ raw PAC, tag, or mode bits should read the context directly.
 When extending the catalog:
 
 1. Preserve standard DWARF register numbers and existing extended IDs.
-2. Add the constant to the architecture namespace.
+2. Add the lowercase constant to the architecture namespace; keep the
+   descriptor's display name in the architecture's conventional case.
 3. Add a `register_descriptor` to `gpr_registers` or `system_registers`.
 4. Add pointer-bearing GPRs to `address_registers()` in probability order,
    without SP, LR/RA, PC, or fixed-zero registers.

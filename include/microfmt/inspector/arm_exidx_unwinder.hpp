@@ -85,9 +85,9 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
     // Read current SP and LR from register context
     uint32_t current_sp = 0;
     uint32_t return_lr = 0;
-    if (!reg_ctx.read(dwarf::arm32::SP, current_sp))
+    if (!reg_ctx.read(dwarf::arm32::sp, current_sp))
       return false;
-    if (!reg_ctx.read(dwarf::arm32::LR, return_lr))
+    if (!reg_ctx.read(dwarf::arm32::lr, return_lr))
       return false;
 
     uintptr_t fault_pc = static_cast<uintptr_t>(return_lr & ~1U);
@@ -151,16 +151,16 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
       return false;
 
     const uint32_t updated_sp = static_cast<uint32_t>(virtual_sp);
-    if (!reg_ctx.write(dwarf::arm32::SP, updated_sp))
+    if (!reg_ctx.write(dwarf::arm32::sp, updated_sp))
       return false;
 
     uint32_t updated_fp = 0;
-    if (!reg_ctx.read(dwarf::arm32::FP, updated_fp)) {
+    if (!reg_ctx.read(dwarf::arm32::fp, updated_fp)) {
       updated_fp = updated_sp;
     }
 
     uint32_t updated_lr = 0;
-    if (!reg_ctx.read(dwarf::arm32::LR, updated_lr))
+    if (!reg_ctx.read(dwarf::arm32::lr, updated_lr))
       return false;
 
     next_fp = static_cast<uintptr_t>(updated_fp);

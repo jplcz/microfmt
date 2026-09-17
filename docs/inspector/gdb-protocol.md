@@ -71,7 +71,7 @@ using registers = abi::gdb_register_traits;
 const auto *rax = registers::find_by_name("rax");
 const auto *gdb_register = registers::find_by_gdb(0);
 const auto *dwarf_register =
-    registers::find_by_dwarf(microfmt::dwarf::x86_64::RAX);
+    registers::find_by_dwarf(microfmt::dwarf::x86_64::rax);
 ```
 
 The lookup functions search all register groups and return `nullptr` for an

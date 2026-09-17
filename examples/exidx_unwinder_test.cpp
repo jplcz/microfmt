@@ -189,9 +189,9 @@ int main() {
   // Run EXIDX Unwinder Iteration & Formatting
   // ==========================================================================
   arm_register_file register_file;
-  register_file.values[microfmt::dwarf::arm32::FP] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::SP] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::LR] = initial_pc;
+  register_file.values[microfmt::dwarf::arm32::fp] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::lr] = initial_pc;
   std::byte register_scratch[sizeof(uint64_t)]{};
   microfmt::register_context_ref register_context(&register_file, {&read_arm_register, &write_arm_register}, space,
                                                   register_scratch);
@@ -200,9 +200,9 @@ int main() {
 
   microfmt::println("\nUnwound Backtrace Result:\n{}", bt);
 
-  register_file.values[microfmt::dwarf::arm32::FP] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::SP] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::LR] = initial_pc;
+  register_file.values[microfmt::dwarf::arm32::fp] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
+  register_file.values[microfmt::dwarf::arm32::lr] = initial_pc;
   microfmt::frame_pointer_iterator verbose_it(unwinder, register_context, initial_fp, initial_pc);
   microfmt::remote_backtrace_view verbose_bt(verbose_it, resolver, symbol_context);
   microfmt::println("\nVerbose Backtrace Result:\n{:#}", verbose_bt);

@@ -9,7 +9,7 @@
 namespace {
 
 TEST(RegisterXmlPrinter, FormatsTypedRegister) {
-  constexpr microfmt::gdb::register_mapping mapping{"pc", 32, microfmt::dwarf::riscv::PC, 64, "code_ptr"};
+  constexpr microfmt::gdb::register_mapping mapping{"pc", 32, microfmt::dwarf::riscv::pc, 64, "code_ptr"};
   microfmt::buffer_sink<128> output;
 
   microfmt::gdb::register_xml_printer::format_register(output.as_sink(), mapping);
