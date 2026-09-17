@@ -151,6 +151,7 @@ if(MICROFMT_BUILD_HEADER_CHECKS)
             target_link_libraries(microfmt_headers_cxx${STANDARD} PRIVATE
                 Boost::boost)
             target_compile_definitions(microfmt_headers_cxx${STANDARD} PRIVATE
+                MICROFMT_COMPILE_WITH_BOOST=1
                 MICROFMT_COMPILE_WITH_BOOST_DESCRIBE=1
                 MICROFMT_ENABLE_BOOST_UUID=1
                 MICROFMT_ENABLE_BOOST_SOURCE_LOCATION=1)
@@ -276,7 +277,9 @@ if(MICROFMT_BUILD_TESTS)
     endif()
 
     if(Boost_FOUND)
-        target_sources(microfmt_tests PRIVATE tests/test_map_view_boost.cpp)
+        target_sources(microfmt_tests PRIVATE
+            tests/test_boost_formatters.cpp
+            tests/test_map_view_boost.cpp)
     endif()
 
     add_executable(microfmt_cxx17_container_sink_tests

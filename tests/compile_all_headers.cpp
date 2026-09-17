@@ -94,6 +94,15 @@
 #include <microfmt/formatters/boost_describe.hpp>
 #endif
 
+#if defined(MICROFMT_COMPILE_WITH_BOOST)
+#include <microfmt/formatters/boost_containers.hpp>
+#include <microfmt/formatters/boost_monad.hpp>
+#include <microfmt/formatters/boost_net.hpp>
+#include <microfmt/formatters/boost_system.hpp>
+#include <microfmt/formatters/boost_time.hpp>
+#include <microfmt/formatters/boost_values.hpp>
+#endif
+
 #if MICROFMT_HEADER_CHECK_STANDARD == 17
 static_assert(MICROFMT_CXX17 && !MICROFMT_CXX20,
               "The C++17 header check must use C++17 mode.");

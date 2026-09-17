@@ -155,3 +155,25 @@ microfmt::format_to(out, MICROFMT_STRING("{}"), current_status);
 ```
 
 See `examples/describe_demo.cpp`.
+
+## Boost formatters
+
+Boost integrations are opt-in headers: the caller must provide Boost and
+include only the required formatter family.
+
+| Header | Supported types |
+|---|---|
+| `boost_monad.hpp` | `boost::optional`, Boost.Variant2, Boost.Outcome results |
+| `boost_containers.hpp` | `boost::container::static_vector` and `small_vector` |
+| `boost_system.hpp` | Boost.System error codes and conditions |
+| `boost_net.hpp` | Boost.Asio IPv4/IPv6 addresses and IP endpoints |
+| `boost_values.hpp` | Dynamic bitsets, rationals, tribools, and `cpp_int`-backend integers |
+| `boost_time.hpp` | Boost.Chrono durations/time points and Boost.DateTime values |
+
+Optional and result values use `Some`/`None` and `Ok`/`Err`, matching the
+standard-library formatters. Container and monad element specifiers are
+forwarded to contained values.
+
+Boost.Asio addresses are rendered directly from their byte representation.
+Multiprecision integers default to hexadecimal and support `x`, `X`, `b`, and
+`#`; this avoids allocating a temporary decimal string.
