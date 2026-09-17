@@ -335,10 +335,41 @@ TEST(CoreFormat, NumericPositionalArguments) {
   EXPECT_EQ(microfmt::format<32>("{3}", "first", "second").view(), "{MISSING}");
 }
 
+TEST(CoreFormat, NumericPositionalArgumentEdges) {
+  EXPECT_EQ(microfmt::format<64>("{10} {00} {01:04x}", "zero", 0x2A, 2, 3, 4, 5, 6, 7, 8, 9, "ten").view(),
+            "ten zero 002a");
+  EXPECT_EQ(microfmt::format<32>("{9} {}", "automatic").view(), "{MISSING} automatic");
+  EXPECT_EQ(microfmt::format<32>("{{{1}}}", "first", "second").view(), "{second}");
+  EXPECT_EQ(microfmt::format<32>("{0}").view(), "{MISSING}");
+  EXPECT_EQ(microfmt::format<32>("{184467440737095516161234}", 42).view(), "{MISSING}");
+}
+
 TEST(CoreFormat, CompileTimeNumericPositionalArguments) {
   EXPECT_EQ(microfmt::format<64>(MICROFMT_STRING("{2} {0} {1:04x} {2}"), "first", 0x2A, "last").view(),
             "last first 002a last");
   EXPECT_EQ(microfmt::format<32>(MICROFMT_STRING("{1} {}"), "first", "second").view(), "second first");
+  EXPECT_EQ(microfmt::format<32>(MICROFMT_STRING("{{{1}}}"), "first", "second").view(), "{second}");
+}
+
+TEST(CoreFormat, NumericPositionalRuntimeStress) {
+  std::string format_string;
+  format_string.reserve(256 * 3);
+  for (size_t i = 0; i < 256; ++i) {
+    format_string += "{0}";
+  }
+
+  const auto result = microfmt::format<256>(format_string, 'x');
+  const std::string expected(256, 'x');
+  EXPECT_EQ(result.size(), 256U);
+  EXPECT_EQ(std::string_view(result.view()), expected);
+}
+
+TEST(CoreFormat, NumericPositionalCompileTimePieceLimit) {
+  const auto result = microfmt::format<32>(
+      MICROFMT_STRING("{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"
+                      "{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"),
+      'x');
+  EXPECT_EQ(result.view(), "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 }
 
 // ============================================================================

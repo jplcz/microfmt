@@ -1046,8 +1046,12 @@ constexpr compiled_format<MaxPieces> compile_format_string(microfmt::string_view
   for (size_t i = 0; i < str.size(); ++i) {
     if (str[i] == '{') {
       if (i + 1 < str.size() && str[i + 1] == '{') {
-        // Escaped '{{'
+        if (i > lit_start) {
+          result.pieces[result.count++] = compiled_piece{str.substr(lit_start, i - lit_start), {}, 0, false};
+        }
+        result.pieces[result.count++] = compiled_piece{str.substr(i, 1), {}, 0, false};
         ++i;
+        lit_start = i + 1;
         continue;
       }
 
@@ -1078,7 +1082,12 @@ constexpr compiled_format<MaxPieces> compile_format_string(microfmt::string_view
       lit_start = i + 1;
     } else if (str[i] == '}') {
       if (i + 1 < str.size() && str[i + 1] == '}') {
+        if (i > lit_start) {
+          result.pieces[result.count++] = compiled_piece{str.substr(lit_start, i - lit_start), {}, 0, false};
+        }
+        result.pieces[result.count++] = compiled_piece{str.substr(i, 1), {}, 0, false};
         ++i;
+        lit_start = i + 1;
         continue;
       }
     }
