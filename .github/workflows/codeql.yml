@@ -41,15 +41,10 @@ jobs:
           build-mode: manual
           queries: security-extended
 
-      - name: Configure
+      - name: Build and test
         run: >-
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=RelWithDebInfo
-          -DJPLCZ_MICROFMT_BUILD_BENCHMARKS=OFF
+          ./scripts/run-native-ci.sh build RelWithDebInfo
           -DJPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS=OFF
-
-      - name: Build
-        run: cmake --build build --parallel 2
 
       - name: Analyze
         uses: github/codeql-action/analyze@v4

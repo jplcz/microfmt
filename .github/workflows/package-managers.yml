@@ -53,9 +53,7 @@ jobs:
         env:
           CC: clang
           CXX: clang++
-        run: |
-          conan profile detect --force
-          conan create . --build=missing -s compiler.cppstd=17
+        run: ./scripts/check-conan-package.sh
 
   vcpkg:
     runs-on: ubuntu-latest
@@ -70,26 +68,12 @@ jobs:
             "$RUNNER_TEMP/vcpkg"
           "$RUNNER_TEMP/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
 
-      - name: Install overlay port
+      - name: Install and consume overlay port
         env:
           CC: clang
           CXX: clang++
-        run: >-
-          "$RUNNER_TEMP/vcpkg/vcpkg" install jplcz-microfmt
-          --overlay-ports="$GITHUB_WORKSPACE/packaging/vcpkg/ports"
-          --triplet x64-linux
-
-      - name: Configure consumer
-        run: >-
-          cmake -S tests/cmake/find_package -B build/vcpkg -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_CXX_COMPILER=clang++
-          -DCMAKE_TOOLCHAIN_FILE="$RUNNER_TEMP/vcpkg/scripts/buildsystems/vcpkg.cmake"
-
-      - name: Build and run consumer
-        run: |
-          cmake --build build/vcpkg --parallel 2
-          ./build/vcpkg/find_package_consumer
+          VCPKG_ROOT: ${{ runner.temp }}/vcpkg
+        run: ./scripts/check-vcpkg-package.sh -DCMAKE_CXX_COMPILER=clang++
 
   cpm:
     runs-on: ubuntu-latest
@@ -98,21 +82,5 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Download CPM.cmake
-        run: >-
-          curl --fail --location --silent --show-error
-          https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.43.1/CPM.cmake
-          --output "$RUNNER_TEMP/CPM.cmake"
-
-      - name: Configure consumer
-        run: >-
-          cmake -S tests/cmake/cpm -B build/cpm -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_CXX_COMPILER=clang++
-          -DCPM_CMAKE_PATH="$RUNNER_TEMP/CPM.cmake"
-          -DJPLCZ_MICROFMT_SOURCE_DIR="$GITHUB_WORKSPACE"
-
       - name: Build and run consumer
-        run: |
-          cmake --build build/cpm --parallel 2
-          ./build/cpm/cpm_consumer
+        run: ./scripts/check-cpm-package.sh -DCMAKE_CXX_COMPILER=clang++

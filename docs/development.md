@@ -139,6 +139,60 @@ The native equivalents are the configure, build, `ctest`, header-check, matrix,
 unsafe-buffer, and package-manager commands documented in this guide and in
 [Package-manager integration](package-managers.md).
 
+### Run build workflows locally
+
+The build-oriented workflows call repository scripts directly. Run the same
+scripts from the project root:
+
+```bash
+# Native configure, build, tests, and public-header checks
+CXX=clang++-24 ./scripts/run-native-ci.sh build-ci Release \
+  -DCMAKE_CXX_COMPILER=clang++-24
+
+# AddressSanitizer and UndefinedBehaviorSanitizer
+CXX=clang++-24 ./scripts/run-sanitizers.sh build-sanitizers
+
+# Complete native and cross-compiler matrix
+./scripts/build-matrix.sh
+
+# Clang unsafe-buffer diagnostic ratchet
+./scripts/check-unsafe-buffer-usage.sh
+
+# Conan 2 package and its test_package consumer
+./scripts/check-conan-package.sh
+
+# vcpkg overlay package and find_package consumer
+VCPKG_ROOT=/path/to/vcpkg ./scripts/check-vcpkg-package.sh
+
+# CPM.cmake local-checkout consumer
+./scripts/check-cpm-package.sh
+
+# Doxygen output under build/docs/html
+./scripts/build-docs.sh
+```
+
+The scripts accept environment variables for repeatable local customization:
+
+| Variable | Purpose |
+|---|---|
+| `JPLCZ_MICROFMT_BUILD_PARALLEL` | Parallel build job count; defaults to `2` |
+| `JPLCZ_MICROFMT_CONAN_HOME` | Isolated Conan cache and profile directory |
+| `JPLCZ_MICROFMT_CONAN_COMPILER_VERSION` | Override Conan's compiler-version model when the installed compiler is newer than Conan's settings |
+| `JPLCZ_MICROFMT_VCPKG_BUILD_DIR` | vcpkg consumer build directory |
+| `JPLCZ_MICROFMT_VCPKG_TRIPLET` | vcpkg triplet; defaults to `x64-linux` |
+| `JPLCZ_MICROFMT_CPM_BUILD_DIR` | CPM.cmake consumer build directory |
+| `JPLCZ_MICROFMT_CPM_PATH` | Existing CPM.cmake file instead of downloading one |
+| `JPLCZ_MICROFMT_CPM_VERSION` | CPM.cmake release downloaded when no local file is supplied |
+
+Additional arguments after the documented positional parameters are forwarded
+to CMake or Conan. The package-manager scripts require their corresponding
+tools to be installed; the vcpkg script additionally requires a bootstrapped
+checkout referenced by `VCPKG_ROOT`.
+
+CodeQL analysis, dependency review, and Pages deployment still require GitHub
+services. Their underlying C++ build and Doxygen generation are covered by the
+local scripts above.
+
 ## Test changes
 
 Tests use GoogleTest and are located in `tests/`. Add behavior-focused cases to

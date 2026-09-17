@@ -45,19 +45,8 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Configure
+      - name: Build, test, and check public headers
+        shell: bash
         run: >-
-          cmake -S . -B build -G Ninja
-          -DCMAKE_BUILD_TYPE=Release
+          ./scripts/run-native-ci.sh build Release
           -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
-          -DJPLCZ_MICROFMT_ENABLE_WERROR=ON
-          -DJPLCZ_MICROFMT_BUILD_BENCHMARKS=OFF
-
-      - name: Build
-        run: cmake --build build --parallel 2
-
-      - name: Test
-        run: ctest --test-dir build --build-config Release --output-on-failure
-
-      - name: Check public headers
-        run: cmake --build build --target jplcz_microfmt_check_public_headers --parallel 2
