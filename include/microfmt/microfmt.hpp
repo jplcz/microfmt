@@ -819,11 +819,8 @@ inline void emit_formatted_int(const sink &out, const char *digits, size_t digit
   out.write(microfmt::string_view(digits, digits_len));
 }
 
-} // namespace detail
-
 // Integers (Signed & Unsigned)
-template <typename T>
-struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool> && !std::is_same_v<T, char>>> {
+struct int_formatter_specs {
   uint8_t width{0};
 
   // Bitfield backing all boolean state in a single byte
@@ -871,7 +868,13 @@ struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T,
       }
     }
   }
+};
 
+} // namespace detail
+
+template <typename T>
+struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool> && !std::is_same_v<T, char>>>
+    : detail::int_formatter_specs {
   void format(T val, const sink &out) const noexcept {
     MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
     constexpr size_t BUF_SIZE = (sizeof(T) <= 4) ? 12 : 24;

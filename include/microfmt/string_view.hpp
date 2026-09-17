@@ -65,6 +65,7 @@ public:
     MICROFMT_ASSERT(str != nullptr || len == 0, "string_view data is null with non-zero length");
   }
   
+  MICROFMT_ALWAYS_INLINE
   constexpr basic_string_view(
       const CharT *str MICROFMT_LIFETIMEBOUND
           MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
