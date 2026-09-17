@@ -201,12 +201,130 @@ other incrementally produced address sets without allocation.
 See `examples/memory_scanner_demo.cpp` for combined register and explicit
 address scanning.
 
+## Reuse remote layout accessors
+
+`remote_layout_query<Value, Source>` provides a uniform operation for reading
+one property from a remote object. It owns a
+`remote_layout_accessor<Value, Source>`, which can use either a callback or a
+fixed offset with an explicit target-side storage type.
+
+Use `make_remote_offset_query<Value, Stored>()` when a field is available at a
+known offset:
+
+```cpp
+auto size_query =
+    microfmt::make_remote_offset_query<size_t, uint32_t>(
+        offsetof(target_vector, size));
+
+size_t size = 0;
+if (!size_query(target_space, target_vector_address, size)) {
+  // The field could not be read or represented as size_t.
+}
+```
+
+`Stored` describes the target representation while `Value` is the local value
+returned to the inspector. Unsigned integer conversions are checked, so a
+64-bit target value that does not fit a 32-bit local result fails instead of
+being truncated. Positive and negative offsets are supported.
+
+Use `make_remote_layout_query<Value>()` for layouts that require decoding,
+tag inspection, pointer authentication, or another non-trivial operation:
+
+```cpp
+struct data_reader {
+  target_string_layout layout;
+
+  bool operator()(microfmt::address_space_ref space,
+                  uintptr_t object_address, uintptr_t &data_address,
+                  size_t decoded_size) const noexcept {
+    return layout.resolve_data(
+        space, object_address, decoded_size, data_address);
+  }
+};
+
+auto data_query =
+    microfmt::make_remote_layout_query<uintptr_t>(data_reader{layout});
+```
+
+Callback objects and their state are retained by value. They must be
+nothrow-copyable, and their call operator must be `noexcept`, return `bool`,
+and accept the address space, object address, output reference, then any
+query-specific inputs. This allows one decoded property to feed a later query,
+such as passing a string length to an inline-versus-allocated data resolver.
+
 ## Strings and pointer-width compatibility
 
 `remote_string_view` and `foreign_string_view` read a remote NUL-terminated
 string in chunks through a supplied `span<char>`. The view contains the
 address, transport, scratch span, and maximum render length; it does not copy
 the complete string into a formatter-local buffer.
+
+`remote_basic_string_view<Layout>` inspects a remote C++ string object whose
+character count is stored separately from its data. Unlike
+`remote_string_view`, it reads exactly the decoded length and therefore
+preserves embedded NUL characters. Create layouts with
+`remote_basic_string_traits`:
+
+```cpp
+struct target_string {
+  uint32_t data;
+  uint32_t size;
+};
+
+char scratch[32];
+auto layout =
+    microfmt::remote_basic_string_traits::
+        pointer_size_layout<uint32_t, uint32_t>(
+            offsetof(target_string, data), offsetof(target_string, size));
+auto string = microfmt::make_remote_basic_string_view(
+    target_string_address, target_space, scratch, layout, 256);
+
+microfmt::format_to(output, MICROFMT_STRING("{}"), string);
+```
+
+`pointer_size_layout` supports representations whose data field always points
+at the active character storage, including implementations that redirect that
+pointer to an inline buffer for short strings. `size_selected_layout` supports
+representations that use inline storage when `size <= inline_capacity` and a
+remote pointer otherwise. The pointer and size representation types must
+match the target ABI; use `uint32_t` for a 32-bit target inspected by a 64-bit
+host.
+
+Every layout performs two distinct operations: reading the string length and
+resolving the character-data address. These operations use
+`remote_layout_query`, which owns a templated `remote_layout_accessor`.
+An accessor can retain either a callback or a typed fixed-offset description:
+
+```cpp
+auto size_query =
+    microfmt::make_remote_offset_query<size_t, uint32_t>(size_offset);
+auto custom_query = microfmt::make_remote_layout_query<uintptr_t>(
+    [state](microfmt::address_space_ref space, uintptr_t object_address,
+            uintptr_t &result, size_t decoded_size) noexcept {
+      return state.resolve_data(space, object_address, decoded_size, result);
+    });
+```
+
+The fixed-offset query reads the specified target-side storage type and safely
+converts it to the query's public value type. Callback objects and captured
+state are retained by value.
+
+For standard-library or application-specific string encodings, combine two
+callback readers:
+
+```cpp
+auto layout = microfmt::remote_basic_string_traits::callback_layout(
+    read_target_string_size,
+    read_target_string_data_address);
+```
+
+The data reader receives the output address reference followed by the already
+decoded size, allowing it to select inline or allocated storage without
+rereading the length. Use `pointer_size_layout` or `size_selected_layout` when
+offsets completely describe the representation instead. The address space and
+scratch storage are borrowed and must outlive the view. Formatting is bounded
+by `max_limit` and appends `...` only when the decoded string is longer than
+that limit.
 
 Direct callers can use `address_space_ref::read_string_chunk`, which returns
 `expected<string_chunk, address_space_error>`. `string_chunk::length` reports
