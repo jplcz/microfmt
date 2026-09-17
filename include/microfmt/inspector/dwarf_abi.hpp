@@ -8,6 +8,7 @@
  * used during DWARF unwinding. */
 
 #include "dwarf_registers.hpp"
+#include "gdb_registers.hpp"
 #include <cstddef>
 #include <cstdint>
 
@@ -25,6 +26,8 @@ struct arm_abi_traits {
   using register_type = uint32_t;
   /// Architecture register name/index catalog.
   using register_traits = dwarf::arm32::register_traits;
+  /// GDB-to-DWARF register mapping.
+  using gdb_register_traits = gdb::register_traits<gdb::tags::arm32>;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 4;
 
@@ -80,6 +83,8 @@ struct aarch64_abi_traits {
   using register_type = uint64_t;
   /// Architecture register name/index catalog.
   using register_traits = dwarf::aarch64::register_traits;
+  /// GDB-to-DWARF register mapping.
+  using gdb_register_traits = gdb::register_traits<gdb::tags::aarch64>;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 8;
 
@@ -144,6 +149,8 @@ struct riscv32_abi_traits {
   using register_type = uint32_t;
   /// Architecture register name/index catalog.
   using register_traits = dwarf::riscv::register_traits;
+  /// GDB-to-DWARF register mapping.
+  using gdb_register_traits = gdb::register_traits<gdb::tags::riscv32>;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 4;
 
@@ -197,6 +204,8 @@ struct riscv64_abi_traits {
   using register_type = uint64_t;
   /// Architecture register name/index catalog.
   using register_traits = dwarf::riscv::register_traits;
+  /// GDB-to-DWARF register mapping.
+  using gdb_register_traits = gdb::register_traits<gdb::tags::riscv64>;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 8;
 
@@ -247,6 +256,8 @@ struct x86_abi_traits {
   using register_type = uint32_t;
   /// Architecture register name/index catalog.
   using register_traits = dwarf::x86::register_traits;
+  /// GDB-to-DWARF register mapping.
+  using gdb_register_traits = gdb::register_traits<gdb::tags::x86>;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 4;
 
@@ -300,6 +311,8 @@ struct x86_64_abi_traits {
   using register_type = uint64_t;
   /// Architecture register name/index catalog.
   using register_traits = dwarf::x86_64::register_traits;
+  /// GDB-to-DWARF register mapping.
+  using gdb_register_traits = gdb::register_traits<gdb::tags::x86_64>;
   /// Pointer size in bytes.
   static constexpr size_t pointer_size = 8;
 

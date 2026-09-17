@@ -101,6 +101,21 @@ for (const auto &reg : traits::address_registers()) {
 }
 ```
 
+Each built-in ABI also exposes `AbiTraits::gdb_register_traits`, which maps
+GDB register numbers and names to the corresponding DWARF indexes and bit
+widths. The GDB register-array codec and target XML printer consume this
+binding directly, so callers select one ABI trait type for unwinding, register
+I/O, and GDB protocol output:
+
+```cpp
+using abi = microfmt::aarch64_abi_traits;
+
+microfmt::gdb::register_array_encoder::encode_all_registers<abi>(
+    output, context);
+microfmt::gdb::register_xml_printer::format_target_xml<abi>(
+    output, "aarch64");
+```
+
 ## ARM and AArch64 system registers
 
 ARM32 and AArch64 catalogs include extended descriptors for execution state,
@@ -150,7 +165,8 @@ When extending the catalog:
 3. Add a `register_descriptor` to `gpr_registers` or `system_registers`.
 4. Add pointer-bearing GPRs to `address_registers()` in probability order,
    without SP, LR/RA, PC, or fixed-zero registers.
-5. Expose the catalog as `AbiTraits::register_traits`.
+5. Expose the catalog as `AbiTraits::register_traits` and its GDB mapping as
+   `AbiTraits::gdb_register_traits`.
 6. Make the register-context callback accept the requested value width and
    return `false` when the target does not provide that register.
 

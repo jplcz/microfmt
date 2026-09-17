@@ -5,8 +5,8 @@
 #pragma once
 
 #include "../array.hpp"
+#include "../string_view.hpp"
 #include <cstdint>
-#include <string_view>
 
 namespace microfmt::dwarf {
 

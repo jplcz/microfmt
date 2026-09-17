@@ -55,11 +55,14 @@
 #include <microfmt/inspector/gdb_packet_metadata.hpp>
 #include <microfmt/inspector/gdb_packet_recognizer.hpp>
 #include <microfmt/inspector/gdb_packet_types.hpp>
+#include <microfmt/inspector/gdb_register_array.hpp>
+#include <microfmt/inspector/gdb_registers.hpp>
 #include <microfmt/inspector/gdb_stream.hpp>
 #include <microfmt/inspector/memory_classifier.hpp>
 #include <microfmt/inspector/memory_scanner.hpp>
 #include <microfmt/inspector/metadata_map.hpp>
 #include <microfmt/inspector/register_view.hpp>
+#include <microfmt/inspector/register_xml_printer.hpp>
 #include <microfmt/inspector/task.hpp>
 #include <microfmt/inspector/thread.hpp>
 

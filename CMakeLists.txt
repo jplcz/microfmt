@@ -215,6 +215,9 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_metadata_map.cpp
         tests/test_task_thread.cpp
         tests/test_gdb_protocol.cpp
+        tests/test_gdb_registers.cpp
+        tests/test_gdb_register_array.cpp
+        tests/test_register_xml_printer.cpp
         tests/test_inspector.cpp
         tests/test_bitfield.cpp
         tests/test_can.cpp
@@ -359,6 +362,47 @@ if(MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(microfmt_cxx17_gdb_protocol_tests
         TEST_PREFIX "Cxx17GdbProtocol.")
+
+    add_executable(microfmt_cxx17_gdb_register_tests
+        tests/test_gdb_registers.cpp)
+    target_link_libraries(microfmt_cxx17_gdb_register_tests PRIVATE
+        microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_gdb_register_tests)
+    set_target_properties(microfmt_cxx17_gdb_register_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    gtest_discover_tests(microfmt_cxx17_gdb_register_tests
+        TEST_PREFIX "Cxx17GdbRegisters.")
+
+    add_executable(microfmt_cxx17_gdb_register_array_tests
+        tests/test_gdb_register_array.cpp)
+    target_link_libraries(microfmt_cxx17_gdb_register_array_tests PRIVATE
+        microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_gdb_register_array_tests)
+    set_target_properties(
+        microfmt_cxx17_gdb_register_array_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    gtest_discover_tests(microfmt_cxx17_gdb_register_array_tests
+        TEST_PREFIX "Cxx17GdbRegisterArray.")
+
+    add_executable(microfmt_cxx17_register_xml_printer_tests
+        tests/test_register_xml_printer.cpp)
+    target_link_libraries(microfmt_cxx17_register_xml_printer_tests PRIVATE
+        microfmt GTest::gtest_main)
+    microfmt_enable_warnings(microfmt_cxx17_register_xml_printer_tests)
+    set_target_properties(
+        microfmt_cxx17_register_xml_printer_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    gtest_discover_tests(microfmt_cxx17_register_xml_printer_tests
+        TEST_PREFIX "Cxx17RegisterXmlPrinter.")
 
     add_executable(microfmt_cxx17_pmr_sink_tests tests/test_pmr_sink.cpp)
     target_link_libraries(microfmt_cxx17_pmr_sink_tests PRIVATE

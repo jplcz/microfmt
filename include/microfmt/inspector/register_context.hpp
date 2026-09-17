@@ -60,21 +60,25 @@ public:
 
   template <typename State>
   constexpr register_context_ref(
-                                 State *state_ptr MICROFMT_LIFETIMEBOUND,
+                                 State *state_ptr MICROFMT_LIFETIMEBOUND
+                                     MICROFMT_LIFETIME_CAPTURE_BY_THIS,
                                  register_context_vtable vtable,
                                  address_space_ref space,
                                  span<std::byte> scratch
-                                     MICROFMT_LIFETIMEBOUND) noexcept
+                                     MICROFMT_LIFETIMEBOUND
+                                         MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : state_(state_ptr), vtable_(vtable), space_(space), scratch_(scratch) {}
 
   template <typename State>
   constexpr register_context_ref(
                                  const State *state_ptr
-                                     MICROFMT_LIFETIMEBOUND,
+                                     MICROFMT_LIFETIMEBOUND
+                                         MICROFMT_LIFETIME_CAPTURE_BY_THIS,
                                  register_context_vtable vtable,
                                  address_space_ref space,
                                  span<std::byte> scratch
-                                     MICROFMT_LIFETIMEBOUND) noexcept
+                                     MICROFMT_LIFETIMEBOUND
+                                         MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : state_(const_cast<State *>(state_ptr)), vtable_(vtable), space_(space),
         scratch_(scratch) {}
 
