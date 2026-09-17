@@ -266,6 +266,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_spi.cpp
         tests/test_escaped.cpp
         tests/test_filter_view.cpp
+        tests/test_additional_formatters.cpp
         tests/test_fmt_compat.cpp
         tests/test_i2c.cpp
         tests/test_json.cpp

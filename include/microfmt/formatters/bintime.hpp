@@ -47,7 +47,8 @@ template <typename T> struct is_bintime : detail::is_bintime_struct<T> {};
  * @tparam T Candidate time type.
  */
 template <typename T>
-inline constexpr bool is_bintime_v = is_bintime<std::remove_cvref_t<T>>::value;
+inline constexpr bool is_bintime_v =
+    is_bintime<std::remove_cv_t<std::remove_reference_t<T>>>::value;
 
 /**
  * @brief Fractional-second precision selectors for time formatting.

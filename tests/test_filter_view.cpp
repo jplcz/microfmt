@@ -59,6 +59,22 @@ TEST(FilterViewTest, SupportsRawPointerAndCountRanges) {
       microfmt::filter(static_cast<const int16_t *>(nullptr), size_t{4},
                        [](int16_t) noexcept { return true; }));
   EXPECT_EQ(output.view(), "[]");
+
+  output.reset();
+  microfmt::format_to(output.as_sink(), "{:c04x}",
+                      microfmt::filter(readings, size_t{4},
+                                       [](int16_t value) noexcept {
+                                         return value >= 3000;
+                                       }));
+  EXPECT_EQ(output.view(), "{0ce9, 138c}");
+
+  output.reset();
+  microfmt::format_to(output.as_sink(), "{:n}",
+                      microfmt::filter(readings, size_t{4},
+                                       [](int16_t value) noexcept {
+                                         return value < 2000;
+                                       }));
+  EXPECT_EQ(output.view(), "1200, 1812");
 }
 
 TEST(FilterViewTest, SupportsDelimitersAndForwardedSpecifiers) {

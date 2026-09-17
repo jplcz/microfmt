@@ -74,13 +74,16 @@ template <typename ContainerT,
 template <> struct formatter<mac_view> {
   char parse_separator{'\0'};
   bool parse_uppercase{false};
+  bool parse_case_set{false};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     for (char c : ctx.spec()) {
       if (c == 'X') {
         parse_uppercase = true;
+        parse_case_set = true;
       } else if (c == 'x') {
         parse_uppercase = false;
+        parse_case_set = true;
       } else if (c == '-' || c == ':' || c == '.' || c == '_') {
         parse_separator = c;
       }
@@ -95,7 +98,7 @@ template <> struct formatter<mac_view> {
     }
 
     const char sep = (parse_separator != '\0') ? parse_separator : mv.separator;
-    const bool is_upper = mv.uppercase || parse_uppercase;
+    const bool is_upper = parse_case_set ? parse_uppercase : mv.uppercase;
     const auto &hex_digits = is_upper ? detail::hex_digits_upper : detail::hex_digits_lower;
 
     for (size_t i = 0; i < len; ++i) {

@@ -117,6 +117,8 @@ quoted(microfmt::string_view s,
  */
 template <> struct formatter<styled_str_view> {
   styled_str_view cfg{};
+  bool align_set{false};
+  bool fill_set{false};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();
@@ -136,6 +138,8 @@ template <> struct formatter<styled_str_view> {
         cfg.align = text_align::right;
       else if (spec[1] == '^')
         cfg.align = text_align::center;
+      align_set = true;
+      fill_set = true;
       i = 2;
     } else if (spec[0] == '<' || spec[0] == '>' || spec[0] == '^') {
       if (spec[0] == '<')
@@ -144,6 +148,8 @@ template <> struct formatter<styled_str_view> {
         cfg.align = text_align::right;
       else if (spec[0] == '^')
         cfg.align = text_align::center;
+      align_set = true;
+      fill_set = true;
       i = 1;
     }
     cfg.fill_char = fill;
@@ -190,9 +196,9 @@ template <> struct formatter<styled_str_view> {
     // Apply format specifier overrides if configured
     if (cfg.width > 0)
       s.width = cfg.width;
-    if (cfg.fill_char != ' ')
+    if (fill_set)
       s.fill_char = cfg.fill_char;
-    if (cfg.align != text_align::left)
+    if (align_set)
       s.align = cfg.align;
     if (cfg.casing != text_case::none)
       s.casing = cfg.casing;

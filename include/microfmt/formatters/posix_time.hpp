@@ -61,7 +61,8 @@ struct is_timeval_like<T, std::void_t<decltype(std::declval<T>().tv_sec),
  */
 template <typename T>
 inline constexpr bool is_timespec_v =
-    detail::is_timespec_like<std::remove_cvref_t<T>>::value;
+    detail::is_timespec_like<
+        std::remove_cv_t<std::remove_reference_t<T>>>::value;
 
 /**
  * @brief Variable template for @ref detail::is_timeval_like.
@@ -69,7 +70,8 @@ inline constexpr bool is_timespec_v =
  */
 template <typename T>
 inline constexpr bool is_timeval_v =
-    detail::is_timeval_like<std::remove_cvref_t<T>>::value;
+    detail::is_timeval_like<
+        std::remove_cv_t<std::remove_reference_t<T>>>::value;
 
 // ============================================================================
 // Formatter for struct timespec (.tv_sec, .tv_nsec)

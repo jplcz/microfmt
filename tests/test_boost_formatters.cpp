@@ -7,6 +7,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/container/static_vector.hpp>
+#include <boost/describe.hpp>
 #include <boost/dynamic_bitset.hpp>
 #include <boost/logic/tribool.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
@@ -17,12 +18,32 @@
 #include <boost/variant2/variant.hpp>
 
 #include <microfmt/formatters/boost_containers.hpp>
+#include <microfmt/formatters/boost_describe.hpp>
 #include <microfmt/formatters/boost_monad.hpp>
 #include <microfmt/formatters/boost_net.hpp>
 #include <microfmt/formatters/boost_system.hpp>
 #include <microfmt/formatters/boost_time.hpp>
 #include <microfmt/formatters/boost_values.hpp>
 #include <microfmt/microfmt.hpp>
+
+enum class described_state : uint8_t { idle = 0, running = 1 };
+BOOST_DESCRIBE_ENUM(described_state, idle, running)
+
+struct described_record {
+  int id;
+  bool ready;
+};
+BOOST_DESCRIBE_STRUCT(described_record, (), (id, ready))
+
+TEST(BoostFormattersTest, FormatsDescribedEnumsAndStructs) {
+  EXPECT_EQ(microfmt::format<32>("{} {}", described_state::running,
+                                static_cast<described_state>(9))
+                .view(),
+            "running static_cast<uint8_t>(9)");
+  EXPECT_EQ(
+      microfmt::format<64>("{}", described_record{7, true}).view(),
+      "{id: 7, ready: true}");
+}
 
 TEST(BoostFormattersTest, FormatsOptionalVariantAndOutcome) {
   microfmt::buffer_sink<128> output;

@@ -59,3 +59,20 @@ TEST(StyledTest, FormatSpecifierOverridesViewSettings) {
             "     \"De...\"");
   EXPECT_EQ(format_styled(output, "{:b}", microfmt::to_upper("ok")), "[OK]");
 }
+
+TEST(StyledTest, CoversRemainingQuoteAndCaseModes) {
+  microfmt::buffer_sink<128> output;
+
+  EXPECT_EQ(format_styled(
+                output, "{}",
+                microfmt::quoted("value", microfmt::quote_style::single_quotes)),
+            "'value'");
+  EXPECT_EQ(format_styled(
+                output, "{}",
+                microfmt::quoted("value", microfmt::quote_style::angle_brackets)),
+            "<value>");
+  EXPECT_EQ(format_styled(output, "{:t}", microfmt::to_upper("hello_WORLD")),
+            "Hello_World");
+  EXPECT_EQ(format_styled(output, "{:*<8}", microfmt::pad_center("xy", 2)),
+            "xy******");
+}

@@ -37,6 +37,10 @@ TEST(TupleTest, DelimiterStylesAndElementSpecifiers) {
   output.reset();
   microfmt::format_to(output.as_sink(), "{:c}", std::make_pair("rx", 18));
   EXPECT_EQ(output.view(), "{rx, 18}");
+
+  output.reset();
+  microfmt::format_to(output.as_sink(), "{:p04x}", registers);
+  EXPECT_EQ(output.view(), "(00a1, 000f, beef)");
 }
 
 TEST(TupleTest, HandlesEmptyTuple) {
