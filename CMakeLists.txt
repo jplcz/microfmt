@@ -266,11 +266,9 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_spi.cpp
         tests/test_escaped.cpp
         tests/test_filter_view.cpp
-        tests/test_probes.cpp
         tests/test_fmt_compat.cpp
         tests/test_i2c.cpp
         tests/test_json.cpp
-        tests/test_stdio.cpp
         tests/test_binary.cpp
         tests/test_uuid.cpp
         tests/test_semver.cpp
@@ -295,6 +293,11 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         nlohmann_json::nlohmann_json)
     target_compile_features(jplcz_microfmt_tests PRIVATE cxx_std_20)
     jplcz_microfmt_enable_warnings(jplcz_microfmt_tests)
+    if(NOT MSVC)
+        target_sources(jplcz_microfmt_tests PRIVATE
+            tests/test_probes.cpp
+            tests/test_stdio.cpp)
+    endif()
     if(JPLCZ_MICROFMT_HAS_SYSLOG)
         target_compile_definitions(jplcz_microfmt_tests PRIVATE
             MICROFMT_COMPILE_WITH_SYSLOG=1)
@@ -609,16 +612,18 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         gtest_discover_tests(jplcz_microfmt_cxx23_tests)
     endif()
 
-    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    if(NOT MSVC)
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
-    # Build probe object file with optimization
-    add_library(jplcz_microfmt_stack_probes OBJECT
-        tests/stack_probes.cpp)
-    target_link_libraries(jplcz_microfmt_stack_probes PRIVATE jplcz_microfmt)
-    target_compile_features(jplcz_microfmt_stack_probes PRIVATE cxx_std_20)
-    jplcz_microfmt_enable_warnings(jplcz_microfmt_stack_probes)
+        # Build probe object file with optimization
+        add_library(jplcz_microfmt_stack_probes OBJECT
+            tests/stack_probes.cpp)
+        target_link_libraries(jplcz_microfmt_stack_probes PRIVATE jplcz_microfmt)
+        target_compile_features(jplcz_microfmt_stack_probes PRIVATE cxx_std_20)
+        jplcz_microfmt_enable_warnings(jplcz_microfmt_stack_probes)
+    endif()
 
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    if(NOT MSVC AND CMAKE_CXX_COMPILER_ID MATCHES "GNU")
         target_compile_options(jplcz_microfmt_stack_probes PRIVATE
             -O2
             -fstack-usage
@@ -637,7 +642,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
             VERBATIM
         )
 
-    elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    elseif(NOT MSVC AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         target_compile_options(jplcz_microfmt_stack_probes PRIVATE
             -O2
             -fstack-size-section
