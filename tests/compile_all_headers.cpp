@@ -60,6 +60,8 @@
 #include <microfmt/inspector/gdb_stream.hpp>
 #include <microfmt/inspector/memory_classifier.hpp>
 #include <microfmt/inspector/memory_scanner.hpp>
+#include <microfmt/inspector/memory_pattern_scanner.hpp>
+#include <microfmt/inspector/advanced_scanners.hpp>
 #include <microfmt/inspector/metadata_map.hpp>
 #include <microfmt/inspector/register_view.hpp>
 #include <microfmt/inspector/register_context.hpp>

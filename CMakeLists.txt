@@ -222,6 +222,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_remote_layout_accessor.cpp
         tests/test_remote_basic_string.cpp
         tests/test_remote_page_table_walker.cpp
+        tests/test_memory_pattern_scanners.cpp
         tests/test_gdb_register_array.cpp
         tests/test_register_xml_printer.cpp
         tests/test_inspector.cpp

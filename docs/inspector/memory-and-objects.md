@@ -276,6 +276,10 @@ incrementally produced address sets without allocation.
 See `examples/memory_scanner_demo.cpp` for combined register and explicit
 address scanning.
 
+For first-match searches over exact or masked signatures, scalar ranges, and
+multi-field predicates, see the dedicated
+[memory pattern scanner guide](memory-pattern-scanners.md).
+
 ## Reuse remote layout accessors
 
 `remote_layout_query<Value, Source>` provides a uniform operation for reading
