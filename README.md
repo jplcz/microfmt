@@ -201,6 +201,8 @@ layouts, symbolization, architecture support, and unwinding.
 
 ## Add microfmt
 
+### FetchContent or `add_subdirectory`
+
 Use the CMake interface target:
 
 ```cmake
@@ -211,8 +213,62 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(microfmt)
 
-target_link_libraries(my_target PRIVATE microfmt::microfmt)
+target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 ```
+
+Direct `add_subdirectory` usage exposes the same target:
+
+```cmake
+add_subdirectory(third_party/microfmt)
+target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
+```
+
+When embedded as a subdirectory, microfmt does not enable its tests, examples,
+benchmarks, header checks, strict warnings, or install rules by default. It
+also does not change the parent project's global C++ standard. The interface
+target requires C++17.
+
+### Installed package and `ExternalProject`
+
+Standalone builds enable `MICROFMT_INSTALL` by default:
+
+```sh
+cmake -S microfmt -B microfmt-build \
+  -DMICROFMT_BUILD_TESTS=OFF \
+  -DMICROFMT_BUILD_EXAMPLES=OFF \
+  -DMICROFMT_BUILD_BENCHMARKS=OFF \
+  -DMICROFMT_BUILD_HEADER_CHECKS=OFF
+cmake --build microfmt-build
+cmake --install microfmt-build --prefix /opt/microfmt
+```
+
+The installation contains the public headers and a CMake config package:
+
+```cmake
+find_package(jplcz_microfmt CONFIG REQUIRED)
+target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
+```
+
+An `ExternalProject_Add` dependency should pass its install prefix and disable
+development-only targets:
+
+```cmake
+include(ExternalProject)
+ExternalProject_Add(
+    microfmt_external
+    SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/microfmt"
+    CMAKE_ARGS
+        -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
+        -DMICROFMT_INSTALL=ON
+        -DMICROFMT_BUILD_TESTS=OFF
+        -DMICROFMT_BUILD_EXAMPLES=OFF
+        -DMICROFMT_BUILD_BENCHMARKS=OFF
+        -DMICROFMT_BUILD_HEADER_CHECKS=OFF
+)
+```
+
+Set `CMAKE_PREFIX_PATH` or `jplcz_microfmt_DIR` to the installed package
+directory when configuring a separate consuming project.
 
 Alternatively, add `include/` to the compiler include path:
 

@@ -3,63 +3,83 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.20)
-project(microfmt VERSION 0.1.0 LANGUAGES CXX)
+project(jplcz_microfmt VERSION 0.1.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-include(CheckCXXCompilerFlag)
-
-find_package(Boost 1.77 CONFIG QUIET)
-find_package(PkgConfig QUIET)
-if(PkgConfig_FOUND)
-    pkg_check_modules(MICROFMT_SYSTEMD QUIET IMPORTED_TARGET libsystemd)
-    pkg_check_modules(MICROFMT_TIZEN_DLOG QUIET IMPORTED_TARGET dlog)
-endif()
-
-if(MSVC)
-    check_cxx_compiler_flag("/std:c++latest" MICROFMT_COMPILER_SUPPORTS_CXX23)
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(MICROFMT_IS_TOP_LEVEL ON)
 else()
-    check_cxx_compiler_flag("-std=c++23" MICROFMT_COMPILER_SUPPORTS_CXX23)
+    set(MICROFMT_IS_TOP_LEVEL OFF)
 endif()
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    check_cxx_compiler_flag("-Wdangling"
-        MICROFMT_COMPILER_SUPPORTS_WDANGLING)
-    check_cxx_compiler_flag("-Wdangling-gsl"
-        MICROFMT_COMPILER_SUPPORTS_WDANGLING_GSL)
-    check_cxx_compiler_flag("-Wdangling-assignment-gsl"
-        MICROFMT_COMPILER_SUPPORTS_WDANGLING_ASSIGNMENT_GSL)
-    check_cxx_compiler_flag("-Wdangling-field"
-        MICROFMT_COMPILER_SUPPORTS_WDANGLING_FIELD)
-    check_cxx_compiler_flag("-Wreturn-stack-address"
-        MICROFMT_COMPILER_SUPPORTS_WRETURN_STACK_ADDRESS)
-    check_cxx_compiler_flag("-Wunsafe-buffer-usage"
-        MICROFMT_COMPILER_SUPPORTS_WUNSAFE_BUFFER_USAGE)
+set(MICROFMT_DEVELOPMENT_DEFAULT ${MICROFMT_IS_TOP_LEVEL})
+
+option(MICROFMT_ENABLE_STRICT_WARNINGS
+    "Enable comprehensive GCC and Clang warnings" ${MICROFMT_DEVELOPMENT_DEFAULT})
+option(MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE
+    "Enable Clang unsafe buffer usage diagnostics" OFF)
+option(MICROFMT_ENABLE_WERROR
+    "Enable build with -Werror" OFF)
+option(MICROFMT_BUILD_TESTS
+    "Build test suite" ${MICROFMT_DEVELOPMENT_DEFAULT})
+option(MICROFMT_BUILD_EXAMPLES
+    "Build example apps" ${MICROFMT_DEVELOPMENT_DEFAULT})
+option(MICROFMT_BUILD_BENCHMARKS
+    "Build benchmark apps" ${MICROFMT_DEVELOPMENT_DEFAULT})
+option(MICROFMT_BUILD_HEADER_CHECKS
+    "Compile all public headers under each supported C++ standard"
+    ${MICROFMT_DEVELOPMENT_DEFAULT})
+option(MICROFMT_INSTALL
+    "Install microfmt headers and CMake package metadata"
+    ${MICROFMT_IS_TOP_LEVEL})
+
+if(MICROFMT_BUILD_TESTS OR MICROFMT_BUILD_EXAMPLES OR
+   MICROFMT_BUILD_HEADER_CHECKS)
+    find_package(Boost 1.77 CONFIG QUIET)
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(MICROFMT_SYSTEMD QUIET IMPORTED_TARGET libsystemd)
+        pkg_check_modules(MICROFMT_TIZEN_DLOG QUIET IMPORTED_TARGET dlog)
+    endif()
+endif()
+
+if(MICROFMT_ENABLE_STRICT_WARNINGS OR MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE OR
+   MICROFMT_BUILD_HEADER_CHECKS OR MICROFMT_BUILD_TESTS)
+    include(CheckCXXCompilerFlag)
+
+    if(MSVC)
+        check_cxx_compiler_flag("/std:c++latest"
+            MICROFMT_COMPILER_SUPPORTS_CXX23)
+    else()
+        check_cxx_compiler_flag("-std=c++23"
+            MICROFMT_COMPILER_SUPPORTS_CXX23)
+    endif()
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        check_cxx_compiler_flag("-Wdangling"
+            MICROFMT_COMPILER_SUPPORTS_WDANGLING)
+        check_cxx_compiler_flag("-Wdangling-gsl"
+            MICROFMT_COMPILER_SUPPORTS_WDANGLING_GSL)
+        check_cxx_compiler_flag("-Wdangling-assignment-gsl"
+            MICROFMT_COMPILER_SUPPORTS_WDANGLING_ASSIGNMENT_GSL)
+        check_cxx_compiler_flag("-Wdangling-field"
+            MICROFMT_COMPILER_SUPPORTS_WDANGLING_FIELD)
+        check_cxx_compiler_flag("-Wreturn-stack-address"
+            MICROFMT_COMPILER_SUPPORTS_WRETURN_STACK_ADDRESS)
+        check_cxx_compiler_flag("-Wunsafe-buffer-usage"
+            MICROFMT_COMPILER_SUPPORTS_WUNSAFE_BUFFER_USAGE)
+    endif()
 endif()
 
 # Header-only interface target
 add_library(microfmt INTERFACE)
+target_compile_features(microfmt INTERFACE cxx_std_17)
 
 target_include_directories(microfmt INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 
-add_library(microfmt::microfmt ALIAS microfmt)
-
-option(MICROFMT_ENABLE_STRICT_WARNINGS
-    "Enable comprehensive GCC and Clang warnings" ON)
-option(MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE
-    "Enable Clang unsafe buffer usage diagnostics" OFF)
-option(MICROFMT_ENABLE_WERROR
-    "Enable build with -Werror" OFF)
-option(MICROFMT_BUILD_TESTS "Build test suite" ON)
-option(MICROFMT_BUILD_EXAMPLES "Build example apps" ON)
-option(MICROFMT_BUILD_BENCHMARKS "Build benchmark apps" ON)
-option(MICROFMT_BUILD_HEADER_CHECKS
-    "Compile all public headers under each supported C++ standard" ON)
+add_library(jplcz_microfmt::microfmt ALIAS microfmt)
 
 add_library(microfmt_warnings INTERFACE)
 if(MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE AND
@@ -261,6 +281,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_logger_override.cpp)
     target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main
         nlohmann_json::nlohmann_json)
+    target_compile_features(microfmt_tests PRIVATE cxx_std_20)
     microfmt_enable_warnings(microfmt_tests)
 
     include(GoogleTest)
@@ -578,6 +599,7 @@ if(MICROFMT_BUILD_TESTS)
     add_library(microfmt_stack_probes OBJECT
         tests/stack_probes.cpp)
     target_link_libraries(microfmt_stack_probes PRIVATE microfmt)
+    target_compile_features(microfmt_stack_probes PRIVATE cxx_std_20)
     microfmt_enable_warnings(microfmt_stack_probes)
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
@@ -629,6 +651,53 @@ if(MICROFMT_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
-if (MICROFMT_BUILD_BENCHMARKS)
+if(MICROFMT_BUILD_BENCHMARKS)
     add_subdirectory(bench)
+endif()
+
+if(MICROFMT_INSTALL)
+    include(GNUInstallDirs)
+    include(CMakePackageConfigHelpers)
+
+    install(
+        TARGETS microfmt
+        EXPORT microfmtTargets
+        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+    )
+
+    install(
+        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+        COMPONENT Development
+    )
+
+    configure_package_config_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/jplcz_microfmtConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfig.cmake"
+        INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/jplcz_microfmt"
+        NO_SET_AND_CHECK_MACRO
+        NO_CHECK_REQUIRED_COMPONENTS_MACRO
+    )
+
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfigVersion.cmake"
+        VERSION "${PROJECT_VERSION}"
+        COMPATIBILITY SameMajorVersion
+    )
+
+    install(
+        EXPORT microfmtTargets
+        FILE microfmtTargets.cmake
+        NAMESPACE jplcz_microfmt::
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/jplcz_microfmt"
+        COMPONENT Development
+    )
+
+    install(
+        FILES
+            "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfig.cmake"
+            "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfigVersion.cmake"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/jplcz_microfmt"
+        COMPONENT Development
+    )
 endif()

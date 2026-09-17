@@ -8,7 +8,7 @@ endif()
 
 function(add_microfmt_example NAME SOURCE)
   add_executable(${NAME} ${SOURCE})
-  target_link_libraries(${NAME} PRIVATE microfmt::microfmt)
+  target_link_libraries(${NAME} PRIVATE jplcz_microfmt::microfmt)
   microfmt_enable_warnings(${NAME})
   target_compile_features(${NAME} PRIVATE cxx_std_20)
 
@@ -114,7 +114,7 @@ if(Boost_FOUND)
   add_microfmt_example(uuid_demo uuid_demo.cpp)
 
   add_executable(demo_boost_describe describe_demo.cpp)
-  target_link_libraries(demo_boost_describe PRIVATE microfmt::microfmt
+  target_link_libraries(demo_boost_describe PRIVATE jplcz_microfmt::microfmt
                                                     Boost::boost)
   microfmt_enable_warnings(demo_boost_describe)
   target_compile_features(demo_boost_describe PRIVATE cxx_std_20)

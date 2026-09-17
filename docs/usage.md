@@ -13,6 +13,8 @@ dependencies.
 
 ## Add the library
 
+### FetchContent and `add_subdirectory`
+
 With CMake, use the interface target:
 
 ```cmake
@@ -23,8 +25,46 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(microfmt)
 
-target_link_libraries(my_target PRIVATE microfmt::microfmt)
+target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 ```
+
+The equivalent direct-subdirectory form is:
+
+```cmake
+add_subdirectory(third_party/microfmt)
+target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
+```
+
+Embedded builds default all microfmt development targets and install rules to
+off. They do not modify `CMAKE_CXX_STANDARD`; linking
+`jplcz_microfmt::microfmt` requests C++17 through target compile features.
+
+### Installable CMake package
+
+Configure a standalone or `ExternalProject` build with
+`MICROFMT_INSTALL=ON`. Standalone builds enable it by default:
+
+```sh
+cmake -S microfmt -B microfmt-build \
+  -DMICROFMT_BUILD_TESTS=OFF \
+  -DMICROFMT_BUILD_EXAMPLES=OFF \
+  -DMICROFMT_BUILD_BENCHMARKS=OFF \
+  -DMICROFMT_BUILD_HEADER_CHECKS=OFF
+cmake --build microfmt-build
+cmake --install microfmt-build --prefix /opt/microfmt
+```
+
+Consumers can then load the exported interface target:
+
+```cmake
+find_package(jplcz_microfmt CONFIG REQUIRED)
+target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
+```
+
+The package installs under
+`${CMAKE_INSTALL_LIBDIR}/cmake/jplcz_microfmt`. Set `CMAKE_PREFIX_PATH` to the
+chosen installation prefix, or set `jplcz_microfmt_DIR` directly to that
+directory.
 
 Alternatively, add `include/` to the include path and include only the headers
 for the facilities in use. The core API is in:
