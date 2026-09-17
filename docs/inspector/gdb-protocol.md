@@ -17,6 +17,9 @@ transport framing:
 | `gdb_stream.hpp` | Writes and incrementally validates `$payload#checksum` frames |
 | `gdb_packet_recognizer.hpp` | Maps request prefixes to `packet_type` |
 | `gdb_packet_metadata.hpp` | Provides packet names and protocol prefixes |
+| `gdb_registers.hpp` | Maps GDB register numbers and names to DWARF indexes |
+| `gdb_register_array.hpp` | Encodes and decodes `g`, `G`, `p`, and `P` register data |
+| `register_xml_printer.hpp` | Generates GDB target-description XML |
 
 ## Encode and decode requests
 
@@ -54,6 +57,83 @@ of `client_request_view`. Unrecognized request prefixes return
 
 The decoder expects a complete, unescaped, syntactically valid payload.
 Transport framing and checksum validation belong to `gdb_streaming_decoder`.
+
+## Describe and access target registers
+
+Each built-in ABI trait binds its DWARF register catalog to a GDB register
+layout through `AbiTraits::gdb_register_traits`. The mapping records each
+register's GDB number, DWARF index, bit width, name, and optional GDB XML type:
+
+```cpp
+using abi = microfmt::x86_64_abi_traits;
+using registers = abi::gdb_register_traits;
+
+const auto *rax = registers::find_by_name("rax");
+const auto *gdb_register = registers::find_by_gdb(0);
+const auto *dwarf_register =
+    registers::find_by_dwarf(microfmt::dwarf::x86_64::RAX);
+```
+
+The lookup functions return `nullptr` for unknown registers. `layout()` returns
+the complete register sequence in GDB `g`/`G` packet order.
+
+`register_array_encoder` reads register bytes from a `register_context_ref`
+using the mapped DWARF indexes. Use the ABI trait for a complete `g` response,
+or pass one mapping for a `p` response:
+
+```cpp
+microfmt::buffer_sink<512> payload;
+microfmt::gdb::register_array_encoder::encode_all_registers<abi>(
+    payload.as_sink(), context);
+
+microfmt::buffer_sink<32> single;
+microfmt::gdb::register_array_encoder::encode_single_register(
+    single.as_sink(), context, *rax);
+```
+
+Register bytes are emitted in the order supplied by the context, with two
+hexadecimal characters per byte. A failed or unavailable read is represented
+by `x` characters of the expected register width. Registers larger than 64
+bytes use the scratch span retained by `register_context_ref`; insufficient
+scratch also produces an unavailable value.
+
+`register_array_decoder` applies `G` or `P` hexadecimal data to the same
+context:
+
+```cpp
+bool all_written =
+    microfmt::gdb::register_array_decoder::decode_all_registers<abi>(
+        hex_payload, context);
+
+bool rax_written =
+    microfmt::gdb::register_array_decoder::decode_single_register(
+        rax_hex, context, *rax);
+```
+
+These functions consume the hexadecimal portion of the packet directly. Do
+not first pass that data through `client_request_decoder`, which converts `G`
+and `P` values to binary in `client_request_view::data`. Invalid hexadecimal,
+write failures, a null context, or insufficient scratch cause decoding to
+return `false`. An `x`-masked register is skipped, and a shorter `G` payload is
+accepted after all complete register values it contains have been written.
+
+## Generate target-description XML
+
+`register_xml_printer` generates a complete target description from the same
+ABI binding. Serve this document when handling the target-description
+`qXfer` exchange:
+
+```cpp
+microfmt::buffer_sink<4096> xml;
+microfmt::gdb::register_xml_printer::format_target_xml<abi>(
+    xml.as_sink(), "i386:x86-64");
+```
+
+The optional third argument overrides the default
+`org.gnu.gdb.custom` feature name. `format_register()` is available when a
+stub needs to emit an individual `<reg>` element. Both XML and register
+encoders write through bounded sinks; ensure the destination has sufficient
+capacity before sending the resulting payload.
 
 ## Encode and decode responses
 
