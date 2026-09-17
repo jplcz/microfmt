@@ -25,6 +25,7 @@ permissions:
   actions: read
   contents: read
   packages: read
+  pull-requests: read
   security-events: write
 
 concurrency:
@@ -32,8 +33,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect analysis changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.filter.outputs.build }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Classify changed files
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            build:
+              - ".github/workflows/codeql.yml"
+              - "CMakeLists.txt"
+              - "cmake/**"
+              - "include/**"
+              - "tests/**"
+              - "examples/**"
+              - "bench/**"
+              - "scripts/run-native-ci.sh"
+
   analyze:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs: changes
+    if: >-
+      (github.event_name == 'schedule' ||
+       github.event_name == 'workflow_dispatch' ||
+       needs.changes.outputs.build == 'true') &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.draft == false)
     name: Analyze C++
     runs-on: ubuntu-latest
     timeout-minutes: 45

@@ -17,14 +17,43 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: sanitizers-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Detect sanitizer changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.filter.outputs.build }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Classify changed files
+        id: filter
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            build:
+              - ".github/workflows/sanitizers.yml"
+              - "CMakeLists.txt"
+              - "cmake/**"
+              - "include/**"
+              - "tests/**"
+              - "scripts/run-sanitizers.sh"
+
   address-undefined:
-    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    needs: changes
+    if: >-
+      (github.event_name == 'workflow_dispatch' ||
+       needs.changes.outputs.build == 'true') &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.draft == false)
     name: AddressSanitizer and UndefinedBehaviorSanitizer
     runs-on: ubuntu-latest
     timeout-minutes: 30

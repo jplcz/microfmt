@@ -141,6 +141,15 @@ those jobs; converting it back to a draft triggers the workflows again so
 their concurrency groups cancel obsolete in-progress work. Lightweight
 dependency review remains enabled for draft pull requests.
 
+Native CI, cross-compilation, sanitizers, and CodeQL first classify changed
+paths. Their expensive jobs run only when relevant CMake configuration, public
+headers, tests, examples, benchmarks, supporting scripts, or workflow
+definitions change. Package-manager workflows use equivalent trigger-level
+path filters. Documentation, licenses, editor configuration, and other
+metadata-only changes retain lightweight workflow results without consuming
+build runners. Manual dispatch always runs the requested jobs, and scheduled
+CodeQL analysis always runs.
+
 The native equivalents are the configure, build, `ctest`, header-check, matrix,
 unsafe-buffer, and package-manager commands documented in this guide and in
 [Package-manager integration](package-managers.md).
