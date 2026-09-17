@@ -16,6 +16,12 @@ on:
       - tests/cmake/**
       - .github/workflows/package-managers.yml
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - converted_to_draft
     paths:
       - CMakeLists.txt
       - cmake/**
@@ -36,6 +42,7 @@ concurrency:
 
 jobs:
   conan:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -56,6 +63,7 @@ jobs:
         run: ./scripts/check-conan-package.sh
 
   vcpkg:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -76,6 +84,7 @@ jobs:
         run: ./scripts/check-vcpkg-package.sh -DCMAKE_CXX_COMPILER=clang++
 
   cpm:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

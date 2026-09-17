@@ -135,6 +135,12 @@ requires a narrowly scoped permission. Concurrent runs for the same ref are
 cancelled when a newer commit supersedes them. Dependabot checks the referenced
 GitHub Actions weekly.
 
+Build, sanitizer, cross-compilation, package-manager, and CodeQL jobs are
+skipped while a pull request is a draft. Marking it ready for review triggers
+those jobs; converting it back to a draft triggers the workflows again so
+their concurrency groups cancel obsolete in-progress work. Lightweight
+dependency review remains enabled for draft pull requests.
+
 The native equivalents are the configure, build, `ctest`, header-check, matrix,
 unsafe-buffer, and package-manager commands documented in this guide and in
 [Package-manager integration](package-managers.md).

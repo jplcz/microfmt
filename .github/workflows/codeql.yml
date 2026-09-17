@@ -11,6 +11,12 @@ on:
   pull_request:
     branches:
       - master
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - converted_to_draft
   schedule:
     - cron: "27 3 * * 1"
   workflow_dispatch:
@@ -27,6 +33,7 @@ concurrency:
 
 jobs:
   analyze:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     name: Analyze C++
     runs-on: ubuntu-latest
     timeout-minutes: 45
