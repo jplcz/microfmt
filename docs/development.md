@@ -111,6 +111,34 @@ cmake -S . -B build-unsafe -G Ninja \
 cmake --build build-unsafe
 ```
 
+## Continuous integration
+
+GitHub Actions run the following independent validation lanes:
+
+* `CI` builds and tests with GCC, Clang, AppleClang, and MSVC, promotes project
+  warnings to errors, and compiles every public header in each supported
+  language mode.
+* `Cross-compile` builds native x86-64 and ARM32, AArch64, and RISC-V 64
+  configurations.
+* `Sanitizers` runs the complete test executable with AddressSanitizer and
+  UndefinedBehaviorSanitizer.
+* `Package managers` creates and consumes the Conan 2 package, installs and
+  consumes the vcpkg overlay port, and verifies CPM.cmake integration.
+* `CodeQL` performs scheduled and change-triggered C++ security analysis.
+* `Dependency review` rejects vulnerable dependency changes in pull requests
+  when the repository has GitHub dependency review available.
+* `Publish API documentation` builds and deploys the Doxygen site after
+  documentation or public-header changes on `master`.
+
+All workflows use read-only repository permissions unless a GitHub service
+requires a narrowly scoped permission. Concurrent runs for the same ref are
+cancelled when a newer commit supersedes them. Dependabot checks the referenced
+GitHub Actions weekly.
+
+The native equivalents are the configure, build, `ctest`, header-check, matrix,
+unsafe-buffer, and package-manager commands documented in this guide and in
+[Package-manager integration](package-managers.md).
+
 ## Test changes
 
 Tests use GoogleTest and are located in `tests/`. Add behavior-focused cases to

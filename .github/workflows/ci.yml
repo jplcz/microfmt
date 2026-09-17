@@ -1,0 +1,63 @@
+# SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+#
+# SPDX-License-Identifier: BSD-2-Clause
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux GCC
+            os: ubuntu-latest
+            compiler: g++
+          - name: Linux Clang
+            os: ubuntu-latest
+            compiler: clang++
+          - name: macOS AppleClang
+            os: macos-latest
+            compiler: clang++
+          - name: Windows MSVC
+            os: windows-latest
+            compiler: cl
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Enable the MSVC environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+          -DJPLCZ_MICROFMT_ENABLE_WERROR=ON
+          -DJPLCZ_MICROFMT_BUILD_BENCHMARKS=OFF
+
+      - name: Build
+        run: cmake --build build --parallel 2
+
+      - name: Test
+        run: ctest --test-dir build --build-config Release --output-on-failure
+
+      - name: Check public headers
+        run: cmake --build build --target jplcz_microfmt_check_public_headers --parallel 2
