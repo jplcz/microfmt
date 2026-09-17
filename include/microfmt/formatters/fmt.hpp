@@ -66,7 +66,7 @@ public:
   constexpr sink_output_iterator &operator++(int) noexcept { return *this; }
 
 private:
-  microfmt::value_ref<microfmt::sink> sink_;
+  microfmt::value_ref<const microfmt::sink> sink_;
 };
 
 // Minimal emulated format_context

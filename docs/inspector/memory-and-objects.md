@@ -11,10 +11,10 @@ foundation for every other inspector component.
 
 ## Address spaces
 
-`address_space_ref` is a small type-erased handle over two operations:
-`read_bytes` and `read_string`. Specialize `address_space_traits<Tag>` for a
+`address_space_ref` is a small type-erased handle over byte reads, optional
+byte writes, and string reads. Specialize `address_space_traits<Tag>` for a
 transport tag, then construct an `address_space_ref` from the tag and, for a
-stateful reader, its context.
+stateful transport, its context.
 
 ```cpp
 struct dump_reader_tag {};
@@ -27,6 +27,8 @@ template <> struct microfmt::address_space_traits<dump_reader_tag> {
 
   static bool read_bytes(const void *context, uintptr_t address,
                          void *destination, size_t size) noexcept;
+  static bool write_bytes(const void *context, uintptr_t address,
+                          const void *source, size_t size) noexcept;
   static bool read_string(const void *context, uintptr_t address,
                           char *destination, size_t capacity, size_t &size,
                           bool &terminated) noexcept;
@@ -37,9 +39,11 @@ auto space = microfmt::address_space_ref{dump_reader_tag{}, reader};
 ```
 
 The transport owns address validation. It must return `false` rather than read
-an invalid range. It should handle target byte order and address translation
-before copying into the supplied buffer. `address_space_ref` does not take
-ownership of its context.
+or write an invalid range. It should handle target byte order, access policy,
+and address translation before copying. `write_bytes` is optional; omit it for
+a read-only transport. `address_space_ref::can_write()` reports whether the
+bound backend supplies the operation. The handle does not take ownership of
+its context.
 
 The trait callbacks retain their minimal `bool` ABI, while the public
 `address_space_ref` operations return `microfmt::expected`:
@@ -69,9 +73,31 @@ trivially copyable, nothrow default-constructible, nothrow move-constructible
 distinguishes invalid handles, zero addresses, and invalid buffers before
 dispatch.
 
-`local_space_tag` is the built-in transport for local addresses. Use it in
-tests or self-inspection only; it does not make arbitrary addresses safe to
-read.
+`write_bytes` and `write(address, object)` use the same validation model.
+Writes distinguish `write_unsupported` from `write_failed`, allowing callers
+to tell a read-only transport from a rejected target write:
+
+```cpp
+uint32_t replacement = 0x1234;
+auto result = space.write(target_address, replacement);
+if (!result) {
+  switch (result.error()) {
+  case microfmt::address_space_error::write_unsupported:
+    // The transport is read-only.
+    break;
+  case microfmt::address_space_error::write_failed:
+    // The backend rejected or could not complete the write.
+    break;
+  default:
+    // Invalid handle, address, or input buffer.
+    break;
+  }
+}
+```
+
+`local_space_tag` is the built-in writable transport for local addresses. Use
+it in tests or self-inspection only; it does not make arbitrary addresses safe
+to read or write.
 
 ## Translate virtual addresses
 

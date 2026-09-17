@@ -13,7 +13,7 @@ analysis.
 
 ## Borrow persistent values with `value_ref`
 
-`microfmt::value_ref<T>` is a small, read-only reference wrapper for values
+`microfmt::value_ref<T>` is a small, non-null reference wrapper for values
 stored in type-erased metadata, registries, tasks, and other non-owning
 structures. It accepts compatible lvalues and rejects rvalues:
 
@@ -32,8 +32,17 @@ consume(ref->id);
 
 The wrapper stores only a pointer and does not extend the referenced object's
 lifetime. The owner must outlive the `value_ref` and every copy of it.
-Dereferencing and member access are read-only, even when the original object
-is mutable. Changes made through the owner remain visible through the wrapper.
+`value_ref<T>` preserves mutable access to a mutable lvalue;
+`value_ref<const T>` provides an explicitly read-only borrow:
+
+```cpp
+device state{};
+microfmt::value_ref<device> mutable_state(state);
+mutable_state->reset();
+
+microfmt::value_ref<const device> observed_state(state);
+inspect(*observed_state);
+```
 
 Class-template argument deduction preserves the lvalue's type, including
 `const`. Explicit `value_ref<Base>` construction also accepts an lvalue of a
@@ -46,8 +55,8 @@ heterogeneous borrowed properties. See
 formatting lifetime requirements.
 
 `value_ref` is part of the main library interface rather than the inspector
-subdirectory. It is also used by non-null read-only adapters such as
-`hash_view`, `variant_view`, and the `{fmt}` compatibility output iterator.
+subdirectory. Read-only adapters such as `hash_view`, `variant_view`, and the
+`{fmt}` compatibility output iterator store `value_ref<const T>` explicitly.
 
 ## Store nullable borrows with `value_ptr`
 

@@ -72,7 +72,7 @@ public:
 
 private:
   /// Referenced value.
-  value_ref<T> val_;
+  value_ref<const T> val_;
 };
 
 // ============================================================================

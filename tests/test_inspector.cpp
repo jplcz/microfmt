@@ -29,6 +29,7 @@ struct stateful_translator_tag {};
 struct stateless_classifier_tag {};
 struct stateful_classifier_tag {};
 struct scanner_space_tag {};
+struct writable_space_tag {};
 struct scanner_symbol_tag {};
 
 struct translator_context {
@@ -56,6 +57,14 @@ struct scanner_space_context {
   mutable uintptr_t last_read_address{0};
   const uint8_t *expected_read_buffer{nullptr};
   mutable bool used_external_read_buffer{true};
+};
+
+struct writable_space_context {
+  uintptr_t virtual_base;
+  uint8_t *data;
+  size_t size;
+  bool reject_writes;
+  mutable size_t write_calls{0};
 };
 
 struct address_sequence {
@@ -196,6 +205,46 @@ template <> struct microfmt::address_space_traits<scanner_space_tag> {
   static bool read_string(const void *, uintptr_t, char *, size_t, size_t &, bool &) noexcept { return false; }
 };
 
+template <> struct microfmt::address_space_traits<writable_space_tag> {
+  using context_type = writable_space_context;
+
+  static bool read_bytes(const void *opaque_context, uintptr_t address,
+                         void *destination, size_t size) noexcept {
+    if (!opaque_context || !destination)
+      return false;
+    const auto &context =
+        *static_cast<const writable_space_context *>(opaque_context);
+    if (address < context.virtual_base)
+      return false;
+    const uintptr_t offset = address - context.virtual_base;
+    if (offset > context.size || size > context.size - offset)
+      return false;
+    std::memcpy(destination, context.data + offset, size);
+    return true;
+  }
+
+  static bool write_bytes(const void *opaque_context, uintptr_t address,
+                          const void *source, size_t size) noexcept {
+    if (!opaque_context || !source)
+      return false;
+    const auto &context =
+        *static_cast<const writable_space_context *>(opaque_context);
+    ++context.write_calls;
+    if (context.reject_writes || address < context.virtual_base)
+      return false;
+    const uintptr_t offset = address - context.virtual_base;
+    if (offset > context.size || size > context.size - offset)
+      return false;
+    std::memcpy(context.data + offset, source, size);
+    return true;
+  }
+
+  static bool read_string(const void *, uintptr_t, char *, size_t, size_t &,
+                          bool &) noexcept {
+    return false;
+  }
+};
+
 template <> struct microfmt::symbol_resolver_traits<scanner_symbol_tag> {
   using context_type = scanner_symbol_context;
 
@@ -266,6 +315,72 @@ TEST(AddressSpaceRef, ReturnsTypedReadErrorsAndValues) {
   auto failed_read = scanner.read_bytes(0x2000, &value, sizeof(value));
   ASSERT_FALSE(failed_read);
   EXPECT_EQ(failed_read.error(), microfmt::address_space_error::read_failed);
+}
+
+TEST(AddressSpaceRef, WritesBytesAndTypedValues) {
+  auto space = local_space();
+  EXPECT_TRUE(space.can_write());
+
+  uint32_t destination = 0;
+  const uint32_t value = 0x12345678;
+  auto typed_write = space.write(address_of(destination), value);
+  ASSERT_TRUE(typed_write);
+  EXPECT_EQ(destination, value);
+
+  const uint16_t replacement = 0xabcd;
+  auto byte_write =
+      space.write_bytes(address_of(destination), &replacement,
+                        sizeof(replacement));
+  ASSERT_TRUE(byte_write);
+  EXPECT_EQ(static_cast<uint16_t>(destination), replacement);
+
+  microfmt::address_space_ref empty;
+  auto invalid_handle = empty.write(address_of(destination), value);
+  ASSERT_FALSE(invalid_handle);
+  EXPECT_EQ(invalid_handle.error(),
+            microfmt::address_space_error::invalid_handle);
+
+  auto invalid_address = space.write(0, value);
+  ASSERT_FALSE(invalid_address);
+  EXPECT_EQ(invalid_address.error(),
+            microfmt::address_space_error::invalid_address);
+
+  auto invalid_buffer =
+      space.write_bytes(address_of(destination), nullptr, sizeof(value));
+  ASSERT_FALSE(invalid_buffer);
+  EXPECT_EQ(invalid_buffer.error(),
+            microfmt::address_space_error::invalid_buffer);
+
+  const uint8_t data[4]{};
+  scanner_space_context context{
+      .virtual_base = 0x1000, .data = data, .size = sizeof(data)};
+  microfmt::address_space_ref read_only(scanner_space_tag{}, context);
+  EXPECT_FALSE(read_only.can_write());
+  auto unsupported = read_only.write(0x1000, value);
+  ASSERT_FALSE(unsupported);
+  EXPECT_EQ(unsupported.error(),
+            microfmt::address_space_error::write_unsupported);
+
+  uint8_t writable_data[8]{};
+  writable_space_context writable_context{
+      .virtual_base = 0x4000,
+      .data = writable_data,
+      .size = sizeof(writable_data),
+      .reject_writes = false};
+  microfmt::address_space_ref writable(writable_space_tag{},
+                                       writable_context);
+  EXPECT_TRUE(writable.can_write());
+  ASSERT_TRUE(writable.write<uint32_t>(0x4000, value));
+  uint32_t stored = 0;
+  std::memcpy(&stored, writable_data, sizeof(stored));
+  EXPECT_EQ(stored, value);
+  EXPECT_EQ(writable_context.write_calls, 1U);
+
+  writable_context.reject_writes = true;
+  auto rejected = writable.write<uint32_t>(0x4000, value);
+  ASSERT_FALSE(rejected);
+  EXPECT_EQ(rejected.error(), microfmt::address_space_error::write_failed);
+  EXPECT_EQ(writable_context.write_calls, 2U);
 }
 
 TEST(AddressSpaceRef, ReturnsStringChunkMetadataAndErrors) {

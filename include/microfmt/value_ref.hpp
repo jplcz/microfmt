@@ -5,7 +5,7 @@
 #pragma once
 
 /** @file value_ref.hpp
- * @brief Safe read-only reference wrapper rejecting rvalues and temporaries. */
+ * @brief Safe non-null reference wrapper rejecting rvalues and temporaries. */
 
 #include "lifetime.hpp"
 #include "value_ptr.hpp"
@@ -16,10 +16,11 @@
 namespace microfmt {
 
 /**
- * @brief Type-safe read-only reference wrapper that rejects temporary objects.
+ * @brief Type-safe reference wrapper that rejects temporary objects.
  *
- * The referenced object must outlive the wrapper. Use @ref value_ptr when the
- * borrow must be nullable or provide mutable access.
+ * `value_ref<T>` preserves mutable access, while `value_ref<const T>` is
+ * read-only. The referenced object must outlive the wrapper. Use
+ * @ref value_ptr when the borrow may be null.
  */
 template <typename T> class MICROFMT_POINTER value_ref {
 public:
@@ -29,7 +30,7 @@ public:
    */
   template <typename U,
             typename =
-                std::enable_if_t<std::is_convertible_v<U *, const T *>>>
+                std::enable_if_t<std::is_convertible_v<U *, T *>>>
   constexpr explicit value_ref(
       U &val MICROFMT_LIFETIMEBOUND
           MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
@@ -42,23 +43,23 @@ public:
             std::enable_if_t<!std::is_lvalue_reference_v<U>, int> = 0>
   constexpr value_ref(U &&) = delete;
 
-  [[nodiscard]] constexpr const T *
+  [[nodiscard]] constexpr T *
   get() const noexcept MICROFMT_LIFETIMEBOUND {
     return m_ptr.get();
   }
 
-  [[nodiscard]] constexpr const T &
+  [[nodiscard]] constexpr T &
   operator*() const noexcept MICROFMT_LIFETIMEBOUND {
     return *m_ptr;
   }
 
-  [[nodiscard]] constexpr const T *
+  [[nodiscard]] constexpr T *
   operator->() const noexcept MICROFMT_LIFETIMEBOUND {
     return m_ptr.get();
   }
 
 private:
-  value_ptr<const T> m_ptr;
+  value_ptr<T> m_ptr;
 };
 
 template <typename T> value_ref(T &) -> value_ref<T>;

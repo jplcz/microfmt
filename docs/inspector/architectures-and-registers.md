@@ -143,7 +143,11 @@ rejects an operation does not fall through, preventing an invalid width or
 read-only field from being silently handled by a later context.
 
 The wrapper owns no register data. It and the bound state must outlive every
-`register_context_ref` returned by `ref()`.
+`register_context_ref` returned by `ref()`. Internally, the required
+read-only state borrow is represented by `value_ref<const State>`, while a nullable
+`value_ptr<State>` records whether mutation is permitted. The type-erased
+`register_context_ref` follows the same pattern with separate const and
+mutable state borrows, avoiding erased `const_cast` operations.
 
 ## Architecture register catalogs
 

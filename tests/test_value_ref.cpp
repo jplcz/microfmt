@@ -25,7 +25,11 @@ struct unrelated_value {};
 
 static_assert(std::is_constructible_v<microfmt::value_ref<int>, int &>);
 static_assert(
-    std::is_constructible_v<microfmt::value_ref<int>, const int &>);
+    !std::is_constructible_v<microfmt::value_ref<int>, const int &>);
+static_assert(
+    std::is_constructible_v<microfmt::value_ref<const int>, int &>);
+static_assert(
+    std::is_constructible_v<microfmt::value_ref<const int>, const int &>);
 static_assert(!std::is_constructible_v<microfmt::value_ref<int>, int &&>);
 static_assert(
     !std::is_constructible_v<microfmt::value_ref<int>, const int &&>);
@@ -35,10 +39,10 @@ static_assert(!std::is_constructible_v<microfmt::value_ref<base_value>,
                                        unrelated_value &>);
 static_assert(
     std::is_same_v<decltype(*std::declval<microfmt::value_ref<int> &>()),
-                   const int &>);
+                   int &>);
 static_assert(
     std::is_same_v<decltype(std::declval<microfmt::value_ref<int> &>().get()),
-                   const int *>);
+                   int *>);
 static_assert(std::is_trivially_copyable_v<microfmt::value_ptr<int>>);
 static_assert(sizeof(microfmt::value_ptr<int>) == sizeof(int *));
 static_assert(std::is_constructible_v<microfmt::value_ptr<int>, int *>);
@@ -57,23 +61,35 @@ static_assert(std::is_constructible_v<microfmt::variant_view<int>,
 static_assert(!std::is_constructible_v<microfmt::variant_view<int>,
                                        std::variant<int> &&>);
 
-TEST(ValueRef, PreservesReferencedObjectIdentity) {
+TEST(ValueRef, PreservesMutableReferencedObjectIdentity) {
   int value = 42;
   microfmt::value_ref<int> ref(value);
 
   EXPECT_EQ(ref.get(), &value);
   EXPECT_EQ(*ref, 42);
 
-  value = 7;
-  EXPECT_EQ(*ref, 7);
+  *ref = 7;
+  EXPECT_EQ(value, 7);
 }
 
-TEST(ValueRef, ProvidesReadOnlyMemberAccess) {
+TEST(ValueRef, ProvidesMutableMemberAccess) {
   derived_value value{{11}};
   microfmt::value_ref<base_value> ref(value);
 
   EXPECT_EQ(ref.get(), static_cast<base_value *>(&value));
   EXPECT_EQ(ref->value, 11);
+  ref->value = 13;
+  EXPECT_EQ(value.value, 13);
+}
+
+TEST(ValueRef, ProvidesExplicitReadOnlyAccess) {
+  int value = 17;
+  microfmt::value_ref<const int> ref(value);
+
+  static_assert(
+      std::is_same_v<decltype(*ref), const int &>);
+  EXPECT_EQ(ref.get(), &value);
+  EXPECT_EQ(*ref, 17);
 }
 
 TEST(ValueRef, DeductionGuidePreservesReferencedType) {

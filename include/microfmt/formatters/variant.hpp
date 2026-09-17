@@ -85,7 +85,7 @@ public:
 
 private:
   /// Referenced variant.
-  value_ref<variant_type> var_;
+  value_ref<const variant_type> var_;
   /// Prefix decoration.
   microfmt::string_view prefix_;
   /// Suffix decoration.

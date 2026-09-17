@@ -8,6 +8,7 @@
 #include "dwarf_registers.hpp"
 #include "../microfmt.hpp"
 #include "../span.hpp"
+#include "../value_ref.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -69,7 +70,8 @@ public:
                                  span<std::byte> scratch
                                      MICROFMT_LIFETIMEBOUND
                                          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
-      : state_(state_ptr), vtable_(vtable), space_(space), scratch_(scratch) {}
+      : state_(state_ptr), mutable_state_(state_ptr), vtable_(vtable),
+        space_(space), scratch_(scratch) {}
 
   template <typename State>
   constexpr register_context_ref(
@@ -81,8 +83,7 @@ public:
                                  span<std::byte> scratch
                                      MICROFMT_LIFETIMEBOUND
                                          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
-      : state_(const_cast<State *>(state_ptr)), vtable_(vtable), space_(space),
-        scratch_(scratch) {}
+      : state_(state_ptr), vtable_(vtable), space_(space), scratch_(scratch) {}
 
   [[nodiscard]] constexpr bool is_null() const noexcept {
     return !state_ || (!vtable_.read_register && !vtable_.write_register);
@@ -123,7 +124,10 @@ public:
                            const T &value) const noexcept {
     if (!vtable_.write_register)
       return false;
-    return vtable_.write_register(state_.get(), space_, dwarf_reg_index,
+    if (!mutable_state_)
+      return false;
+    return vtable_.write_register(mutable_state_.get(), space_,
+                                  dwarf_reg_index,
                                   &value, sizeof(T));
   }
 
@@ -134,8 +138,10 @@ public:
                                size_t size) const noexcept {
     if (!vtable_.write_register)
       return false;
-    return vtable_.write_register(state_.get(), space_, dwarf_reg_index, src,
-                                  size);
+    if (!mutable_state_)
+      return false;
+    return vtable_.write_register(mutable_state_.get(), space_,
+                                  dwarf_reg_index, src, size);
   }
 
   [[nodiscard]] constexpr address_space_ref space() const noexcept {
@@ -147,7 +153,8 @@ public:
   }
 
 private:
-  value_ptr<void> state_{};
+  value_ptr<const void> state_{};
+  value_ptr<void> mutable_state_{};
   register_context_vtable vtable_{};
   address_space_ref space_{};
   span<std::byte> scratch_{};
@@ -391,15 +398,15 @@ public:
       State &state MICROFMT_LIFETIMEBOUND, address_space_ref space,
       span<std::byte> scratch MICROFMT_LIFETIMEBOUND,
       register_context_ref fallback = {}) noexcept
-      : state_(&state), writable_(true), space_(space), scratch_(scratch),
-        fallback_(fallback) {}
+      : state_(state), mutable_state_(&state), space_(space),
+        scratch_(scratch), fallback_(fallback) {}
 
   constexpr register_context_ref_with(
       const State &state MICROFMT_LIFETIMEBOUND, address_space_ref space,
       span<std::byte> scratch MICROFMT_LIFETIMEBOUND,
       register_context_ref fallback = {}) noexcept
-      : state_(const_cast<State *>(&state)), writable_(false), space_(space),
-        scratch_(scratch), fallback_(fallback) {}
+      : state_(state), space_(space), scratch_(scratch),
+        fallback_(fallback) {}
 
   /**
    * @brief Creates a type-erased reference borrowing this wrapper.
@@ -454,7 +461,8 @@ private:
       return false;
 
     handled = true;
-    if (!writable_ || !source || size != sizeof(typename Field::value_type))
+    if (!mutable_state_ || !source ||
+        size != sizeof(typename Field::value_type))
       return false;
 
     if constexpr (detail::has_register_field_write<Field, State>::value) {
@@ -462,10 +470,10 @@ private:
       MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
       std::memcpy(&value, source, sizeof(value));
       MICROFMT_END_UNSAFE_BUFFER_USAGE;
-      return Field::write(*state_, space_, index, value);
+      return Field::write(*mutable_state_, space_, index, value);
     } else if constexpr (detail::has_mutable_register_field_get<Field,
                                                                  State>::value) {
-      auto *value = Field::get(*state_, index);
+      auto *value = Field::get(*mutable_state_, index);
       if (!value)
         return false;
       MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
@@ -522,8 +530,8 @@ private:
   inline static constexpr register_context_vtable vtable_{read_thunk,
                                                            write_thunk};
 
-  State *state_;
-  bool writable_;
+  value_ref<const State> state_;
+  value_ptr<State> mutable_state_;
   address_space_ref space_;
   span<std::byte> scratch_;
   register_context_ref fallback_;

@@ -16,6 +16,7 @@
 #include <cstring>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 namespace microfmt {
 
 enum class address_space_error {
@@ -24,12 +25,16 @@ enum class address_space_error {
   invalid_buffer,
   empty_buffer,
   read_failed,
+  write_unsupported,
+  write_failed,
 };
 
 struct string_chunk {
   size_t length;
   bool null_terminated;
 };
+
+template <typename Tag> struct address_space_traits;
 
 enum class remote_load_error {
   null_address,
@@ -49,6 +54,20 @@ constexpr uintptr_t add_address_offset(uintptr_t address, ptrdiff_t offset) noex
   return address - magnitude;
 }
 
+template <typename Tag, typename = void>
+struct has_address_space_write_bytes : std::false_type {};
+
+template <typename Tag>
+struct has_address_space_write_bytes<
+    Tag, std::void_t<decltype(address_space_traits<Tag>::write_bytes(
+             std::declval<const void *>(), std::declval<uintptr_t>(),
+             std::declval<const void *>(), std::declval<size_t>()))>>
+    : std::is_same<
+          decltype(address_space_traits<Tag>::write_bytes(
+              std::declval<const void *>(), std::declval<uintptr_t>(),
+              std::declval<const void *>(), std::declval<size_t>())),
+          bool> {};
+
 } // namespace detail
 
 // ============================================================================
@@ -58,13 +77,12 @@ constexpr uintptr_t add_address_offset(uintptr_t address, ptrdiff_t offset) noex
 /**
  * @brief Static customization point describing a remote address space.
  *
- * Specialize for a tag type to provide `context_type` plus `read_bytes` and
- * `read_string` implementations.
+ * Specialize for a tag type to provide `context_type`, `read_bytes`, and
+ * `read_string` implementations. Add `write_bytes` to expose writable target
+ * memory; omitting it creates a read-only address space.
  *
  * @tparam Tag Tag identifying the address-space implementation.
  */
-template <typename Tag> struct address_space_traits;
-
 /**
  * @brief Tag for the built-in local/self address space.
  *
@@ -90,8 +108,29 @@ template <> struct address_space_traits<local_space_tag> {
   static bool read_bytes(const void *, uintptr_t addr, void *dest, size_t size) noexcept {
     if (addr == 0)
       return false;
+    if (size == 0)
+      return true;
     MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(dest, reinterpret_cast<const void *>(addr), size);
+    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    return true;
+  }
+
+  /**
+   * @brief Copies raw bytes from `src` into `addr`.
+   * @param addr Absolute destination address.
+   * @param src Source buffer.
+   * @param size Number of bytes to copy.
+   * @return `true` on success, `false` for a null address.
+   */
+  static bool write_bytes(const void *, uintptr_t addr, const void *src,
+                          size_t size) noexcept {
+    if (addr == 0)
+      return false;
+    if (size == 0)
+      return true;
+    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    std::memcpy(reinterpret_cast<void *>(addr), src, size);
     MICROFMT_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
@@ -143,13 +182,18 @@ template <> struct address_space_traits<local_space_tag> {
 class MICROFMT_POINTER address_space_ref {
 public:
   /**
-   * @brief Virtual table of address-space read operations.
+   * @brief Virtual table of address-space operations.
    */
   struct vtable {
     /**
      * @brief Reads raw bytes. See @ref address_space_ref::read_bytes.
      */
     bool (*read_bytes)(const void *ctx, uintptr_t addr, void *dest, size_t size) noexcept;
+    /**
+     * @brief Writes raw bytes. See @ref address_space_ref::write_bytes.
+     */
+    bool (*write_bytes)(const void *ctx, uintptr_t addr, const void *src,
+                        size_t size) noexcept;
     /**
      * @brief Reads a string. See @ref address_space_ref::read_string_chunk.
      */
@@ -264,6 +308,44 @@ public:
   }
 
   /**
+   * @brief Writes raw bytes into the remote address space.
+   * @param addr Absolute destination address.
+   * @param src Source buffer.
+   * @param size Number of bytes to write.
+   * @return Success, or an error identifying invalid input, an unsupported
+   * write operation, or a backend write failure.
+   */
+  [[nodiscard]] expected<void, address_space_error>
+  write_bytes(uintptr_t addr, const void *src, size_t size) const noexcept {
+    if (!vtbl_)
+      return unexpected(address_space_error::invalid_handle);
+    if (addr == 0)
+      return unexpected(address_space_error::invalid_address);
+    if (!src && size != 0)
+      return unexpected(address_space_error::invalid_buffer);
+    if (!vtbl_->write_bytes)
+      return unexpected(address_space_error::write_unsupported);
+    if (!vtbl_->write_bytes(ctx_.get(), addr, src, size))
+      return unexpected(address_space_error::write_failed);
+    return {};
+  }
+
+  /**
+   * @brief Writes a trivially-copyable object into the remote address space.
+   * @tparam T Object type (must be trivially copyable).
+   * @param addr Absolute destination address.
+   * @param object Object whose representation is written.
+   * @return Success or the address-space error.
+   */
+  template <typename T>
+  [[nodiscard]] expected<void, address_space_error>
+  write(uintptr_t addr, const T &object) const noexcept {
+    static_assert(std::is_trivially_copyable_v<T>,
+                  "Target type T must be trivially copyable");
+    return write_bytes(addr, &object, sizeof(T));
+  }
+
+  /**
    * @brief Reads a bounded chunk of a remote NUL-terminated string.
    * @param addr Absolute source address.
    * @param buffer Scratch buffer receiving the chunk.
@@ -292,9 +374,27 @@ public:
    */
   [[nodiscard]] constexpr explicit operator bool() const noexcept { return vtbl_ != nullptr; }
 
+  /**
+   * @brief Reports whether the bound backend provides write access.
+   */
+  [[nodiscard]] constexpr bool can_write() const noexcept {
+    return vtbl_ && vtbl_->write_bytes;
+  }
+
 private:
   template <typename Tag>
-  static constexpr vtable s_vtbl{&address_space_traits<Tag>::read_bytes, &address_space_traits<Tag>::read_string};
+  [[nodiscard]] static constexpr auto write_bytes_entry() noexcept {
+    if constexpr (detail::has_address_space_write_bytes<Tag>::value)
+      return &address_space_traits<Tag>::write_bytes;
+    else
+      return static_cast<bool (*)(const void *, uintptr_t, const void *,
+                                  size_t) noexcept>(nullptr);
+  }
+
+  template <typename Tag>
+  static constexpr vtable s_vtbl{&address_space_traits<Tag>::read_bytes,
+                                 write_bytes_entry<Tag>(),
+                                 &address_space_traits<Tag>::read_string};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
