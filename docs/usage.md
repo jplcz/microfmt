@@ -4,9 +4,10 @@ SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
 SPDX-License-Identifier: BSD-2-Clause
 -->
 
-# Using microfmt
+# Using jplcz_microfmt
 
-`microfmt` is a C++17 header-only formatting library for memory-constrained
+`jplcz_microfmt` is a C++17 header-only formatting library for
+memory-constrained
 software. It writes directly to caller-provided sinks, so formatting does not
 allocate memory or throw exceptions. The core header has no third-party
 dependencies.
@@ -20,10 +21,10 @@ With CMake, use the interface target:
 ```cmake
 include(FetchContent)
 FetchContent_Declare(
-    microfmt
+    jplcz_microfmt
     GIT_REPOSITORY https://github.com/jplcz/microfmt.git
 )
-FetchContent_MakeAvailable(microfmt)
+FetchContent_MakeAvailable(jplcz_microfmt)
 
 target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 ```
@@ -31,27 +32,27 @@ target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 The equivalent direct-subdirectory form is:
 
 ```cmake
-add_subdirectory(third_party/microfmt)
+add_subdirectory(third_party/jplcz_microfmt)
 target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 ```
 
-Embedded builds default all microfmt development targets and install rules to
-off. They do not modify `CMAKE_CXX_STANDARD`; linking
+Embedded builds default all jplcz_microfmt development targets and install
+rules to off. They do not modify `CMAKE_CXX_STANDARD`; linking
 `jplcz_microfmt::microfmt` requests C++17 through target compile features.
 
 ### Installable CMake package
 
 Configure a standalone or `ExternalProject` build with
-`MICROFMT_INSTALL=ON`. Standalone builds enable it by default:
+`JPLCZ_MICROFMT_INSTALL=ON`. Standalone builds enable it by default:
 
 ```sh
-cmake -S microfmt -B microfmt-build \
-  -DMICROFMT_BUILD_TESTS=OFF \
-  -DMICROFMT_BUILD_EXAMPLES=OFF \
-  -DMICROFMT_BUILD_BENCHMARKS=OFF \
-  -DMICROFMT_BUILD_HEADER_CHECKS=OFF
-cmake --build microfmt-build
-cmake --install microfmt-build --prefix /opt/microfmt
+cmake -S jplcz_microfmt -B jplcz_microfmt-build \
+  -DJPLCZ_MICROFMT_BUILD_TESTS=OFF \
+  -DJPLCZ_MICROFMT_BUILD_EXAMPLES=OFF \
+  -DJPLCZ_MICROFMT_BUILD_BENCHMARKS=OFF \
+  -DJPLCZ_MICROFMT_BUILD_HEADER_CHECKS=OFF
+cmake --build jplcz_microfmt-build
+cmake --install jplcz_microfmt-build --prefix /opt/jplcz_microfmt
 ```
 
 Consumers can then load the exported interface target:

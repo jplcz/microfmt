@@ -6,91 +6,92 @@ cmake_minimum_required(VERSION 3.20)
 project(jplcz_microfmt VERSION 0.1.0 LANGUAGES CXX)
 
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    set(MICROFMT_IS_TOP_LEVEL ON)
+    set(JPLCZ_MICROFMT_IS_TOP_LEVEL ON)
 else()
-    set(MICROFMT_IS_TOP_LEVEL OFF)
+    set(JPLCZ_MICROFMT_IS_TOP_LEVEL OFF)
 endif()
 
-set(MICROFMT_DEVELOPMENT_DEFAULT ${MICROFMT_IS_TOP_LEVEL})
+set(JPLCZ_MICROFMT_DEVELOPMENT_DEFAULT ${JPLCZ_MICROFMT_IS_TOP_LEVEL})
 
-option(MICROFMT_ENABLE_STRICT_WARNINGS
-    "Enable comprehensive GCC and Clang warnings" ${MICROFMT_DEVELOPMENT_DEFAULT})
-option(MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE
+option(JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS
+    "Enable comprehensive GCC and Clang warnings" ${JPLCZ_MICROFMT_DEVELOPMENT_DEFAULT})
+option(JPLCZ_MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE
     "Enable Clang unsafe buffer usage diagnostics" OFF)
-option(MICROFMT_ENABLE_WERROR
+option(JPLCZ_MICROFMT_ENABLE_WERROR
     "Enable build with -Werror" OFF)
-option(MICROFMT_BUILD_TESTS
-    "Build test suite" ${MICROFMT_DEVELOPMENT_DEFAULT})
-option(MICROFMT_BUILD_EXAMPLES
-    "Build example apps" ${MICROFMT_DEVELOPMENT_DEFAULT})
-option(MICROFMT_BUILD_BENCHMARKS
-    "Build benchmark apps" ${MICROFMT_DEVELOPMENT_DEFAULT})
-option(MICROFMT_BUILD_HEADER_CHECKS
+option(JPLCZ_MICROFMT_BUILD_TESTS
+    "Build test suite" ${JPLCZ_MICROFMT_DEVELOPMENT_DEFAULT})
+option(JPLCZ_MICROFMT_BUILD_EXAMPLES
+    "Build example apps" ${JPLCZ_MICROFMT_DEVELOPMENT_DEFAULT})
+option(JPLCZ_MICROFMT_BUILD_BENCHMARKS
+    "Build benchmark apps" ${JPLCZ_MICROFMT_DEVELOPMENT_DEFAULT})
+option(JPLCZ_MICROFMT_BUILD_HEADER_CHECKS
     "Compile all public headers under each supported C++ standard"
-    ${MICROFMT_DEVELOPMENT_DEFAULT})
-option(MICROFMT_INSTALL
-    "Install microfmt headers and CMake package metadata"
-    ${MICROFMT_IS_TOP_LEVEL})
+    ${JPLCZ_MICROFMT_DEVELOPMENT_DEFAULT})
+option(JPLCZ_MICROFMT_INSTALL
+    "Install jplcz_microfmt headers and CMake package metadata"
+    ${JPLCZ_MICROFMT_IS_TOP_LEVEL})
 
-if(MICROFMT_BUILD_TESTS OR MICROFMT_BUILD_EXAMPLES OR
-   MICROFMT_BUILD_HEADER_CHECKS)
+if(JPLCZ_MICROFMT_BUILD_TESTS OR JPLCZ_MICROFMT_BUILD_EXAMPLES OR
+   JPLCZ_MICROFMT_BUILD_HEADER_CHECKS)
     find_package(Boost 1.77 CONFIG QUIET)
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
-        pkg_check_modules(MICROFMT_SYSTEMD QUIET IMPORTED_TARGET libsystemd)
-        pkg_check_modules(MICROFMT_TIZEN_DLOG QUIET IMPORTED_TARGET dlog)
+        pkg_check_modules(JPLCZ_MICROFMT_SYSTEMD QUIET IMPORTED_TARGET libsystemd)
+        pkg_check_modules(JPLCZ_MICROFMT_TIZEN_DLOG QUIET IMPORTED_TARGET dlog)
     endif()
 endif()
 
-if(MICROFMT_ENABLE_STRICT_WARNINGS OR MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE OR
-   MICROFMT_BUILD_HEADER_CHECKS OR MICROFMT_BUILD_TESTS)
+if(JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS OR JPLCZ_MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE OR
+   JPLCZ_MICROFMT_BUILD_HEADER_CHECKS OR JPLCZ_MICROFMT_BUILD_TESTS)
     include(CheckCXXCompilerFlag)
 
     if(MSVC)
         check_cxx_compiler_flag("/std:c++latest"
-            MICROFMT_COMPILER_SUPPORTS_CXX23)
+            JPLCZ_MICROFMT_COMPILER_SUPPORTS_CXX23)
     else()
         check_cxx_compiler_flag("-std=c++23"
-            MICROFMT_COMPILER_SUPPORTS_CXX23)
+            JPLCZ_MICROFMT_COMPILER_SUPPORTS_CXX23)
     endif()
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         check_cxx_compiler_flag("-Wdangling"
-            MICROFMT_COMPILER_SUPPORTS_WDANGLING)
+            JPLCZ_MICROFMT_COMPILER_SUPPORTS_WDANGLING)
         check_cxx_compiler_flag("-Wdangling-gsl"
-            MICROFMT_COMPILER_SUPPORTS_WDANGLING_GSL)
+            JPLCZ_MICROFMT_COMPILER_SUPPORTS_WDANGLING_GSL)
         check_cxx_compiler_flag("-Wdangling-assignment-gsl"
-            MICROFMT_COMPILER_SUPPORTS_WDANGLING_ASSIGNMENT_GSL)
+            JPLCZ_MICROFMT_COMPILER_SUPPORTS_WDANGLING_ASSIGNMENT_GSL)
         check_cxx_compiler_flag("-Wdangling-field"
-            MICROFMT_COMPILER_SUPPORTS_WDANGLING_FIELD)
+            JPLCZ_MICROFMT_COMPILER_SUPPORTS_WDANGLING_FIELD)
         check_cxx_compiler_flag("-Wreturn-stack-address"
-            MICROFMT_COMPILER_SUPPORTS_WRETURN_STACK_ADDRESS)
+            JPLCZ_MICROFMT_COMPILER_SUPPORTS_WRETURN_STACK_ADDRESS)
         check_cxx_compiler_flag("-Wunsafe-buffer-usage"
-            MICROFMT_COMPILER_SUPPORTS_WUNSAFE_BUFFER_USAGE)
+            JPLCZ_MICROFMT_COMPILER_SUPPORTS_WUNSAFE_BUFFER_USAGE)
     endif()
 endif()
 
 # Header-only interface target
-add_library(microfmt INTERFACE)
-target_compile_features(microfmt INTERFACE cxx_std_17)
+add_library(jplcz_microfmt INTERFACE)
+target_compile_features(jplcz_microfmt INTERFACE cxx_std_17)
+set_target_properties(jplcz_microfmt PROPERTIES EXPORT_NAME microfmt)
 
-target_include_directories(microfmt INTERFACE
+target_include_directories(jplcz_microfmt INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 
-add_library(jplcz_microfmt::microfmt ALIAS microfmt)
+add_library(jplcz_microfmt::microfmt ALIAS jplcz_microfmt)
 
-add_library(microfmt_warnings INTERFACE)
-if(MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE AND
-   NOT MICROFMT_COMPILER_SUPPORTS_WUNSAFE_BUFFER_USAGE)
+add_library(jplcz_microfmt_warnings INTERFACE)
+if(JPLCZ_MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE AND
+   NOT JPLCZ_MICROFMT_COMPILER_SUPPORTS_WUNSAFE_BUFFER_USAGE)
     message(FATAL_ERROR
-        "MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE requires a compiler that supports "
+        "JPLCZ_MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE requires a compiler that supports "
         "-Wunsafe-buffer-usage")
 endif()
 
-if(MICROFMT_ENABLE_STRICT_WARNINGS)
-    target_compile_options(microfmt_warnings INTERFACE
+if(JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS)
+    target_compile_options(jplcz_microfmt_warnings INTERFACE
         $<$<CXX_COMPILER_ID:GNU>:
             -Wall
             -Wextra
@@ -109,7 +110,7 @@ if(MICROFMT_ENABLE_STRICT_WARNINGS)
             -Wduplicated-cond
             -Wlogical-op
             -Wno-psabi
-            $<$<BOOL:${MICROFMT_ENABLE_WERROR}>:-Werror>
+            $<$<BOOL:${JPLCZ_MICROFMT_ENABLE_WERROR}>:-Werror>
         >
         $<$<CXX_COMPILER_ID:Clang,AppleClang>:
             -Wall
@@ -129,89 +130,89 @@ if(MICROFMT_ENABLE_STRICT_WARNINGS)
             -Wextra-semi
             -Wimplicit-int-conversion
             -Wshorten-64-to-32
-            $<$<BOOL:${MICROFMT_COMPILER_SUPPORTS_WDANGLING}>:-Wdangling>
-            $<$<BOOL:${MICROFMT_COMPILER_SUPPORTS_WDANGLING_GSL}>:-Wdangling-gsl>
-            $<$<BOOL:${MICROFMT_COMPILER_SUPPORTS_WDANGLING_ASSIGNMENT_GSL}>:-Wdangling-assignment-gsl>
-            $<$<BOOL:${MICROFMT_COMPILER_SUPPORTS_WDANGLING_FIELD}>:-Wdangling-field>
-            $<$<BOOL:${MICROFMT_COMPILER_SUPPORTS_WRETURN_STACK_ADDRESS}>:-Wreturn-stack-address>
-            $<$<BOOL:${MICROFMT_ENABLE_WERROR}>:-Werror>
+            $<$<BOOL:${JPLCZ_MICROFMT_COMPILER_SUPPORTS_WDANGLING}>:-Wdangling>
+            $<$<BOOL:${JPLCZ_MICROFMT_COMPILER_SUPPORTS_WDANGLING_GSL}>:-Wdangling-gsl>
+            $<$<BOOL:${JPLCZ_MICROFMT_COMPILER_SUPPORTS_WDANGLING_ASSIGNMENT_GSL}>:-Wdangling-assignment-gsl>
+            $<$<BOOL:${JPLCZ_MICROFMT_COMPILER_SUPPORTS_WDANGLING_FIELD}>:-Wdangling-field>
+            $<$<BOOL:${JPLCZ_MICROFMT_COMPILER_SUPPORTS_WRETURN_STACK_ADDRESS}>:-Wreturn-stack-address>
+            $<$<BOOL:${JPLCZ_MICROFMT_ENABLE_WERROR}>:-Werror>
         >
     )
 endif()
 
-if(MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE)
-    target_compile_options(microfmt_warnings INTERFACE
+if(JPLCZ_MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE)
+    target_compile_options(jplcz_microfmt_warnings INTERFACE
         -Wunsafe-buffer-usage
-        $<$<NOT:$<BOOL:${MICROFMT_ENABLE_WERROR}>>:
+        $<$<NOT:$<BOOL:${JPLCZ_MICROFMT_ENABLE_WERROR}>>:
             -Wno-error=unsafe-buffer-usage
         >
     )
 endif()
 
-function(microfmt_enable_warnings TARGET)
-    target_link_libraries(${TARGET} PRIVATE microfmt_warnings)
+function(jplcz_microfmt_enable_warnings TARGET)
+    target_link_libraries(${TARGET} PRIVATE jplcz_microfmt_warnings)
 endfunction()
 
-if(MICROFMT_BUILD_HEADER_CHECKS)
-    function(add_microfmt_header_check STANDARD)
-        add_library(microfmt_headers_cxx${STANDARD} OBJECT
+if(JPLCZ_MICROFMT_BUILD_HEADER_CHECKS)
+    function(add_jplcz_microfmt_header_check STANDARD)
+        add_library(jplcz_microfmt_headers_cxx${STANDARD} OBJECT
             tests/compile_all_headers.cpp)
-        target_link_libraries(microfmt_headers_cxx${STANDARD} PRIVATE microfmt)
-        microfmt_enable_warnings(microfmt_headers_cxx${STANDARD})
-        set_target_properties(microfmt_headers_cxx${STANDARD} PROPERTIES
+        target_link_libraries(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE jplcz_microfmt)
+        jplcz_microfmt_enable_warnings(jplcz_microfmt_headers_cxx${STANDARD})
+        set_target_properties(jplcz_microfmt_headers_cxx${STANDARD} PROPERTIES
             CXX_STANDARD ${STANDARD}
             CXX_STANDARD_REQUIRED ON
             CXX_EXTENSIONS OFF
         )
-        target_compile_definitions(microfmt_headers_cxx${STANDARD} PRIVATE
+        target_compile_definitions(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
             MICROFMT_HEADER_CHECK_STANDARD=${STANDARD}
         )
 
         if(Boost_FOUND)
-            target_link_libraries(microfmt_headers_cxx${STANDARD} PRIVATE
+            target_link_libraries(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
                 Boost::boost)
-            target_compile_definitions(microfmt_headers_cxx${STANDARD} PRIVATE
+            target_compile_definitions(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
                 MICROFMT_COMPILE_WITH_BOOST=1
                 MICROFMT_COMPILE_WITH_BOOST_DESCRIBE=1
                 MICROFMT_ENABLE_BOOST_UUID=1
                 MICROFMT_ENABLE_BOOST_SOURCE_LOCATION=1)
         endif()
 
-        if(STANDARD GREATER_EQUAL 20 AND TARGET PkgConfig::MICROFMT_SYSTEMD)
-            target_link_libraries(microfmt_headers_cxx${STANDARD} PRIVATE
-                PkgConfig::MICROFMT_SYSTEMD)
-            target_compile_definitions(microfmt_headers_cxx${STANDARD} PRIVATE
+        if(STANDARD GREATER_EQUAL 20 AND TARGET PkgConfig::JPLCZ_MICROFMT_SYSTEMD)
+            target_link_libraries(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
+                PkgConfig::JPLCZ_MICROFMT_SYSTEMD)
+            target_compile_definitions(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
                 MICROFMT_COMPILE_WITH_SYSTEMD=1)
         endif()
 
-        if(STANDARD GREATER_EQUAL 20 AND TARGET PkgConfig::MICROFMT_TIZEN_DLOG)
-            target_link_libraries(microfmt_headers_cxx${STANDARD} PRIVATE
-                PkgConfig::MICROFMT_TIZEN_DLOG)
-            target_compile_definitions(microfmt_headers_cxx${STANDARD} PRIVATE
+        if(STANDARD GREATER_EQUAL 20 AND TARGET PkgConfig::JPLCZ_MICROFMT_TIZEN_DLOG)
+            target_link_libraries(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
+                PkgConfig::JPLCZ_MICROFMT_TIZEN_DLOG)
+            target_compile_definitions(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
                 MICROFMT_COMPILE_WITH_TIZEN_DLOG=1)
         endif()
     endfunction()
 
-    add_microfmt_header_check(17)
-    add_microfmt_header_check(20)
+    add_jplcz_microfmt_header_check(17)
+    add_jplcz_microfmt_header_check(20)
 
-    set(MICROFMT_HEADER_CHECK_TARGETS
-        microfmt_headers_cxx17
-        microfmt_headers_cxx20
+    set(JPLCZ_MICROFMT_HEADER_CHECK_TARGETS
+        jplcz_microfmt_headers_cxx17
+        jplcz_microfmt_headers_cxx20
     )
-    set(MICROFMT_HAS_CXX23_WRAPPER FALSE)
-    if(MICROFMT_COMPILER_SUPPORTS_CXX23)
-        add_microfmt_header_check(23)
-        list(APPEND MICROFMT_HEADER_CHECK_TARGETS microfmt_headers_cxx23)
-        set(MICROFMT_HAS_CXX23_WRAPPER TRUE)
+    set(JPLCZ_MICROFMT_HAS_CXX23_WRAPPER FALSE)
+    if(JPLCZ_MICROFMT_COMPILER_SUPPORTS_CXX23)
+        add_jplcz_microfmt_header_check(23)
+        list(APPEND JPLCZ_MICROFMT_HEADER_CHECK_TARGETS jplcz_microfmt_headers_cxx23)
+        set(JPLCZ_MICROFMT_HAS_CXX23_WRAPPER TRUE)
     endif()
 
-    add_custom_target(check_public_headers
-        DEPENDS ${MICROFMT_HEADER_CHECK_TARGETS}
+    add_custom_target(jplcz_microfmt_check_public_headers
+        DEPENDS ${JPLCZ_MICROFMT_HEADER_CHECK_TARGETS}
     )
 endif()
 
-if(MICROFMT_BUILD_TESTS)
+if(JPLCZ_MICROFMT_BUILD_TESTS)
     include(FetchContent)
     FetchContent_Declare(
         googletest
@@ -229,7 +230,7 @@ if(MICROFMT_BUILD_TESTS)
 
     enable_testing()
 
-    add_executable(microfmt_tests tests/test_core.cpp
+    add_executable(jplcz_microfmt_tests tests/test_core.cpp
         tests/test_array.cpp
         tests/test_scratch_allocator.cpp
         tests/test_value_ref.cpp
@@ -279,331 +280,331 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_platform_log_sinks.cpp
         tests/test_pointer.cpp
         tests/test_logger_override.cpp)
-    target_link_libraries(microfmt_tests PRIVATE microfmt GTest::gtest_main
+    target_link_libraries(jplcz_microfmt_tests PRIVATE jplcz_microfmt GTest::gtest_main
         nlohmann_json::nlohmann_json)
-    target_compile_features(microfmt_tests PRIVATE cxx_std_20)
-    microfmt_enable_warnings(microfmt_tests)
+    target_compile_features(jplcz_microfmt_tests PRIVATE cxx_std_20)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_tests)
 
     include(GoogleTest)
-    gtest_discover_tests(microfmt_tests)
+    gtest_discover_tests(jplcz_microfmt_tests)
 
-    if(TARGET PkgConfig::MICROFMT_SYSTEMD)
-        target_sources(microfmt_tests PRIVATE tests/test_systemd_sink.cpp)
-        target_link_libraries(microfmt_tests PRIVATE PkgConfig::MICROFMT_SYSTEMD)
+    if(TARGET PkgConfig::JPLCZ_MICROFMT_SYSTEMD)
+        target_sources(jplcz_microfmt_tests PRIVATE tests/test_systemd_sink.cpp)
+        target_link_libraries(jplcz_microfmt_tests PRIVATE PkgConfig::JPLCZ_MICROFMT_SYSTEMD)
     endif()
 
-    if(TARGET PkgConfig::MICROFMT_TIZEN_DLOG)
-        target_sources(microfmt_tests PRIVATE tests/test_tizen_dlog_sink.cpp)
-        target_link_libraries(microfmt_tests PRIVATE
-            PkgConfig::MICROFMT_TIZEN_DLOG)
+    if(TARGET PkgConfig::JPLCZ_MICROFMT_TIZEN_DLOG)
+        target_sources(jplcz_microfmt_tests PRIVATE tests/test_tizen_dlog_sink.cpp)
+        target_link_libraries(jplcz_microfmt_tests PRIVATE
+            PkgConfig::JPLCZ_MICROFMT_TIZEN_DLOG)
     endif()
 
     if(Boost_FOUND)
-        target_sources(microfmt_tests PRIVATE
+        target_sources(jplcz_microfmt_tests PRIVATE
             tests/test_boost_formatters.cpp
             tests/test_map_view_boost.cpp)
     endif()
 
-    add_executable(microfmt_cxx17_container_sink_tests
+    add_executable(jplcz_microfmt_cxx17_container_sink_tests
         tests/test_container_sink.cpp)
-    target_link_libraries(microfmt_cxx17_container_sink_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_container_sink_tests)
-    set_target_properties(microfmt_cxx17_container_sink_tests PROPERTIES
+    target_link_libraries(jplcz_microfmt_cxx17_container_sink_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_container_sink_tests)
+    set_target_properties(jplcz_microfmt_cxx17_container_sink_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_container_sink_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_container_sink_tests
         TEST_PREFIX "Cxx17ContainerSink.")
 
-    add_executable(microfmt_cxx17_array_tests tests/test_array.cpp)
-    target_link_libraries(microfmt_cxx17_array_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_array_tests)
-    set_target_properties(microfmt_cxx17_array_tests PROPERTIES
+    add_executable(jplcz_microfmt_cxx17_array_tests tests/test_array.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_array_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_array_tests)
+    set_target_properties(jplcz_microfmt_cxx17_array_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_array_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_array_tests
         TEST_PREFIX "Cxx17Array.")
 
-    add_executable(microfmt_cxx17_remote_basic_string_tests
+    add_executable(jplcz_microfmt_cxx17_remote_basic_string_tests
         tests/test_remote_basic_string.cpp)
-    target_link_libraries(microfmt_cxx17_remote_basic_string_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_remote_basic_string_tests)
+    target_link_libraries(jplcz_microfmt_cxx17_remote_basic_string_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_remote_basic_string_tests)
     set_target_properties(
-        microfmt_cxx17_remote_basic_string_tests PROPERTIES
+        jplcz_microfmt_cxx17_remote_basic_string_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_remote_basic_string_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_remote_basic_string_tests
         TEST_PREFIX "Cxx17RemoteBasicString.")
 
-    add_executable(microfmt_cxx17_remote_layout_accessor_tests
+    add_executable(jplcz_microfmt_cxx17_remote_layout_accessor_tests
         tests/test_remote_layout_accessor.cpp)
     target_link_libraries(
-        microfmt_cxx17_remote_layout_accessor_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_remote_layout_accessor_tests)
+        jplcz_microfmt_cxx17_remote_layout_accessor_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_remote_layout_accessor_tests)
     set_target_properties(
-        microfmt_cxx17_remote_layout_accessor_tests PROPERTIES
+        jplcz_microfmt_cxx17_remote_layout_accessor_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_remote_layout_accessor_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_remote_layout_accessor_tests
         TEST_PREFIX "Cxx17RemoteLayoutAccessor.")
 
-    add_executable(microfmt_cxx17_remote_page_table_walker_tests
+    add_executable(jplcz_microfmt_cxx17_remote_page_table_walker_tests
         tests/test_remote_page_table_walker.cpp)
     target_link_libraries(
-        microfmt_cxx17_remote_page_table_walker_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(
-        microfmt_cxx17_remote_page_table_walker_tests)
+        jplcz_microfmt_cxx17_remote_page_table_walker_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(
+        jplcz_microfmt_cxx17_remote_page_table_walker_tests)
     set_target_properties(
-        microfmt_cxx17_remote_page_table_walker_tests PROPERTIES
+        jplcz_microfmt_cxx17_remote_page_table_walker_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
     gtest_discover_tests(
-        microfmt_cxx17_remote_page_table_walker_tests
+        jplcz_microfmt_cxx17_remote_page_table_walker_tests
         TEST_PREFIX "Cxx17RemotePageTableWalker.")
 
-    add_executable(microfmt_cxx17_register_context_with_tests
+    add_executable(jplcz_microfmt_cxx17_register_context_with_tests
         tests/test_register_context_with.cpp)
     target_link_libraries(
-        microfmt_cxx17_register_context_with_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_register_context_with_tests)
+        jplcz_microfmt_cxx17_register_context_with_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_register_context_with_tests)
     set_target_properties(
-        microfmt_cxx17_register_context_with_tests PROPERTIES
+        jplcz_microfmt_cxx17_register_context_with_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_register_context_with_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_register_context_with_tests
         TEST_PREFIX "Cxx17RegisterContextWith.")
 
-    add_executable(microfmt_cxx17_scratch_allocator_tests
+    add_executable(jplcz_microfmt_cxx17_scratch_allocator_tests
         tests/test_scratch_allocator.cpp)
-    target_link_libraries(microfmt_cxx17_scratch_allocator_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_scratch_allocator_tests)
-    set_target_properties(microfmt_cxx17_scratch_allocator_tests PROPERTIES
+    target_link_libraries(jplcz_microfmt_cxx17_scratch_allocator_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_scratch_allocator_tests)
+    set_target_properties(jplcz_microfmt_cxx17_scratch_allocator_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_scratch_allocator_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_scratch_allocator_tests
         TEST_PREFIX "Cxx17ScratchAllocator.")
 
-    add_executable(microfmt_cxx17_value_ref_tests tests/test_value_ref.cpp)
-    target_link_libraries(microfmt_cxx17_value_ref_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_value_ref_tests)
-    set_target_properties(microfmt_cxx17_value_ref_tests PROPERTIES
+    add_executable(jplcz_microfmt_cxx17_value_ref_tests tests/test_value_ref.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_value_ref_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_value_ref_tests)
+    set_target_properties(jplcz_microfmt_cxx17_value_ref_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_value_ref_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_value_ref_tests
         TEST_PREFIX "Cxx17ValueRef.")
 
-    add_executable(microfmt_cxx17_metadata_map_tests
+    add_executable(jplcz_microfmt_cxx17_metadata_map_tests
         tests/test_metadata_map.cpp)
-    target_link_libraries(microfmt_cxx17_metadata_map_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_metadata_map_tests)
-    set_target_properties(microfmt_cxx17_metadata_map_tests PROPERTIES
+    target_link_libraries(jplcz_microfmt_cxx17_metadata_map_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_metadata_map_tests)
+    set_target_properties(jplcz_microfmt_cxx17_metadata_map_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_metadata_map_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_metadata_map_tests
         TEST_PREFIX "Cxx17MetadataMap.")
 
-    add_executable(microfmt_cxx17_task_thread_tests
+    add_executable(jplcz_microfmt_cxx17_task_thread_tests
         tests/test_task_thread.cpp)
-    target_link_libraries(microfmt_cxx17_task_thread_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_task_thread_tests)
-    set_target_properties(microfmt_cxx17_task_thread_tests PROPERTIES
+    target_link_libraries(jplcz_microfmt_cxx17_task_thread_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_task_thread_tests)
+    set_target_properties(jplcz_microfmt_cxx17_task_thread_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_task_thread_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_task_thread_tests
         TEST_PREFIX "Cxx17TaskThread.")
 
-    add_executable(microfmt_cxx17_gdb_protocol_tests
+    add_executable(jplcz_microfmt_cxx17_gdb_protocol_tests
         tests/test_gdb_protocol.cpp)
-    target_link_libraries(microfmt_cxx17_gdb_protocol_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_gdb_protocol_tests)
-    set_target_properties(microfmt_cxx17_gdb_protocol_tests PROPERTIES
+    target_link_libraries(jplcz_microfmt_cxx17_gdb_protocol_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_gdb_protocol_tests)
+    set_target_properties(jplcz_microfmt_cxx17_gdb_protocol_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_gdb_protocol_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_gdb_protocol_tests
         TEST_PREFIX "Cxx17GdbProtocol.")
 
-    add_executable(microfmt_cxx17_gdb_register_tests
+    add_executable(jplcz_microfmt_cxx17_gdb_register_tests
         tests/test_gdb_registers.cpp)
-    target_link_libraries(microfmt_cxx17_gdb_register_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_gdb_register_tests)
-    set_target_properties(microfmt_cxx17_gdb_register_tests PROPERTIES
+    target_link_libraries(jplcz_microfmt_cxx17_gdb_register_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_gdb_register_tests)
+    set_target_properties(jplcz_microfmt_cxx17_gdb_register_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_gdb_register_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_gdb_register_tests
         TEST_PREFIX "Cxx17GdbRegisters.")
 
-    add_executable(microfmt_cxx17_gdb_register_array_tests
+    add_executable(jplcz_microfmt_cxx17_gdb_register_array_tests
         tests/test_gdb_register_array.cpp)
-    target_link_libraries(microfmt_cxx17_gdb_register_array_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_gdb_register_array_tests)
+    target_link_libraries(jplcz_microfmt_cxx17_gdb_register_array_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_gdb_register_array_tests)
     set_target_properties(
-        microfmt_cxx17_gdb_register_array_tests PROPERTIES
+        jplcz_microfmt_cxx17_gdb_register_array_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_gdb_register_array_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_gdb_register_array_tests
         TEST_PREFIX "Cxx17GdbRegisterArray.")
 
-    add_executable(microfmt_cxx17_register_xml_printer_tests
+    add_executable(jplcz_microfmt_cxx17_register_xml_printer_tests
         tests/test_register_xml_printer.cpp)
-    target_link_libraries(microfmt_cxx17_register_xml_printer_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_register_xml_printer_tests)
+    target_link_libraries(jplcz_microfmt_cxx17_register_xml_printer_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_register_xml_printer_tests)
     set_target_properties(
-        microfmt_cxx17_register_xml_printer_tests PROPERTIES
+        jplcz_microfmt_cxx17_register_xml_printer_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_register_xml_printer_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_register_xml_printer_tests
         TEST_PREFIX "Cxx17RegisterXmlPrinter.")
 
-    add_executable(microfmt_cxx17_pmr_sink_tests tests/test_pmr_sink.cpp)
-    target_link_libraries(microfmt_cxx17_pmr_sink_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_pmr_sink_tests)
-    set_target_properties(microfmt_cxx17_pmr_sink_tests PROPERTIES
+    add_executable(jplcz_microfmt_cxx17_pmr_sink_tests tests/test_pmr_sink.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_pmr_sink_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_pmr_sink_tests)
+    set_target_properties(jplcz_microfmt_cxx17_pmr_sink_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_pmr_sink_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_pmr_sink_tests
         TEST_PREFIX "Cxx17PmrSink.")
 
-    add_executable(microfmt_cxx17_json_tests tests/test_json.cpp)
-    target_link_libraries(microfmt_cxx17_json_tests PRIVATE
-        microfmt GTest::gtest_main nlohmann_json::nlohmann_json)
-    microfmt_enable_warnings(microfmt_cxx17_json_tests)
-    set_target_properties(microfmt_cxx17_json_tests PROPERTIES
+    add_executable(jplcz_microfmt_cxx17_json_tests tests/test_json.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_json_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main nlohmann_json::nlohmann_json)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_json_tests)
+    set_target_properties(jplcz_microfmt_cxx17_json_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_json_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_json_tests
         TEST_PREFIX "Cxx17Json.")
 
-    add_executable(microfmt_cxx17_cbor_tests tests/test_cbor.cpp)
-    target_link_libraries(microfmt_cxx17_cbor_tests PRIVATE
-        microfmt GTest::gtest_main nlohmann_json::nlohmann_json)
-    microfmt_enable_warnings(microfmt_cxx17_cbor_tests)
-    set_target_properties(microfmt_cxx17_cbor_tests PROPERTIES
+    add_executable(jplcz_microfmt_cxx17_cbor_tests tests/test_cbor.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_cbor_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main nlohmann_json::nlohmann_json)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_cbor_tests)
+    set_target_properties(jplcz_microfmt_cxx17_cbor_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_cbor_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_cbor_tests
         TEST_PREFIX "Cxx17Cbor.")
 
-    add_executable(microfmt_cxx17_tuple_tests tests/test_tuple.cpp)
-    target_link_libraries(microfmt_cxx17_tuple_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_tuple_tests)
-    set_target_properties(microfmt_cxx17_tuple_tests PROPERTIES
+    add_executable(jplcz_microfmt_cxx17_tuple_tests tests/test_tuple.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_tuple_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_tuple_tests)
+    set_target_properties(jplcz_microfmt_cxx17_tuple_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_tuple_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_tuple_tests
         TEST_PREFIX "Cxx17Tuple.")
 
-    add_executable(microfmt_cxx17_map_view_tests tests/test_map_view.cpp)
-    target_link_libraries(microfmt_cxx17_map_view_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_map_view_tests)
-    set_target_properties(microfmt_cxx17_map_view_tests PROPERTIES
+    add_executable(jplcz_microfmt_cxx17_map_view_tests tests/test_map_view.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_map_view_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_map_view_tests)
+    set_target_properties(jplcz_microfmt_cxx17_map_view_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_map_view_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_map_view_tests
         TEST_PREFIX "Cxx17MapView.")
 
-    add_executable(microfmt_cxx17_pointer_tests tests/test_pointer.cpp)
-    target_link_libraries(microfmt_cxx17_pointer_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_pointer_tests)
-    set_target_properties(microfmt_cxx17_pointer_tests PROPERTIES
+    add_executable(jplcz_microfmt_cxx17_pointer_tests tests/test_pointer.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_pointer_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_pointer_tests)
+    set_target_properties(jplcz_microfmt_cxx17_pointer_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_pointer_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_pointer_tests
         TEST_PREFIX "Cxx17Pointer.")
 
-    add_executable(microfmt_cxx17_filter_view_tests
+    add_executable(jplcz_microfmt_cxx17_filter_view_tests
         tests/test_filter_view.cpp)
-    target_link_libraries(microfmt_cxx17_filter_view_tests PRIVATE
-        microfmt GTest::gtest_main)
-    microfmt_enable_warnings(microfmt_cxx17_filter_view_tests)
-    set_target_properties(microfmt_cxx17_filter_view_tests PROPERTIES
+    target_link_libraries(jplcz_microfmt_cxx17_filter_view_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_filter_view_tests)
+    set_target_properties(jplcz_microfmt_cxx17_filter_view_tests PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF
     )
-    gtest_discover_tests(microfmt_cxx17_filter_view_tests
+    gtest_discover_tests(jplcz_microfmt_cxx17_filter_view_tests
         TEST_PREFIX "Cxx17FilterView.")
 
-    if(MICROFMT_COMPILER_SUPPORTS_CXX23)
-        add_executable(microfmt_cxx23_tests tests/test_monad.cpp)
-        target_link_libraries(microfmt_cxx23_tests PRIVATE
-            microfmt GTest::gtest_main)
-        microfmt_enable_warnings(microfmt_cxx23_tests)
-        set_target_properties(microfmt_cxx23_tests PROPERTIES
+    if(JPLCZ_MICROFMT_COMPILER_SUPPORTS_CXX23)
+        add_executable(jplcz_microfmt_cxx23_tests tests/test_monad.cpp)
+        target_link_libraries(jplcz_microfmt_cxx23_tests PRIVATE
+            jplcz_microfmt GTest::gtest_main)
+        jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx23_tests)
+        set_target_properties(jplcz_microfmt_cxx23_tests PROPERTIES
             CXX_STANDARD 23
             CXX_STANDARD_REQUIRED ON
             CXX_EXTENSIONS OFF
         )
-        gtest_discover_tests(microfmt_cxx23_tests)
+        gtest_discover_tests(jplcz_microfmt_cxx23_tests)
     endif()
 
     find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
     # Build probe object file with optimization
-    add_library(microfmt_stack_probes OBJECT
+    add_library(jplcz_microfmt_stack_probes OBJECT
         tests/stack_probes.cpp)
-    target_link_libraries(microfmt_stack_probes PRIVATE microfmt)
-    target_compile_features(microfmt_stack_probes PRIVATE cxx_std_20)
-    microfmt_enable_warnings(microfmt_stack_probes)
+    target_link_libraries(jplcz_microfmt_stack_probes PRIVATE jplcz_microfmt)
+    target_compile_features(jplcz_microfmt_stack_probes PRIVATE cxx_std_20)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_stack_probes)
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        target_compile_options(microfmt_stack_probes PRIVATE
+        target_compile_options(jplcz_microfmt_stack_probes PRIVATE
             -O2
             -fstack-usage
         )
@@ -612,17 +613,17 @@ if(MICROFMT_BUILD_TESTS)
             COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_stack_usage.py
             --compiler gcc
-            --input-dir $<TARGET_PROPERTY:microfmt_stack_probes,BINARY_DIR>
+            --input-dir $<TARGET_PROPERTY:jplcz_microfmt_stack_probes,BINARY_DIR>
             --budget 256
             --warn-budget 192
-            DEPENDS microfmt_stack_probes
+            DEPENDS jplcz_microfmt_stack_probes
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
             COMMENT "Auditing GCC stack frame allocations"
             VERBATIM
         )
 
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-        target_compile_options(microfmt_stack_probes PRIVATE
+        target_compile_options(jplcz_microfmt_stack_probes PRIVATE
             -O2
             -fstack-size-section
         )
@@ -634,11 +635,11 @@ if(MICROFMT_BUILD_TESTS)
                 COMMAND ${Python3_EXECUTABLE}
                 ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_stack_usage.py
                 --compiler clang
-                --input $<TARGET_OBJECTS:microfmt_stack_probes>
+                --input $<TARGET_OBJECTS:jplcz_microfmt_stack_probes>
                 --readelf ${LLVM_READELF}
                 --budget 256
                 --warn-budget 192
-                DEPENDS microfmt_stack_probes
+                DEPENDS jplcz_microfmt_stack_probes
                 WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                 COMMENT "Auditing Clang stack frame allocations"
                 VERBATIM
@@ -647,21 +648,21 @@ if(MICROFMT_BUILD_TESTS)
     endif()
 endif()
 
-if(MICROFMT_BUILD_EXAMPLES)
+if(JPLCZ_MICROFMT_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
-if(MICROFMT_BUILD_BENCHMARKS)
+if(JPLCZ_MICROFMT_BUILD_BENCHMARKS)
     add_subdirectory(bench)
 endif()
 
-if(MICROFMT_INSTALL)
+if(JPLCZ_MICROFMT_INSTALL)
     include(GNUInstallDirs)
     include(CMakePackageConfigHelpers)
 
     install(
-        TARGETS microfmt
-        EXPORT microfmtTargets
+        TARGETS jplcz_microfmt
+        EXPORT jplcz_microfmtTargets
         INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     )
 
@@ -686,8 +687,8 @@ if(MICROFMT_INSTALL)
     )
 
     install(
-        EXPORT microfmtTargets
-        FILE microfmtTargets.cmake
+        EXPORT jplcz_microfmtTargets
+        FILE jplcz_microfmtTargets.cmake
         NAMESPACE jplcz_microfmt::
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/jplcz_microfmt"
         COMPONENT Development

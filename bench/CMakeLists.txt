@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 add_executable(bench_stack_painting bench_stack_painting.cpp)
-target_link_libraries(bench_stack_painting PRIVATE microfmt)
-microfmt_enable_warnings(bench_stack_painting)
+target_link_libraries(bench_stack_painting PRIVATE jplcz_microfmt)
+jplcz_microfmt_enable_warnings(bench_stack_painting)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
   target_compile_options(bench_stack_painting PRIVATE
@@ -26,6 +26,6 @@ add_test(NAME bench_stack_painting COMMAND bench_stack_painting)
 add_custom_target(run_stack_bench
   COMMAND bench_stack_painting
   DEPENDS bench_stack_painting
-  COMMENT "Running microfmt stack high-water mark benchmark..."
+  COMMENT "Running jplcz_microfmt stack high-water mark benchmark..."
   USES_TERMINAL
 )

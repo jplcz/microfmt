@@ -51,8 +51,8 @@ jobs:
           cmake -S . -B build/${{ matrix.name }} -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
-            -DMICROFMT_BUILD_TESTS=${{ matrix.build_tests }} \
-            -DMICROFMT_BUILD_EXAMPLES=ON
+            -DJPLCZ_MICROFMT_BUILD_TESTS=${{ matrix.build_tests }} \
+            -DJPLCZ_MICROFMT_BUILD_EXAMPLES=ON
 
       - name: Build examples
         run: cmake --build build/${{ matrix.name }} --parallel

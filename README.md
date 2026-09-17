@@ -4,11 +4,11 @@ SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
 SPDX-License-Identifier: BSD-2-Clause
 -->
 
-# microfmt
+# jplcz_microfmt
 
 <img src="docs/microfmt-logo.svg" alt="microfmt logo" width="128">
 
-`microfmt` is a header-only C++ formatting and diagnostics library for
+`jplcz_microfmt` is a header-only C++ formatting and diagnostics library for
 resource-constrained software. Its core writes directly to bounded buffers,
 callbacks, device transports, and other sinks without exceptions, RTTI,
 virtual dispatch, or heap allocation.
@@ -23,13 +23,13 @@ Start with the guide that matches what you are building:
 
 | Guide | Covers |
 |---|---|
-| [Using microfmt](docs/usage.md) | Installation, core formatting, sinks, compile-time strings, custom formatters, and logging |
+| [Using jplcz_microfmt](docs/usage.md) | Installation, core formatting, sinks, compile-time strings, custom formatters, and logging |
 | [Hardened containers](docs/hardened-containers.md) | Checked views and results, non-trapping access, assertion handling, and explicit security opt-out |
 | [Formatter guide](docs/formatters.md) | Binary and diagnostic values, ranges, time, units, protocols, structured output, and presentation |
 | [Inspector framework](docs/inspector.md) | Remote memory, objects, containers, symbols, registers, and stack unwinding |
 | [Writing low-stack renderers](docs/renderer-guide.md) | Caller-owned scratch storage and small formatter/view design |
 | [Lifetime safety](docs/lifetime-safety.md) | Borrowed values and pointers, lifetime annotations, and compiler diagnostics |
-| [Developing microfmt](docs/development.md) | Builds, tests, warning policy, public-header checks, and contribution constraints |
+| [Developing jplcz_microfmt](docs/development.md) | Builds, tests, warning policy, public-header checks, and contribution constraints |
 
 The [`examples/`](examples) directory contains runnable programs for the core
 API and nearly every optional formatter, sink, and inspector subsystem.
@@ -199,7 +199,7 @@ microfmt::format_to(output, MICROFMT_STRING("{}"), remote);
 See the [inspector framework guide](docs/inspector.md) for transports, remote
 layouts, symbolization, architecture support, and unwinding.
 
-## Add microfmt
+## Add jplcz_microfmt
 
 ### FetchContent or `add_subdirectory`
 
@@ -208,10 +208,10 @@ Use the CMake interface target:
 ```cmake
 include(FetchContent)
 FetchContent_Declare(
-    microfmt
+    jplcz_microfmt
     GIT_REPOSITORY https://github.com/jplcz/microfmt.git
 )
-FetchContent_MakeAvailable(microfmt)
+FetchContent_MakeAvailable(jplcz_microfmt)
 
 target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 ```
@@ -219,27 +219,27 @@ target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 Direct `add_subdirectory` usage exposes the same target:
 
 ```cmake
-add_subdirectory(third_party/microfmt)
+add_subdirectory(third_party/jplcz_microfmt)
 target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 ```
 
-When embedded as a subdirectory, microfmt does not enable its tests, examples,
-benchmarks, header checks, strict warnings, or install rules by default. It
+When embedded as a subdirectory, jplcz_microfmt does not enable its tests,
+examples, benchmarks, header checks, strict warnings, or install rules by default. It
 also does not change the parent project's global C++ standard. The interface
 target requires C++17.
 
 ### Installed package and `ExternalProject`
 
-Standalone builds enable `MICROFMT_INSTALL` by default:
+Standalone builds enable `JPLCZ_MICROFMT_INSTALL` by default:
 
 ```sh
-cmake -S microfmt -B microfmt-build \
-  -DMICROFMT_BUILD_TESTS=OFF \
-  -DMICROFMT_BUILD_EXAMPLES=OFF \
-  -DMICROFMT_BUILD_BENCHMARKS=OFF \
-  -DMICROFMT_BUILD_HEADER_CHECKS=OFF
-cmake --build microfmt-build
-cmake --install microfmt-build --prefix /opt/microfmt
+cmake -S jplcz_microfmt -B jplcz_microfmt-build \
+  -DJPLCZ_MICROFMT_BUILD_TESTS=OFF \
+  -DJPLCZ_MICROFMT_BUILD_EXAMPLES=OFF \
+  -DJPLCZ_MICROFMT_BUILD_BENCHMARKS=OFF \
+  -DJPLCZ_MICROFMT_BUILD_HEADER_CHECKS=OFF
+cmake --build jplcz_microfmt-build
+cmake --install jplcz_microfmt-build --prefix /opt/jplcz_microfmt
 ```
 
 The installation contains the public headers and a CMake config package:
@@ -256,14 +256,14 @@ development-only targets:
 include(ExternalProject)
 ExternalProject_Add(
     microfmt_external
-    SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/microfmt"
+    SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/jplcz_microfmt"
     CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
-        -DMICROFMT_INSTALL=ON
-        -DMICROFMT_BUILD_TESTS=OFF
-        -DMICROFMT_BUILD_EXAMPLES=OFF
-        -DMICROFMT_BUILD_BENCHMARKS=OFF
-        -DMICROFMT_BUILD_HEADER_CHECKS=OFF
+        -DJPLCZ_MICROFMT_INSTALL=ON
+        -DJPLCZ_MICROFMT_BUILD_TESTS=OFF
+        -DJPLCZ_MICROFMT_BUILD_EXAMPLES=OFF
+        -DJPLCZ_MICROFMT_BUILD_BENCHMARKS=OFF
+        -DJPLCZ_MICROFMT_BUILD_HEADER_CHECKS=OFF
 )
 ```
 
@@ -297,9 +297,9 @@ ratcheted diagnostic baseline:
 ./scripts/check-unsafe-buffer-usage.sh
 ```
 
-See [Developing microfmt](docs/development.md) for build options, focused test
+See [Developing jplcz_microfmt](docs/development.md) for build options, focused test
 commands, stack-usage checks, and project constraints. Toolchain maintainers
-should also read [Porting microfmt](docs/porting.md) for compatibility macros
+should also read [Porting jplcz_microfmt](docs/porting.md) for compatibility macros
 and platform hook overrides. See
 [Lifetime safety and `value_ref`](docs/lifetime-safety.md) for non-owning
 reference rules and compiler annotations.

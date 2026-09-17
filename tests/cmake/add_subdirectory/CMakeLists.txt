@@ -3,26 +3,26 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 cmake_minimum_required(VERSION 3.20)
-project(microfmt_add_subdirectory_consumer LANGUAGES CXX)
+project(jplcz_microfmt_add_subdirectory_consumer LANGUAGES CXX)
 
-if(NOT MICROFMT_SOURCE_DIR)
-    message(FATAL_ERROR "MICROFMT_SOURCE_DIR is required")
+if(NOT JPLCZ_MICROFMT_SOURCE_DIR)
+    message(FATAL_ERROR "JPLCZ_MICROFMT_SOURCE_DIR is required")
 endif()
 
 set(CMAKE_CXX_STANDARD 23)
-add_subdirectory("${MICROFMT_SOURCE_DIR}" microfmt)
+add_subdirectory("${JPLCZ_MICROFMT_SOURCE_DIR}" jplcz_microfmt)
 
 if(NOT CMAKE_CXX_STANDARD EQUAL 23)
-    message(FATAL_ERROR "microfmt changed the parent C++ standard")
+    message(FATAL_ERROR "jplcz_microfmt changed the parent C++ standard")
 endif()
 
 foreach(DEVELOPMENT_OPTION
-        MICROFMT_BUILD_TESTS
-        MICROFMT_BUILD_EXAMPLES
-        MICROFMT_BUILD_BENCHMARKS
-        MICROFMT_BUILD_HEADER_CHECKS
-        MICROFMT_ENABLE_STRICT_WARNINGS
-        MICROFMT_INSTALL)
+        JPLCZ_MICROFMT_BUILD_TESTS
+        JPLCZ_MICROFMT_BUILD_EXAMPLES
+        JPLCZ_MICROFMT_BUILD_BENCHMARKS
+        JPLCZ_MICROFMT_BUILD_HEADER_CHECKS
+        JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS
+        JPLCZ_MICROFMT_INSTALL)
     if(${DEVELOPMENT_OPTION})
         message(FATAL_ERROR
             "Unexpected embedded-build option: ${DEVELOPMENT_OPTION}")
@@ -30,8 +30,8 @@ foreach(DEVELOPMENT_OPTION
 endforeach()
 
 foreach(DEVELOPMENT_TARGET
-        microfmt_tests
-        check_public_headers
+        jplcz_microfmt_tests
+        jplcz_microfmt_check_public_headers
         memory_scanner_demo
         bench_stack_painting)
     if(TARGET "${DEVELOPMENT_TARGET}")

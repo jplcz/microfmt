@@ -7,10 +7,10 @@ set -uo pipefail
 
 readonly script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly source_dir="$(cd -- "${script_dir}/.." && pwd)"
-readonly build_root="${MICROFMT_MATRIX_BUILD_ROOT:-${source_dir}/build-matrix}"
+readonly build_root="${JPLCZ_MICROFMT_MATRIX_BUILD_ROOT:-${source_dir}/build-matrix}"
 
-read -r -a build_types <<<"${MICROFMT_BUILD_TYPES:-Debug Release RelWithDebInfo MinSizeRel}"
-read -r -a selected_targets <<<"${MICROFMT_BUILD_TARGETS:-}"
+read -r -a build_types <<<"${JPLCZ_MICROFMT_BUILD_TYPES:-Debug Release RelWithDebInfo MinSizeRel}"
+read -r -a selected_targets <<<"${JPLCZ_MICROFMT_BUILD_TARGETS:-}"
 
 # name|architecture|compiler|clang-target|run-tests
 readonly matrix=(
@@ -78,7 +78,7 @@ for entry in "${matrix[@]}"; do
     build_dir="${build_root}/${name}/${build_type}"
     ((build_count += 1))
 
-    if [[ "${MICROFMT_MATRIX_CLEAN:-0}" == "1" ]]; then
+    if [[ "${JPLCZ_MICROFMT_MATRIX_CLEAN:-0}" == "1" ]]; then
       cmake -E remove_directory "${build_dir}"
     fi
 
@@ -91,11 +91,11 @@ for entry in "${matrix[@]}"; do
       "-DCMAKE_BUILD_TYPE=${build_type}"
       "-DCMAKE_CXX_COMPILER=${compiler}"
       -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
-      -DMICROFMT_ENABLE_STRICT_WARNINGS=ON
-      "-DMICROFMT_BUILD_TESTS=${run_tests}"
-      -DMICROFMT_BUILD_EXAMPLES=ON
-      -DMICROFMT_BUILD_BENCHMARKS=ON
-      -DMICROFMT_BUILD_HEADER_CHECKS=ON
+      -DJPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS=ON
+      "-DJPLCZ_MICROFMT_BUILD_TESTS=${run_tests}"
+      -DJPLCZ_MICROFMT_BUILD_EXAMPLES=ON
+      -DJPLCZ_MICROFMT_BUILD_BENCHMARKS=ON
+      -DJPLCZ_MICROFMT_BUILD_HEADER_CHECKS=ON
     )
 
     if [[ "${architecture}" != "x86_64" ]]; then
@@ -126,7 +126,7 @@ for entry in "${matrix[@]}"; do
     fi
 
     if [[ "${run_tests}" == "ON" &&
-          "${MICROFMT_MATRIX_SKIP_TESTS:-0}" != "1" ]]; then
+          "${JPLCZ_MICROFMT_MATRIX_SKIP_TESTS:-0}" != "1" ]]; then
       printf '\n==> Testing %s / %s\n' "${name}" "${build_type}"
       if ! ctest --test-dir "${build_dir}" --output-on-failure; then
         failures+=("${name}/${build_type}: tests")

@@ -124,7 +124,7 @@ Strict Clang builds explicitly enable the supported `-Wdangling`,
 `-Wdangling-gsl`, `-Wdangling-assignment-gsl`, `-Wdangling-field`, and
 `-Wreturn-stack-address` diagnostics. CMake probes each flag before adding it,
 so older Clang and AppleClang releases remain supported. These diagnostics are
-treated as errors when `MICROFMT_ENABLE_STRICT_WARNINGS` is enabled.
+treated as errors when `JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS` is enabled.
 
 Clang's `-Wunsafe-buffer-usage` is a separate bounds-migration analysis. It is
 not part of the default warning set because microfmt deliberately contains

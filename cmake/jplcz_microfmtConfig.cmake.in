@@ -4,4 +4,4 @@
 
 @PACKAGE_INIT@
 
-include("${CMAKE_CURRENT_LIST_DIR}/microfmtTargets.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/jplcz_microfmtTargets.cmake")
