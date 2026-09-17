@@ -53,8 +53,34 @@ context-switch routine, scheduler trampoline, interrupt return path, or other
 assembly/prologue sequence that has temporarily moved, swapped, or repurposed
 the normal stack and register state.
 
-A hint routine receives the target address space and the complete mutable
-`register_context_ref`:
+### Hint callback signature
+
+A hint callback receives the target address space and the **same mutable
+`register_context_ref`** passed to the chained unwinder. The callback no longer
+receives separate `current_fp` and `current_pc` arguments:
+
+```cpp
+using unwind_routine_t = bool (*)(
+    microfmt::address_space_ref space,
+    microfmt::register_context_ref registers,
+    uintptr_t &next_fp,
+    uintptr_t &next_pc) noexcept;
+```
+
+This is an API change for existing hint callbacks. A former callback such as:
+
+```cpp
+bool old_hint(microfmt::address_space_ref space,
+              uintptr_t current_fp, uintptr_t current_pc,
+              uintptr_t &next_fp, uintptr_t &next_pc) noexcept;
+```
+
+must be changed to the new four-parameter form. Read the old FP or PC inside
+the callback using the architecture's register numbers. For example, on
+ARM32, use `microfmt::dwarf::arm32::FP` and `LR`; on AArch64, use
+`microfmt::dwarf::aarch64::FP` and `LR`.
+
+### Reading and modifying registers
 
 ```cpp
 bool recover_context_switch(microfmt::address_space_ref space,
@@ -65,34 +91,36 @@ bool recover_context_switch(microfmt::address_space_ref space,
   uint32_t saved_fp = 0;
   uint32_t saved_lr = 0;
 
-  // The context address is in a GPR rather than in the conventional FP slot.
+  // The saved-context address is in a GPR rather than in the FP slot.
   if (!registers.read(microfmt::dwarf::arm32::R0, context_address) ||
       !space.read_bytes(context_address, &saved_fp, sizeof(saved_fp)) ||
       !space.read_bytes(context_address + sizeof(saved_fp), &saved_lr,
                         sizeof(saved_lr)))
     return false;
 
-  // Publish the recovered values both as frame outputs and in the mutable
-  // register context for subsequent unwinder tiers/consumers.
+  // Publish the recovered values in the register context as well as in the
+  // frame outputs. A later consumer sees the updated state.
   if (!registers.write(microfmt::dwarf::arm32::FP, saved_fp) ||
       !registers.write(microfmt::dwarf::arm32::LR, saved_lr))
     return false;
 
-  next_fp = saved_fp;
+  next_fp = static_cast<uintptr_t>(saved_fp);
   next_pc = static_cast<uintptr_t>(saved_lr & ~1U);
   return next_fp != 0 && next_pc != 0;
 }
 ```
 
-Use `read<T>()` and `write<T>()` for naturally sized register values, or
-`read_raw()` and `write_raw()` for an explicitly sized register representation.
+Use `read<T>()` and `write<T>()` for naturally sized values. Use
+`read_raw()` and `write_raw()` when the saved register width is explicitly
+known. The typed overload must match the target register representation; for a
+64-bit target, use `uintptr_t` or the ABI's register type rather than `uint32_t`.
+
 A callback can access any register exposed by the target's register context,
 including GPRs used to hold saved-context pointers or return addresses. A
 write may fail when the underlying context is read-only; custom routines should
 propagate that failure rather than claiming a recovered frame.
 
-Register a PC range with a custom routine in the fixed-capacity
-`unwind_hint_registry_context`:
+### Registering a hint
 
 ```cpp
 microfmt::unwind_hint_registry_context<4> hints;
@@ -126,10 +154,10 @@ advance the walk.
 
 ## Assembly-generated hint arrays
 
-Firmware can generate hint records from assembly without including the C++
-API by including `microfmt/inspector/unwind_hint_asm.h` from a `.S` file. The
-header emits only assembler macros under `__ASSEMBLER__` and defines the
-pointer-sized field offsets and record size:
+Firmware can generate hint records from assembly without including the C++ API
+by including `microfmt/inspector/unwind_hint_asm.h` from a `.S` file. The
+header emits assembler macros only when `__ASSEMBLER__` is defined and defines
+the pointer-sized field offsets and record size:
 
 ```asm
 #include <microfmt/inspector/unwind_hint_asm.h>
@@ -140,11 +168,12 @@ MICROFMT_UNWIND_HINT context_switch_start, context_switch_end, recover_context
 MICROFMT_UNWIND_HINT_TABLE_END my_unwind_hints
 ```
 
-The record contains `pc_start`, `pc_end`, and `routine`, in that order. Set
+The record contains `pc_start`, `pc_end`, and `routine`, in that order, with no
+additional count or terminator. Set
 `MICROFMT_UNWIND_HINT_POINTER_SIZE` to `4` or `8` before including the header
 when the assembler does not define `__SIZEOF_POINTER__`. The generated table
-can be exposed to C++ through a platform-specific registry that copies or
-iterates the records into `unwind_hint` values. Function pointers in assembly
+is raw data; a platform-specific registry must provide the lookup that converts
+or views each record as a C++ `unwind_hint`. Function pointers in assembly
 must use the target's normal relocation and code-address conventions.
 
 ## Available backends
