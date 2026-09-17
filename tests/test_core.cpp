@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <iterator>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -265,9 +266,174 @@ TEST(CoreSink, TypeErasedCustomCallbackSink) {
   EXPECT_EQ(total_bytes, 15u); // "A = 1, B = test"
 }
 
+TEST(CoreSink, IgnoresEmptyWritesAndMissingCallbacks) {
+  size_t calls = 0;
+  microfmt::sink empty_sink{};
+  empty_sink.write("ignored");
+  empty_sink.put('x');
+
+  microfmt::sink observed_sink{&calls, [](void *ctx, microfmt::string_view) noexcept {
+                                 ++*static_cast<size_t *>(ctx);
+                               }};
+  observed_sink.write({});
+  EXPECT_EQ(calls, 0U);
+  observed_sink.write("x");
+  EXPECT_EQ(calls, 1U);
+}
+
+TEST(CoreSink, SpanSinkAccessorsAndReset) {
+  char storage[5] = {};
+  microfmt::span_sink output{microfmt::span<char>(storage)};
+  EXPECT_EQ(output.size(), 0U);
+  EXPECT_EQ(output.available(), 5U);
+
+  microfmt::format_to(output.as_sink(), "abc");
+  EXPECT_EQ(output.view(), "abc");
+  EXPECT_EQ(output.available(), 2U);
+
+  output.reset();
+  EXPECT_TRUE(output.view().empty());
+  EXPECT_EQ(output.available(), 5U);
+
+#if MICROFMT_HAS_STD_SPAN
+  microfmt::span_sink standard_output{std::span<char>(storage)};
+  microfmt::format_to(standard_output.as_sink(), "xy");
+  EXPECT_EQ(standard_output.view(), "xy");
+#endif
+}
+
+TEST(CoreSink, BufferSinkAccessors) {
+  microfmt::buffer_sink<4> output;
+  microfmt::format_to(output.as_sink(), "abcde");
+
+  EXPECT_EQ(output.size(), 4U);
+  EXPECT_EQ(output.capacity(), 4U);
+  EXPECT_EQ(output.available(), 0U);
+  const auto output_span = output.as_span();
+  EXPECT_EQ(output_span.size(), 4U);
+  EXPECT_EQ(microfmt::string_view(output_span.data(), output_span.size()), "abcd");
+#if MICROFMT_HAS_STD_SPAN
+  const auto standard_span = output.as_std_span();
+  EXPECT_EQ(standard_span.size(), 4U);
+  EXPECT_EQ(standard_span.data(), output_span.data());
+#endif
+}
+
+TEST(CoreSink, CountingNullAndCallbackAdapters) {
+  microfmt::counting_sink counter;
+  microfmt::format_to(counter.as_sink(), "{}-{}", "abc", 42);
+  EXPECT_EQ(counter.count(), 6U);
+  counter.reset();
+  EXPECT_EQ(counter.count(), 0U);
+
+  microfmt::format_to(microfmt::null_sink::as_sink(), "discard {} {}", 1, 2);
+
+  std::string captured;
+  auto append = [&captured](microfmt::string_view text) { captured.append(text.data(), text.size()); };
+  auto callback = microfmt::make_callback_sink(append);
+  microfmt::format_to(callback.as_sink(), "{}:{}", "value", 7);
+  EXPECT_EQ(captured, "value:7");
+}
+
+TEST(CoreSink, CStringSinkTerminatesTruncatesAndResets) {
+  microfmt::c_string_sink<6> output;
+  EXPECT_STREQ(output.c_str(), "");
+  EXPECT_EQ(output.max_size(), 5U);
+
+  microfmt::format_to(output.as_sink(), "abcdef");
+  EXPECT_EQ(output.view(), "abcde");
+  EXPECT_EQ(output.size(), 5U);
+  EXPECT_STREQ(output.c_str(), "abcde");
+
+  output.reset();
+  EXPECT_TRUE(output.view().empty());
+  EXPECT_STREQ(output.c_str(), "");
+
+  microfmt::c_string_sink<1> terminator_only;
+  microfmt::format_to(terminator_only.as_sink(), "ignored");
+  EXPECT_EQ(terminator_only.size(), 0U);
+  EXPECT_STREQ(terminator_only.c_str(), "");
+}
+
+TEST(CoreSink, IteratorSinkSupportsStandardOutputIterators) {
+  std::string output;
+  auto end = microfmt::format_to(std::back_inserter(output), "{}-{}", 12, "ok");
+  *end = '!';
+  EXPECT_EQ(output, "12-ok!");
+
+  output.clear();
+  microfmt::format_to(std::back_inserter(output), MICROFMT_STRING("{1}:{0}"), "left", "right");
+  EXPECT_EQ(output, "right:left");
+}
+
 // ============================================================================
 // Formatter Core: Primitives, Radix, Specifiers & Escaping
 // ============================================================================
+
+TEST(CoreFormat, ParseContextOperations) {
+  microfmt::format_parse_context context("abc:def");
+  EXPECT_FALSE(context.empty());
+  EXPECT_EQ(context.size(), 7U);
+  EXPECT_EQ(context.front(), 'a');
+  EXPECT_EQ(context.back(), 'f');
+  EXPECT_EQ(context[2], 'c');
+  EXPECT_EQ(context[99], '\0');
+  EXPECT_TRUE(context.starts_with('a'));
+  EXPECT_TRUE(context.starts_with("abc"));
+  EXPECT_EQ(context.find(':'), 3U);
+  EXPECT_EQ(context.substr(4), "def");
+
+  context.advance_to(context.begin() + 2);
+  EXPECT_EQ(context.spec(), "c:def");
+  EXPECT_EQ(context.consume(), 'c');
+  context.remove_prefix(100);
+  EXPECT_TRUE(context.empty());
+  EXPECT_EQ(context.front(), '\0');
+  EXPECT_EQ(context.back(), '\0');
+  EXPECT_EQ(context.consume(), '\0');
+}
+
+TEST(CoreDetail, IntegerHelpersCoverSignsWidthsAndRadices) {
+  microfmt::buffer_sink<64> output;
+
+  microfmt::detail::format_signed(output.as_sink(), -42);
+  EXPECT_EQ(output.view(), "-42");
+
+  output.reset();
+  microfmt::detail::format_signed(output.as_sink(), -42, 5);
+  EXPECT_EQ(output.view(), "-0042");
+
+  output.reset();
+  microfmt::detail::format_signed(output.as_sink(), 42);
+  EXPECT_EQ(output.view(), "42");
+
+  output.reset();
+  microfmt::detail::format_unsigned(output.as_sink(), 0, 2, false);
+  EXPECT_EQ(output.view(), "0");
+
+  output.reset();
+  microfmt::detail::format_unsigned(output.as_sink(), 0xAB, 16, true);
+  EXPECT_EQ(output.view(), "AB");
+
+  output.reset();
+  microfmt::detail::format_unsigned(output.as_sink(), 0b101101, 2, false, 8);
+  EXPECT_EQ(output.view(), "00101101");
+}
+
+TEST(CoreDetail, ParserHelpersHandlePrefixesAndInvalidPositions) {
+  EXPECT_TRUE(microfmt::detail::starts_with("prefix", "pre"));
+  EXPECT_FALSE(microfmt::detail::starts_with("pre", "prefix"));
+  EXPECT_TRUE(microfmt::detail::starts_with("prefix", 'p'));
+  EXPECT_FALSE(microfmt::detail::starts_with("", 'p'));
+
+  size_t index = 7;
+  EXPECT_FALSE(microfmt::detail::parse_positional_index("", index));
+  EXPECT_EQ(index, 7U);
+  EXPECT_FALSE(microfmt::detail::parse_positional_index("name", index));
+  EXPECT_EQ(index, 7U);
+  EXPECT_TRUE(microfmt::detail::parse_positional_index("0012", index));
+  EXPECT_EQ(index, 12U);
+}
 
 TEST(CoreFormat, IntegerRadixAndWidth) {
   // Decimal (signed and unsigned)
@@ -287,6 +453,16 @@ TEST(CoreFormat, IntegerRadixAndWidth) {
   EXPECT_EQ(microfmt::format<32>("{:016x}", 0xffff800000000000ULL).view(), "ffff800000000000");
 }
 
+TEST(CoreFormat, IntegerFlagsAndPaddingCombinations) {
+  EXPECT_EQ(microfmt::format<16>("{:#x}", 0x2A).view(), "0x2a");
+  EXPECT_EQ(microfmt::format<16>("{:#X}", 0x2A).view(), "0X2A");
+  EXPECT_EQ(microfmt::format<16>("{:#08x}", 0x2A).view(), "0x00002a");
+  EXPECT_EQ(microfmt::format<16>("{:6}", 42).view(), "    42");
+  EXPECT_EQ(microfmt::format<16>("{:6}", -42).view(), "   -42");
+  EXPECT_EQ(microfmt::format<16>("{:06}", -42).view(), "-00042");
+  EXPECT_EQ(microfmt::format<16>("{:#08x}", -42).view(), "-0x0002a");
+}
+
 TEST(CoreFormat, CharAndBoolOutput) {
   EXPECT_EQ(microfmt::format<16>("{}", 'Z').view(), "Z");
   EXPECT_EQ(microfmt::format<16>("{} / {}", true, false).view(), "true / false");
@@ -299,6 +475,13 @@ TEST(CoreFormat, StringAndNullStringHandling) {
 
   EXPECT_EQ(microfmt::format<32>("{} {}", valid_str, sv).view(), "embedded system");
   EXPECT_EQ(microfmt::format<32>("ptr: {}", null_str).view(), "ptr: (null)");
+
+  std::string_view standard = "standard";
+  char mutable_text[] = "mutable";
+  char *mutable_ptr = mutable_text;
+  char *null_mutable_ptr = nullptr;
+  EXPECT_EQ(microfmt::format<32>("{} {}", standard, mutable_ptr).view(), "standard mutable");
+  EXPECT_EQ(microfmt::format<32>("{}", null_mutable_ptr).view(), "(null)");
 }
 
 TEST(CoreFormat, PointerFormatting) {
@@ -308,6 +491,7 @@ TEST(CoreFormat, PointerFormatting) {
   const void *addr = reinterpret_cast<const void *>(0x1000);
   EXPECT_EQ(microfmt::format<32>("{}", addr).view(), "0x1000");
   EXPECT_EQ(microfmt::format<32>("{:08}", addr).view(), "0x00001000");
+  EXPECT_EQ(microfmt::format<16>("{}", nullptr).view(), "0x0");
 }
 
 TEST(CoreFormat, EscapeBraceSequences) {
@@ -326,6 +510,12 @@ TEST(CoreFormat, ArgumentMismatchSafety) {
 
   // Empty format string with arguments
   EXPECT_EQ(microfmt::format<32>("", 10, 20).view(), "");
+}
+
+TEST(CoreFormat, MalformedRuntimeFieldsRemainLiteral) {
+  EXPECT_EQ(microfmt::format<32>("before { after", 42).view(), "before { after");
+  EXPECT_EQ(microfmt::format<32>("single } brace").view(), "single } brace");
+  EXPECT_EQ(microfmt::format<32>("{} trailing {", 42).view(), "42 trailing {");
 }
 
 TEST(CoreFormat, NumericPositionalArguments) {
@@ -364,12 +554,14 @@ TEST(CoreFormat, NumericPositionalRuntimeStress) {
   EXPECT_EQ(std::string_view(result.view()), expected);
 }
 
-TEST(CoreFormat, NumericPositionalCompileTimePieceLimit) {
-  const auto result = microfmt::format<32>(
+TEST(CoreFormat, NumericPositionalCompileTimeStress) {
+  const auto result = microfmt::format<64>(
       MICROFMT_STRING("{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"
+                      "{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"
+                      "{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"
                       "{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"),
       'x');
-  EXPECT_EQ(result.view(), "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+  EXPECT_EQ(result.view(), "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 }
 
 // ============================================================================

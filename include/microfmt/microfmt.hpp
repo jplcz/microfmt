@@ -1112,7 +1112,8 @@ MICROFMT_ALWAYS_INLINE inline const void *get_arg_by_index(const T &first, const
 }
 
 template <typename StrProvider> struct compiled_string_storage {
-  static constexpr auto compiled = compile_format_string(StrProvider::get());
+  static constexpr auto source = StrProvider::get();
+  static constexpr auto compiled = compile_format_string<source.size() + 1>(source);
 };
 
 // Formats a single compiled piece with zero runtime indirect thunks
