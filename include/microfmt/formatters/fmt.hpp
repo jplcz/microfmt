@@ -38,7 +38,7 @@ struct format_parse_context {
   constexpr auto begin() const noexcept { return spec.begin(); }
   constexpr auto end() const noexcept { return spec.end(); }
   constexpr void advance_to(microfmt::string_view::iterator it) noexcept {
-    spec = microfmt::string_view(it, static_cast<size_t>(spec.end() - it));
+    spec.remove_prefix(static_cast<size_t>(it - spec.begin()));
   }
 };
 
