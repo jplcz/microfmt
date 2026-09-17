@@ -88,7 +88,7 @@
 // Nullability Attributes (GCC / Clang Static Analyzer)
 // ============================================================================
 
-#if defined(__GNUC__) || defined(__clang__)
+#if MICROFMT_HAS_ATTRIBUTE(nonnull)
 #define MICROFMT_NONNULL(...) __attribute__((nonnull(__VA_ARGS__)))
 #else
 #define MICROFMT_NONNULL(...)
@@ -98,11 +98,15 @@
 // Function Purity & Constness (Optimizer & Side-Effect Safety)
 // ============================================================================
 
-#if defined(__GNUC__) || defined(__clang__)
+#if MICROFMT_HAS_ATTRIBUTE(pure)
 #define MICROFMT_ATTR_PURE __attribute__((pure))
-#define MICROFMT_ATTR_CONST __attribute__((const))
 #else
 #define MICROFMT_ATTR_PURE
+#endif
+
+#if MICROFMT_HAS_ATTRIBUTE(const)
+#define MICROFMT_ATTR_CONST __attribute__((const))
+#else
 #define MICROFMT_ATTR_CONST
 #endif
 
@@ -110,7 +114,7 @@
 // Compiler Buffer Access Attributes (GCC/Clang -Wstringop-overflow)
 // ============================================================================
 
-#if defined(__GNUC__) || defined(__clang__)
+#if MICROFMT_HAS_ATTRIBUTE(access)
 #define MICROFMT_ATTR_ACCESS(mode, ptr_idx) __attribute__((access(mode, ptr_idx)))
 #define MICROFMT_ATTR_ACCESS_SIZE(mode, ptr_idx, size_idx) __attribute__((access(mode, ptr_idx, size_idx)))
 #else
@@ -136,7 +140,7 @@
  * Pairs a GCC heap-like allocator with its specific deallocator for
  * `-Wmismatched-dealloc`.
  */
-#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 11
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ >= 11 && MICROFMT_HAS_ATTRIBUTE(malloc)
 #define MICROFMT_MALLOC_PAIR(deallocator) __attribute__((malloc(deallocator)))
 #else
 #define MICROFMT_MALLOC_PAIR(deallocator)

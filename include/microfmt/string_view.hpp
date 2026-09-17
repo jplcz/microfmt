@@ -41,22 +41,34 @@ public:
   constexpr basic_string_view() noexcept = default;
   constexpr basic_string_view(const basic_string_view &) noexcept = default;
   constexpr basic_string_view &operator=(const basic_string_view &) noexcept = default;
-  constexpr basic_string_view(base rhs) noexcept : view_(rhs) {}
+  constexpr basic_string_view(
+      base rhs MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : view_(rhs) {}
 
   template <typename Allocator>
-  constexpr basic_string_view(const std::basic_string<CharT, TraitsT, Allocator> &rhs) noexcept
+  constexpr basic_string_view(
+      const std::basic_string<CharT, TraitsT, Allocator> &rhs
+          MICROFMT_LIFETIMEBOUND
+              MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : view_(rhs.data(), rhs.size()) {}
 
   template <typename Allocator> basic_string_view(std::basic_string<CharT, TraitsT, Allocator> &&) = delete;
 
   constexpr basic_string_view(std::nullptr_t) noexcept {}
 
-  constexpr basic_string_view(const CharT *str, size_type len) noexcept
+  constexpr basic_string_view(
+      const CharT *str MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      size_type len) noexcept
       : view_(str == nullptr ? base() : base(str, len)) {
     MICROFMT_ASSERT(str != nullptr || len == 0, "string_view data is null with non-zero length");
   }
   
-  constexpr basic_string_view(const CharT *str) noexcept : view_(str == nullptr ? base() : base(str)) {}
+  constexpr basic_string_view(
+      const CharT *str MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : view_(str == nullptr ? base() : base(str)) {}
 
   [[nodiscard]] constexpr size_type size() const noexcept { return view_.size(); }
   [[nodiscard]] constexpr size_type length() const noexcept { return view_.length(); }

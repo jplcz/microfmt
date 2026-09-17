@@ -30,7 +30,9 @@ public:
   template <typename U,
             typename =
                 std::enable_if_t<std::is_convertible_v<U *, const T *>>>
-  constexpr explicit value_ref(U &val MICROFMT_LIFETIMEBOUND) noexcept
+  constexpr explicit value_ref(
+      U &val MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_ptr(std::addressof(val)) {}
 
   /**

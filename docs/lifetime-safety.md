@@ -86,7 +86,7 @@ and public C-style callback ABI fields remain raw pointers.
 | `MICROFMT_OWNER` | The annotated type owns the storage reached through it |
 | `MICROFMT_POINTER` | The annotated type is a non-owning pointer-like wrapper |
 | `MICROFMT_UNSAFE_BUFFER_USAGE` | Marks a low-level function using intentionally unchecked buffer operations |
-| `MICROFMT_LIFETIME_CAPTURE_BY(...)` | Declares that another parameter or the return value retains a borrow |
+| `MICROFMT_LIFETIME_CAPTURE_BY(...)` | Declares that one or more named parameters retain a borrow |
 | `MICROFMT_LIFETIME_CAPTURE_BY_THIS` | Declares that an object retains a constructor or member-function argument |
 | `MICROFMT_NONNULL(...)` | Declares pointer parameters that must not be null |
 | `MICROFMT_ATTR_ACCESS(...)` | Describes pointer access direction to GCC and Clang |
@@ -139,13 +139,20 @@ from an input or from `*this`. Mark owning containers with `MICROFMT_OWNER`
 and non-owning views or reference wrappers with `MICROFMT_POINTER`. Add
 `MICROFMT_LIFETIME_CAPTURE_BY_THIS` to constructors or member functions that
 retain an input borrow in the object. Use `MICROFMT_LIFETIME_CAPTURE_BY(...)`
-when a named parameter or returned object is the capturer instead.
+when another named parameter is the capturer instead. On constructors,
+`MICROFMT_LIFETIMEBOUND` and capture-by-`this` have equivalent Clang lifetime
+semantics; capture-by-`this` is additionally useful for void-returning setters:
 
 ```cpp
 class MICROFMT_POINTER packet_view {
 public:
   explicit packet_view(
-      packet &source MICROFMT_LIFETIMEBOUND) noexcept;
+      packet &source MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept;
+
+  void set_scratch(
+      span<std::byte> scratch
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept;
 
   const packet *
   get() const noexcept MICROFMT_LIFETIMEBOUND;

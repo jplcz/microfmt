@@ -88,7 +88,11 @@ public:
    * @tparam N Size of the fixed array deduced at compile time.
    * @param arr Reference to the array.
    */
-  template <std::size_t N> constexpr span(T (&arr)[N]) noexcept : m_ptr(arr), m_size(N) {}
+  template <std::size_t N>
+  constexpr span(
+      T (&arr MICROFMT_LIFETIMEBOUND
+             MICROFMT_LIFETIME_CAPTURE_BY_THIS)[N]) noexcept
+      : m_ptr(arr), m_size(N) {}
 
   /**
    * @brief Constructs a span from a compatible microfmt span.
@@ -96,7 +100,10 @@ public:
    * @param other Source span.
    */
   template <typename U, std::enable_if_t<std::is_convertible_v<U (*)[], T (*)[]>, int> = 0>
-  constexpr span(const span<U> &other) noexcept : m_ptr(other.data()), m_size(other.size()) {}
+  constexpr span(
+      const span<U> &other MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : m_ptr(other.data()), m_size(other.size()) {}
 
 #if MICROFMT_HAS_STD_SPAN
   /**

@@ -60,7 +60,9 @@ public:
    * @param ctx Mutable pointer to caller-owned stack state.
    * @param next_fn Function pointer that populates the next property and advances state.
    */
-  constexpr metadata_map(void *ctx MICROFMT_LIFETIMEBOUND,
+  constexpr metadata_map(
+      void *ctx MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
                          metadata_next_fn_t next_fn) noexcept
       : m_ctx(ctx), m_next_fn(next_fn) {}
 

@@ -27,7 +27,10 @@ public:
 
   template <typename U,
             typename = std::enable_if_t<std::is_convertible_v<U *, T *>>>
-  constexpr value_ptr(U *ptr MICROFMT_LIFETIMEBOUND) noexcept : ptr_(ptr) {}
+  constexpr value_ptr(
+      U *ptr MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : ptr_(ptr) {}
 
   template <typename U,
             typename = std::enable_if_t<std::is_convertible_v<U *, T *>>>

@@ -39,7 +39,8 @@ class transform_sink {
 public:
   /** Create a transform adapter that forwards to @p target. */
   explicit constexpr transform_sink(
-      sink target, char_transform t = char_transform::none) noexcept
+      sink target MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      char_transform t = char_transform::none) noexcept
       : target_(target), transform_(t) {}
 
   transform_sink(const transform_sink &) = delete;
@@ -102,8 +103,10 @@ private:
 class prefix_sink {
 public:
   /** Create a line-prefix adapter that forwards to @p target. */
-  explicit constexpr prefix_sink(sink target,
-                                 microfmt::string_view prefix = "  ") noexcept
+  explicit constexpr prefix_sink(
+      sink target MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      microfmt::string_view prefix MICROFMT_LIFETIME_CAPTURE_BY_THIS =
+          "  ") noexcept
       : target_(target), prefix_(prefix) {}
 
   prefix_sink(const prefix_sink &) = delete;
@@ -119,7 +122,11 @@ public:
   }
 
   /** Change the prefix used for subsequent lines. */
-  void set_prefix(microfmt::string_view p) noexcept { prefix_ = p; }
+  void set_prefix(
+      microfmt::string_view p
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept {
+    prefix_ = p;
+  }
 
   void put(char c) noexcept {
     if (at_line_start_) {
@@ -150,7 +157,9 @@ private:
 class limit_sink {
 public:
   /** Create an adapter that forwards at most @p max_bytes to @p target. */
-  explicit constexpr limit_sink(sink target, size_t max_bytes) noexcept
+  explicit constexpr limit_sink(
+      sink target MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      size_t max_bytes) noexcept
       : target_(target), remaining_(max_bytes) {}
 
   limit_sink(const limit_sink &) = delete;
