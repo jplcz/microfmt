@@ -8,6 +8,7 @@
  * @brief Type-erased formatting support for remote binary-tree containers. */
 
 #include "remote_container.hpp"
+#include "remote_layout_accessor.hpp"
 #include "remote_object.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -226,49 +227,33 @@ template <typename State>
  * @tparam RemotePtr Pointer representation in the target process.
  */
 template <typename Key, typename Value, typename RemotePtr> struct binary_tree_layout_traits_impl {
+  using pointer_query =
+      decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
+
   struct layout_state {
     uintptr_t container_addr;
-    ptrdiff_t root_off;
-    ptrdiff_t left_off;
-    ptrdiff_t right_off;
+    pointer_query root;
+    pointer_query left;
+    pointer_query right;
     ptrdiff_t key_off;
     ptrdiff_t val_off;
   };
 
   static constexpr remote_binary_tree_vtable vtbl{
-      .get_root_node =
           [](const void *state, address_space_ref space, span<std::byte>, uintptr_t &out_node_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t root_ptr_addr = detail::add_address_offset(s->container_addr, s->root_off);
-            RemotePtr remote_ptr{};
-            if (!space.read(root_ptr_addr, remote_ptr))
-              return false;
-            out_node_addr = static_cast<uintptr_t>(remote_ptr);
-            return true;
+            return s->root(space, s->container_addr, out_node_addr);
           },
-      .get_left_node =
           [](const void *state, address_space_ref space, span<std::byte>, uintptr_t node_addr,
              uintptr_t &out_left_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t left_ptr_addr = detail::add_address_offset(node_addr, s->left_off);
-            RemotePtr remote_ptr{};
-            if (!space.read(left_ptr_addr, remote_ptr))
-              return false;
-            out_left_addr = static_cast<uintptr_t>(remote_ptr);
-            return true;
+            return s->left(space, node_addr, out_left_addr);
           },
-      .get_right_node =
           [](const void *state, address_space_ref space, span<std::byte>, uintptr_t node_addr,
              uintptr_t &out_right_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t right_ptr_addr = detail::add_address_offset(node_addr, s->right_off);
-            RemotePtr remote_ptr{};
-            if (!space.read(right_ptr_addr, remote_ptr))
-              return false;
-            out_right_addr = static_cast<uintptr_t>(remote_ptr);
-            return true;
+            return s->right(space, node_addr, out_right_addr);
           },
-      .format_node =
           [](const void *state, address_space_ref space, span<std::byte> scratch, uintptr_t node_addr,
              const container_options &opts, const sink &out) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
@@ -335,7 +320,13 @@ struct remote_binary_tree_traits {
     using impl = binary_tree_layout_traits_impl<Key, Value, RemotePtr>;
 
     return [=](uintptr_t container_addr) {
-      typename impl::layout_state state{container_addr, root_offset, left_offset, right_offset, key_offset, val_offset};
+      typename impl::layout_state state{
+          container_addr,
+          make_remote_offset_query<uintptr_t, RemotePtr>(root_offset),
+          make_remote_offset_query<uintptr_t, RemotePtr>(left_offset),
+          make_remote_offset_query<uintptr_t, RemotePtr>(right_offset),
+          key_offset,
+          val_offset};
       return make_remote_binary_tree_context(container_addr, state, impl::vtbl);
     };
   }

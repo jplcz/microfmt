@@ -43,6 +43,19 @@ they can differ from the host. The result is a callable: invoke it with the
 remote container address to create the context, then construct a
 `remote_container_view`.
 
+The standard helpers build their structural field reads from
+`remote_layout_query`:
+
+* vectors use typed queries for data, size, and capacity;
+* forward lists use queries for head and next pointers;
+* hash tables use queries for bucket count, bucket-array pointer, bucket
+  entries, and node links; and
+* binary trees use queries for root, left-child, and right-child pointers.
+
+This keeps target pointer-width conversion and offset handling consistent
+across all containers. Payload addresses remain ordinary offsets because they
+identify inline objects rather than stored pointer values.
+
 ```cpp
 auto make_context = microfmt::remote_vector_traits::vector_layout<uint32_t>(
     data_offset, size_offset, capacity_offset);

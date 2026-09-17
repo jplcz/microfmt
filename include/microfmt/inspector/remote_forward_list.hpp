@@ -12,6 +12,7 @@
  * @brief Type-erased formatting support for remote singly-linked lists. */
 
 #include "remote_container.hpp"
+#include "remote_layout_accessor.hpp"
 #include "remote_object.hpp"
 
 namespace microfmt {
@@ -141,39 +142,27 @@ namespace detail {
 
 template <typename T, typename RemotePtr>
 struct forward_list_layout_traits_impl {
+  using pointer_query =
+      decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
+
   struct layout_state {
     uintptr_t container_addr;
-    ptrdiff_t head_off;
-    ptrdiff_t next_off;
+    pointer_query head;
+    pointer_query next;
     ptrdiff_t data_off;
   };
 
   static constexpr remote_forward_list_vtable vtbl{
-      .get_head_node =
           [](const void *state, address_space_ref space, span<std::byte>,
              uintptr_t &out_node_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-             uintptr_t head_ptr_addr =
-                 detail::add_address_offset(s->container_addr, s->head_off);
-            RemotePtr remote_ptr{};
-            if (!space.read(head_ptr_addr, remote_ptr))
-              return false;
-            out_node_addr = static_cast<uintptr_t>(remote_ptr);
-            return true;
+            return s->head(space, s->container_addr, out_node_addr);
           },
-      .get_next_node =
           [](const void *state, address_space_ref space, span<std::byte>,
              uintptr_t node_addr, uintptr_t &out_next_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-             uintptr_t next_ptr_addr =
-                 detail::add_address_offset(node_addr, s->next_off);
-            RemotePtr remote_ptr{};
-            if (!space.read(next_ptr_addr, remote_ptr))
-              return false;
-            out_next_addr = static_cast<uintptr_t>(remote_ptr);
-            return true;
+            return s->next(space, node_addr, out_next_addr);
           },
-      .format_node_element =
           [](const void *state, address_space_ref space,
              span<std::byte> scratch, uintptr_t node_addr,
              const sink &out) noexcept {
@@ -225,8 +214,11 @@ struct remote_forward_list_traits {
     using impl = detail::forward_list_layout_traits_impl<T, RemotePtr>;
 
     return [=](uintptr_t container_addr) {
-      typename impl::layout_state state{container_addr, head_offset,
-                                        next_offset, data_offset};
+      typename impl::layout_state state{
+          container_addr,
+          make_remote_offset_query<uintptr_t, RemotePtr>(head_offset),
+          make_remote_offset_query<uintptr_t, RemotePtr>(next_offset),
+          data_offset};
       return make_remote_forward_list_context(container_addr, state,
                                               impl::vtbl);
     };

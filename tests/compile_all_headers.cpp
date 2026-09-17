@@ -63,8 +63,15 @@
 #include <microfmt/inspector/metadata_map.hpp>
 #include <microfmt/inspector/register_view.hpp>
 #include <microfmt/inspector/register_xml_printer.hpp>
-#include <microfmt/inspector/remote_layout_accessor.hpp>
 #include <microfmt/inspector/remote_basic_string.hpp>
+#include <microfmt/inspector/remote_binary_tree.hpp>
+#include <microfmt/inspector/remote_container.hpp>
+#include <microfmt/inspector/remote_forward_list.hpp>
+#include <microfmt/inspector/remote_hash_table.hpp>
+#include <microfmt/inspector/remote_layout_accessor.hpp>
+#include <microfmt/inspector/remote_object.hpp>
+#include <microfmt/inspector/remote_smart_ptr.hpp>
+#include <microfmt/inspector/remote_vector.hpp>
 #include <microfmt/inspector/task.hpp>
 #include <microfmt/inspector/thread.hpp>
 

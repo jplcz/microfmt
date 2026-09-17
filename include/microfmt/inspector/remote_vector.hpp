@@ -12,6 +12,7 @@
  * @brief Type-erased formatting support for remote vector-like sequences. */
 
 #include "remote_container.hpp"
+#include "remote_layout_accessor.hpp"
 #include "remote_object.hpp"
 
 namespace microfmt {
@@ -143,54 +144,40 @@ namespace detail {
 
 template <typename T, typename RemotePtr, typename RemoteSize>
 struct vector_layout_traits_impl {
+  using pointer_query =
+      decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
+  using size_query = decltype(make_remote_offset_query<size_t, RemoteSize>(0));
+
   struct layout_state {
     uintptr_t container_addr;
-    ptrdiff_t d_off;
-    ptrdiff_t s_off;
-    ptrdiff_t c_off;
+    pointer_query data;
+    size_query size;
+    size_query capacity;
+    bool has_capacity;
   };
 
   static constexpr inline remote_vector_vtable vtbl{
-      .get_size =
           [](const void *state, address_space_ref space, span<std::byte>,
              size_t &out_size) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t size_addr =
-                detail::add_address_offset(s->container_addr, s->s_off);
-            RemoteSize remote_sz{};
-            if (!space.read(size_addr, remote_sz))
-              return false;
-            out_size = static_cast<size_t>(remote_sz);
-            return true;
+            return s->size(space, s->container_addr, out_size);
           },
-      .get_capacity =
           [](const void *state, address_space_ref space, span<std::byte>,
              size_t &out_cap) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            if (s->c_off < 0)
+            if (!s->has_capacity)
               return false;
-            uintptr_t cap_addr =
-                detail::add_address_offset(s->container_addr, s->c_off);
-            RemoteSize remote_cap{};
-            if (!space.read(cap_addr, remote_cap))
-              return false;
-            out_cap = static_cast<size_t>(remote_cap);
-            return true;
+            return s->capacity(space, s->container_addr, out_cap);
           },
-      .get_element_address =
           [](const void *state, address_space_ref space, span<std::byte>,
              size_t index, uintptr_t &out_elem_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t data_ptr_addr =
-                detail::add_address_offset(s->container_addr, s->d_off);
-            RemotePtr remote_ptr{};
-            if (!space.read(data_ptr_addr, remote_ptr))
+            uintptr_t data_address = 0;
+            if (!s->data(space, s->container_addr, data_address))
               return false;
-            out_elem_addr =
-                static_cast<uintptr_t>(remote_ptr) + (index * sizeof(T));
+            out_elem_addr = data_address + (index * sizeof(T));
             return true;
           },
-      .format_element =
           [](const void *, address_space_ref space, span<std::byte> scratch,
              uintptr_t elem_addr, const sink &out) noexcept {
             if constexpr (remote_object_traits<T>::is_registered) {
@@ -220,21 +207,18 @@ template <typename T> struct carray_layout_traits_impl {
   };
 
   static constexpr remote_vector_vtable vtbl{
-      .get_size =
           [](const void *state, address_space_ref, span<std::byte>,
              size_t &out_size) noexcept {
             const auto *s = static_cast<const carray_state *>(state);
             out_size = s->count;
             return true;
           },
-      .get_capacity =
           [](const void *state, address_space_ref, span<std::byte>,
              size_t &out_cap) noexcept {
             const auto *s = static_cast<const carray_state *>(state);
             out_cap = s->count;
             return true;
           },
-      .get_element_address =
           [](const void *state, address_space_ref, span<std::byte>,
              size_t index, uintptr_t &out_elem_addr) noexcept {
             const auto *s = static_cast<const carray_state *>(state);
@@ -243,7 +227,6 @@ template <typename T> struct carray_layout_traits_impl {
             out_elem_addr = s->array_addr + (index * sizeof(T));
             return true;
           },
-      .format_element =
           [](const void *, address_space_ref space, span<std::byte> scratch,
              uintptr_t elem_addr, const sink &out) noexcept {
             if constexpr (remote_object_traits<T>::is_registered) {
@@ -290,8 +273,12 @@ struct remote_vector_traits {
     using impl = detail::vector_layout_traits_impl<T, RemotePtr, RemoteSize>;
 
     return [=](uintptr_t container_addr) {
-      typename impl::layout_state state{container_addr, data_offset,
-                                        size_offset, capacity_offset};
+      typename impl::layout_state state{
+          container_addr,
+          make_remote_offset_query<uintptr_t, RemotePtr>(data_offset),
+          make_remote_offset_query<size_t, RemoteSize>(size_offset),
+          make_remote_offset_query<size_t, RemoteSize>(capacity_offset),
+          capacity_offset >= 0};
       return make_remote_vector_context(container_addr, state, impl::vtbl);
     };
   }

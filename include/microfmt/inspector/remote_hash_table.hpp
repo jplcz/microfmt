@@ -8,6 +8,7 @@
  * @brief Type-erased formatting support for remote chained hash tables. */
 
 #include "remote_container.hpp"
+#include "remote_layout_accessor.hpp"
 #include "remote_object.hpp"
 
 namespace microfmt {
@@ -158,63 +159,42 @@ namespace detail {
 
 template <typename Key, typename Value, typename RemotePtr, typename RemoteSize>
 struct hash_table_layout_traits_impl {
+  using pointer_query =
+      decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
+  using size_query = decltype(make_remote_offset_query<size_t, RemoteSize>(0));
+
   struct layout_state {
     uintptr_t container_addr;
-    ptrdiff_t buckets_ptr_off;  // Pointer to bucket array
-    ptrdiff_t bucket_count_off; // Size_t total buckets
-    ptrdiff_t node_next_off;    // Offset to next pointer in node
-    ptrdiff_t node_key_off;     // Offset to key in node
-    ptrdiff_t node_val_off;     // Offset to value in node
+    pointer_query buckets;
+    size_query bucket_count;
+    pointer_query next;
+    ptrdiff_t node_key_off;
+    ptrdiff_t node_val_off;
   };
 
   static constexpr remote_hash_table_vtable vtbl{
-      .get_bucket_count =
           [](const void *state, address_space_ref space, span<std::byte>,
              size_t &out_count) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t count_addr =
-                detail::add_address_offset(s->container_addr,
-                                           s->bucket_count_off);
-            RemoteSize remote_sz{};
-            if (!space.read(count_addr, remote_sz))
-              return false;
-            out_count = static_cast<size_t>(remote_sz);
-            return true;
+            return s->bucket_count(space, s->container_addr, out_count);
           },
-      .get_bucket_head =
           [](const void *state, address_space_ref space, span<std::byte>,
              size_t bucket_index, uintptr_t &out_node_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t buckets_ptr_addr =
-                detail::add_address_offset(s->container_addr,
-                                           s->buckets_ptr_off);
-            RemotePtr buckets_ptr{};
-            if (!space.read(buckets_ptr_addr, buckets_ptr))
+            uintptr_t buckets_address = 0;
+            if (!s->buckets(space, s->container_addr, buckets_address))
               return false;
 
-            // Each bucket stores a pointer to the first node (or node pointers
-            // array)
-            uintptr_t bucket_entry_addr = static_cast<uintptr_t>(buckets_ptr) +
-                                          (bucket_index * sizeof(RemotePtr));
-            RemotePtr head_node_ptr{};
-            if (!space.read(bucket_entry_addr, head_node_ptr))
-              return false;
-            out_node_addr = static_cast<uintptr_t>(head_node_ptr);
-            return true;
+            const auto bucket =
+                make_remote_offset_query<uintptr_t, RemotePtr>(
+                    static_cast<ptrdiff_t>(bucket_index * sizeof(RemotePtr)));
+            return bucket(space, buckets_address, out_node_addr);
           },
-      .get_next_node =
           [](const void *state, address_space_ref space, span<std::byte>,
              uintptr_t node_addr, uintptr_t &out_next_addr) noexcept {
             const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t next_ptr_addr =
-                detail::add_address_offset(node_addr, s->node_next_off);
-            RemotePtr next_ptr{};
-            if (!space.read(next_ptr_addr, next_ptr))
-              return false;
-            out_next_addr = static_cast<uintptr_t>(next_ptr);
-            return true;
+            return s->next(space, node_addr, out_next_addr);
           },
-      .format_entry =
           [](const void *state, address_space_ref space,
              span<std::byte> scratch, uintptr_t node_addr,
              const container_options &opts, const sink &out) noexcept {
@@ -293,9 +273,15 @@ struct remote_hash_table_traits {
                                                        RemoteSize>;
 
     return [=](uintptr_t container_addr) {
-      typename impl::layout_state state{container_addr,      buckets_ptr_offset,
-                                        bucket_count_offset, node_next_offset,
-                                        node_key_offset,     node_val_offset};
+      typename impl::layout_state state{
+          container_addr,
+          make_remote_offset_query<uintptr_t, RemotePtr>(
+              buckets_ptr_offset),
+          make_remote_offset_query<size_t, RemoteSize>(
+              bucket_count_offset),
+          make_remote_offset_query<uintptr_t, RemotePtr>(node_next_offset),
+          node_key_offset,
+          node_val_offset};
       return make_remote_hash_table_context(container_addr, state, impl::vtbl);
     };
   }

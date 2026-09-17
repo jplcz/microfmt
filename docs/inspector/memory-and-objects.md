@@ -386,6 +386,12 @@ and intrusive pointers. Their views read the pointer representation from the
 target, detect nulls, then render the pointee through a registered
 `remote_object_view` or a bounded local copy.
 
+Pointer, control-block, strong-count, weak-count, and intrusive-count fields
+are read through typed `remote_layout_query` instances. The view constructors
+still accept offsets, while the query layer applies the target representation
+type and checked pointer conversion consistently with remote containers and
+strings.
+
 Shared and intrusive pointer views can also render reference counts when their
 target-layout offsets are known. These offsets are ABI and standard-library
 implementation details; configure them per target rather than assuming host

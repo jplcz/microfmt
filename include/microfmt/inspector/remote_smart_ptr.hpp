@@ -8,6 +8,7 @@
  * @brief Remote smart-pointer views, layout wrappers, and formatters. */
 
 #include "address_space.hpp"
+#include "remote_layout_accessor.hpp"
 #include "remote_object.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -25,6 +26,9 @@ namespace microfmt {
  */
 template <typename T, typename RemotePtr = uintptr_t>
 class MICROFMT_POINTER remote_unique_ptr_view {
+  using pointer_query =
+      decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
+
 public:
   /**
    * @brief Constructs a view over a remote unique-pointer object.
@@ -38,7 +42,7 @@ public:
                                        MICROFMT_LIFETIMEBOUND,
                                    ptrdiff_t ptr_offset = 0) noexcept
       : ptr_addr_(ptr_addr), space_(space), scratch_(scratch),
-        ptr_offset_(ptr_offset) {}
+        pointer_(make_remote_offset_query<uintptr_t, RemotePtr>(ptr_offset)) {}
 
   /**
    * @brief Loads and renders the pointee or `nullptr`.
@@ -46,13 +50,11 @@ public:
    * @return `true` on success; `false` when a required remote read fails.
    */
   bool format(const sink &out) const noexcept {
-    uintptr_t raw_ptr_addr = detail::add_address_offset(ptr_addr_, ptr_offset_);
-    RemotePtr remote_ptr{};
-    if (!space_.read(raw_ptr_addr, remote_ptr)) {
+    uintptr_t obj_addr = 0;
+    if (!pointer_(space_, ptr_addr_, obj_addr)) {
       return false;
     }
 
-    uintptr_t obj_addr = static_cast<uintptr_t>(remote_ptr);
     if (obj_addr == 0) {
       out.write("nullptr");
       return true;
@@ -77,7 +79,7 @@ private:
   uintptr_t ptr_addr_;
   address_space_ref space_;
   span<std::byte> scratch_;
-  ptrdiff_t ptr_offset_;
+  pointer_query pointer_;
 };
 
 // ============================================================================
@@ -93,6 +95,11 @@ private:
 template <typename T, typename RemotePtr = uintptr_t,
           typename RemoteRefCount = int32_t>
 class MICROFMT_POINTER remote_shared_ptr_view {
+  using pointer_query =
+      decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
+  using count_query =
+      decltype(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(0));
+
 public:
   /**
    * @brief Constructs a view over a remote shared-pointer object.
@@ -114,8 +121,13 @@ public:
                                    ptrdiff_t use_count_offset,
                                    ptrdiff_t weak_count_offset) noexcept
       : addr_(shared_ptr_addr), space_(space), scratch_(scratch),
-        ptr_off_(ptr_offset), cb_off_(control_block_offset),
-        use_off_(use_count_offset), weak_off_(weak_count_offset) {}
+        pointer_(make_remote_offset_query<uintptr_t, RemotePtr>(ptr_offset)),
+        control_block_(make_remote_offset_query<uintptr_t, RemotePtr>(
+            control_block_offset)),
+        use_count_(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(
+            use_count_offset)),
+        weak_count_(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(
+            weak_count_offset)) {}
 
   /**
    * @brief Loads and renders the pointee and reference counts.
@@ -123,31 +135,27 @@ public:
    * @return `true` on success; `false` when required pointer reads fail.
    */
   bool format(const sink &out) const noexcept {
-    RemotePtr remote_ptr{};
-    if (!space_.read(detail::add_address_offset(addr_, ptr_off_), remote_ptr)) {
+    uintptr_t obj_addr = 0;
+    if (!pointer_(space_, addr_, obj_addr)) {
       return false;
     }
 
-    uintptr_t obj_addr = static_cast<uintptr_t>(remote_ptr);
     if (obj_addr == 0) {
       out.write("shared_ptr(nullptr)");
       return true;
     }
 
-    RemotePtr control_ptr{};
-    if (!space_.read(detail::add_address_offset(addr_, cb_off_), control_ptr)) {
+    uintptr_t cb_addr = 0;
+    if (!control_block_(space_, addr_, cb_addr)) {
       return false;
     }
-    uintptr_t cb_addr = static_cast<uintptr_t>(control_ptr);
 
     RemoteRefCount use_cnt = -1;
     RemoteRefCount weak_cnt = -1;
 
     if (cb_addr != 0) {
-      std::ignore =
-          space_.read(detail::add_address_offset(cb_addr, use_off_), use_cnt);
-      std::ignore =
-          space_.read(detail::add_address_offset(cb_addr, weak_off_), weak_cnt);
+      std::ignore = use_count_(space_, cb_addr, use_cnt);
+      std::ignore = weak_count_(space_, cb_addr, weak_cnt);
     }
 
     out.write("shared_ptr(");
@@ -176,10 +184,10 @@ private:
   uintptr_t addr_;
   address_space_ref space_;
   span<std::byte> scratch_;
-  ptrdiff_t ptr_off_;
-  ptrdiff_t cb_off_;
-  ptrdiff_t use_off_;
-  ptrdiff_t weak_off_;
+  pointer_query pointer_;
+  pointer_query control_block_;
+  count_query use_count_;
+  count_query weak_count_;
 };
 
 // ============================================================================
@@ -195,6 +203,11 @@ private:
 template <typename T, typename RemotePtr = uintptr_t,
           typename RemoteRefCount = int32_t>
 class MICROFMT_POINTER remote_intrusive_ptr_view {
+  using pointer_query =
+      decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
+  using count_query =
+      decltype(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(0));
+
 public:
   /**
    * @brief Constructs a view over a remote intrusive-pointer object.
@@ -211,7 +224,10 @@ public:
                                       ptrdiff_t ptr_offset,
                                       ptrdiff_t ref_count_offset) noexcept
       : addr_(intrusive_ptr_addr), space_(space), scratch_(scratch),
-        ptr_off_(ptr_offset), ref_off_(ref_count_offset) {}
+        pointer_(make_remote_offset_query<uintptr_t, RemotePtr>(ptr_offset)),
+        ref_count_(
+            make_remote_offset_query<RemoteRefCount, RemoteRefCount>(
+                ref_count_offset)) {}
 
   /**
    * @brief Loads and renders the pointee and its embedded reference count.
@@ -219,20 +235,18 @@ public:
    * @return `true` on success; `false` when the pointer read fails.
    */
   bool format(const sink &out) const noexcept {
-    RemotePtr remote_ptr{};
-    if (!space_.read(detail::add_address_offset(addr_, ptr_off_), remote_ptr)) {
+    uintptr_t obj_addr = 0;
+    if (!pointer_(space_, addr_, obj_addr)) {
       return false;
     }
 
-    uintptr_t obj_addr = static_cast<uintptr_t>(remote_ptr);
     if (obj_addr == 0) {
       out.write("intrusive_ptr(nullptr)");
       return true;
     }
 
     RemoteRefCount ref_cnt = 0;
-    std::ignore =
-        space_.read(detail::add_address_offset(obj_addr, ref_off_), ref_cnt);
+    std::ignore = ref_count_(space_, obj_addr, ref_cnt);
 
     out.write("intrusive_ptr(");
 
@@ -258,8 +272,8 @@ private:
   uintptr_t addr_;
   address_space_ref space_;
   span<std::byte> scratch_;
-  ptrdiff_t ptr_off_;
-  ptrdiff_t ref_off_;
+  pointer_query pointer_;
+  count_query ref_count_;
 };
 
 // ============================================================================
