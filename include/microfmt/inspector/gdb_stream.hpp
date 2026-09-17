@@ -60,9 +60,8 @@ public:
     m_buf[m_pos++] = '#';
 
     // Format 8-bit checksum as 2 hex digits
-    static constexpr char hex_chars[] = "0123456789abcdef";
-    m_buf[m_pos++] = hex_chars[(m_checksum >> 4) & 0x0F];
-    m_buf[m_pos++] = hex_chars[m_checksum & 0x0F];
+    m_buf[m_pos++] = microfmt::detail::hex_digits_lower[(m_checksum >> 4) & 0x0F];
+    m_buf[m_pos++] = microfmt::detail::hex_digits_lower[m_checksum & 0x0F];
 
     m_total_len = m_pos;
     m_finalized = true;
