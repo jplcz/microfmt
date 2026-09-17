@@ -20,8 +20,15 @@ template <typename Traits, typename DwarfTraits> void expect_system_registers_ar
 }
 
 template <typename Traits> void expect_unique_mappings() {
-  const auto verify_layout = [](auto layout) {
+  uint32_t previous_gdb_index = 0;
+  bool has_previous = false;
+  const auto verify_layout = [&](auto layout) {
     for (const auto &mapping : layout) {
+      if (has_previous) {
+        EXPECT_LT(previous_gdb_index, mapping.gdb_index);
+      }
+      previous_gdb_index = mapping.gdb_index;
+      has_previous = true;
       EXPECT_EQ(Traits::find_by_gdb(mapping.gdb_index), &mapping);
       EXPECT_EQ(Traits::find_by_dwarf(mapping.dwarf_index), &mapping);
       EXPECT_EQ(Traits::find_by_name(mapping.name), &mapping);

@@ -79,10 +79,16 @@ template <typename Traits> struct register_traits_base {
     return span<const register_mapping>{Traits::arch_layout.data(), Traits::arch_layout.size()};
   }
 
+  /**
+   * @brief Standard floating-point and vector register mappings.
+   */
   [[nodiscard]] static constexpr span<const register_mapping> extended_layout() noexcept {
     return {Traits::extended_arch_layout.data(), Traits::extended_arch_layout.size()};
   }
 
+  /**
+   * @brief Target-specific system, control, debug, and privileged mappings.
+   */
   [[nodiscard]] static constexpr span<const register_mapping> non_standard_layout() noexcept {
     return {Traits::non_standard_arch_layout.data(), Traits::non_standard_arch_layout.size()};
   }

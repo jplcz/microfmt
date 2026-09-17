@@ -8,32 +8,6 @@
 
 namespace {
 
-struct test_register_traits {
-  inline static constexpr microfmt::array arch_layout{microfmt::gdb::register_mapping{"core", 0, 10, 32, "int32"}};
-  inline static constexpr microfmt::array extended_arch_layout{
-      microfmt::gdb::register_mapping{"vector", 1, 11, 128, ""}};
-  inline static constexpr microfmt::array non_standard_arch_layout{
-      microfmt::gdb::register_mapping{"control", 100, 12, 64, "int64"}};
-
-  [[nodiscard]] static constexpr auto layout() noexcept {
-    return microfmt::span<const microfmt::gdb::register_mapping>{arch_layout.data(), arch_layout.size()};
-  }
-
-  [[nodiscard]] static constexpr auto extended_layout() noexcept {
-    return microfmt::span<const microfmt::gdb::register_mapping>{extended_arch_layout.data(),
-                                                                 extended_arch_layout.size()};
-  }
-
-  [[nodiscard]] static constexpr auto non_standard_layout() noexcept {
-    return microfmt::span<const microfmt::gdb::register_mapping>{non_standard_arch_layout.data(),
-                                                                 non_standard_arch_layout.size()};
-  }
-};
-
-struct test_abi_traits {
-  using gdb_register_traits = test_register_traits;
-};
-
 TEST(RegisterXmlPrinter, FormatsTypedRegister) {
   constexpr microfmt::gdb::register_mapping mapping{"pc", 32, microfmt::dwarf::riscv::PC, 64, "code_ptr"};
   microfmt::buffer_sink<128> output;
@@ -54,19 +28,24 @@ TEST(RegisterXmlPrinter, OmitsEmptyRegisterType) {
 }
 
 TEST(RegisterXmlPrinter, FormatsCompleteTargetDocument) {
-  microfmt::buffer_sink<1024> output;
+  microfmt::buffer_sink<2048> output;
 
-  microfmt::gdb::register_xml_printer::format_target_xml<test_abi_traits>(output.as_sink(), "test");
+  microfmt::gdb::register_xml_printer::format_target_xml<microfmt::x86_abi_traits>(output.as_sink(), "i386");
 
   EXPECT_EQ(output.view(), "<?xml version=\"1.0\"?>\n"
                            "<!DOCTYPE target SYSTEM \"gdb-target.dtd\">\n"
                            "<target>\n"
-                           "  <architecture>test</architecture>\n"
+                           "  <architecture>i386</architecture>\n"
                            "  <feature name=\"org.gnu.gdb.custom\">\n"
-                           "    <reg name=\"core\" bitsize=\"32\" regnum=\"0\" type=\"int32\"/>\n"
-                           "    <reg name=\"vector\" bitsize=\"128\" regnum=\"1\"/>\n"
-                           "    <reg name=\"control\" bitsize=\"64\" regnum=\"100\" "
-                           "type=\"int64\"/>\n"
+                           "    <reg name=\"eax\" bitsize=\"32\" regnum=\"0\" type=\"int32\"/>\n"
+                           "    <reg name=\"ecx\" bitsize=\"32\" regnum=\"1\" type=\"int32\"/>\n"
+                           "    <reg name=\"edx\" bitsize=\"32\" regnum=\"2\" type=\"int32\"/>\n"
+                           "    <reg name=\"ebx\" bitsize=\"32\" regnum=\"3\" type=\"int32\"/>\n"
+                           "    <reg name=\"esp\" bitsize=\"32\" regnum=\"4\" type=\"data_ptr\"/>\n"
+                           "    <reg name=\"ebp\" bitsize=\"32\" regnum=\"5\" type=\"data_ptr\"/>\n"
+                           "    <reg name=\"esi\" bitsize=\"32\" regnum=\"6\" type=\"int32\"/>\n"
+                           "    <reg name=\"edi\" bitsize=\"32\" regnum=\"7\" type=\"int32\"/>\n"
+                           "    <reg name=\"eip\" bitsize=\"32\" regnum=\"8\" type=\"code_ptr\"/>\n"
                            "  </feature>\n"
                            "</target>\n");
 }

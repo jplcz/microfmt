@@ -108,9 +108,10 @@ surfaces keep core `g`/`G` registers separate from floating-point/vector and
 target-specific system registers. Lookups by GDB number, DWARF index, or name
 search all three layouts.
 
-The GDB register-array codec uses the core layout, while the target XML printer
-publishes all three. Callers therefore select one ABI trait type for unwinding,
-register I/O, and GDB protocol output:
+The GDB register-array codec and target XML printer use the core layout.
+Callers can publish the other two layouts as separate architectural or
+vendor-specific GDB features. One ABI trait type therefore selects the
+register mappings for unwinding, register I/O, and GDB protocol output:
 
 ```cpp
 using abi = microfmt::aarch64_abi_traits;

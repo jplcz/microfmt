@@ -128,9 +128,9 @@ accepted after all complete register values it contains have been written.
 
 ## Generate target-description XML
 
-`register_xml_printer` generates a complete target description containing the
-core, extended, and non-standard layouts from the same ABI binding. Serve this
-document when handling the target-description `qXfer` exchange:
+`register_xml_printer` generates a target description containing the core
+layout from the same ABI binding. Serve this document when handling the
+target-description `qXfer` exchange:
 
 ```cpp
 microfmt::buffer_sink<4096> xml;
