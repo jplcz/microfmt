@@ -220,6 +220,7 @@ if(MICROFMT_BUILD_TESTS)
         tests/test_register_context_with.cpp
         tests/test_remote_layout_accessor.cpp
         tests/test_remote_basic_string.cpp
+        tests/test_remote_page_table_walker.cpp
         tests/test_gdb_register_array.cpp
         tests/test_register_xml_printer.cpp
         tests/test_inspector.cpp
@@ -331,6 +332,23 @@ if(MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(microfmt_cxx17_remote_layout_accessor_tests
         TEST_PREFIX "Cxx17RemoteLayoutAccessor.")
+
+    add_executable(microfmt_cxx17_remote_page_table_walker_tests
+        tests/test_remote_page_table_walker.cpp)
+    target_link_libraries(
+        microfmt_cxx17_remote_page_table_walker_tests PRIVATE
+        microfmt GTest::gtest_main)
+    microfmt_enable_warnings(
+        microfmt_cxx17_remote_page_table_walker_tests)
+    set_target_properties(
+        microfmt_cxx17_remote_page_table_walker_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    gtest_discover_tests(
+        microfmt_cxx17_remote_page_table_walker_tests
+        TEST_PREFIX "Cxx17RemotePageTableWalker.")
 
     add_executable(microfmt_cxx17_register_context_with_tests
         tests/test_register_context_with.cpp)

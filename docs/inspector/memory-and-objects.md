@@ -135,6 +135,49 @@ should return `false` without publishing a partially initialized result.
 
 See `examples/address_translator_demo.cpp` for a fixed mapping-table backend.
 
+## Walk remote page tables
+
+`remote_page_table_walker` performs an architecture-neutral virtual-to-physical
+walk using an `address_space_ref` that reads **physical** memory. Architecture
+code supplies callbacks that describe each level and decode raw entries:
+
+```cpp
+microfmt::remote_page_table_callbacks callbacks{
+    level_count,
+    describe_level,
+    decode_entry,
+};
+microfmt::remote_page_table_layout_ref layout(layout_state, callbacks);
+microfmt::remote_page_table_walker walker(physical_space, layout);
+
+microfmt::remote_page_table_walk_step step_storage[4];
+microfmt::remote_page_table_walk_trace trace(step_storage);
+auto result = walker.walk(root_table_physical_address,
+                          target_virtual_address, trace);
+```
+
+`describe_level` supplies the virtual-address index shift and width plus the
+entry size. Entries are decoded as little-endian values; sizes of 1, 2, 4,
+and 8 bytes are supported.
+`decode_entry` classifies the normalized raw value as invalid, a pointer to the
+next physical table, or a leaf mapping. A leaf supplies its physical page
+base, page size, space ID, security state, and access permissions.
+
+The walker validates index and address arithmetic, reads each entry through
+the physical address space, and rejects malformed leaves or next-table entries
+at the final level. It returns `expected<remote_page_table_walk_result,
+remote_page_table_walk_error>` with the final physical address and
+`translation_attributes`.
+
+The trace uses caller-owned bounded storage and records table addresses, entry
+addresses, raw values, and decoded entries. Walking continues if that storage
+fills; `trace.truncated()` reports that diagnostic steps were omitted. On a
+failed walk, the trace still contains every recorded step before the failure.
+
+The generic walker deliberately does not embed an ARM, x86, or RISC-V entry
+format. Platform traits can implement stage, granule, huge-page, security, and
+permission rules without changing traversal or physical-memory access.
+
 ## Classify memory regions
 
 `memory_classifier_ref` maps a virtual address to a

@@ -71,6 +71,7 @@
 #include <microfmt/inspector/remote_hash_table.hpp>
 #include <microfmt/inspector/remote_layout_accessor.hpp>
 #include <microfmt/inspector/remote_object.hpp>
+#include <microfmt/inspector/remote_page_table_walker.hpp>
 #include <microfmt/inspector/remote_smart_ptr.hpp>
 #include <microfmt/inspector/remote_vector.hpp>
 #include <microfmt/inspector/task.hpp>
