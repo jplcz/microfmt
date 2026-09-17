@@ -133,8 +133,9 @@ int main() {
 
   demo_registers register_values{.fp = data_address, .x0 = code_address, .x1 = 0};
   std::byte register_scratch[sizeof(uintptr_t)]{};
-  microfmt::register_context_ref register_context(&register_values, {&read_demo_register, nullptr}, space,
-                                                  register_scratch);
+  auto register_context =
+      microfmt::make_read_only_register_context_ref<read_demo_register>(
+          register_values, space, register_scratch);
   const uintptr_t explicit_addresses[]{data_address + 8, 0};
 
   microfmt::println("Register and explicit-address memory scan:");

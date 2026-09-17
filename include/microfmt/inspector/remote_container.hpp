@@ -17,6 +17,8 @@
 
 namespace microfmt {
 
+class remote_container_view;
+
 /**
  * @brief Configuration options for formatting container views.
  */
@@ -48,7 +50,7 @@ struct container_options {
  * @tparam FormatterFn Callable used to format the container.
  */
 template <typename IteratorState, typename FormatterFn>
-class container_context {
+class MICROFMT_OWNER container_context {
 public:
   /**
    * @brief Stores container traversal state and its formatting callback.
@@ -94,6 +96,61 @@ private:
 };
 
 /**
+ * @brief Owning typed container bound to a compile-time traits dispatcher.
+ *
+ * The context is retained by value. Traversal operations remain compile-time
+ * trait calls; only conversion to @ref remote_container_view introduces type
+ * erasure.
+ */
+template <typename Tag, typename Dispatcher>
+class MICROFMT_OWNER basic_remote_container {
+public:
+  using traits_type = typename Dispatcher::traits_type;
+  using context_type = typename traits_type::context_type;
+
+  constexpr basic_remote_container(uintptr_t container_addr,
+                                   context_type context) noexcept
+      : container_addr_(container_addr), context_(std::move(context)) {}
+
+  [[nodiscard]] constexpr uintptr_t container_address() const noexcept {
+    return container_addr_;
+  }
+
+  [[nodiscard]] constexpr value_ref<context_type>
+  context() & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr value_ref<const context_type>
+  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<const context_type>(context_);
+  }
+
+  value_ref<context_type> context() && = delete;
+  value_ref<const context_type> context() const && = delete;
+
+  [[nodiscard]] constexpr remote_container_view
+  view(address_space_ref space,
+       span<std::byte> scratch MICROFMT_LIFETIMEBOUND,
+       container_options options = {}) & noexcept MICROFMT_LIFETIMEBOUND;
+
+  remote_container_view view(address_space_ref, span<std::byte>,
+                             container_options = {}) && = delete;
+
+  static bool format_thunk(void *raw_ctx, address_space_ref space,
+                           span<std::byte> scratch, const sink &out,
+                           const container_options &opts) noexcept {
+    auto &self = *static_cast<basic_remote_container *>(raw_ctx);
+    return Dispatcher::format(value_ref<const context_type>(self.context_),
+                              self.container_addr_, opts, space, scratch, out);
+  }
+
+private:
+  uintptr_t container_addr_;
+  context_type context_;
+};
+
+/**
  * @brief Creates an external context for a remote container view.
  * @tparam IteratorState State retained while traversing the container.
  * @tparam FormatterFn Callable type used to render the container.
@@ -134,18 +191,20 @@ public:
    * @param container_addr Address of the remote container.
    * @param space Address space containing the container.
    * @param scratch Reusable scratch storage for traversal.
-   * @param ctx Context whose lifetime must exceed this view.
+   * @param ctx Required context whose lifetime must exceed this view.
    * @param options Formatting configuration.
    */
   template <typename Context>
   constexpr remote_container_view(uintptr_t container_addr,
                                   address_space_ref space,
                                   span<std::byte> scratch
-                                      MICROFMT_LIFETIMEBOUND,
-                                  Context *ctx MICROFMT_LIFETIMEBOUND,
+                                      MICROFMT_LIFETIMEBOUND
+                                          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+                                  value_ref<Context> ctx
+                                      MICROFMT_LIFETIME_CAPTURE_BY_THIS,
                                   container_options options = {}) noexcept
       : container_addr_(container_addr), space_(space), scratch_(scratch),
-        ctx_(ctx), format_fn_(ctx ? &Context::format_thunk : nullptr),
+        ctx_(ctx.pointer()), format_fn_(&Context::format_thunk),
         options_(options) {}
 
   /**
@@ -175,9 +234,10 @@ public:
    * @return Const reference to the view options.
    */
   [[nodiscard]] constexpr const container_options &
-  options() const noexcept MICROFMT_LIFETIMEBOUND {
+  options() const & noexcept MICROFMT_LIFETIMEBOUND {
     return options_;
   }
+  const container_options &options() const && = delete;
   /**
    * @brief Reports whether the view lacks a container address or context.
    * @return `true` when the view cannot be formatted.
@@ -214,6 +274,16 @@ private:
   format_fn_t format_fn_{nullptr};
   container_options options_;
 };
+
+template <typename Tag, typename Dispatcher>
+[[nodiscard]] constexpr remote_container_view
+basic_remote_container<Tag, Dispatcher>::view(
+    address_space_ref space, span<std::byte> scratch,
+    container_options options) & noexcept {
+  return remote_container_view(container_addr_, space, scratch,
+                               value_ref<basic_remote_container>(*this),
+                               options);
+}
 
 } // namespace microfmt
 

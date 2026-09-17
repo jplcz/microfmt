@@ -58,11 +58,11 @@ int main() {
                                           .open_bracket = "[ ",
                                           .close_bracket = " ]"};
 
-  // Instantiate remote_container_view, passing the context pointer
-  // (&context)
+  // Instantiate remote_container_view, borrowing the required context.
   uintptr_t mock_remote_address = 0x7FFF0000;
   microfmt::remote_container_view container_view(
-      mock_remote_address, space_ref, scratch, &context, custom_opts);
+      mock_remote_address, space_ref, scratch, microfmt::value_ref(context),
+      custom_opts);
 
   // Print the container view
   microfmt::print("Inspected Sequence: {}\n", container_view);

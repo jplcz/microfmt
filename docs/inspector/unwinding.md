@@ -131,21 +131,24 @@ hints.add_hint({
 });
 
 microfmt::unwind_hint_registry_ref hint_registry{
-    microfmt::unwind_hint_registry_tag{}, hints};
+    microfmt::fixed_unwind_hint_registry_tag<4>{}, hints};
 ```
 
-For a dynamic platform, bind `unwind_hint_registry_ref` to any caller-owned
-object or callable exposing
-`bool find_hint(uintptr_t pc, unwind_hint &out_hint) noexcept`. That resolver
-can select a recovery routine from the active image, scheduler configuration,
-or platform-specific PC map without heap allocation. The registry lookup is by
-PC; context-sensitive register recovery belongs in the selected routine.
+For a dynamic platform, specialize `unwind_hint_registry_traits<Tag>` with a
+`context_type` and static `find_hint(value_ref<const context_type>, ...)`
+operation. Bind `unwind_hint_registry_ref` to the tag and caller-owned context,
+or retain the context by value in `unwind_hint_registry<Tag>`. The registry
+lookup is by PC; context-sensitive register recovery belongs in the selected
+routine.
 
 `chained_unwinder_context<AbiTraits>` tries EXIDX, DWARF, and frame-pointer
 strategies before consulting its hint registry. It reads the current PC from
 the ABI's return-address register, then passes the original mutable register
 context directly to the selected hint. It does not reduce the context to an
 FP/PC snapshot, so non-standard hints can read and modify GPR state.
+
+See [Traits, contexts, and type erasure](traits-and-contexts.md) for detailed
+guidance on implementing registry, matcher, and other provider traits.
 
 Hints are a recovery mechanism, not a reason to trust arbitrary context
 memory. Validate every target read and return `false` when the saved stack

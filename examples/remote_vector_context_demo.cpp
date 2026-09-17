@@ -30,17 +30,10 @@ int main() {
                                 vector_elements.capacity()};
     uintptr_t vec_addr = reinterpret_cast<uintptr_t>(&remote_vec);
 
-    // Obtain the context generator from vector_layout
-    auto vector_generator = microfmt::remote_vector_traits::vector_layout<int>(
-        offsetof(MockVectorLayout, data), offsetof(MockVectorLayout, size),
-        offsetof(MockVectorLayout, capacity));
-
-    // Generate the context by supplying the remote vector address
-    auto vector_context = vector_generator(vec_addr);
-
-    // Bind to remote_container_view
-    microfmt::remote_container_view vector_view(vec_addr, space_ref, scratch,
-                                                &vector_context, brackets_opts);
+    auto vector = microfmt::make_remote_vector<int>(
+        vec_addr, offsetof(MockVectorLayout, data),
+        offsetof(MockVectorLayout, size), offsetof(MockVectorLayout, capacity));
+    auto vector_view = vector.view(space_ref, scratch, brackets_opts);
 
     // Print results
     microfmt::print("Tested vector_layout: {}\n", vector_view);
@@ -55,16 +48,9 @@ int main() {
     uintptr_t array_addr = reinterpret_cast<uintptr_t>(raw_c_array);
     size_t array_size = 4;
 
-    // Obtain the context generator from carray_layout with fixed size
-    auto carray_generator =
-        microfmt::remote_vector_traits::carray_layout<int>(array_size);
-
-    // Generate the context by supplying the array base address
-    auto carray_context = carray_generator(array_addr);
-
-    // Bind to remote_container_view
-    microfmt::remote_container_view carray_view(array_addr, space_ref, scratch,
-                                                &carray_context, brackets_opts);
+    auto carray =
+        microfmt::make_remote_carray<int>(array_addr, array_size);
+    auto carray_view = carray.view(space_ref, scratch, brackets_opts);
 
     // Print results
     microfmt::print("Tested carray_layout: {}\n", carray_view);

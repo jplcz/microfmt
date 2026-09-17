@@ -16,10 +16,11 @@ keeping string and resolver storage outside formatter stack frames.
 that owns an address and reports its load base plus relevant sections, including
 ARM EXIDX ranges when present.
 
-The enumerator is type-erased and refers to caller-owned context. It can be
-backed by a process loader list, a dump's mapped modules, or a fixed firmware
-image table. Ensure the context remains valid for every resolver and unwinder
-that uses it.
+The erased reference derives its context type and operations from
+`elf_image_enumerator_traits<Tag>`. `elf_image_enumerator<Tag>` retains that
+context by value and exposes `ref()`; direct references can instead borrow a
+caller-owned context. A backend can represent a process loader list, dump
+modules, or a fixed firmware image table.
 
 ## Resolve and render symbols
 

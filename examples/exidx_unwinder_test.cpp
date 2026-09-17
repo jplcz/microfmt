@@ -171,7 +171,8 @@ int main() {
                                .exidx_start = exidx_table_base,
                                .exidx_end = exidx_table_base + 16});
 
-  microfmt::elf_image_enumerator_ref enumerator(microfmt::multi_elf_registry_tag{}, elf_registry);
+  microfmt::elf_image_enumerator_ref enumerator(
+      microfmt::multi_elf_registry_tag<4>{}, elf_registry);
 
   microfmt::elf_image_info off_stack_img_storage{};
 
@@ -193,8 +194,10 @@ int main() {
   register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
   register_file.values[microfmt::dwarf::arm32::lr] = initial_pc;
   std::byte register_scratch[sizeof(uint64_t)]{};
-  microfmt::register_context_ref register_context(&register_file, {&read_arm_register, &write_arm_register}, space,
-                                                  register_scratch);
+  auto register_context =
+      microfmt::make_register_context_ref<read_arm_register,
+                                          write_arm_register>(
+          register_file, space, register_scratch);
   microfmt::frame_pointer_iterator it(unwinder, register_context, initial_fp, initial_pc);
   microfmt::remote_backtrace_view bt(it, resolver, symbol_context);
 

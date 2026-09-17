@@ -58,6 +58,16 @@ public:
     return m_ptr.get();
   }
 
+  /**
+   * @brief Returns the nullable pointer representation of this borrow.
+   *
+   * Useful when a required typed borrow crosses a type-erased boundary that
+   * stores nullable state.
+   */
+  [[nodiscard]] constexpr value_ptr<T> pointer() const noexcept {
+    return m_ptr;
+  }
+
 private:
   value_ptr<T> m_ptr;
 };

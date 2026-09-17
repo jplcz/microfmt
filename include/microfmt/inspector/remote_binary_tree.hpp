@@ -5,331 +5,221 @@
 #pragma once
 
 /** @file remote_binary_tree.hpp
- * @brief Type-erased formatting support for remote binary-tree containers. */
+ * @brief Traits-based formatting support for remote binary trees. */
 
 #include "remote_container.hpp"
 #include "remote_layout_accessor.hpp"
 #include "remote_object.hpp"
-#include <cstddef>
-#include <cstdint>
+
+#include <algorithm>
 
 namespace microfmt {
 
-// ============================================================================
-// Remote Binary Tree Vtable & Context Builder
-// ============================================================================
-
 /**
- * @brief Type-erased virtual table for inspecting remote binary trees
- *        (BSTs, Red-Black trees, std::map / std::set nodes).
+ * @brief Static customization point for a remote binary tree.
+ *
+ * Specializations declare `context_type` and provide `get_root_node`,
+ * `get_left_node`, `get_right_node`, and `format_node`.
  */
-struct remote_binary_tree_vtable {
-  /**
-   * @brief Extracts the root node address from the tree container.
-   * @param state Caller-defined traversal state.
-   * @param space Address space containing the tree.
-   * @param scratch Reusable scratch storage for remote reads.
-   * @param out_node_addr Receives the root-node address.
-   * @return `true` on success.
-   */
-  bool (*get_root_node)(const void *state, address_space_ref space, span<std::byte> scratch,
-                        uintptr_t &out_node_addr) noexcept;
+template <typename Tag> struct remote_binary_tree_traits;
 
-  /**
-   * @brief Extracts the left child node address given a node address.
-   * @param state Caller-defined traversal state.
-   * @param space Address space containing the tree.
-   * @param scratch Reusable scratch storage for remote reads.
-   * @param node_addr Parent node address.
-   * @param out_left_addr Receives the left-child address.
-   * @return `true` on success.
-   */
-  bool (*get_left_node)(const void *state, address_space_ref space, span<std::byte> scratch, uintptr_t node_addr,
-                        uintptr_t &out_left_addr) noexcept;
+namespace detail {
 
-  /**
-   * @brief Extracts the right child node address given a node address.
-   * @param state Caller-defined traversal state.
-   * @param space Address space containing the tree.
-   * @param scratch Reusable scratch storage for remote reads.
-   * @param node_addr Parent node address.
-   * @param out_right_addr Receives the right-child address.
-   * @return `true` on success.
-   */
-  bool (*get_right_node)(const void *state, address_space_ref space, span<std::byte> scratch, uintptr_t node_addr,
-                         uintptr_t &out_right_addr) noexcept;
+template <typename Tag> struct remote_binary_tree_dispatch {
+  using traits_type = remote_binary_tree_traits<Tag>;
+  using context_type = typename traits_type::context_type;
 
-  /**
-   * @brief Formats the payload/entry at the given node address.
-   * @param state Caller-defined traversal state.
-   * @param space Address space containing the tree.
-   * @param scratch Reusable scratch storage for remote reads.
-   * @param node_addr Node containing the entry.
-   * @param opts Entry rendering options.
-   * @param out Destination sink.
-   * @return `true` on success.
-   */
-  bool (*format_node)(const void *state, address_space_ref space, span<std::byte> scratch, uintptr_t node_addr,
-                      const container_options &opts, const sink &out) noexcept;
+  static bool format(value_ref<const context_type> context, uintptr_t container_addr,
+                     const container_options &opts, address_space_ref space,
+                     span<std::byte> scratch, const sink &out) noexcept {
+    out.write(opts.open_bracket);
+    if (scratch.size() < sizeof(uintptr_t) * 8) {
+      out.write("<fault>");
+      out.write(opts.close_bracket);
+      return true;
+    }
+
+    constexpr size_t max_tree_stack_depth = 64;
+    const size_t available_elements = scratch.size() / sizeof(uintptr_t);
+    const size_t stack_capacity =
+        std::min(available_elements / 2, max_tree_stack_depth);
+    scratch_allocator allocator(scratch);
+    uintptr_t *node_stack = allocator.allocate<uintptr_t>(stack_capacity);
+    if (!node_stack) {
+      out.write("<fault>");
+      out.write(opts.close_bracket);
+      return true;
+    }
+    span<std::byte> element_scratch = allocator.remaining_span();
+
+    uintptr_t root_node = 0;
+    if (!traits_type::get_root_node(context, container_addr, space,
+                                    element_scratch, root_node) ||
+        root_node == 0) {
+      out.write(opts.close_bracket);
+      return true;
+    }
+
+    size_t stack_top = 0;
+    uintptr_t current = root_node;
+    size_t print_count = 0;
+    while (current != 0 || stack_top > 0) {
+      while (current != 0) {
+        if (stack_top >= stack_capacity)
+          break;
+        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+        node_stack[stack_top++] = current;
+        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+
+        uintptr_t left = 0;
+        if (!traits_type::get_left_node(context, space, element_scratch,
+                                        current, left))
+          break;
+        current = left;
+      }
+      if (stack_top == 0)
+        break;
+
+      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      current = node_stack[--stack_top];
+      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+
+      if (print_count >= opts.max_print) {
+        if (print_count > 0)
+          out.write(opts.entry_separator);
+        out.write("...");
+        break;
+      }
+      if (print_count > 0)
+        out.write(opts.entry_separator);
+      if (!traits_type::format_node(context, space, element_scratch, current,
+                                    opts, out)) {
+        out.write("<fault>");
+        break;
+      }
+      ++print_count;
+
+      uintptr_t right = 0;
+      current = traits_type::get_right_node(context, space, element_scratch,
+                                            current, right)
+                    ? right
+                    : 0;
+    }
+
+    out.write(opts.close_bracket);
+    return true;
+  }
 };
 
-/**
- * @brief Factory helper that binds user state and a remote_binary_tree_vtable
- * into a context compatible with container_context and remote_container_view.
- *
- * Partitions the provided scratch buffer dynamically: the first half is used
- * as a bounded iteration stack, and the remainder is passed down for node
- * formatting.
- *
- * @tparam State Caller-defined state consumed by @p vtable.
- * @param container_addr Remote tree-container address.
- * @param initial_state Initial caller-defined state.
- * @param vtable Operations used to traverse and format tree nodes.
- * @return A context suitable for constructing @ref remote_container_view.
- */
-template <typename State>
-[[nodiscard]] constexpr auto make_remote_binary_tree_context(uintptr_t container_addr, State initial_state,
-                                                             remote_binary_tree_vtable vtable) noexcept {
+template <typename Key, typename Value, typename RemotePtr>
+struct binary_tree_layout_tag {};
 
-  struct tree_context_state {
-    uintptr_t container_addr;
-    State user_state;
-    remote_binary_tree_vtable vtable;
-  };
+} // namespace detail
 
-  return make_container_context(
-      tree_context_state{container_addr, initial_state, vtable},
-      [](tree_context_state &ctx, const container_options &opts, address_space_ref space, span<std::byte> scratch,
-         const sink &out) noexcept {
-        out.write(opts.open_bracket);
+template <typename Tag>
+using remote_binary_tree =
+    basic_remote_container<Tag, detail::remote_binary_tree_dispatch<Tag>>;
 
-        if (scratch.size() < sizeof(uintptr_t) * 4) {
-          out.write("<fault>");
-          out.write(opts.close_bracket);
-          return true;
-        }
-
-        // Minimum safety check for scratch size
-        if (scratch.size() < sizeof(uintptr_t) * 8) {
-          out.write("<fault>");
-          out.write(opts.close_bracket);
-          return true;
-        }
-
-        // Bound the node stack capacity (depth of 64 is enough for 2^64 nodes)
-        constexpr size_t kMaxTreeStackDepth = 64;
-        size_t available_elements = scratch.size() / sizeof(uintptr_t);
-        size_t stack_capacity = std::min(available_elements / 2, kMaxTreeStackDepth);
-        size_t stack_bytes = stack_capacity * sizeof(uintptr_t);
-
-        if (scratch.size() <= stack_bytes) {
-          out.write("<fault>");
-          out.write(opts.close_bracket);
-          return true;
-        }
-
-        scratch_allocator allocator(scratch);
-
-        uintptr_t *node_stack = allocator.allocate<uintptr_t>(stack_capacity);
-
-        if (!node_stack) {
-          out.write("<fault>");
-          out.write(opts.close_bracket);
-          return true;
-        }
-        span<std::byte> element_scratch = allocator.remaining_span();
-
-        uintptr_t root_node = 0;
-        if (!ctx.vtable.get_root_node ||
-            !ctx.vtable.get_root_node(&ctx.user_state, space, element_scratch, root_node)) {
-          out.write(opts.close_bracket);
-          return true;
-        }
-
-        if (root_node == 0) {
-          out.write(opts.close_bracket);
-          return true;
-        }
-
-        size_t stack_top = 0;
-        uintptr_t curr = root_node;
-        size_t print_count = 0;
-
-        // Iterative In-Order Traversal using the scratch-backed node stack
-        while (curr != 0 || stack_top > 0) {
-          while (curr != 0) {
-            if (stack_top >= stack_capacity)
-              break;
-            MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
-
-            node_stack[stack_top++] = curr;
-
-            MICROFMT_END_UNSAFE_BUFFER_USAGE;
-
-            uintptr_t left = 0;
-            if (!ctx.vtable.get_left_node ||
-                !ctx.vtable.get_left_node(&ctx.user_state, space, element_scratch, curr, left)) {
-              break;
-            }
-            curr = left;
-          }
-
-          if (stack_top == 0)
-            break;
-
-          MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
-
-          curr = node_stack[--stack_top];
-
-          MICROFMT_END_UNSAFE_BUFFER_USAGE;
-
-          if (print_count >= opts.max_print) {
-            if (print_count > 0)
-              out.write(opts.entry_separator);
-            out.write("...");
-            break;
-          }
-
-          if (print_count > 0) {
-            out.write(opts.entry_separator);
-          }
-
-          if (!ctx.vtable.format_node ||
-              !ctx.vtable.format_node(&ctx.user_state, space, element_scratch, curr, opts, out)) {
-            out.write("<fault>");
-            break;
-          }
-
-          print_count++;
-
-          uintptr_t right = 0;
-          if (!ctx.vtable.get_right_node ||
-              !ctx.vtable.get_right_node(&ctx.user_state, space, element_scratch, curr, right)) {
-            curr = 0;
-          } else {
-            curr = right;
-          }
-        }
-
-        out.write(opts.close_bracket);
-        return true;
-      });
+template <typename Tag>
+[[nodiscard]] constexpr remote_binary_tree<Tag>
+make_remote_binary_tree(
+    uintptr_t container_addr,
+    typename remote_binary_tree_traits<Tag>::context_type context) noexcept {
+  return remote_binary_tree<Tag>(container_addr, std::move(context));
 }
 
-// ============================================================================
-// Binary Tree Layout Traits & Generator Helpers
-// ============================================================================
-
-/**
- * @brief Implementation backing generated binary-tree layout contexts.
- * @tparam Key Key type stored in each node.
- * @tparam Value Value type stored in each node.
- * @tparam RemotePtr Pointer representation in the target process.
- */
-template <typename Key, typename Value, typename RemotePtr> struct binary_tree_layout_traits_impl {
+template <typename Key, typename Value, typename RemotePtr>
+struct remote_binary_tree_traits<
+    detail::binary_tree_layout_tag<Key, Value, RemotePtr>> {
   using pointer_query =
       decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
 
-  struct layout_state {
-    uintptr_t container_addr;
+  struct context_type {
     pointer_query root;
     pointer_query left;
     pointer_query right;
-    ptrdiff_t key_off;
-    ptrdiff_t val_off;
+    ptrdiff_t key_offset;
+    ptrdiff_t value_offset;
   };
 
-  static constexpr remote_binary_tree_vtable vtbl{
-          [](const void *state, address_space_ref space, span<std::byte>, uintptr_t &out_node_addr) noexcept {
-            const auto *s = static_cast<const layout_state *>(state);
-            return s->root(space, s->container_addr, out_node_addr);
-          },
-          [](const void *state, address_space_ref space, span<std::byte>, uintptr_t node_addr,
-             uintptr_t &out_left_addr) noexcept {
-            const auto *s = static_cast<const layout_state *>(state);
-            return s->left(space, node_addr, out_left_addr);
-          },
-          [](const void *state, address_space_ref space, span<std::byte>, uintptr_t node_addr,
-             uintptr_t &out_right_addr) noexcept {
-            const auto *s = static_cast<const layout_state *>(state);
-            return s->right(space, node_addr, out_right_addr);
-          },
-          [](const void *state, address_space_ref space, span<std::byte> scratch, uintptr_t node_addr,
-             const container_options &opts, const sink &out) noexcept {
-            const auto *s = static_cast<const layout_state *>(state);
+  static bool get_root_node(value_ref<const context_type> context,
+                            uintptr_t container_addr,
+                            address_space_ref space, span<std::byte>,
+                            uintptr_t &out_node_addr) noexcept {
+    return context->root(space, container_addr, out_node_addr);
+  }
 
-            if (opts.print_key) {
-              uintptr_t key_addr = detail::add_address_offset(node_addr, s->key_off);
-              if constexpr (remote_object_traits<Key>::is_registered) {
-                remote_object_view key_view(key_addr, space, type_tag<Key>{}, scratch);
-                formatter<remote_object_view>().format(key_view, out);
-              } else {
-                scratch_allocator allocator(scratch);
-                Key *k_ptr = allocator.allocate<Key>();
-                if (!k_ptr)
-                  return false;
-                if (!space.read_bytes(key_addr, k_ptr, sizeof(Key)))
-                  return false;
-                formatter<Key>().format(*k_ptr, out);
-              }
-              out.write(opts.kv_separator);
-            }
+  static bool get_left_node(value_ref<const context_type> context,
+                            address_space_ref space, span<std::byte>,
+                            uintptr_t node_addr,
+                            uintptr_t &out_left_addr) noexcept {
+    return context->left(space, node_addr, out_left_addr);
+  }
 
-            if (opts.print_value) {
-              uintptr_t val_addr = detail::add_address_offset(node_addr, s->val_off);
-              if constexpr (remote_object_traits<Value>::is_registered) {
-                remote_object_view val_view(val_addr, space, type_tag<Value>{}, scratch);
-                formatter<remote_object_view>().format(val_view, out);
-              } else {
-                scratch_allocator allocator(scratch);
-                Value *v_ptr = allocator.allocate<Value>();
-                if (!v_ptr)
-                  return false;
-                if (!space.read_bytes(val_addr, v_ptr, sizeof(Value)))
-                  return false;
-                formatter<Value>().format(*v_ptr, out);
-              }
-            }
+  static bool get_right_node(value_ref<const context_type> context,
+                             address_space_ref space, span<std::byte>,
+                             uintptr_t node_addr,
+                             uintptr_t &out_right_addr) noexcept {
+    return context->right(space, node_addr, out_right_addr);
+  }
 
-            return true;
-          }};
+  static bool format_node(value_ref<const context_type> context,
+                          address_space_ref space, span<std::byte> scratch,
+                          uintptr_t node_addr,
+                          const container_options &opts,
+                          const sink &out) noexcept {
+    if (opts.print_key) {
+      const uintptr_t key_addr =
+          detail::add_address_offset(node_addr, context->key_offset);
+      if constexpr (remote_object_traits<Key>::is_registered) {
+        remote_object_view view(key_addr, space, type_tag<Key>{}, scratch);
+        formatter<remote_object_view>().format(view, out);
+      } else {
+        scratch_allocator allocator(scratch);
+        Key *key = allocator.allocate<Key>();
+        if (!key || !space.read_bytes(key_addr, key, sizeof(Key)))
+          return false;
+        formatter<Key>().format(*key, out);
+      }
+      out.write(opts.kv_separator);
+    }
+
+    if (opts.print_value) {
+      const uintptr_t value_addr =
+          detail::add_address_offset(node_addr, context->value_offset);
+      if constexpr (remote_object_traits<Value>::is_registered) {
+        remote_object_view view(value_addr, space, type_tag<Value>{}, scratch);
+        formatter<remote_object_view>().format(view, out);
+      } else {
+        scratch_allocator allocator(scratch);
+        Value *value = allocator.allocate<Value>();
+        if (!value || !space.read_bytes(value_addr, value, sizeof(Value)))
+          return false;
+        formatter<Value>().format(*value, out);
+      }
+    }
+    return true;
+  }
 };
 
 /**
- * @brief Generates contexts for conventional binary-search-tree layouts.
+ * @brief Creates a binary-tree inspector for a conventional offset layout.
  */
-struct remote_binary_tree_traits {
-  /**
-   * @brief Layout generator for binary search trees (BSTs, maps, sets).
-   *
-   * @tparam Key Key type stored in nodes
-   * @tparam Value Value type stored in nodes
-   * @tparam RemotePtr Target pointer type (e.g., uintptr_t or uint32_t for
-   * compat)
-   * @param root_offset Offset from the container to its root-node pointer.
-   * @param left_offset Offset from a node to its left-child pointer.
-   * @param right_offset Offset from a node to its right-child pointer.
-   * @param key_offset Offset from a node to its key.
-   * @param val_offset Offset from a node to its value.
-   * @return A callable that binds a remote container address to this layout.
-   */
-  template <typename Key, typename Value, typename RemotePtr = uintptr_t>
-  [[nodiscard]] static constexpr auto bst_layout(ptrdiff_t root_offset, ptrdiff_t left_offset, ptrdiff_t right_offset,
-                                                 ptrdiff_t key_offset, ptrdiff_t val_offset) noexcept {
-
-    using impl = binary_tree_layout_traits_impl<Key, Value, RemotePtr>;
-
-    return [=](uintptr_t container_addr) {
-      typename impl::layout_state state{
-          container_addr,
-          make_remote_offset_query<uintptr_t, RemotePtr>(root_offset),
-          make_remote_offset_query<uintptr_t, RemotePtr>(left_offset),
-          make_remote_offset_query<uintptr_t, RemotePtr>(right_offset),
-          key_offset,
-          val_offset};
-      return make_remote_binary_tree_context(container_addr, state, impl::vtbl);
-    };
-  }
-};
+template <typename Key, typename Value, typename RemotePtr = uintptr_t>
+[[nodiscard]] constexpr auto
+make_remote_binary_tree(uintptr_t container_addr, ptrdiff_t root_offset,
+                        ptrdiff_t left_offset, ptrdiff_t right_offset,
+                        ptrdiff_t key_offset,
+                        ptrdiff_t value_offset) noexcept {
+  using tag = detail::binary_tree_layout_tag<Key, Value, RemotePtr>;
+  using traits = remote_binary_tree_traits<tag>;
+  typename traits::context_type context{
+      make_remote_offset_query<uintptr_t, RemotePtr>(root_offset),
+      make_remote_offset_query<uintptr_t, RemotePtr>(left_offset),
+      make_remote_offset_query<uintptr_t, RemotePtr>(right_offset),
+      key_offset,
+      value_offset};
+  return remote_binary_tree<tag>(container_addr, std::move(context));
+}
 
 } // namespace microfmt

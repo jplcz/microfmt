@@ -9,8 +9,12 @@
 
 #include "exception_frame.hpp"
 #include "frame_pointer.hpp"
+#include <type_traits>
+#include <utility>
 
 namespace microfmt {
+
+template <typename Tag> struct exception_matcher_traits;
 
 // ============================================================================
 // Unified Unwind Frame Type
@@ -76,26 +80,36 @@ public:
   constexpr exception_matcher_ref() noexcept = default;
 
   /**
-   * @brief Constructs a matcher bound to a context object exposing
-   * `match_trap_frame`.
-   * @tparam Tag Tag stored in the virtual table.
-   * @tparam Context Concrete context type.
+   * @brief Constructs a matcher bound to a traits context.
+   * @tparam Tag Matcher implementation tag.
+   * @tparam Context Concrete context convertible to the trait context type.
    * @param ctx Context object performing the match.
    */
-  template <typename Tag, typename Context>
+  template <typename Tag, typename Context,
+            typename Traits = exception_matcher_traits<Tag>,
+            std::enable_if_t<std::is_convertible_v<
+                                 const Context *,
+                                 const typename Traits::context_type *>,
+                             int> = 0>
   constexpr exception_matcher_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
-      : ctx_(&ctx), vtbl_(&s_vtbl<Tag, Context>) {}
+      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
+               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
-  /**
-   * @brief Constructs a matcher bound to a free callable.
-   * @tparam Fn Callable type invoked as `(fp, pc, out_addr)`.
-   * @param fn Object to invoke for matching.
-   */
-  template <typename Fn>
-  constexpr explicit exception_matcher_ref(
-      const Fn &fn MICROFMT_LIFETIMEBOUND) noexcept
-      : ctx_(&fn), vtbl_(&s_fn_vtbl<Fn>) {}
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  constexpr exception_matcher_ref(Tag, Context &&) = delete;
+
+  template <typename Tag, typename Context,
+            typename Traits = exception_matcher_traits<Tag>>
+  [[nodiscard]] static constexpr exception_matcher_ref
+  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+    return exception_matcher_ref(Tag{}, ctx);
+  }
+
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  static exception_matcher_ref make(Context &&) = delete;
 
   /**
    * @brief Tests whether (fp, pc) is an exception trampoline.
@@ -122,21 +136,59 @@ public:
   }
 
 private:
-  template <typename Tag, typename Context>
-  static constexpr vtable s_vtbl{[](const void *c, uintptr_t fp, uintptr_t pc,
-                                    uintptr_t &out_addr) noexcept {
-    return static_cast<const Context *>(c)->match_trap_frame(fp, pc, out_addr);
-  }};
-
-  template <typename Fn>
-  static constexpr vtable s_fn_vtbl{[](const void *c, uintptr_t fp,
-                                       uintptr_t pc,
-                                       uintptr_t &out_addr) noexcept {
-    return (*static_cast<const Fn *>(c))(fp, pc, out_addr);
-  }};
+  template <typename Tag>
+  static constexpr vtable s_vtbl{
+      [](const void *context, uintptr_t fp, uintptr_t pc,
+         uintptr_t &out_addr) noexcept {
+        using context_type = typename exception_matcher_traits<Tag>::context_type;
+        const auto &typed_context =
+            *static_cast<const context_type *>(context);
+        return exception_matcher_traits<Tag>::match_trap_frame(
+            value_ref<const context_type>(typed_context), fp, pc, out_addr);
+      }};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
+};
+
+/**
+ * @brief Typed owner for an exception-matcher traits specialization.
+ */
+template <typename Tag> class MICROFMT_OWNER exception_matcher {
+public:
+  using traits_type = exception_matcher_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  constexpr explicit exception_matcher(context_type context) noexcept
+      : context_(std::move(context)) {}
+
+  [[nodiscard]] constexpr value_ref<context_type>
+  context() & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr value_ref<const context_type>
+  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<const context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr exception_matcher_ref
+  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return exception_matcher_ref(Tag{}, context_);
+  }
+
+  [[nodiscard]] constexpr operator exception_matcher_ref()
+      const & noexcept MICROFMT_LIFETIMEBOUND {
+    return ref();
+  }
+
+  value_ref<context_type> context() && = delete;
+  value_ref<const context_type> context() const && = delete;
+  exception_matcher_ref ref() const && = delete;
+  operator exception_matcher_ref() const && = delete;
+
+private:
+  context_type context_;
 };
 
 // ============================================================================

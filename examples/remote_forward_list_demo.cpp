@@ -32,18 +32,11 @@ int main() {
 
   uintptr_t list_addr = reinterpret_cast<uintptr_t>(&remote_list);
 
-  // Obtain the context generator using remote_forward_list_traits
-  auto list_generator =
-      microfmt::remote_forward_list_traits::forward_list_layout<int>(
-          offsetof(ListContainer, head), offsetof(ListNode, next),
-          offsetof(ListNode, value));
-
-  // Generate the linked list context
-  auto list_context = list_generator(list_addr);
-
-  // Wrap in remote_container_view
-  microfmt::remote_container_view container_view(
-      list_addr, space_ref, scratch, &list_context,
+  auto list = microfmt::make_remote_forward_list<int>(
+      list_addr, offsetof(ListContainer, head), offsetof(ListNode, next),
+      offsetof(ListNode, value));
+  auto container_view = list.view(
+      space_ref, scratch,
       microfmt::container_options{.open_bracket = "[", .close_bracket = "]"});
 
   // Print the inspected linked list

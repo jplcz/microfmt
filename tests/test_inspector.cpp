@@ -4,7 +4,9 @@
 
 #include <gtest/gtest.h>
 #include <microfmt/inspector/address_translator.hpp>
+#include <microfmt/inspector/elf_enumerator.hpp>
 #include <microfmt/inspector/fp_unwinder.hpp>
+#include <microfmt/inspector/hybrid_unwinder.hpp>
 #include <microfmt/inspector/memory_classifier.hpp>
 #include <microfmt/inspector/memory_scanner.hpp>
 #include <microfmt/inspector/register_context.hpp>
@@ -15,6 +17,7 @@
 #include <microfmt/inspector/remote_smart_ptr.hpp>
 #include <microfmt/inspector/remote_vector.hpp>
 #include <microfmt/inspector/symbol_resolver.hpp>
+#include <microfmt/inspector/unwind_hint.hpp>
 
 #include <array>
 #include <cstddef>
@@ -84,6 +87,135 @@ struct scanner_symbol_context {
   mutable bool used_external_raw_symbol{true};
 };
 
+struct stateful_list_tag {};
+
+struct stateful_list_context {
+  uintptr_t head;
+  int adjustment;
+  mutable size_t head_calls{0};
+  mutable size_t next_calls{0};
+  mutable size_t format_calls{0};
+};
+
+template <> struct microfmt::remote_forward_list_traits<stateful_list_tag> {
+  using context_type = stateful_list_context;
+
+  static bool get_head_node(microfmt::value_ref<const context_type> context,
+                            uintptr_t, microfmt::address_space_ref,
+                            microfmt::span<std::byte>,
+                            uintptr_t &out_node) noexcept {
+    ++context->head_calls;
+    out_node = context->head;
+    return true;
+  }
+
+  static bool get_next_node(microfmt::value_ref<const context_type> context,
+                            microfmt::address_space_ref space,
+                            microfmt::span<std::byte>, uintptr_t node,
+                            uintptr_t &out_next) noexcept {
+    ++context->next_calls;
+    return static_cast<bool>(space.read(node, out_next));
+  }
+
+  static bool format_node_element(
+      microfmt::value_ref<const context_type> context,
+      microfmt::address_space_ref space, microfmt::span<std::byte>,
+      uintptr_t node, const microfmt::sink &out) noexcept {
+    ++context->format_calls;
+    int value = 0;
+    if (!space.read(node + sizeof(uintptr_t), value))
+      return false;
+    microfmt::formatter<int>().format(value + context->adjustment, out);
+    return true;
+  }
+};
+
+struct test_hint_registry_tag {};
+struct test_hint_registry_context {
+  microfmt::unwind_hint hint;
+  mutable size_t calls{0};
+};
+
+template <>
+struct microfmt::unwind_hint_registry_traits<test_hint_registry_tag> {
+  using context_type = test_hint_registry_context;
+
+  static bool find_hint(microfmt::value_ref<const context_type> context,
+                        uintptr_t pc,
+                        microfmt::unwind_hint &out_hint) noexcept {
+    ++context->calls;
+    if (!context->hint.contains(pc))
+      return false;
+    out_hint = context->hint;
+    return true;
+  }
+};
+
+struct test_elf_enumerator_tag {};
+struct test_elf_enumerator_context {
+  microfmt::elf_image_info image;
+  mutable size_t enumerate_calls{0};
+  mutable size_t find_calls{0};
+};
+
+template <>
+struct microfmt::elf_image_enumerator_traits<test_elf_enumerator_tag> {
+  using context_type = test_elf_enumerator_context;
+
+  static bool enumerate(microfmt::value_ref<const context_type> context,
+                        microfmt::span<microfmt::elf_image_info> output,
+                        size_t &count) noexcept {
+    ++context->enumerate_calls;
+    count = 0;
+    if (output.empty())
+      return true;
+    output.front() = context->image;
+    count = 1;
+    return true;
+  }
+
+  static bool find_by_pc(microfmt::value_ref<const context_type> context,
+                         uintptr_t pc,
+                         microfmt::elf_image_info &out_info) noexcept {
+    ++context->find_calls;
+    if (!context->image.contains(pc))
+      return false;
+    out_info = context->image;
+    return true;
+  }
+};
+
+struct test_exception_matcher_tag {};
+struct test_exception_matcher_context {
+  uintptr_t expected_pc;
+  uintptr_t trap_frame;
+  mutable size_t calls{0};
+};
+
+template <>
+struct microfmt::exception_matcher_traits<test_exception_matcher_tag> {
+  using context_type = test_exception_matcher_context;
+
+  static bool match_trap_frame(
+      microfmt::value_ref<const context_type> context, uintptr_t, uintptr_t pc,
+      uintptr_t &out_address) noexcept {
+    ++context->calls;
+    if (pc != context->expected_pc)
+      return false;
+    out_address = context->trap_frame;
+    return true;
+  }
+};
+
+static_assert(!std::is_constructible_v<
+              microfmt::unwind_hint_registry_ref, test_hint_registry_tag,
+              test_hint_registry_context &&>);
+static_assert(!std::is_constructible_v<
+              microfmt::elf_image_enumerator_ref, test_elf_enumerator_tag,
+              test_elf_enumerator_context &&>);
+static_assert(!std::is_constructible_v<
+              microfmt::exception_matcher_ref, test_exception_matcher_tag,
+              test_exception_matcher_context &&>);
 bool next_address(const void *opaque_context, uintptr_t &out_address) noexcept {
   if (!opaque_context)
     return false;
@@ -93,6 +225,48 @@ bool next_address(const void *opaque_context, uintptr_t &out_address) noexcept {
   out_address = context.addresses[context.index++];
   return true;
 }
+
+struct address_sequence_tag {};
+
+template <> struct microfmt::address_source_traits<address_sequence_tag> {
+  using context_type = address_sequence;
+
+  static bool next(microfmt::value_ref<const context_type> context,
+                   uintptr_t &out_address) noexcept {
+    return next_address(context.get(), out_address);
+  }
+};
+
+static_assert(!std::is_constructible_v<
+              microfmt::address_source_ref, address_sequence_tag,
+              address_sequence &&>);
+
+template <typename T, typename = void>
+struct has_rvalue_ref_accessor : std::false_type {};
+
+template <typename T>
+struct has_rvalue_ref_accessor<
+    T, std::void_t<decltype(std::declval<T &&>().ref())>> : std::true_type {};
+
+template <typename T, typename = void>
+struct has_rvalue_container_view : std::false_type {};
+
+template <typename T>
+struct has_rvalue_container_view<
+    T, std::void_t<decltype(std::declval<T &&>().view(
+           std::declval<microfmt::address_space_ref>(),
+           std::declval<microfmt::span<std::byte>>()))>> : std::true_type {};
+
+static_assert(!has_rvalue_ref_accessor<
+              microfmt::unwind_hint_registry<test_hint_registry_tag>>::value);
+static_assert(!has_rvalue_ref_accessor<
+              microfmt::elf_image_enumerator<test_elf_enumerator_tag>>::value);
+static_assert(!has_rvalue_ref_accessor<
+              microfmt::exception_matcher<test_exception_matcher_tag>>::value);
+static_assert(!has_rvalue_ref_accessor<
+              microfmt::address_source<address_sequence_tag>>::value);
+static_assert(!has_rvalue_container_view<
+              microfmt::remote_forward_list<stateful_list_tag>>::value);
 
 template <> struct microfmt::address_translator_traits<stateless_translator_tag> {
   using context_type = void;
@@ -677,7 +851,9 @@ TEST(MemoryScanner, ScansOrderedAddressRegistersAndAbstractSources) {
     return true;
   };
   std::byte scratch[sizeof(uintptr_t)]{};
-  microfmt::register_context_ref registers(&values, {read_register, nullptr}, local_space(), scratch);
+  auto registers =
+      microfmt::make_read_only_register_context_ref<read_register>(
+          values, local_space(), scratch);
   microfmt::buffer_sink<512> register_output;
   auto scanner_context = std::make_unique<microfmt::memory_scanner_context>();
   scanner_context->options.dump_bytes = 0;
@@ -693,7 +869,7 @@ TEST(MemoryScanner, ScansOrderedAddressRegistersAndAbstractSources) {
 
   const uintptr_t source_addresses[]{0x4444, 0x5555};
   address_sequence sequence{source_addresses, sizeof(source_addresses) / sizeof(source_addresses[0])};
-  microfmt::address_source_ref source(sequence, &next_address);
+  microfmt::address_source_ref source(address_sequence_tag{}, sequence);
   microfmt::buffer_sink<512> source_output;
   microfmt::memory_scanner::scan_and_dump({}, {}, source, *scanner_context, source_output.as_sink());
   EXPECT_EQ(sequence.index, 2u);
@@ -753,6 +929,16 @@ bool write_fake_register(void *opaque_state, microfmt::address_space_ref space, 
   std::memcpy(&state.value, in_value, value_size);
   return true;
 }
+
+using fake_read_only_tag =
+    microfmt::read_only_register_context_tag<fake_register_state,
+                                              read_fake_register>;
+using fake_register_owner = microfmt::register_context<fake_read_only_tag>;
+static_assert(!std::is_constructible_v<
+              microfmt::register_context_ref, fake_read_only_tag,
+              fake_register_state &&, microfmt::address_space_ref,
+              microfmt::span<std::byte>>);
+static_assert(!has_rvalue_ref_accessor<fake_register_owner>::value);
 
 struct sparse_register_state {
   uint32_t index;
@@ -880,24 +1066,31 @@ TEST(RegisterContextView, UsesArchitectureSystemRegisterTraits) {
   std::byte scratch[8]{};
 
   sparse_register_state arm_state{microfmt::dwarf::arm32::cntvct, 0x1234, 4};
-  microfmt::register_context_ref arm_context(&arm_state, {&read_sparse_register, nullptr}, local_space(), scratch);
+  auto arm_context =
+      microfmt::make_read_only_register_context_ref<read_sparse_register>(
+          arm_state, local_space(), scratch);
   EXPECT_EQ(microfmt::format<64>("{}", microfmt::register_context_view<microfmt::arm_abi_traits>(arm_context)).view(),
             "CNTVCT=0x00001234");
 
   sparse_register_state aarch64_state{microfmt::dwarf::aarch64::cnthctl_el2, UINT64_C(0x1122334455667788), 8};
-  microfmt::register_context_ref aarch64_context(&aarch64_state, {&read_sparse_register, nullptr}, local_space(),
-                                                 scratch);
+  auto aarch64_context =
+      microfmt::make_read_only_register_context_ref<read_sparse_register>(
+          aarch64_state, local_space(), scratch);
   EXPECT_EQ(
       microfmt::format<64>("{}", microfmt::register_context_view<microfmt::aarch64_abi_traits>(aarch64_context)).view(),
       "CNTHCTL_EL2=0x1122334455667788");
 
   sparse_register_state x86_state{microfmt::dwarf::x86::cr3, 0x12345000, 4};
-  microfmt::register_context_ref x86_context(&x86_state, {&read_sparse_register, nullptr}, local_space(), scratch);
+  auto x86_context =
+      microfmt::make_read_only_register_context_ref<read_sparse_register>(
+          x86_state, local_space(), scratch);
   EXPECT_EQ(microfmt::format<64>("{}", microfmt::register_context_view<microfmt::x86_abi_traits>(x86_context)).view(),
             "CR3=0x12345000");
 
   sparse_register_state riscv_state{microfmt::dwarf::riscv::satp, UINT64_C(0x8000000000012345), 8};
-  microfmt::register_context_ref riscv_context(&riscv_state, {&read_sparse_register, nullptr}, local_space(), scratch);
+  auto riscv_context =
+      microfmt::make_read_only_register_context_ref<read_sparse_register>(
+          riscv_state, local_space(), scratch);
   EXPECT_EQ(
       microfmt::format<64>("{}", microfmt::register_context_view<microfmt::riscv64_abi_traits>(riscv_context)).view(),
       "satp=0x8000000000012345");
@@ -907,13 +1100,16 @@ TEST(RegisterContextView, GroupsRegistersByArchitectureWidth) {
   std::byte scratch[8]{};
 
   register_range_state arm_state{microfmt::dwarf::arm32::r3, 1, 4};
-  microfmt::register_context_ref arm_context(&arm_state, {&read_register_range, nullptr}, local_space(), scratch);
+  auto arm_context =
+      microfmt::make_read_only_register_context_ref<read_register_range>(
+          arm_state, local_space(), scratch);
   EXPECT_EQ(microfmt::format<128>("{}", microfmt::register_context_view<microfmt::arm_abi_traits>(arm_context)).view(),
             "R0=0x00000001  R1=0x00000001  R2=0x00000001\nR3=0x00000001");
 
   register_range_state aarch64_state{microfmt::dwarf::aarch64::x2, 1, 8};
-  microfmt::register_context_ref aarch64_context(&aarch64_state, {&read_register_range, nullptr}, local_space(),
-                                                 scratch);
+  auto aarch64_context =
+      microfmt::make_read_only_register_context_ref<read_register_range>(
+          aarch64_state, local_space(), scratch);
   EXPECT_EQ(microfmt::format<128>("{}", microfmt::register_context_view<microfmt::aarch64_abi_traits>(aarch64_context))
                 .view(),
             "X0=0x0000000000000001  X1=0x0000000000000001\n"
@@ -929,25 +1125,32 @@ TEST(RegisterContextRef, ReportsNullAndSupportedOperations) {
   std::byte scratch[8]{};
   const auto space = local_space();
 
-  microfmt::register_context_ref no_operations(&state, microfmt::register_context_vtable{}, space, scratch);
+  microfmt::register_context_ref no_operations(
+      microfmt::empty_register_context_tag<fake_register_state>{}, state,
+      space, scratch);
   EXPECT_TRUE(no_operations.is_null());
   EXPECT_FALSE(no_operations);
 
-  microfmt::register_context_ref read_only(&state, {&read_fake_register, nullptr}, space, scratch);
+  microfmt::register_context_ref read_only(
+      microfmt::read_only_register_context_tag<fake_register_state,
+                                                read_fake_register>{},
+      state, space, scratch);
   EXPECT_FALSE(read_only.is_null());
   EXPECT_TRUE(read_only);
   EXPECT_FALSE(read_only.write(1, uint32_t{42}));
   EXPECT_FALSE(read_only.write_raw(1, scratch, sizeof(scratch)));
 
-  microfmt::register_context_ref write_only(&state, {nullptr, &write_fake_register}, space, scratch);
+  microfmt::register_context_ref write_only(
+      microfmt::write_only_register_context_tag<fake_register_state,
+                                                 write_fake_register>{},
+      state, space, scratch);
   EXPECT_FALSE(write_only.is_null());
   EXPECT_TRUE(write_only);
   uint32_t value = 0;
   EXPECT_FALSE(write_only.read(1, value));
   EXPECT_FALSE(write_only.read_raw(1, &value, sizeof(value)));
 
-  microfmt::register_context_ref null_state(static_cast<fake_register_state *>(nullptr),
-                                            {&read_fake_register, &write_fake_register}, space, scratch);
+  microfmt::register_context_ref null_state;
   EXPECT_TRUE(null_state.is_null());
   EXPECT_FALSE(null_state);
 }
@@ -960,7 +1163,10 @@ TEST(RegisterContextRef, DispatchesTypedAndRawReadsAndWrites) {
   state.expected_probe = probe;
   std::byte scratch[16]{};
   const auto space = local_space();
-  microfmt::register_context_ref context(&state, {&read_fake_register, &write_fake_register}, space, scratch);
+  microfmt::register_context_ref context(
+      microfmt::read_write_register_context_tag<
+          fake_register_state, read_fake_register, write_fake_register>{},
+      state, space, scratch);
 
   uint64_t typed_value = 0;
   EXPECT_TRUE(context.read(17, typed_value));
@@ -995,6 +1201,27 @@ TEST(RegisterContextRef, DispatchesTypedAndRawReadsAndWrites) {
   EXPECT_EQ(context_scratch.size(), sizeof(scratch));
 }
 
+TEST(RegisterContextRef, TypedOwnerRetainsTraitContextState) {
+  int probe = 23;
+  fake_register_state initial;
+  initial.value = 41;
+  initial.probe_address = address_of(probe);
+  initial.expected_probe = probe;
+  std::byte scratch[8]{};
+  using tag = microfmt::read_write_register_context_tag<
+      fake_register_state, read_fake_register, write_fake_register>;
+  microfmt::register_context<tag> owner(initial, local_space(), scratch);
+  auto context = owner.ref();
+
+  uint64_t value = 0;
+  EXPECT_TRUE(context.read(3, value));
+  EXPECT_EQ(value, 41U);
+  EXPECT_TRUE(context.write(4, uint64_t{99}));
+  EXPECT_EQ(owner.context()->value, 99U);
+  EXPECT_EQ(owner.context()->read_calls, 1U);
+  EXPECT_EQ(owner.context()->write_calls, 1U);
+}
+
 TEST(RegisterContextRef, PropagatesCallbackFailuresAndSupportsConstState) {
   int probe = 11;
   fake_register_state state;
@@ -1004,7 +1231,10 @@ TEST(RegisterContextRef, PropagatesCallbackFailuresAndSupportsConstState) {
   state.read_succeeds = false;
   state.write_succeeds = false;
   std::byte scratch[8]{};
-  microfmt::register_context_ref context(&state, {&read_fake_register, &write_fake_register}, local_space(), scratch);
+  microfmt::register_context_ref context(
+      microfmt::read_write_register_context_tag<
+          fake_register_state, read_fake_register, write_fake_register>{},
+      state, local_space(), scratch);
 
   uint64_t value = 0;
   EXPECT_FALSE(context.read(1, value));
@@ -1015,10 +1245,55 @@ TEST(RegisterContextRef, PropagatesCallbackFailuresAndSupportsConstState) {
   EXPECT_EQ(state.write_calls, 2u);
 
   const fake_register_state const_state{UINT64_C(0xfeedface), address_of(probe), probe};
-  microfmt::register_context_ref const_context(&const_state, {&read_fake_register, nullptr}, local_space(), scratch);
+  microfmt::register_context_ref const_context(
+      microfmt::read_only_register_context_tag<fake_register_state,
+                                                read_fake_register>{},
+      const_state, local_space(), scratch);
   uint64_t const_value = 0;
   EXPECT_TRUE(const_context.read(5, const_value));
   EXPECT_EQ(const_value, UINT64_C(0xfeedface));
+}
+
+TEST(InspectorProviderTraits, RetainsUnwindHintRegistryContext) {
+  microfmt::unwind_hint_registry<test_hint_registry_tag> registry(
+      test_hint_registry_context{{0x1000, 0x1100, nullptr}});
+  auto ref = registry.ref();
+  microfmt::unwind_hint hint;
+
+  EXPECT_TRUE(ref.find_hint(0x1080, hint));
+  EXPECT_EQ(hint.pc_start, 0x1000U);
+  EXPECT_FALSE(ref.find_hint(0x2000, hint));
+  EXPECT_EQ(registry.context()->calls, 2U);
+}
+
+TEST(InspectorProviderTraits, RetainsElfEnumeratorContext) {
+  microfmt::elf_image_enumerator<test_elf_enumerator_tag> enumerator(
+      test_elf_enumerator_context{
+          {"image", 0x4000, 0x100, 0, 0, 0, 0}});
+  auto ref = enumerator.ref();
+  microfmt::elf_image_info images[1]{};
+  size_t count = 0;
+  microfmt::elf_image_info found;
+
+  EXPECT_TRUE(ref.enumerate(images, count));
+  EXPECT_EQ(count, 1U);
+  EXPECT_EQ(images[0].image_name, "image");
+  EXPECT_TRUE(ref.find_by_pc(0x4040, found));
+  EXPECT_FALSE(ref.find_by_pc(0x5000, found));
+  EXPECT_EQ(enumerator.context()->enumerate_calls, 1U);
+  EXPECT_EQ(enumerator.context()->find_calls, 2U);
+}
+
+TEST(InspectorProviderTraits, RetainsExceptionMatcherContext) {
+  microfmt::exception_matcher<test_exception_matcher_tag> matcher(
+      test_exception_matcher_context{0x1234, 0x5678});
+  auto ref = matcher.ref();
+  uintptr_t trap_frame = 0;
+
+  EXPECT_TRUE(ref.match_trap_frame(0, 0x1234, trap_frame));
+  EXPECT_EQ(trap_frame, 0x5678U);
+  EXPECT_FALSE(ref.match_trap_frame(0, 0x9999, trap_frame));
+  EXPECT_EQ(matcher.context()->calls, 2U);
 }
 
 TEST(InspectorContainer, InvokesTypeErasedContextAndReportsFailures) {
@@ -1037,7 +1312,9 @@ TEST(InspectorContainer, InvokesTypeErasedContextAndReportsFailures) {
     return true;
   });
   int container = 0;
-  microfmt::remote_container_view view(address_of(container), local_space(), scratch, &context, options);
+  microfmt::remote_container_view view(
+      address_of(container), local_space(), scratch,
+      microfmt::value_ref(context), options);
 
   EXPECT_TRUE(view);
   EXPECT_FALSE(view.is_null());
@@ -1054,7 +1331,9 @@ TEST(InspectorContainer, InvokesTypeErasedContextAndReportsFailures) {
   auto failing_context = microfmt::make_container_context(0, [](int &, const microfmt::container_options &,
                                                                 microfmt::address_space_ref, microfmt::span<std::byte>,
                                                                 const microfmt::sink &) noexcept { return false; });
-  microfmt::remote_container_view failing_view(address_of(container), local_space(), scratch, &failing_context);
+  microfmt::remote_container_view failing_view(
+      address_of(container), local_space(), scratch,
+      microfmt::value_ref(failing_context));
   EXPECT_FALSE(failing_view.format(out.as_sink()));
   EXPECT_EQ(microfmt::format<32>("{}", failing_view).view(), "<fault>");
 
@@ -1075,27 +1354,29 @@ TEST(InspectorVector, RendersVectorAndCArrayLayoutsAndHandlesReadFaults) {
   vector_storage storage{address_of(elements), 3, 3};
   alignas(std::max_align_t) std::byte scratch[64]{};
   const auto space = local_space();
-  auto vector_context =
-      microfmt::remote_vector_traits::vector_layout<int>(offsetof(vector_storage, data), offsetof(vector_storage, size),
-                                                         offsetof(vector_storage, capacity))(address_of(storage));
+  auto vector = microfmt::make_remote_vector<int>(
+      address_of(storage), offsetof(vector_storage, data),
+      offsetof(vector_storage, size), offsetof(vector_storage, capacity));
 
   microfmt::container_options options;
   options.max_print = 2;
-  microfmt::remote_container_view vector_view(address_of(storage), space, scratch, &vector_context, options);
+  auto vector_view = vector.view(space, scratch, options);
   EXPECT_EQ(microfmt::format<64>("{}", vector_view).view(), "{10, 20, ...}");
 
   int carray[] = {4, 5};
-  auto carray_context = microfmt::remote_vector_traits::carray_layout<int>(2)(address_of(carray));
+  auto carray_container =
+      microfmt::make_remote_carray<int>(address_of(carray), 2);
   microfmt::container_options carray_options;
   carray_options.open_bracket = "[";
   carray_options.close_bracket = "]";
-  microfmt::remote_container_view carray_view(address_of(carray), space, scratch, &carray_context, carray_options);
+  auto carray_view = carray_container.view(space, scratch, carray_options);
   EXPECT_EQ(microfmt::format<32>("{}", carray_view).view(), "[4, 5]");
 
   vector_storage unreadable_elements{0, 1, 1};
-  auto fault_context = microfmt::remote_vector_traits::vector_layout<int>(
-      offsetof(vector_storage, data), offsetof(vector_storage, size))(address_of(unreadable_elements));
-  microfmt::remote_container_view fault_view(address_of(unreadable_elements), space, scratch, &fault_context);
+  auto fault_container = microfmt::make_remote_vector<int>(
+      address_of(unreadable_elements), offsetof(vector_storage, data),
+      offsetof(vector_storage, size));
+  auto fault_view = fault_container.view(space, scratch);
   EXPECT_EQ(microfmt::format<32>("{}", fault_view).view(), "{<fault>}");
 }
 
@@ -1112,15 +1393,17 @@ TEST(InspectorForwardList, TraversesNodesAndHandlesElementReadFaults) {
   node first{address_of(second), 11};
   list storage{address_of(first)};
   alignas(std::max_align_t) std::byte scratch[64]{};
-  auto context = microfmt::remote_forward_list_traits::forward_list_layout<int>(
-      offsetof(list, head), offsetof(node, next), offsetof(node, value))(address_of(storage));
-  microfmt::remote_container_view view(address_of(storage), local_space(), scratch, &context);
+  auto container = microfmt::make_remote_forward_list<int>(
+      address_of(storage), offsetof(list, head), offsetof(node, next),
+      offsetof(node, value));
+  auto view = container.view(local_space(), scratch);
   EXPECT_EQ(microfmt::format<32>("{}", view).view(), "{11, 22}");
 
   alignas(std::max_align_t) std::byte too_small[1]{};
-  auto fault_context = microfmt::remote_forward_list_traits::forward_list_layout<int>(
-      offsetof(list, head), offsetof(node, next), offsetof(node, value))(address_of(storage));
-  microfmt::remote_container_view fault_view(address_of(storage), local_space(), too_small, &fault_context);
+  auto fault_container = microfmt::make_remote_forward_list<int>(
+      address_of(storage), offsetof(list, head), offsetof(node, next),
+      offsetof(node, value));
+  auto fault_view = fault_container.view(local_space(), too_small);
   EXPECT_EQ(microfmt::format<32>("{}", fault_view).view(), "{<fault>}");
 }
 
@@ -1141,10 +1424,11 @@ TEST(InspectorHashTable, TraversesBucketsAndCollisionChains) {
   uintptr_t buckets[] = {address_of(collision_head), address_of(separate)};
   table storage{address_of(buckets), 2};
   alignas(std::max_align_t) std::byte scratch[64]{};
-  auto context = microfmt::remote_hash_table_traits::chaining_layout<int, int>(
-      offsetof(table, buckets), offsetof(table, bucket_count), offsetof(node, next), offsetof(node, key),
-      offsetof(node, value))(address_of(storage));
-  microfmt::remote_container_view view(address_of(storage), local_space(), scratch, &context);
+  auto container = microfmt::make_remote_hash_table<int, int>(
+      address_of(storage), offsetof(table, buckets),
+      offsetof(table, bucket_count), offsetof(node, next),
+      offsetof(node, key), offsetof(node, value));
+  auto view = container.view(local_space(), scratch);
 
   EXPECT_EQ(microfmt::format<64>("{}", view).view(), "{1: 10, 2: 20, 3: 30}");
 }
@@ -1165,19 +1449,44 @@ TEST(InspectorBinaryTree, RendersOrderedEntriesAndBoundsOrFaults) {
   node root{address_of(left), address_of(right), 2, 20};
   tree storage{address_of(root)};
   alignas(std::max_align_t) std::byte scratch[128]{};
-  auto layout = microfmt::remote_binary_tree_traits::bst_layout<int, int>(
-      offsetof(tree, root), offsetof(node, left), offsetof(node, right), offsetof(node, key), offsetof(node, value));
-  auto context = layout(address_of(storage));
+  auto container = microfmt::make_remote_binary_tree<int, int>(
+      address_of(storage), offsetof(tree, root), offsetof(node, left),
+      offsetof(node, right), offsetof(node, key), offsetof(node, value));
 
   microfmt::container_options options;
   options.max_print = 2;
-  microfmt::remote_container_view view(address_of(storage), local_space(), scratch, &context, options);
+  auto view = container.view(local_space(), scratch, options);
   EXPECT_EQ(microfmt::format<64>("{}", view).view(), "{1: 10, 2: 20, ...}");
 
   alignas(std::max_align_t) std::byte too_small[16]{};
-  auto fault_context = layout(address_of(storage));
-  microfmt::remote_container_view fault_view(address_of(storage), local_space(), too_small, &fault_context);
+  auto fault_container = microfmt::make_remote_binary_tree<int, int>(
+      address_of(storage), offsetof(tree, root), offsetof(node, left),
+      offsetof(node, right), offsetof(node, key), offsetof(node, value));
+  auto fault_view = fault_container.view(local_space(), too_small);
   EXPECT_EQ(microfmt::format<32>("{}", fault_view).view(), "{<fault>}");
+}
+
+TEST(InspectorForwardList, DispatchesTraitsAndRetainsContextState) {
+  struct node {
+    uintptr_t next;
+    int value;
+  };
+
+  node second{0, 8};
+  node first{address_of(second), 5};
+  stateful_list_context initial{address_of(first), 10};
+  auto container = microfmt::make_remote_forward_list<stateful_list_tag>(
+      address_of(first), initial);
+  alignas(std::max_align_t) std::byte scratch[32]{};
+
+  auto view = container.view(local_space(), scratch);
+  EXPECT_EQ(microfmt::format<32>("{}", view).view(), "{15, 18}");
+
+  const auto context = container.context();
+  EXPECT_EQ(context->head_calls, 1U);
+  EXPECT_EQ(context->next_calls, 2U);
+  EXPECT_EQ(context->format_calls, 2U);
+  EXPECT_EQ(context->adjustment, 10);
 }
 
 TEST(InspectorSmartPointers, FormatsViewsAndPointerLayoutWrappers) {
@@ -1256,8 +1565,10 @@ TEST(InspectorFrameUnwinder, StepsFrameRecordsAndRejectsInvalidRecords) {
   fake_register_state register_state;
   register_state.value = address_of(current);
   std::byte register_scratch[sizeof(uintptr_t)]{};
-  microfmt::register_context_ref register_context(&register_state, {&read_fake_register, nullptr}, local_space(),
-                                                  register_scratch);
+  microfmt::register_context_ref register_context(
+      microfmt::read_only_register_context_tag<fake_register_state,
+                                                read_fake_register>{},
+      register_state, local_space(), register_scratch);
   uintptr_t next_fp = 0;
   uintptr_t next_pc = 0;
 

@@ -17,11 +17,11 @@ context type.
 `register_context_ref` is a borrowed, type-erased handle containing:
 
 * an opaque target-state pointer;
-* read and optional write callbacks;
+* a compile-time-selected `register_context_traits<Tag>` dispatch table;
 * the target `address_space_ref`; and
 * caller-owned scratch storage.
 
-Callbacks receive architecture register indexes from
+Trait operations receive architecture register indexes from
 `dwarf_registers.hpp`. The standard GPR, floating-point, and vector indexes
 follow the architecture's DWARF convention where one exists. System,
 privileged, debug, and generic-timer registers use microfmt's extended index
@@ -38,16 +38,23 @@ bool read_register(const void *state, microfmt::address_space_ref,
 bool write_register(void *state, microfmt::address_space_ref,
                     uint32_t index, const void *input, size_t size) noexcept;
 
+using register_tag = microfmt::read_write_register_context_tag<
+    register_file, read_register, write_register>;
+
 register_file registers{};
 std::byte scratch[16]{};
 microfmt::register_context_ref context{
-    &registers, {read_register, write_register}, target_space, scratch};
+    register_tag{}, registers, target_space, scratch};
 ```
 
-A context is valid when its state is non-null and at least one callback is
-available. Read-only and write-only contexts are supported. A callback should
+A context is valid when its state is bound and its traits provide at least one
+operation. Read-only and write-only traits are supported. An operation should
 return `false` for unavailable registers, unsupported widths, invalid indexes,
 or failed target reads; register views skip unavailable entries.
+
+`register_context<Tag>` can retain `traits::context_type` by value and expose
+mutable or read-only refs. The callback-tag helpers are convenient adapters
+for existing free functions while keeping their selection at compile time.
 
 The state, address-space context, and scratch storage must outlive every
 unwinder or view that borrows the handle.
@@ -55,7 +62,7 @@ unwinder or view that borrows the handle.
 ### Bind register structures at compile time
 
 `register_context_ref_with<State, FieldTraits...>` adapts an existing C or C++
-register structure without writing a manual register vtable. For ordinary
+register structure without writing a manual traits specialization. For ordinary
 members, use `register_member_field` with a pointer to member and one or more
 register indexes:
 

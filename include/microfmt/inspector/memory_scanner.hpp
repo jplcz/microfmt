@@ -17,41 +17,98 @@
 #include "../formatters/hexdump.hpp"
 #include "../microfmt.hpp"
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 
 namespace microfmt {
+
+template <typename Tag> struct address_source_traits;
 
 /**
  * @brief Type-erased abstract source iterator providing addresses to scan.
  */
 class MICROFMT_POINTER address_source_ref {
 public:
-  struct vtable {
-    bool (*next)(const void *ctx, uintptr_t &out_addr) noexcept;
-  };
-
   constexpr address_source_ref() noexcept = default;
 
-  template <typename Context>
+  template <typename Tag, typename Context,
+            typename Traits = address_source_traits<Tag>,
+            std::enable_if_t<std::is_convertible_v<
+                                 const Context *,
+                                 const typename Traits::context_type *>,
+                             int> = 0>
   constexpr address_source_ref(
-                               const Context &ctx MICROFMT_LIFETIMEBOUND,
-                               bool (*next_fn)(const void *,
-                                               uintptr_t &) noexcept) noexcept
-      : ctx_(&ctx), translate_fn_(next_fn) {}
+      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
+               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : ctx_(&ctx), next_fn_(&next_entry<Tag>) {}
+
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  constexpr address_source_ref(Tag, Context &&) = delete;
+
+  template <typename Tag, typename Context,
+            typename Traits = address_source_traits<Tag>>
+  [[nodiscard]] static constexpr address_source_ref
+  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+    return address_source_ref(Tag{}, ctx);
+  }
+
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  static address_source_ref make(Context &&) = delete;
 
   [[nodiscard]] bool next(uintptr_t &out_addr) const noexcept {
-    if (!translate_fn_ || !ctx_)
+    if (!next_fn_ || !ctx_)
       return false;
-    return translate_fn_(ctx_.get(), out_addr);
+    return next_fn_(ctx_.get(), out_addr);
   }
 
   [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return translate_fn_ != nullptr;
+    return next_fn_ != nullptr;
   }
 
 private:
+  template <typename Tag>
+  static bool next_entry(const void *context, uintptr_t &out_addr) noexcept {
+    using context_type = typename address_source_traits<Tag>::context_type;
+    const auto &typed_context = *static_cast<const context_type *>(context);
+    return address_source_traits<Tag>::next(
+        value_ref<const context_type>(typed_context), out_addr);
+  }
+
   value_ptr<const void> ctx_{};
-  bool (*translate_fn_)(const void *ctx,
-                        uintptr_t &out_addr) noexcept {nullptr};
+  bool (*next_fn_)(const void *ctx, uintptr_t &out_addr) noexcept {nullptr};
+};
+
+template <typename Tag> class MICROFMT_OWNER address_source {
+public:
+  using traits_type = address_source_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  constexpr explicit address_source(context_type context) noexcept
+      : context_(std::move(context)) {}
+
+  [[nodiscard]] constexpr value_ref<context_type>
+  context() & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr value_ref<const context_type>
+  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<const context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr address_source_ref
+  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return address_source_ref(Tag{}, context_);
+  }
+
+  value_ref<context_type> context() && = delete;
+  value_ref<const context_type> context() const && = delete;
+  address_source_ref ref() const && = delete;
+
+private:
+  context_type context_;
 };
 
 /**

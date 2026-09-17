@@ -38,6 +38,7 @@ decoder state, or symbol buffers in formatter-local arrays. See the
 
 | Guide | Use it for | Primary headers |
 |---|---|---|
+| [Traits, contexts, and type erasure](inspector/traits-and-contexts.md) | Implementing provider traits, choosing context ownership, crossing `*_ref` boundaries, const-correct borrowing, and testing custom providers | `address_space.hpp`, `register_context.hpp`, `remote_container.hpp`, `unwind_hint.hpp`, `elf_enumerator.hpp` |
 | [Memory and remote objects](inspector/memory-and-objects.md) | Target transports, address translation and classification, remote page-table walking, bounded memory scanning, foreign and C++ string objects, reusable layout queries, ABI-width pointer wrappers, and reflected structures | `address_space.hpp`, `address_translator.hpp`, `remote_page_table_walker.hpp`, `memory_classifier.hpp`, `memory_scanner.hpp`, `compat32.hpp`, `foreign_string_view.hpp`, `remote_layout_accessor.hpp`, `remote_basic_string.hpp`, `remote_object.hpp`, `remote_smart_ptr.hpp` |
 | [Remote containers](inspector/containers.md) | Vectors, linked lists, hash tables, binary trees, and custom container layouts | `remote_container.hpp`, `remote_vector.hpp`, `remote_forward_list.hpp`, `remote_hash_table.hpp`, `remote_binary_tree.hpp` |
 | [Metadata maps](inspector/metadata.md) | Fixed-capacity heterogeneous properties, type-erased generators, formatting, and lifetime requirements | `metadata_map.hpp`, `concrete_metadata_map.hpp`, `value_ref.hpp` |

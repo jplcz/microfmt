@@ -217,7 +217,7 @@ See `examples/memory_classifier_demo.cpp` for a region-table implementation.
 `memory_classifier_ref`, and one of two address sources:
 
 * a `register_context_ref` plus an explicit `span<const uintptr_t>`; or
-* an `address_source_ref` callback that yields addresses incrementally.
+* an `address_source_ref` traits provider that yields addresses incrementally.
 
 When a register context is supplied, the scanner visits
 `AbiTraits::register_traits::address_registers()` in probability order. This
@@ -262,10 +262,11 @@ The scanner does not dereference unknown, unreadable, executable, direct-map,
 MMIO, guard-page, or non-secure regions. A safe `address_space_ref` remains
 mandatory because classification data can itself be stale or incorrect.
 
-`address_source_ref` borrows its source context and calls
-`bool next(const void *, uintptr_t &) noexcept` until it returns `false`. This
-is useful for scanning stack slots, allocator metadata, saved contexts, or
-other incrementally produced address sets without allocation.
+`address_source_ref` derives its context type and `next` operation from
+`address_source_traits<Tag>`. `address_source<Tag>` can retain that context by
+value, while the erased reference can borrow an existing context. This is
+useful for scanning stack slots, allocator metadata, saved contexts, or other
+incrementally produced address sets without allocation.
 
 See `examples/memory_scanner_demo.cpp` for combined register and explicit
 address scanning.

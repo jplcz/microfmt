@@ -59,7 +59,8 @@ MICROFMT_END_UNSAFE_BUFFER_USAGE
 
 microfmt::register_context_ref make_context(
     register_state &state, microfmt::span<std::byte> scratch = {}) {
-  return {&state, {read_register, write_register}, {}, scratch};
+  return microfmt::make_register_context_ref<read_register, write_register>(
+      state, {}, scratch);
 }
 
 TEST(GdbRegisterArray, EncodesAndDecodesSingleRegister) {

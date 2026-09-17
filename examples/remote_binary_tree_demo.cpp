@@ -41,17 +41,10 @@ int main() {
   RemoteTreeContainer remote_tree{&node40};
   uintptr_t tree_addr = reinterpret_cast<uintptr_t>(&remote_tree);
 
-  // Generate the context generator using
-  // remote_binary_tree_traits::bst_layout
-  auto tree_generator =
-      microfmt::remote_binary_tree_traits::bst_layout<int, int>(
-          offsetof(RemoteTreeContainer, root), offsetof(BSTNode, left),
-          offsetof(BSTNode, right), offsetof(BSTNode, key),
-          offsetof(BSTNode, value));
-
-  // Generate the actual binary tree context by passing the tree container
-  // address
-  auto tree_context = tree_generator(tree_addr);
+  auto tree = microfmt::make_remote_binary_tree<int, int>(
+      tree_addr, offsetof(RemoteTreeContainer, root), offsetof(BSTNode, left),
+      offsetof(BSTNode, right), offsetof(BSTNode, key),
+      offsetof(BSTNode, value));
 
   // Configure formatting options (e.g., custom key-value separators and
   // brackets)
@@ -60,9 +53,7 @@ int main() {
                                         .open_bracket = "{ ",
                                         .close_bracket = " }"};
 
-  // Wrap in remote_container_view passing context pointer and options
-  microfmt::remote_container_view container_view(tree_addr, space_ref, scratch,
-                                                 &tree_context, tree_opts);
+  auto container_view = tree.view(space_ref, scratch, tree_opts);
 
   // Print the inspected tree (In-order traversal outputs sorted keys: 10,
   // 20, 40, 60)

@@ -174,8 +174,9 @@ TEST(RegisterContextRefWith, ChainsToFallbackContext) {
   registers state{0x1000, {{0x2000, 0x3000}}};
   fallback_state fallback_state_value{0x5000};
   std::byte scratch[16]{};
-  microfmt::register_context_ref fallback(
-      &fallback_state_value, {read_fallback, write_fallback}, {}, scratch);
+  auto fallback =
+      microfmt::make_register_context_ref<read_fallback, write_fallback>(
+          fallback_state_value, {}, scratch);
   microfmt::register_context_ref_with<registers, pc_field, stack_fields>
       mapped(state, {}, scratch, fallback);
   auto context = mapped.ref();

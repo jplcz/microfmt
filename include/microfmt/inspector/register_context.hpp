@@ -13,45 +13,106 @@
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
+#include <utility>
 
 namespace microfmt {
 
 /**
- * @brief Type-erased vtable for querying architecture-specific registers
- *        by DWARF register index from a debugging execution context frame.
+ * @brief Static customization point for a register-context provider.
+ *
+ * A specialization declares `context_type` and may provide `read_register`
+ * and/or `write_register`. Read operations receive
+ * `value_ref<const context_type>`; writes receive `value_ref<context_type>`.
  */
-struct register_context_vtable {
-  /**
-   * @brief Reads a target register value by its DWARF index.
-   *
-   * @param state Opaque pointer to underlying target thread/frame context state
-   * @param space Address space reference for memory-mapped register states if
-   * needed
-   * @param dwarf_reg_index Architectural DWARF register number (from
-   * dwarf_registers.hpp)
-   * @param out_val Pointer to destination storage buffer
-   * @param val_size Size in bytes of the destination buffer
-   * @return true if successfully read, false if unavailable or out of bounds.
-   */
-  bool (*read_register)(const void *state, address_space_ref space,
-                        uint32_t dwarf_reg_index, void *out_val,
-                        size_t val_size) noexcept;
+template <typename Tag> struct register_context_traits;
 
-  /**
-   * @brief Writes a target register value by its DWARF index.
-   *
-   * @param state Opaque pointer to underlying target thread/frame context state
-   * @param space Address space reference
-   * @param dwarf_reg_index Architectural DWARF register number
-   * @param in_val Pointer to source storage buffer containing the new value
-   * @param val_size Size in bytes of the source buffer
-   * @return true if successfully written, false if read-only, unavailable, or
-   * out of bounds.
-   */
-  bool (*write_register)(void *state, address_space_ref space,
-                         uint32_t dwarf_reg_index, const void *in_val,
-                         size_t val_size) noexcept;
+template <typename State, auto Read>
+struct read_only_register_context_tag {};
+
+template <typename State, auto Write>
+struct write_only_register_context_tag {};
+
+template <typename State, auto Read, auto Write>
+struct read_write_register_context_tag {};
+
+template <typename State> struct empty_register_context_tag {};
+
+template <typename State>
+struct register_context_traits<empty_register_context_tag<State>> {
+  using context_type = State;
 };
+
+template <typename State, auto Read>
+struct register_context_traits<read_only_register_context_tag<State, Read>> {
+  using context_type = State;
+
+  static bool read_register(value_ref<const context_type> context,
+                            address_space_ref space, uint32_t index,
+                            void *destination, size_t size) noexcept {
+    return Read(context.get(), space, index, destination, size);
+  }
+};
+
+template <typename State, auto Write>
+struct register_context_traits<write_only_register_context_tag<State, Write>> {
+  using context_type = State;
+
+  static bool write_register(value_ref<context_type> context,
+                             address_space_ref space, uint32_t index,
+                             const void *source, size_t size) noexcept {
+    return Write(context.get(), space, index, source, size);
+  }
+};
+
+template <typename State, auto Read, auto Write>
+struct register_context_traits<
+    read_write_register_context_tag<State, Read, Write>> {
+  using context_type = State;
+
+  static bool read_register(value_ref<const context_type> context,
+                            address_space_ref space, uint32_t index,
+                            void *destination, size_t size) noexcept {
+    return Read(context.get(), space, index, destination, size);
+  }
+
+  static bool write_register(value_ref<context_type> context,
+                             address_space_ref space, uint32_t index,
+                             const void *source, size_t size) noexcept {
+    return Write(context.get(), space, index, source, size);
+  }
+};
+
+namespace detail {
+
+template <typename Tag, typename = void>
+struct has_register_context_read : std::false_type {};
+
+template <typename Tag>
+struct has_register_context_read<
+    Tag, std::void_t<decltype(register_context_traits<Tag>::read_register(
+             std::declval<
+                 value_ref<const typename register_context_traits<Tag>::
+                               context_type>>(),
+             std::declval<address_space_ref>(), std::declval<uint32_t>(),
+             std::declval<void *>(), std::declval<size_t>()))>>
+    : std::true_type {};
+
+template <typename Tag, typename = void>
+struct has_register_context_write : std::false_type {};
+
+template <typename Tag>
+struct has_register_context_write<
+    Tag, std::void_t<decltype(register_context_traits<Tag>::write_register(
+             std::declval<
+                 value_ref<typename register_context_traits<Tag>::context_type>>(),
+             std::declval<address_space_ref>(), std::declval<uint32_t>(),
+             std::declval<const void *>(), std::declval<size_t>()))>>
+    : std::true_type {};
+
+template <typename State, typename... FieldTraits>
+struct mapped_register_context_tag {};
+
+} // namespace detail
 
 /**
  * @brief Zero-allocation, type-erased handle for inspecting and modifying CPU
@@ -61,32 +122,43 @@ class MICROFMT_POINTER register_context_ref {
 public:
   constexpr register_context_ref() noexcept = default;
 
-  template <typename State>
+  template <typename Tag, typename State,
+            typename Traits = register_context_traits<Tag>,
+            std::enable_if_t<std::is_convertible_v<
+                                 State *, typename Traits::context_type *>,
+                             int> = 0>
   constexpr register_context_ref(
-                                 State *state_ptr MICROFMT_LIFETIMEBOUND
-                                     MICROFMT_LIFETIME_CAPTURE_BY_THIS,
-                                 register_context_vtable vtable,
-                                 address_space_ref space,
-                                 span<std::byte> scratch
-                                     MICROFMT_LIFETIMEBOUND
-                                         MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
-      : state_(state_ptr), mutable_state_(state_ptr), vtable_(vtable),
+      Tag, State &state MICROFMT_LIFETIMEBOUND
+               MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      address_space_ref space,
+      span<std::byte> scratch MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : state_(&state), mutable_state_(&state), vtable_(&s_vtable<Tag>),
         space_(space), scratch_(scratch) {}
 
-  template <typename State>
+  template <typename Tag, typename State,
+            typename Traits = register_context_traits<Tag>,
+            std::enable_if_t<std::is_convertible_v<
+                                 const State *,
+                                 const typename Traits::context_type *>,
+                             int> = 0>
   constexpr register_context_ref(
-                                 const State *state_ptr
-                                     MICROFMT_LIFETIMEBOUND
-                                         MICROFMT_LIFETIME_CAPTURE_BY_THIS,
-                                 register_context_vtable vtable,
-                                 address_space_ref space,
-                                 span<std::byte> scratch
-                                     MICROFMT_LIFETIMEBOUND
-                                         MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
-      : state_(state_ptr), vtable_(vtable), space_(space), scratch_(scratch) {}
+      Tag, const State &state MICROFMT_LIFETIMEBOUND
+               MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      address_space_ref space,
+      span<std::byte> scratch MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : state_(&state), vtable_(&s_vtable<Tag>), space_(space),
+        scratch_(scratch) {}
+
+  template <typename Tag, typename State,
+            std::enable_if_t<!std::is_lvalue_reference_v<State>, int> = 0>
+  constexpr register_context_ref(Tag, State &&, address_space_ref,
+                                 span<std::byte>) = delete;
 
   [[nodiscard]] constexpr bool is_null() const noexcept {
-    return !state_ || (!vtable_.read_register && !vtable_.write_register);
+    return !state_ || !vtable_ ||
+           (!vtable_->read_register && !vtable_->write_register);
   }
 
   [[nodiscard]] constexpr explicit operator bool() const noexcept {
@@ -99,10 +171,10 @@ public:
   template <typename T>
   [[nodiscard]] bool read(uint32_t dwarf_reg_index,
                           T &out_value) const noexcept {
-    if (!vtable_.read_register)
+    if (!vtable_ || !vtable_->read_register)
       return false;
-    return vtable_.read_register(state_.get(), space_, dwarf_reg_index,
-                                 &out_value, sizeof(T));
+    return vtable_->read_register(state_.get(), space_, dwarf_reg_index,
+                                  &out_value, sizeof(T));
   }
 
   /**
@@ -110,10 +182,10 @@ public:
    */
   [[nodiscard]] bool read_raw(uint32_t dwarf_reg_index, void *dest,
                               size_t size) const noexcept {
-    if (!vtable_.read_register)
+    if (!vtable_ || !vtable_->read_register)
       return false;
-    return vtable_.read_register(state_.get(), space_, dwarf_reg_index, dest,
-                                 size);
+    return vtable_->read_register(state_.get(), space_, dwarf_reg_index, dest,
+                                  size);
   }
 
   /**
@@ -122,13 +194,12 @@ public:
   template <typename T>
   [[nodiscard]] bool write(uint32_t dwarf_reg_index,
                            const T &value) const noexcept {
-    if (!vtable_.write_register)
+    if (!vtable_ || !vtable_->write_register)
       return false;
     if (!mutable_state_)
       return false;
-    return vtable_.write_register(mutable_state_.get(), space_,
-                                  dwarf_reg_index,
-                                  &value, sizeof(T));
+    return vtable_->write_register(mutable_state_.get(), space_,
+                                   dwarf_reg_index, &value, sizeof(T));
   }
 
   /**
@@ -136,12 +207,12 @@ public:
    */
   [[nodiscard]] bool write_raw(uint32_t dwarf_reg_index, const void *src,
                                size_t size) const noexcept {
-    if (!vtable_.write_register)
+    if (!vtable_ || !vtable_->write_register)
       return false;
     if (!mutable_state_)
       return false;
-    return vtable_.write_register(mutable_state_.get(), space_,
-                                  dwarf_reg_index, src, size);
+    return vtable_->write_register(mutable_state_.get(), space_,
+                                   dwarf_reg_index, src, size);
   }
 
   [[nodiscard]] constexpr address_space_ref space() const noexcept {
@@ -153,11 +224,119 @@ public:
   }
 
 private:
+  struct vtable {
+    bool (*read_register)(const void *, address_space_ref, uint32_t, void *,
+                          size_t) noexcept;
+    bool (*write_register)(void *, address_space_ref, uint32_t, const void *,
+                           size_t) noexcept;
+  };
+
+  template <typename Tag>
+  [[nodiscard]] static constexpr auto read_entry() noexcept {
+    if constexpr (detail::has_register_context_read<Tag>::value) {
+      return +[](const void *state, address_space_ref space, uint32_t index,
+                 void *destination, size_t size) noexcept {
+        using context_type = typename register_context_traits<Tag>::context_type;
+        const auto &context = *static_cast<const context_type *>(state);
+        return register_context_traits<Tag>::read_register(
+            value_ref<const context_type>(context), space, index, destination,
+            size);
+      };
+    } else {
+      return static_cast<bool (*)(const void *, address_space_ref, uint32_t,
+                                  void *, size_t) noexcept>(nullptr);
+    }
+  }
+
+  template <typename Tag>
+  [[nodiscard]] static constexpr auto write_entry() noexcept {
+    if constexpr (detail::has_register_context_write<Tag>::value) {
+      return +[](void *state, address_space_ref space, uint32_t index,
+                 const void *source, size_t size) noexcept {
+        using context_type = typename register_context_traits<Tag>::context_type;
+        auto &context = *static_cast<context_type *>(state);
+        return register_context_traits<Tag>::write_register(
+            value_ref<context_type>(context), space, index, source, size);
+      };
+    } else {
+      return static_cast<bool (*)(void *, address_space_ref, uint32_t,
+                                  const void *, size_t) noexcept>(nullptr);
+    }
+  }
+
+  template <typename Tag>
+  static constexpr vtable s_vtable{read_entry<Tag>(), write_entry<Tag>()};
+
   value_ptr<const void> state_{};
   value_ptr<void> mutable_state_{};
-  register_context_vtable vtable_{};
+  const vtable *vtable_{nullptr};
   address_space_ref space_{};
   span<std::byte> scratch_{};
+};
+
+template <auto Read, typename State>
+[[nodiscard]] constexpr register_context_ref
+make_read_only_register_context_ref(
+    State &state MICROFMT_LIFETIMEBOUND, address_space_ref space,
+    span<std::byte> scratch MICROFMT_LIFETIMEBOUND) noexcept {
+  using state_type = std::remove_const_t<State>;
+  using tag = read_only_register_context_tag<state_type, Read>;
+  return register_context_ref(tag{}, state, space, scratch);
+}
+
+template <auto Read, auto Write, typename State>
+[[nodiscard]] constexpr register_context_ref
+make_register_context_ref(
+    State &state MICROFMT_LIFETIMEBOUND, address_space_ref space,
+    span<std::byte> scratch MICROFMT_LIFETIMEBOUND) noexcept {
+  using state_type = std::remove_const_t<State>;
+  using tag = read_write_register_context_tag<state_type, Read, Write>;
+  return register_context_ref(tag{}, state, space, scratch);
+}
+
+/**
+ * @brief Typed owner for a register-context traits specialization.
+ */
+template <typename Tag> class MICROFMT_OWNER register_context {
+public:
+  using traits_type = register_context_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  constexpr register_context(
+      context_type context, address_space_ref space,
+      span<std::byte> scratch MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : context_(std::move(context)), space_(space), scratch_(scratch) {}
+
+  [[nodiscard]] constexpr value_ref<context_type>
+  context() & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr value_ref<const context_type>
+  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<const context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr register_context_ref
+  ref() & noexcept MICROFMT_LIFETIMEBOUND {
+    return register_context_ref(Tag{}, context_, space_, scratch_);
+  }
+
+  [[nodiscard]] constexpr register_context_ref
+  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return register_context_ref(Tag{}, context_, space_, scratch_);
+  }
+
+  value_ref<context_type> context() && = delete;
+  value_ref<const context_type> context() const && = delete;
+  register_context_ref ref() && = delete;
+  register_context_ref ref() const && = delete;
+
+private:
+  context_type context_;
+  address_space_ref space_;
+  span<std::byte> scratch_;
 };
 
 namespace detail {
@@ -382,7 +561,7 @@ struct register_callback_field {
  * instead of returning a value stored in the bound state.
  */
 template <typename State, typename... FieldTraits>
-class register_context_ref_with {
+class MICROFMT_POINTER register_context_ref_with {
 public:
   static_assert(sizeof...(FieldTraits) != 0,
                 "at least one register field trait is required");
@@ -395,18 +574,30 @@ public:
       "register field values must be trivially copyable");
 
   constexpr register_context_ref_with(
-      State &state MICROFMT_LIFETIMEBOUND, address_space_ref space,
-      span<std::byte> scratch MICROFMT_LIFETIMEBOUND,
+      State &state MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      address_space_ref space,
+      span<std::byte> scratch MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
       register_context_ref fallback = {}) noexcept
       : state_(state), mutable_state_(&state), space_(space),
         scratch_(scratch), fallback_(fallback) {}
 
   constexpr register_context_ref_with(
-      const State &state MICROFMT_LIFETIMEBOUND, address_space_ref space,
-      span<std::byte> scratch MICROFMT_LIFETIMEBOUND,
+      const State &state MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      address_space_ref space,
+      span<std::byte> scratch MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
       register_context_ref fallback = {}) noexcept
       : state_(state), space_(space), scratch_(scratch),
         fallback_(fallback) {}
+
+  register_context_ref_with(State &&, address_space_ref, span<std::byte>,
+                            register_context_ref = {}) = delete;
+  register_context_ref_with(const State &&, address_space_ref,
+                            span<std::byte>,
+                            register_context_ref = {}) = delete;
 
   /**
    * @brief Creates a type-erased reference borrowing this wrapper.
@@ -415,14 +606,18 @@ public:
    * fallback context must outlive the returned reference.
    */
   [[nodiscard]] constexpr register_context_ref
-  ref() noexcept MICROFMT_LIFETIMEBOUND {
-    return register_context_ref(this, vtable_, space_, scratch_);
+  ref() & noexcept MICROFMT_LIFETIMEBOUND {
+    using tag = detail::mapped_register_context_tag<State, FieldTraits...>;
+    return register_context_ref(tag{}, *this, space_, scratch_);
   }
 
-  [[nodiscard]] constexpr operator register_context_ref() noexcept
+  [[nodiscard]] constexpr operator register_context_ref() & noexcept
       MICROFMT_LIFETIMEBOUND {
     return ref();
   }
+
+  register_context_ref ref() && = delete;
+  operator register_context_ref() && = delete;
 
 private:
   template <typename Field>
@@ -515,26 +710,32 @@ private:
     return fallback_.write_raw(index, source, size);
   }
 
-  static bool read_thunk(const void *opaque, address_space_ref, uint32_t index,
-                         void *destination, size_t size) noexcept {
-    return static_cast<const register_context_ref_with *>(opaque)->read(
-        index, destination, size);
-  }
-
-  static bool write_thunk(void *opaque, address_space_ref, uint32_t index,
-                          const void *source, size_t size) noexcept {
-    return static_cast<register_context_ref_with *>(opaque)->write(
-        index, source, size);
-  }
-
-  inline static constexpr register_context_vtable vtable_{read_thunk,
-                                                           write_thunk};
+  friend struct register_context_traits<
+      detail::mapped_register_context_tag<State, FieldTraits...>>;
 
   value_ref<const State> state_;
   value_ptr<State> mutable_state_;
   address_space_ref space_;
   span<std::byte> scratch_;
   register_context_ref fallback_;
+};
+
+template <typename State, typename... FieldTraits>
+struct register_context_traits<
+    detail::mapped_register_context_tag<State, FieldTraits...>> {
+  using context_type = register_context_ref_with<State, FieldTraits...>;
+
+  static bool read_register(value_ref<const context_type> context,
+                            address_space_ref, uint32_t index,
+                            void *destination, size_t size) noexcept {
+    return context->read(index, destination, size);
+  }
+
+  static bool write_register(value_ref<context_type> context,
+                             address_space_ref, uint32_t index,
+                             const void *source, size_t size) noexcept {
+    return context->write(index, source, size);
+  }
 };
 
 } // namespace microfmt

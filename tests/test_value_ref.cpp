@@ -43,6 +43,13 @@ static_assert(
 static_assert(
     std::is_same_v<decltype(std::declval<microfmt::value_ref<int> &>().get()),
                    int *>);
+static_assert(std::is_same_v<
+              decltype(std::declval<microfmt::value_ref<int> &>().pointer()),
+              microfmt::value_ptr<int>>);
+static_assert(std::is_same_v<
+              decltype(
+                  std::declval<microfmt::value_ref<const int> &>().pointer()),
+              microfmt::value_ptr<const int>>);
 static_assert(std::is_trivially_copyable_v<microfmt::value_ptr<int>>);
 static_assert(sizeof(microfmt::value_ptr<int>) == sizeof(int *));
 static_assert(std::is_constructible_v<microfmt::value_ptr<int>, int *>);
@@ -66,6 +73,7 @@ TEST(ValueRef, PreservesMutableReferencedObjectIdentity) {
   microfmt::value_ref<int> ref(value);
 
   EXPECT_EQ(ref.get(), &value);
+  EXPECT_EQ(ref.pointer().get(), &value);
   EXPECT_EQ(*ref, 42);
 
   *ref = 7;

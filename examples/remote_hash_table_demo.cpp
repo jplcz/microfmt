@@ -37,14 +37,10 @@ int main() {
 
   uintptr_t map_addr = reinterpret_cast<uintptr_t>(&remote_map);
 
-  // Generate context using remote_hash_table_traits
-  auto map_generator =
-      microfmt::remote_hash_table_traits::chaining_layout<int, int>(
-          offsetof(RemoteHashMap, buckets),
-          offsetof(RemoteHashMap, bucket_count), offsetof(HashNode, next),
-          offsetof(HashNode, key), offsetof(HashNode, value));
-
-  auto map_context = map_generator(map_addr);
+  auto map = microfmt::make_remote_hash_table<int, int>(
+      map_addr, offsetof(RemoteHashMap, buckets),
+      offsetof(RemoteHashMap, bucket_count), offsetof(HashNode, next),
+      offsetof(HashNode, key), offsetof(HashNode, value));
 
   // Wrap in remote_container_view with custom options
   microfmt::container_options map_opts{.kv_separator = " -> ",
@@ -52,8 +48,7 @@ int main() {
                                        .open_bracket = "{",
                                        .close_bracket = "}"};
 
-  microfmt::remote_container_view container_view(map_addr, space_ref, scratch,
-                                                 &map_context, map_opts);
+  auto container_view = map.view(space_ref, scratch, map_opts);
 
   // Print inspected hash table
   microfmt::print("Inspected Hash Map: {}\n", container_view);

@@ -162,7 +162,7 @@ int main() {
                                .exidx_start = exidx_table_base,
                                .exidx_end = exidx_table_base + 16});
   microfmt::elf_image_enumerator_ref enumerator(
-      microfmt::multi_elf_registry_tag{}, elf_registry);
+      microfmt::multi_elf_registry_tag<4>{}, elf_registry);
 
   microfmt::unwind_hint_registry_context<4> hint_context{};
   hint_context.add_hint({
@@ -186,7 +186,7 @@ int main() {
         return next_fp != 0 && next_pc != 0;
       }});
   microfmt::unwind_hint_registry_ref hint_ref(
-      microfmt::unwind_hint_registry_tag{}, hint_context);
+      microfmt::fixed_unwind_hint_registry_tag<4>{}, hint_context);
 
   uintptr_t stack_base = 0x500;
   auto *stack_region = static_cast<uint32_t *>(
@@ -223,9 +223,10 @@ int main() {
   register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
   register_file.values[microfmt::dwarf::arm32::lr] = initial_pc;
   std::byte register_scratch[sizeof(uint64_t)]{};
-  microfmt::register_context_ref register_context(
-      &register_file, {&read_arm_register, &write_arm_register}, space,
-      register_scratch);
+  auto register_context =
+      microfmt::make_register_context_ref<read_arm_register,
+                                          write_arm_register>(
+          register_file, space, register_scratch);
   microfmt::frame_pointer_iterator it(robust_unwinder, register_context,
                                       initial_fp, initial_pc);
   microfmt::remote_backtrace_view bt(it, resolver, symbol_context);

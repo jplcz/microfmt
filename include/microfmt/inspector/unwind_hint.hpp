@@ -10,8 +10,14 @@
 #include "register_context.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 
 namespace microfmt {
+
+template <typename Tag> struct unwind_hint_registry_traits;
+template <size_t MaxHints> class unwind_hint_registry_context;
+template <size_t MaxHints = 32> struct fixed_unwind_hint_registry_tag {};
 
 // ============================================================================
 // Unwind Hint Definition
@@ -100,24 +106,36 @@ public:
   constexpr unwind_hint_registry_ref() noexcept = default;
 
   /**
-   * @brief Constructs a handle bound to a context object exposing
-   * `find_hint`.
-   * @tparam Tag Tag stored in the virtual table.
-   * @tparam Context Concrete context type.
+   * @brief Constructs a handle for a stateful registry tag.
+   * @tparam Tag Registry tag type.
+   * @tparam Context Concrete context convertible to the trait context type.
    * @param ctx Context object performing the lookup.
    */
-  template <typename Tag, typename Context>
-  constexpr unwind_hint_registry_ref(Tag, const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
-      : ctx_(&ctx), vtbl_(&s_vtbl<Tag, Context>) {}
+  template <typename Tag, typename Context,
+            typename Traits = unwind_hint_registry_traits<Tag>,
+            std::enable_if_t<std::is_convertible_v<
+                                 const Context *,
+                                 const typename Traits::context_type *>,
+                             int> = 0>
+  constexpr unwind_hint_registry_ref(
+      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
+               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
-  /**
-   * @brief Constructs a handle bound to a free callable.
-   * @tparam Fn Callable type exposing `find_hint`.
-   * @param fn Object to invoke for lookups.
-   */
-  template <typename Fn>
-  constexpr explicit unwind_hint_registry_ref(const Fn &fn MICROFMT_LIFETIMEBOUND) noexcept
-      : ctx_(&fn), vtbl_(&s_fn_vtbl<Fn>) {}
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  constexpr unwind_hint_registry_ref(Tag, Context &&) = delete;
+
+  template <typename Tag, typename Context,
+            typename Traits = unwind_hint_registry_traits<Tag>>
+  [[nodiscard]] static constexpr unwind_hint_registry_ref
+  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+    return unwind_hint_registry_ref(Tag{}, ctx);
+  }
+
+  template <typename Tag, typename Context,
+            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  static unwind_hint_registry_ref make(Context &&) = delete;
 
   /**
    * @brief Looks up the hint covering a PC.
@@ -138,18 +156,59 @@ public:
   [[nodiscard]] constexpr explicit operator bool() const noexcept { return vtbl_ != nullptr; }
 
 private:
-  template <typename Tag, typename Context>
-  static constexpr vtable s_vtbl{[](const void *c, uintptr_t pc, unwind_hint &hint) noexcept {
-    return static_cast<const Context *>(c)->find_hint(pc, hint);
-  }};
-
-  template <typename Fn>
-  static constexpr vtable s_fn_vtbl{[](const void *c, uintptr_t pc, unwind_hint &hint) noexcept {
-    return (*static_cast<const Fn *>(c)).find_hint(pc, hint);
-  }};
+  template <typename Tag>
+  static constexpr vtable s_vtbl{
+      [](const void *context, uintptr_t pc, unwind_hint &hint) noexcept {
+        using context_type =
+            typename unwind_hint_registry_traits<Tag>::context_type;
+        const auto &typed_context =
+            *static_cast<const context_type *>(context);
+        return unwind_hint_registry_traits<Tag>::find_hint(
+            value_ref<const context_type>(typed_context), pc, hint);
+      }};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
+};
+
+/**
+ * @brief Typed owner for an unwind-hint registry traits specialization.
+ */
+template <typename Tag> class MICROFMT_OWNER unwind_hint_registry {
+public:
+  using traits_type = unwind_hint_registry_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  constexpr explicit unwind_hint_registry(context_type context) noexcept
+      : context_(std::move(context)) {}
+
+  [[nodiscard]] constexpr value_ref<context_type>
+  context() & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr value_ref<const context_type>
+  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return value_ref<const context_type>(context_);
+  }
+
+  [[nodiscard]] constexpr unwind_hint_registry_ref
+  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+    return unwind_hint_registry_ref(Tag{}, context_);
+  }
+
+  [[nodiscard]] constexpr operator unwind_hint_registry_ref()
+      const & noexcept MICROFMT_LIFETIMEBOUND {
+    return ref();
+  }
+
+  value_ref<context_type> context() && = delete;
+  value_ref<const context_type> context() const && = delete;
+  unwind_hint_registry_ref ref() const && = delete;
+  operator unwind_hint_registry_ref() const && = delete;
+
+private:
+  context_type context_;
 };
 
 // ============================================================================
@@ -160,7 +219,8 @@ private:
  * @brief Zero-allocation hint registry with fixed capacity.
  * @tparam MaxHints Maximum number of stored hints.
  */
-template <size_t MaxHints = 32> class unwind_hint_registry_context {
+template <size_t MaxHints>
+class MICROFMT_OWNER unwind_hint_registry_context {
 public:
   /**
    * @brief Constructs an empty registry.
@@ -221,6 +281,16 @@ private:
 /**
  * @brief Tag selecting the hint registry in the type-erased handle.
  */
-struct unwind_hint_registry_tag {};
+template <size_t MaxHints>
+struct unwind_hint_registry_traits<fixed_unwind_hint_registry_tag<MaxHints>> {
+  using context_type = unwind_hint_registry_context<MaxHints>;
+
+  static bool find_hint(value_ref<const context_type> context, uintptr_t pc,
+                        unwind_hint &out_hint) noexcept {
+    return context->find_hint(pc, out_hint);
+  }
+};
+
+using unwind_hint_registry_tag = fixed_unwind_hint_registry_tag<32>;
 
 } // namespace microfmt

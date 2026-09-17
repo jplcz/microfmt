@@ -2,14 +2,10 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause
 
-// ============================================================================
-// Generalized Remote Vector / Sequence View & Traits
-// ============================================================================
-
 #pragma once
 
 /** @file remote_vector.hpp
- * @brief Type-erased formatting support for remote vector-like sequences. */
+ * @brief Traits-based formatting support for remote contiguous sequences. */
 
 #include "remote_container.hpp"
 #include "remote_layout_accessor.hpp"
@@ -18,287 +14,200 @@
 namespace microfmt {
 
 /**
- * @brief Type-erased virtual table for sequence/vector-like remote containers.
+ * @brief Static customization point for a remote vector implementation.
  *
- * Uses raw function pointers to inspect sizes, capacities, and element
- * addresses without polluting headers with concrete container templates.
+ * Specializations declare `context_type` and provide `get_size`,
+ * `get_element_address`, and `format_element`.
  */
-struct remote_vector_vtable {
-  /**
-   * @brief Reads the total number of elements in the remote container.
-   * @param ctx Caller-defined traversal state.
-   * @param space Address space containing the sequence.
-   * @param scratch Reusable scratch storage for remote reads.
-   * @param out_size Receives the element count.
-   * @return `true` on success.
-   */
-  bool (*get_size)(const void *ctx, address_space_ref space,
-                   span<std::byte> scratch, size_t &out_size) noexcept;
-
-  /**
-   * @brief Reads the container's capacity (optional).
-   * @param ctx Caller-defined traversal state.
-   * @param space Address space containing the sequence.
-   * @param scratch Reusable scratch storage for remote reads.
-   * @param out_cap Receives the capacity.
-   * @return `true` on success; `false` when capacity is unavailable.
-   */
-  bool (*get_capacity)(const void *ctx, address_space_ref space,
-                       span<std::byte> scratch, size_t &out_cap) noexcept;
-
-  /**
-   * @brief Computes or resolves the remote address of the N-th element.
-   * @param ctx Caller-defined traversal state.
-   * @param space Address space containing the sequence.
-   * @param scratch Reusable scratch storage for remote reads.
-   * @param index Zero-based element index.
-   * @param out_elem_addr Receives the element address.
-   * @return `true` on success.
-   */
-  bool (*get_element_address)(const void *ctx, address_space_ref space,
-                              span<std::byte> scratch, size_t index,
-                              uintptr_t &out_elem_addr) noexcept;
-
-  /**
-   * @brief Formats a single element at the given remote address into the sink
-   *        using the scratch buffer for safe local reading.
-   * @param ctx Caller-defined traversal state.
-   * @param space Address space containing the sequence.
-   * @param scratch Reusable scratch storage for remote reads.
-   * @param elem_addr Element address.
-   * @param out Destination sink.
-   * @return `true` on success.
-   */
-  bool (*format_element)(const void *ctx, address_space_ref space,
-                         span<std::byte> scratch, uintptr_t elem_addr,
-                         const sink &out) noexcept;
-};
-
-/**
- * @brief Creates a context that links caller state to a vector vtable.
- * @tparam State Caller-defined state consumed by @p vtable.
- * @param container_addr Remote sequence-container address.
- * @param initial_state Initial caller-defined state.
- * @param vtable Operations used to inspect and format elements.
- * @return A context suitable for constructing @ref remote_container_view.
- */
-template <typename State>
-[[nodiscard]] constexpr auto
-make_remote_vector_context(uintptr_t container_addr, State initial_state,
-                           remote_vector_vtable vtable) noexcept {
-
-  struct vector_context_state {
-    uintptr_t container_addr;
-    State user_state;
-    remote_vector_vtable vtable;
-  };
-
-  return make_container_context(
-      vector_context_state{container_addr, initial_state, vtable},
-      [](vector_context_state &ctx, const container_options &opts,
-         address_space_ref space, span<std::byte> scratch,
-         const sink &out) noexcept {
-        size_t size = 0;
-        if (ctx.vtable.get_size &&
-            !ctx.vtable.get_size(&ctx.user_state, space, scratch, size)) {
-          out.write(opts.open_bracket);
-          out.write(opts.close_bracket);
-          return true;
-        }
-
-        out.write(opts.open_bracket);
-        size_t print_count = (size < opts.max_print) ? size : opts.max_print;
-
-        for (size_t i = 0; i < print_count; ++i) {
-          if (i > 0) {
-            out.write(opts.entry_separator);
-          }
-
-          uintptr_t elem_addr = 0;
-          if (!ctx.vtable.get_element_address ||
-              !ctx.vtable.get_element_address(&ctx.user_state, space, scratch,
-                                              i, elem_addr)) {
-            out.write("<fault>");
-            break;
-          }
-
-          if (!ctx.vtable.format_element ||
-              !ctx.vtable.format_element(&ctx.user_state, space, scratch,
-                                         elem_addr, out)) {
-            out.write("<fault>");
-            break;
-          }
-        }
-
-        if (size > opts.max_print) {
-          out.write(opts.entry_separator);
-          out.write("...");
-        }
-
-        out.write(opts.close_bracket);
-        return true;
-      });
-}
+template <typename Tag> struct remote_vector_traits;
 
 namespace detail {
 
+template <typename Tag> struct remote_vector_dispatch {
+  using traits_type = remote_vector_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  static bool format(value_ref<const context_type> context, uintptr_t container_addr,
+                     const container_options &opts, address_space_ref space,
+                     span<std::byte> scratch, const sink &out) noexcept {
+    size_t size = 0;
+    if (!traits_type::get_size(context, container_addr, space, scratch, size)) {
+      out.write(opts.open_bracket);
+      out.write(opts.close_bracket);
+      return true;
+    }
+
+    out.write(opts.open_bracket);
+    const size_t print_count = size < opts.max_print ? size : opts.max_print;
+    for (size_t index = 0; index < print_count; ++index) {
+      if (index > 0)
+        out.write(opts.entry_separator);
+
+      uintptr_t element_addr = 0;
+      if (!traits_type::get_element_address(
+              context, container_addr, space, scratch, index, element_addr) ||
+          !traits_type::format_element(context, space, scratch, element_addr,
+                                       out)) {
+        out.write("<fault>");
+        break;
+      }
+    }
+
+    if (size > opts.max_print) {
+      out.write(opts.entry_separator);
+      out.write("...");
+    }
+    out.write(opts.close_bracket);
+    return true;
+  }
+};
+
 template <typename T, typename RemotePtr, typename RemoteSize>
-struct vector_layout_traits_impl {
+struct vector_layout_tag {};
+template <typename T> struct carray_layout_tag {};
+
+template <typename T>
+bool format_remote_vector_element(address_space_ref space,
+                                  span<std::byte> scratch,
+                                  uintptr_t element_addr,
+                                  const sink &out) noexcept {
+  if constexpr (remote_object_traits<T>::is_registered) {
+    remote_object_view view(element_addr, space, type_tag<T>{}, scratch);
+    formatter<remote_object_view>().format(view, out);
+  } else {
+    scratch_allocator allocator(scratch);
+    T *value = allocator.allocate<T>();
+    if (!value || !space.read_bytes(element_addr, value, sizeof(T)))
+      return false;
+    formatter<T>().format(*value, out);
+  }
+  return true;
+}
+
+} // namespace detail
+
+template <typename Tag>
+using remote_vector =
+    basic_remote_container<Tag, detail::remote_vector_dispatch<Tag>>;
+
+template <typename Tag>
+[[nodiscard]] constexpr remote_vector<Tag>
+make_remote_vector(
+    uintptr_t container_addr,
+    typename remote_vector_traits<Tag>::context_type context) noexcept {
+  return remote_vector<Tag>(container_addr, std::move(context));
+}
+
+template <typename T, typename RemotePtr, typename RemoteSize>
+struct remote_vector_traits<
+    detail::vector_layout_tag<T, RemotePtr, RemoteSize>> {
   using pointer_query =
       decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
   using size_query = decltype(make_remote_offset_query<size_t, RemoteSize>(0));
 
-  struct layout_state {
-    uintptr_t container_addr;
+  struct context_type {
     pointer_query data;
     size_query size;
     size_query capacity;
     bool has_capacity;
   };
 
-  static constexpr inline remote_vector_vtable vtbl{
-          [](const void *state, address_space_ref space, span<std::byte>,
-             size_t &out_size) noexcept {
-            const auto *s = static_cast<const layout_state *>(state);
-            return s->size(space, s->container_addr, out_size);
-          },
-          [](const void *state, address_space_ref space, span<std::byte>,
-             size_t &out_cap) noexcept {
-            const auto *s = static_cast<const layout_state *>(state);
-            if (!s->has_capacity)
-              return false;
-            return s->capacity(space, s->container_addr, out_cap);
-          },
-          [](const void *state, address_space_ref space, span<std::byte>,
-             size_t index, uintptr_t &out_elem_addr) noexcept {
-            const auto *s = static_cast<const layout_state *>(state);
-            uintptr_t data_address = 0;
-            if (!s->data(space, s->container_addr, data_address))
-              return false;
-            out_elem_addr = data_address + (index * sizeof(T));
-            return true;
-          },
-          [](const void *, address_space_ref space, span<std::byte> scratch,
-             uintptr_t elem_addr, const sink &out) noexcept {
-            if constexpr (remote_object_traits<T>::is_registered) {
-              remote_object_view obj_view(elem_addr, space, type_tag<T>{},
-                                          scratch);
-              formatter<remote_object_view> fmt;
-              fmt.format(obj_view, out);
-            } else {
-              scratch_allocator allocator(scratch);
-              T *val_ptr = allocator.allocate<T>();
-              if (!val_ptr)
-                return false;
-              if (!space.read_bytes(elem_addr, val_ptr, sizeof(T)))
-                return false;
-              formatter<T> fmt;
-              fmt.format(*val_ptr, out);
-            }
-            return true;
-          }};
+  static bool get_size(value_ref<const context_type> context,
+                       uintptr_t container_addr, address_space_ref space,
+                       span<std::byte>, size_t &out_size) noexcept {
+    return context->size(space, container_addr, out_size);
+  }
+
+  static bool get_capacity(value_ref<const context_type> context,
+                           uintptr_t container_addr,
+                           address_space_ref space, span<std::byte>,
+                           size_t &out_capacity) noexcept {
+    return context->has_capacity &&
+           context->capacity(space, container_addr, out_capacity);
+  }
+
+  static bool get_element_address(value_ref<const context_type> context,
+                                  uintptr_t container_addr,
+                                  address_space_ref space, span<std::byte>,
+                                  size_t index,
+                                  uintptr_t &out_element_addr) noexcept {
+    uintptr_t data_address = 0;
+    if (!context->data(space, container_addr, data_address))
+      return false;
+    out_element_addr = data_address + index * sizeof(T);
+    return true;
+  }
+
+  static bool format_element(value_ref<const context_type>, address_space_ref space,
+                             span<std::byte> scratch,
+                             uintptr_t element_addr,
+                             const sink &out) noexcept {
+    return detail::format_remote_vector_element<T>(space, scratch,
+                                                   element_addr, out);
+  }
 };
 
-// Implementation helper for C-style array layouts
-template <typename T> struct carray_layout_traits_impl {
-  struct carray_state {
-    uintptr_t array_addr;
+template <typename T>
+struct remote_vector_traits<detail::carray_layout_tag<T>> {
+  struct context_type {
     size_t count;
   };
 
-  static constexpr remote_vector_vtable vtbl{
-          [](const void *state, address_space_ref, span<std::byte>,
-             size_t &out_size) noexcept {
-            const auto *s = static_cast<const carray_state *>(state);
-            out_size = s->count;
-            return true;
-          },
-          [](const void *state, address_space_ref, span<std::byte>,
-             size_t &out_cap) noexcept {
-            const auto *s = static_cast<const carray_state *>(state);
-            out_cap = s->count;
-            return true;
-          },
-          [](const void *state, address_space_ref, span<std::byte>,
-             size_t index, uintptr_t &out_elem_addr) noexcept {
-            const auto *s = static_cast<const carray_state *>(state);
-            if (index >= s->count)
-              return false;
-            out_elem_addr = s->array_addr + (index * sizeof(T));
-            return true;
-          },
-          [](const void *, address_space_ref space, span<std::byte> scratch,
-             uintptr_t elem_addr, const sink &out) noexcept {
-            if constexpr (remote_object_traits<T>::is_registered) {
-              remote_object_view obj_view(elem_addr, space, type_tag<T>{},
-                                          scratch);
-              formatter<remote_object_view> fmt;
-              fmt.format(obj_view, out);
-            } else {
-              scratch_allocator allocator(scratch);
-              T *val_ptr = allocator.allocate<T>();
-              if (!val_ptr)
-                return false;
-              if (!space.read_bytes(elem_addr, val_ptr, sizeof(T)))
-                return false;
-              formatter<T> fmt;
-              fmt.format(*val_ptr, out);
-            }
-            return true;
-          }};
-};
+  static bool get_size(value_ref<const context_type> context, uintptr_t,
+                       address_space_ref, span<std::byte>,
+                       size_t &out_size) noexcept {
+    out_size = context->count;
+    return true;
+  }
 
-} // namespace detail
+  static bool get_element_address(value_ref<const context_type> context,
+                                  uintptr_t container_addr,
+                                  address_space_ref, span<std::byte>,
+                                  size_t index,
+                                  uintptr_t &out_element_addr) noexcept {
+    if (index >= context->count)
+      return false;
+    out_element_addr = container_addr + index * sizeof(T);
+    return true;
+  }
+
+  static bool format_element(value_ref<const context_type>, address_space_ref space,
+                             span<std::byte> scratch,
+                             uintptr_t element_addr,
+                             const sink &out) noexcept {
+    return detail::format_remote_vector_element<T>(space, scratch,
+                                                   element_addr, out);
+  }
+};
 
 /**
- * @brief Generates contexts for conventional vector and C-array layouts.
+ * @brief Creates a vector inspector for a conventional offset layout.
  */
-struct remote_vector_traits {
-  /**
-   * @brief Generates a layout for a contiguous dynamic sequence.
-   * @tparam T Element type.
-   * @tparam RemotePtr Pointer representation in the target process.
-   * @tparam RemoteSize Size representation in the target process.
-   * @param data_offset Offset to the first-element pointer.
-   * @param size_offset Offset to the element count.
-   * @param capacity_offset Offset to the capacity, or `-1` when unavailable.
-   * @return A callable that binds a remote container address to this layout.
-   */
-  template <typename T, typename RemotePtr = uintptr_t,
-            typename RemoteSize = size_t>
-  [[nodiscard]] static constexpr auto
-  vector_layout(ptrdiff_t data_offset, ptrdiff_t size_offset,
-                ptrdiff_t capacity_offset = -1) noexcept {
+template <typename T, typename RemotePtr = uintptr_t,
+          typename RemoteSize = size_t>
+[[nodiscard]] constexpr auto
+make_remote_vector(uintptr_t container_addr, ptrdiff_t data_offset,
+                   ptrdiff_t size_offset,
+                   ptrdiff_t capacity_offset = -1) noexcept {
+  using tag = detail::vector_layout_tag<T, RemotePtr, RemoteSize>;
+  using traits = remote_vector_traits<tag>;
+  typename traits::context_type context{
+      make_remote_offset_query<uintptr_t, RemotePtr>(data_offset),
+      make_remote_offset_query<size_t, RemoteSize>(size_offset),
+      make_remote_offset_query<size_t, RemoteSize>(capacity_offset),
+      capacity_offset >= 0};
+  return remote_vector<tag>(container_addr, std::move(context));
+}
 
-    using impl = detail::vector_layout_traits_impl<T, RemotePtr, RemoteSize>;
-
-    return [=](uintptr_t container_addr) {
-      typename impl::layout_state state{
-          container_addr,
-          make_remote_offset_query<uintptr_t, RemotePtr>(data_offset),
-          make_remote_offset_query<size_t, RemoteSize>(size_offset),
-          make_remote_offset_query<size_t, RemoteSize>(capacity_offset),
-          capacity_offset >= 0};
-      return make_remote_vector_context(container_addr, state, impl::vtbl);
-    };
-  }
-
-  /**
-   * @brief Generates a layout for a fixed-size remote C array.
-   * @tparam T Element type.
-   * @param fixed_size Number of elements in the array.
-   * @return A callable that binds a remote array address to this layout.
-   */
-  template <typename T>
-  [[nodiscard]] static constexpr auto
-  carray_layout(size_t fixed_size) noexcept {
-    using impl = detail::carray_layout_traits_impl<T>;
-
-    return [=](uintptr_t array_addr) {
-      typename impl::carray_state state{array_addr, fixed_size};
-      return make_remote_vector_context(array_addr, state, impl::vtbl);
-    };
-  }
-};
+/**
+ * @brief Creates a vector inspector for a fixed-size remote C array.
+ */
+template <typename T>
+[[nodiscard]] constexpr auto make_remote_carray(uintptr_t array_addr,
+                                                 size_t count) noexcept {
+  using tag = detail::carray_layout_tag<T>;
+  return remote_vector<tag>(
+      array_addr, typename remote_vector_traits<tag>::context_type{count});
+}
 
 } // namespace microfmt

@@ -34,6 +34,31 @@ struct arch_register_state {
   uint64_t pc{0};
 };
 
+struct page_fault_matcher_tag {};
+
+struct page_fault_matcher_context {
+  uintptr_t trap_frame;
+  uintptr_t user_fp;
+  arch_register_state *registers;
+};
+
+template <>
+struct microfmt::exception_matcher_traits<page_fault_matcher_tag> {
+  using context_type = page_fault_matcher_context;
+
+  static bool match_trap_frame(
+      microfmt::value_ref<const context_type> context, uintptr_t, uintptr_t pc,
+      uintptr_t &out_addr) noexcept {
+    if (pc < 0xffff'8000'0010'0200ULL ||
+        pc >= 0xffff'8000'0010'0300ULL)
+      return false;
+    out_addr = context->trap_frame;
+    context->registers->fp = context->user_fp;
+    context->registers->pc = 0x0000'0000'0040'1044ULL;
+    return true;
+  }
+};
+
 bool read_arch_register(const void *ctx, microfmt::address_space_ref, uint32_t dwarf_reg, void *out_value,
                         size_t value_size) noexcept {
   if (!ctx || !out_value || value_size != sizeof(uint64_t))
@@ -315,16 +340,11 @@ int main() {
 
   // Matcher: Detects if PC is in 'asm_exc_page_fault', pointing to the saved
   // pt_regs
-  auto matcher_fn = [&](uintptr_t /*fp*/, uintptr_t pc, uintptr_t &out_addr) noexcept -> bool {
-    if (pc >= 0xffff'8000'0010'0200ULL && pc < 0xffff'8000'0010'0300ULL) {
-      out_addr = reinterpret_cast<uintptr_t>(pt_regs);
-      register_state.fp = reinterpret_cast<uintptr_t>(user_f0);
-      register_state.pc = 0x0000'0000'0040'1044ULL;
-      return true;
-    }
-    return false;
-  };
-  microfmt::exception_matcher_ref matcher(matcher_fn);
+  microfmt::exception_matcher<page_fault_matcher_tag> matcher_owner(
+      page_fault_matcher_context{reinterpret_cast<uintptr_t>(pt_regs),
+                                 reinterpret_cast<uintptr_t>(user_f0),
+                                 &register_state});
+  auto matcher = matcher_owner.ref();
 
   // Initialize Hybrid Unwinder
   uintptr_t initial_fp = reinterpret_cast<uintptr_t>(k_f0);
@@ -332,8 +352,10 @@ int main() {
 
   register_state = {initial_fp, initial_pc};
   std::byte register_scratch[sizeof(uint64_t)]{};
-  microfmt::register_context_ref register_context(&register_state, {&read_arch_register, &write_arch_register}, space,
-                                                  register_scratch);
+  auto register_context =
+      microfmt::make_register_context_ref<read_arch_register,
+                                          write_arch_register>(
+          register_state, space, register_scratch);
 
   microfmt::hybrid_stack_unwinder unwinder(fp_unwinder, trap_decoder, matcher, register_context, initial_fp,
                                            initial_pc);
