@@ -925,8 +925,9 @@ template <> struct formatter<bool> {
 };
 
 // Raw Pointers
-template <typename T>
-struct formatter<T *, std::enable_if_t<!std::is_same_v<T, const char> && !std::is_same_v<T, char>>> {
+namespace detail {
+
+struct raw_ptr_format {
   int width{0};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
@@ -940,10 +941,18 @@ struct formatter<T *, std::enable_if_t<!std::is_same_v<T, const char> && !std::i
     }
   }
 
-  void format(T *ptr, const sink &out) const noexcept {
+  void do_format(const void *ptr, const sink &out) const noexcept {
     out.write("0x");
     detail::format_unsigned(out, reinterpret_cast<uintptr_t>(ptr), 16, false, width);
   }
+};
+
+} // namespace detail
+
+template <typename T>
+struct formatter<T *, std::enable_if_t<!std::is_same_v<T, const char> && !std::is_same_v<T, char>>>
+    : detail::raw_ptr_format {
+  void format(T *ptr, const sink &out) const noexcept { do_format(ptr, out); }
 };
 
 template <> struct formatter<std::nullptr_t> {
