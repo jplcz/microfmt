@@ -24,6 +24,7 @@ Start with the guide that matches what you are building:
 | Guide | Covers |
 |---|---|
 | [Using jplcz_microfmt](docs/usage.md) | Installation, core formatting, sinks, compile-time strings, custom formatters, and logging |
+| [Package-manager integration](docs/package-managers.md) | Conan 2, vcpkg overlays, CPM.cmake, and CMake-based dependency managers |
 | [Hardened containers](docs/hardened-containers.md) | Checked views and results, non-trapping access, assertion handling, and explicit security opt-out |
 | [Formatter guide](docs/formatters.md) | Binary and diagnostic values, ranges, time, units, protocols, structured output, and presentation |
 | [Inspector framework](docs/inspector.md) | Remote memory, objects, containers, symbols, registers, and stack unwinding |
@@ -200,6 +201,9 @@ See the [inspector framework guide](docs/inspector.md) for transports, remote
 layouts, symbolization, architecture support, and unwinding.
 
 ## Add jplcz_microfmt
+
+Native Conan 2, vcpkg, and CPM.cmake integration is documented in the
+[package-manager guide](docs/package-managers.md).
 
 ### FetchContent or `add_subdirectory`
 

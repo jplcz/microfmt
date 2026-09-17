@@ -14,6 +14,10 @@ dependencies.
 
 ## Add the library
 
+For Conan 2, vcpkg, CPM.cmake, and other CMake-based dependency managers, see
+the dedicated [package-manager integration guide](package-managers.md). Every
+supported path provides the same `jplcz_microfmt::microfmt` CMake target.
+
 ### FetchContent and `add_subdirectory`
 
 With CMake, use the interface target:
