@@ -328,6 +328,19 @@ TEST(CoreFormat, ArgumentMismatchSafety) {
   EXPECT_EQ(microfmt::format<32>("", 10, 20).view(), "");
 }
 
+TEST(CoreFormat, NumericPositionalArguments) {
+  EXPECT_EQ(microfmt::format<64>("{2} {0} {1:04x} {2}", "first", 0x2A, "last").view(),
+            "last first 002a last");
+  EXPECT_EQ(microfmt::format<32>("{1} {}", "first", "second").view(), "second first");
+  EXPECT_EQ(microfmt::format<32>("{3}", "first", "second").view(), "{MISSING}");
+}
+
+TEST(CoreFormat, CompileTimeNumericPositionalArguments) {
+  EXPECT_EQ(microfmt::format<64>(MICROFMT_STRING("{2} {0} {1:04x} {2}"), "first", 0x2A, "last").view(),
+            "last first 002a last");
+  EXPECT_EQ(microfmt::format<32>(MICROFMT_STRING("{1} {}"), "first", "second").view(), "second first");
+}
+
 // ============================================================================
 // Custom Type Specialization via formatter<T>
 // ============================================================================

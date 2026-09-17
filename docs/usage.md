@@ -159,11 +159,21 @@ microfmt::string_view format_from_configuration = "id={}";
 microfmt::format_to(output.as_sink(), format_from_configuration, id);
 ```
 
-Core replacement fields are positional by consumption order. Use `{}` for the
-default representation, `{:x}` or `{:X}` for hexadecimal integers, and
-`{:04x}` for a zero-padded hexadecimal width. Literal braces are written as
-`{{` and `}}`. Individual formatter headers may define additional specifiers;
-the API reference lists them.
+Core replacement fields consume arguments in order by default. Numeric
+positions can select or reuse zero-based arguments explicitly:
+
+```cpp
+microfmt::format_to(output.as_sink(), "{1} then {0}", first, second);
+microfmt::format_to(output.as_sink(), "{1:08x} {0}", name, value);
+```
+
+Use `{}` for the default representation, `{:x}` or `{:X}` for hexadecimal
+integers, and `{:04x}` for a zero-padded hexadecimal width. Positional fields
+use the same specifiers after `:`, as in `{2:04x}`. Automatic and numeric
+fields may coexist; numeric fields do not advance the automatic argument
+index. Literal braces are written as `{{` and `}}`. Named arguments and
+dynamic width or precision are not supported. Individual formatter headers
+may define additional specifiers; the API reference lists them.
 
 ## Add formatters and views
 

@@ -1000,6 +1000,30 @@ template <> struct format_type_table<> {
   static inline constexpr span<const format_fn_t> dynamic_span{};
 };
 
+constexpr bool parse_positional_index(microfmt::string_view text, size_t &index) noexcept {
+  if (text.empty()) {
+    return false;
+  }
+
+  constexpr size_t max_size = static_cast<size_t>(-1);
+  size_t value = 0;
+  for (const char c : text) {
+    if (c < '0' || c > '9') {
+      return false;
+    }
+
+    const size_t digit = static_cast<size_t>(c - '0');
+    if (value > (max_size - digit) / 10) {
+      value = max_size;
+    } else {
+      value = value * 10 + digit;
+    }
+  }
+
+  index = value;
+  return true;
+}
+
 // Represents a pre-parsed action in the format string
 struct compiled_piece {
   microfmt::string_view literal{}; // Static literal text to emit directly
@@ -1040,9 +1064,15 @@ constexpr compiled_format<MaxPieces> compile_format_string(microfmt::string_view
 
       const microfmt::string_view replacement = str.substr(i + 1, end - (i + 1));
       const size_t colon_pos = replacement.find(':');
+      const microfmt::string_view index =
+          colon_pos == microfmt::string_view::npos ? replacement : replacement.substr(0, colon_pos);
       const microfmt::string_view spec =
           colon_pos == microfmt::string_view::npos ? microfmt::string_view{} : replacement.substr(colon_pos + 1);
-      result.pieces[result.count++] = compiled_piece{{}, spec, arg_idx++, true};
+      size_t piece_arg_index = arg_idx;
+      if (!parse_positional_index(index, piece_arg_index)) {
+        ++arg_idx;
+      }
+      result.pieces[result.count++] = compiled_piece{{}, spec, piece_arg_index, true};
 
       i = end;
       lit_start = i + 1;
@@ -1125,24 +1155,31 @@ inline void vformat_to(const sink &out, microfmt::string_view fmt, span<const vo
         continue;
       }
 
-      microfmt::string_view spec{};
       size_t close_pos = i + 1;
 
       while (close_pos < fmt.size() && fmt[close_pos] != '}') {
-        if (fmt[close_pos] == ':') {
-          spec = fmt.substr(close_pos + 1, fmt.find('}', close_pos) - (close_pos + 1));
-        }
         ++close_pos;
       }
 
       if (close_pos < fmt.size() && fmt[close_pos] == '}') {
-        if (arg_idx < arg_ptrs.size() && arg_idx < arg_fns.size()) {
-          const void *ptr = arg_ptrs[arg_idx];
-          const format_fn_t fn = arg_fns[arg_idx];
+        const microfmt::string_view replacement = fmt.substr(i + 1, close_pos - (i + 1));
+        const size_t colon_pos = replacement.find(':');
+        const microfmt::string_view index =
+            colon_pos == microfmt::string_view::npos ? replacement : replacement.substr(0, colon_pos);
+        const microfmt::string_view spec =
+            colon_pos == microfmt::string_view::npos ? microfmt::string_view{} : replacement.substr(colon_pos + 1);
+
+        size_t selected_arg = arg_idx;
+        if (!detail::parse_positional_index(index, selected_arg)) {
+          ++arg_idx;
+        }
+
+        if (selected_arg < arg_ptrs.size() && selected_arg < arg_fns.size()) {
+          const void *ptr = arg_ptrs[selected_arg];
+          const format_fn_t fn = arg_fns[selected_arg];
           if (fn && ptr) {
             fn(ptr, spec, out);
           }
-          ++arg_idx;
         } else {
           out.write("{MISSING}");
         }
