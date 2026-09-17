@@ -258,13 +258,14 @@ struct register_member_field {
  *
  * @tparam State Bound register structure.
  * @tparam Value Selected register value type.
- * @tparam ReadSelector Function returning a pointer into a const state.
- * @tparam WriteSelector Function returning a pointer into mutable state, or
- * `nullptr` for a read-only mapping.
+ * @tparam Selector Stateless function object returning a pointer into the
+ * state. A templated call operator can preserve the state's constness without
+ * separate const and mutable selector overloads. Returning only
+ * `const value_type *` makes the field read-only.
  * @tparam Registers Register indexes handled by the selectors.
  */
-template <typename State, typename Value, auto ReadSelector,
-          auto WriteSelector, uint32_t... Registers>
+template <typename State, typename Value, typename Selector,
+          uint32_t... Registers>
 struct register_selected_field {
   using state_type = State;
   using value_type = Value;
@@ -273,15 +274,12 @@ struct register_selected_field {
                 "a selected register field must bind at least one register");
   static_assert(std::is_trivially_copyable<value_type>::value,
                 "register fields must be trivially copyable");
+  static_assert(std::is_nothrow_default_constructible<Selector>::value,
+                "selector must be nothrow default constructible");
   static_assert(
-      std::is_nothrow_invocable_r<const value_type *, decltype(ReadSelector),
+      std::is_nothrow_invocable_r<const value_type *, Selector,
                                   const state_type &, uint32_t>::value,
-      "read selector must be noexcept and return const value_type *");
-  static_assert(
-      WriteSelector == nullptr ||
-          std::is_nothrow_invocable_r<value_type *, decltype(WriteSelector),
-                                      state_type &, uint32_t>::value,
-      "write selector must be nullptr or noexcept and return value_type *");
+      "selector must be noexcept and return a value_type pointer");
 
   [[nodiscard]] static constexpr bool matches(uint32_t index) noexcept {
     return ((index == Registers) || ...);
@@ -289,14 +287,13 @@ struct register_selected_field {
 
   [[nodiscard]] static constexpr const value_type *
   get(const state_type &state, uint32_t index) noexcept {
-    return ReadSelector(state, index);
+    return Selector{}(state, index);
   }
 
-  template <auto Selector = WriteSelector,
-            typename std::enable_if<Selector != nullptr, int>::type = 0>
-  [[nodiscard]] static constexpr value_type *
-  get(state_type &state, uint32_t index) noexcept {
-    return Selector(state, index);
+  [[nodiscard]] static constexpr auto get(state_type &state,
+                                          uint32_t index) noexcept
+      -> decltype(Selector{}(state, index)) {
+    return Selector{}(state, index);
   }
 };
 

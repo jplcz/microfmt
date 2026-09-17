@@ -62,24 +62,18 @@ struct arm_registers {
   uint32_t r11;
 };
 
-const uint32_t *select_arm_frame_pointer(const arm_registers &state,
-                                         uint32_t) noexcept {
-  constexpr uint32_t thumb_bit = UINT32_C(1) << 5;
-  return (state.cpsr & thumb_bit) != 0 ? &state.r7 : &state.r11;
-}
-
-uint32_t *select_arm_frame_pointer(arm_registers &state, uint32_t) noexcept {
-  constexpr uint32_t thumb_bit = UINT32_C(1) << 5;
-  return (state.cpsr & thumb_bit) != 0 ? &state.r7 : &state.r11;
-}
+struct select_arm_frame_pointer {
+  template <typename Registers>
+  [[nodiscard]] constexpr auto operator()(Registers &state,
+                                          uint32_t) const noexcept
+      -> decltype(&state.r7) {
+    constexpr uint32_t thumb_bit = UINT32_C(1) << 5;
+    return (state.cpsr & thumb_bit) != 0 ? &state.r7 : &state.r11;
+  }
+};
 
 using arm_frame_pointer_field = microfmt::register_selected_field<
-    arm_registers, uint32_t,
-    static_cast<const uint32_t *(*)(const arm_registers &, uint32_t) noexcept>(
-        select_arm_frame_pointer),
-    static_cast<uint32_t *(*)(arm_registers &, uint32_t) noexcept>(
-        select_arm_frame_pointer),
-    reg_frame_pointer>;
+    arm_registers, uint32_t, select_arm_frame_pointer, reg_frame_pointer>;
 
 struct hardware_registers {
   uint32_t status;

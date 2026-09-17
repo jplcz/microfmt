@@ -94,28 +94,25 @@ struct arm_saved_registers {
   uint32_t r11;
 };
 
-const uint32_t *select_fp(const arm_saved_registers &state,
-                          uint32_t) noexcept {
-  return (state.cpsr & (1U << 5)) != 0 ? &state.r7 : &state.r11;
-}
-
-uint32_t *select_fp(arm_saved_registers &state, uint32_t) noexcept {
-  return (state.cpsr & (1U << 5)) != 0 ? &state.r7 : &state.r11;
-}
+struct select_fp {
+  template <typename Registers>
+  constexpr auto operator()(Registers &state, uint32_t) const noexcept
+      -> decltype(&state.r7) {
+    return (state.cpsr & (1U << 5)) != 0 ? &state.r7 : &state.r11;
+  }
+};
 
 using fp_field = microfmt::register_selected_field<
-    arm_saved_registers, uint32_t,
-    static_cast<const uint32_t *(*)(
-        const arm_saved_registers &, uint32_t) noexcept>(select_fp),
-    static_cast<uint32_t *(*)(
-        arm_saved_registers &, uint32_t) noexcept>(select_fp),
+    arm_saved_registers, uint32_t, select_fp,
     microfmt::dwarf::arm32::fp>;
 ```
 
-Pass `nullptr` as the write selector for a read-only selected field. A fully
-custom trait can implement the same `state_type`, `value_type`,
-`matches(index)`, and `get(state, index)` surface to select nested arrays such
-as `other.child[index]`. Constructing the wrapper from a `const State` also
+The selector's templated call operator returns `uint32_t *` for mutable state
+and `const uint32_t *` for const state. To make a selected field read-only,
+return `const value_type *` for both invocations. A fully custom trait can
+implement the same `state_type`, `value_type`, `matches(index)`, and
+`get(state, index)` surface to select nested arrays such as
+`other.child[index]`. Constructing the wrapper from a `const State` also
 disables all mapped writes. Register reads and writes require the requested
 byte width to exactly match the selected field type.
 
