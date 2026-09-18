@@ -83,6 +83,12 @@ add_jplcz_microfmt_example(remote_hash_table_demo remote_hash_table_demo.cpp)
 add_jplcz_microfmt_example(remote_binary_tree_demo remote_binary_tree_demo.cpp)
 add_jplcz_microfmt_example(remote_smart_ptr_demo remote_smart_ptr_demo.cpp)
 
+if(UNIX)
+  add_jplcz_microfmt_example(fallible_address_space_demo fallible_address_space_demo.cpp)
+else()
+  message(STATUS "jplcz_microfmt: POSIX signals not available - skipping fallible_address_space demo")
+endif()
+
 if(JPLCZ_MICROFMT_HAS_SYSLOG)
   add_jplcz_microfmt_example(syslog_demo syslog_demo.cpp)
 else()
