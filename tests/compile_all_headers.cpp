@@ -85,6 +85,7 @@
 #include <microfmt/inspector/variable_context.hpp>
 #include <microfmt/inspector/vm_code_gen.hpp>
 #include <microfmt/inspector/vm_label_allocator.hpp>
+#include <microfmt/inspector/vm_lexer.hpp>
 #include <microfmt/markdown.hpp>
 #include <microfmt/microfmt.hpp>
 #include <microfmt/rvalue_safety.hpp>
