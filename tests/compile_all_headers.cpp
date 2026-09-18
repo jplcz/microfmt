@@ -46,6 +46,10 @@
 #include <microfmt/inspector/address_translator.hpp>
 #include <microfmt/inspector/advanced_scanners.hpp>
 #include <microfmt/inspector/concrete_metadata_map.hpp>
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) ||                     \
+    defined(__DragonFly__)
+#include <microfmt/inspector/dl_elf_enumerator.hpp>
+#endif
 #include <microfmt/inspector/gdb_decoders.hpp>
 #include <microfmt/inspector/gdb_encoders.hpp>
 #include <microfmt/inspector/gdb_packet_metadata.hpp>

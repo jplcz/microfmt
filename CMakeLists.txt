@@ -642,6 +642,24 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
     gtest_discover_tests(jplcz_microfmt_cxx17_remote_memory_diff_tests
         TEST_PREFIX "Cxx17RemoteMemoryDiff.")
 
+    # microfmt/inspector/dl_elf_enumerator.hpp is dlfcn.h/dl_iterate_phdr
+    # based and only supports Linux and BSD systems (see the #error guard at
+    # the top of the header).
+    if(UNIX AND NOT APPLE)
+        add_executable(jplcz_microfmt_cxx17_dl_elf_enumerator_tests
+            tests/test_dl_elf_enumerator.cpp)
+        target_link_libraries(jplcz_microfmt_cxx17_dl_elf_enumerator_tests PRIVATE
+            jplcz_microfmt GTest::gtest_main ${CMAKE_DL_LIBS})
+        jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_dl_elf_enumerator_tests)
+        set_target_properties(jplcz_microfmt_cxx17_dl_elf_enumerator_tests PROPERTIES
+            CXX_STANDARD 17
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS OFF
+        )
+        gtest_discover_tests(jplcz_microfmt_cxx17_dl_elf_enumerator_tests
+            TEST_PREFIX "Cxx17DlElfEnumerator.")
+    endif()
+
     if(JPLCZ_MICROFMT_COMPILER_SUPPORTS_CXX23)
         add_executable(jplcz_microfmt_cxx23_tests tests/test_monad.cpp)
         target_link_libraries(jplcz_microfmt_cxx23_tests PRIVATE

@@ -22,6 +22,38 @@ context by value and exposes `ref()`; direct references can instead borrow a
 caller-owned context. A backend can represent a process loader list, dump
 modules, or a fixed firmware image table.
 
+### `dl_elf_enumerator.hpp`: a ready-made `dladdr`/`dl_iterate_phdr` backend
+
+`dl_elf_enumerator.hpp` provides a ready-to-use `elf_image_enumerator_traits`
+specialization for Linux and BSD systems (guarded by an `#error` on other
+OSes), backed by POSIX `dladdr()` and the glibc/BSD `dl_iterate_phdr()`
+extension:
+
+```cpp
+#include <microfmt/inspector/dl_elf_enumerator.hpp>
+
+microfmt::elf_image_enumerator<microfmt::dl_elf_enumerator_tag> enumerator(
+    microfmt::dl_elf_enumerator_context{});
+auto ref = enumerator.ref();
+
+microfmt::elf_image_info info{};
+if (ref.find_by_pc(program_counter, info)) {
+  // info.image_name, info.load_base, info.image_size are populated.
+}
+```
+
+`find_by_pc` resolves the owning image via `dladdr()` and cross-references
+`dl_iterate_phdr()` to fill in `load_base`/`image_size` from the image's
+`PT_LOAD` segments; `enumerate` walks every loaded image via
+`dl_iterate_phdr()` directly. `dl_elf_enumerator_context` is stateless: both
+operations query the dynamic linker directly and require no registration
+step. `image_name` points to storage owned by the dynamic linker and remains
+valid for as long as the corresponding image stays loaded. Because neither
+API exposes ELF section headers, `exidx_start`/`exidx_end` and
+`debug_frame_start`/`debug_frame_end` are always left at `0`; pair this
+backend with a section-header parser if EXIDX/`.debug_frame` bounds are
+needed.
+
 ## Resolve and render symbols
 
 `symbol_resolver_ref` dispatches address lookup to a
