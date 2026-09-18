@@ -247,6 +247,114 @@ contract described above; see
 back the VM with a real hardware register file or a remote/foreign address
 space instead of `local_space_tag`.
 
+## Compiling scripts with `vm_compiler`
+
+`vm_lexer.hpp` and `vm_compiler.hpp` add a small, C-like **compiled scripting
+language** on top of the raw bytecode described above. It lowers directly to
+`instruction`s through `vm_code_generator`, using a hand-written
+recursive-descent parser with no allocation, exceptions, or RTTI, so it can be
+compiled in the same constrained contexts the VM itself targets (a signal
+handler compiling a script once at startup, an offline tool preparing scripts
+for an embedded target, and so on).
+
+```
+source text
+  -> vm_lexer          (tokenizes into token_type/token, tracks line/column)
+  -> vm_compiler        (recursive-descent parser)
+  -> vm_code_generator   (emits `instruction`s into a caller-owned buffer)
+  -> label_allocator     (resolves forward/backward jump targets)
+  -> variable_context    (maps `let`-declared names to work_ram offsets)
+```
+
+### Syntax
+
+Statements are terminated by `;` or grouped in `{ ... }` blocks:
+
+| Statement | Effect |
+|---|---|
+| `let name = expr;` | Declares a variable, backed by an 8-byte `work_ram` slot allocated by `variable_context::get_or_allocate`. |
+| `name = expr;` | Reassigns an existing variable, or a target register if `name` resolves through `target_arch_traits::lookup_register` (for example `rax = expr;`). |
+| `while (cond) { ... }` | Loop, compiled to `branch_zero`/`jump` around two labels obtained from `label_allocator`. |
+| `print_int(expr);` / `print_hex(expr);` | Statement-level printing (`gen_.print_int()`/`gen_.print_hex()`). |
+| `halt;` | Emits `halt`. |
+
+Expressions use standard C-style precedence, lowest to highest:
+
+```
+comparisons (< > <= >= == !=)
+  -> | (bitwise or)
+  -> ^ (bitwise xor)
+  -> & (bitwise and)
+  -> << >> (shifts)
+  -> + - (additive)
+  -> * / % (multiplicative)
+  -> operand
+```
+
+An operand is one of:
+
+* an integer literal, decimal or `0x`-prefixed hexadecimal;
+* a parenthesized sub-expression `( expr )`;
+* a **register name** resolved through `target_arch_traits` (loads via
+  `gen_.load_reg(dwarf_index)`, stores via `gen_.store_reg(dwarf_index)`);
+* a **variable name** (work-RAM backed, auto-allocated on first use, loaded
+  via `gen_.push(offset); gen_.work_ram_read_u64();`);
+* a fault-safe memory read pseudo-function call,
+  `read_u8(addr)`/`read_u16(addr)`/`read_u32(addr)`/`read_u64(addr)`.
+
+### Example
+
+```c
+let i = 0;
+while (i < 3) {
+  print_int(i);
+  i = i + 1;
+}
+
+let tcb_ptr = rax;
+let target_addr = tcb_ptr + 16;
+let raw_flags = read_u64(target_addr);
+print_hex(raw_flags & 0xFF00);
+halt;
+```
+
+### Compiling and running
+
+```cpp
+instruction code[1024];
+vm_code_generator gen(code);
+
+variable_symbol symbols[8]{};
+variable_context vars(symbols);
+
+label_allocator::label_info label_infos[64];
+label_allocator::patch_site patch_sites[64];
+label_allocator labels(label_infos, patch_sites);
+
+const auto arch = target_arch_traits::create<microfmt::gdb::tags::x86_64>();
+const auto result = vm_compiler::compile(script, gen, vars, arch, labels, error_sink);
+if (!result.success) {
+  // A `[COMPILER ERROR] Line L, Col C: ...` message was already written to error_sink.
+  return;
+}
+
+const auto program = gen.program(); // ready for memory_vm_executor::execute
+```
+
+`target_arch_traits::create<ArchTag>()` binds register-name lookup to a
+`gdb::register_traits<ArchTag>` specialization (see
+[GDB Remote Serial Protocol](gdb-protocol.md) and
+[Architectures and registers](architectures-and-registers.md)), so the same
+script source can target different architectures by swapping the `ArchTag`.
+
+`vm_compiler::compile` always appends a trailing `halt` and resolves every
+recorded jump patch before returning success; a `false` result means either a
+syntax/semantic error (already reported to `error_sink` with a line/column
+prefix), a `vm_code_generator` buffer overflow, or an unresolved/overflowed
+label table. See `examples/vm_compiler_demo.cpp` for a full compile-dump-execute
+walkthrough, including a register-aware script and an opcode disassembly
+dump.
+
 ## Safety notes
 
 * Every memory- and register-facing opcode goes through the caller-supplied

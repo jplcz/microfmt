@@ -264,26 +264,32 @@ public:
   /**
    * @brief Returns a subspan containing the successfully generated program.
    */
-  [[nodiscard]] constexpr span<const instruction> program() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr span<instruction> program() const & noexcept MICROFMT_LIFETIMEBOUND {
     // Construct the const-qualified span directly (rather than implicitly
     // converting a `subspan()` result) to avoid a false-positive
     // `-Wreturn-stack-address`: the converting constructor's lifetimebound
     // parameter otherwise ties the result to the `subspan()` temporary
     // itself, even though only its (non-owning) pointer/size are copied.
-    return span<const instruction>(buffer_.data(), index_);
+    return span<instruction>(buffer_.data(), index_);
   }
 
   span<const instruction> program() const && noexcept = delete;
 
+  [[nodiscard]] constexpr bool has_overflowed() const noexcept { return overflowed_; }
+
 private:
-  constexpr void emit(opcode op, uint64_t operand) noexcept {
-    if (has_space()) {
-      buffer_[index_++] = instruction{op, operand};
+  constexpr bool emit(opcode op, uint64_t operand) noexcept {
+    if (index_ >= buffer_.size()) {
+      overflowed_ = true;
+      return false;
     }
+    buffer_[index_++] = instruction{op, operand};
+    return true;
   }
 
   span<instruction> buffer_;
   size_t index_;
+  bool overflowed_ = false;
 };
 
 } // namespace microfmt::inspector

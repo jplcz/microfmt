@@ -13,6 +13,7 @@
 #include <cstring>
 
 #include <microfmt/inspector/address_space.hpp>
+#include <microfmt/inspector/fallible_address_space.hpp>
 #include <microfmt/inspector/gdb_registers.hpp>
 #include <microfmt/inspector/micro_vm.hpp>
 #include <microfmt/inspector/register_context.hpp>
@@ -28,17 +29,30 @@ namespace {
 // The script compiled and executed by this demo. `let` declares a
 // work_ram-backed variable; `rax` is a real x86_64 register resolved through
 // `target_arch_traits`; `print_int` prints the top-of-stack value.
-constexpr microfmt::string_view script = "let a = 10;\n"
-                                          "let b = a + 5;\n"
-                                          "rax = b - 3;\n"
-                                          "print_int rax;\n";
+constexpr microfmt::string_view script = R"(
+  let i = 0;
+  while (i < 3) {
+    print_int(i);
+    i = i + 1;
+  }
+  
+    let tcb_ptr = rax;
+    let flags_offset = 16;
+    let target_addr = tcb_ptr + flags_offset;
+    let raw_flags = read_u64(target_addr);
+    let masked_flags = raw_flags & 0xFF00;
+    print_int(read_u64(tcb_ptr));
+    print_hex(masked_flags);
+    print_hex(cr3);
+    halt;
+  )";
 
 // A tiny register bank wide enough to cover the x86_64 DWARF indices used by
 // this demo (only `rax`, index 0, is actually touched).
 using register_bank = std::array<uint64_t, 17>;
 
 bool read_register(const register_bank *state, microfmt::address_space_ref, uint32_t index, void *dest,
-                    size_t size) noexcept {
+                   size_t size) noexcept {
   if (!state || size != sizeof(uint64_t) || index >= state->size())
     return false;
   std::memcpy(dest, &(*state)[index], sizeof(uint64_t));
@@ -46,7 +60,7 @@ bool read_register(const register_bank *state, microfmt::address_space_ref, uint
 }
 
 bool write_register(register_bank *state, microfmt::address_space_ref, uint32_t index, const void *src,
-                     size_t size) noexcept {
+                    size_t size) noexcept {
   if (!state || size != sizeof(uint64_t) || index >= state->size())
     return false;
   std::memcpy(&(*state)[index], src, sizeof(uint64_t));
@@ -174,14 +188,18 @@ int main() {
   microfmt::println(out, "=== vm_compiler script demo ===");
   microfmt::println(out, "\nScript:\n{}", script);
 
-  instruction code[32];
+  instruction code[1024];
   vm_code_generator gen(code);
+
+  microfmt::inspector::label_allocator::label_info label_infos[64];
+  microfmt::inspector::label_allocator::patch_site patch_sites[64];
 
   variable_symbol symbols[8]{};
   variable_context vars(symbols);
+  microfmt::inspector::label_allocator labels(label_infos, patch_sites);
 
   const auto arch = target_arch_traits::create<microfmt::gdb::tags::x86_64>();
-  const auto result = vm_compiler::compile(script, gen, vars, arch, microfmt::stderr_sink());
+  const auto result = vm_compiler::compile(script, gen, vars, arch, labels, microfmt::stderr_sink());
   if (!result.success) {
     microfmt::println(out, "compilation failed!");
     return 1;
@@ -195,7 +213,7 @@ int main() {
 
   register_bank regs{};
   std::byte reg_scratch[8]{};
-  auto space = microfmt::address_space_ref::make<microfmt::local_space_tag>();
+  auto space = microfmt::address_space_ref::make<microfmt::fallible_local_space_tag>();
   auto reg_ctx = microfmt::make_register_context_ref<read_register, write_register>(regs, space, reg_scratch);
 
   uint64_t stack[8]{};
