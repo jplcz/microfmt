@@ -264,7 +264,16 @@ public:
   /**
    * @brief Returns a subspan containing the successfully generated program.
    */
-  [[nodiscard]] constexpr span<const instruction> program() const noexcept { return buffer_.subspan(0, index_); }
+  [[nodiscard]] constexpr span<const instruction> program() const & noexcept MICROFMT_LIFETIMEBOUND {
+    // Construct the const-qualified span directly (rather than implicitly
+    // converting a `subspan()` result) to avoid a false-positive
+    // `-Wreturn-stack-address`: the converting constructor's lifetimebound
+    // parameter otherwise ties the result to the `subspan()` temporary
+    // itself, even though only its (non-owning) pointer/size are copied.
+    return span<const instruction>(buffer_.data(), index_);
+  }
+
+  span<const instruction> program() const && noexcept = delete;
 
 private:
   constexpr void emit(opcode op, uint64_t operand) noexcept {
