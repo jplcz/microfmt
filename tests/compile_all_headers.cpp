@@ -68,6 +68,7 @@
 #include <microfmt/inspector/gdb_registers.hpp>
 #include <microfmt/inspector/gdb_stream.hpp>
 #include <microfmt/inspector/memory_classifier.hpp>
+#include <microfmt/inspector/memory_diff.hpp>
 #include <microfmt/inspector/memory_scanner.hpp>
 #include <microfmt/inspector/memory_pattern_scanner.hpp>
 #include <microfmt/inspector/advanced_scanners.hpp>

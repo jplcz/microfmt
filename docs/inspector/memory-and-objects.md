@@ -216,6 +216,28 @@ policy and layout; it does not itself read target memory.
 
 See `examples/memory_classifier_demo.cpp` for a region-table implementation.
 
+## Diff two memory regions
+
+`memory_diff_view` renders a byte-level, row-based comparison of two
+non-owning byte spans for crash diagnostics and buffer corruption tracing.
+Build one with `mem_diff(old_span, new_span, base_address)`, which accepts
+`microfmt::span` or `std::span` arguments of any (possibly mixed) element
+type; both spans are reinterpreted as bytes.
+
+```cpp
+microfmt::span<const uint8_t> before(old_buf, size);
+microfmt::span<const uint8_t> after(new_buf, size);
+
+microfmt::format_to(out, "{}\n", microfmt::mem_diff(before, after, base_address));
+```
+
+Only `min(old_span.size(), new_span.size())` bytes are compared. Output is
+grouped into `bytes_per_row` rows (default 16, configurable on the returned
+`memory_diff_view`); runs of identical rows collapse into a single
+`[... N identical rows hidden ...]` summary line, while diverging rows print
+the absolute address followed by the old and new bytes, each rendered as
+two-digit uppercase hex. See `examples/memory_diff_demo.cpp`.
+
 ## Scan likely memory addresses
 
 `memory_scanner` combines an `address_space_ref`,
