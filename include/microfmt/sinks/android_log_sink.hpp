@@ -94,11 +94,29 @@ private:
 
     buffer_sink<MessageCapacity> buffer;
     const auto out = buffer.as_sink();
-    if (!msg.logger_name.empty()) {
-      format_to(out, MICROFMT_STRING("[{}] "), msg.logger_name);
-    }
     format_to(out, MICROFMT_STRING("{}"), msg.payload);
-    write_fn_(priority_for(msg.lvl), microfmt::string_view(tag_, tag_size_), buffer.view());
+
+    // Prefer the originating logger's name as the logcat tag so records from
+    // different loggers stay distinguishable in filters; fall back to the
+    // sink's configured default tag when the message carries none.
+    if (msg.logger_name.empty()) {
+      write_fn_(priority_for(msg.lvl), microfmt::string_view(tag_, tag_size_), buffer.view());
+      return;
+    }
+
+    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
+    char logger_tag[TagCapacity];
+    const std::size_t logger_tag_size =
+        msg.logger_name.size() < TagCapacity - 1 ? msg.logger_name.size() : TagCapacity - 1;
+    for (std::size_t i = 0; i < logger_tag_size; ++i) {
+      logger_tag[i] = msg.logger_name[i];
+    }
+    logger_tag[logger_tag_size] = '\0';
+
+    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+
+    write_fn_(priority_for(msg.lvl), microfmt::string_view(logger_tag, logger_tag_size), buffer.view());
   }
 
   write_fn_t write_fn_;

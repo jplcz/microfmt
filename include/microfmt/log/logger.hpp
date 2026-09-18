@@ -47,6 +47,23 @@ public:
 
   [[nodiscard]] bool should_log(level l) const noexcept { return l >= level_; }
 
+  /**
+   * @brief Dispatches a caller-built @ref log_msg directly to attached sinks.
+   *
+   * Bypasses this logger's own formatting step, so @p msg.payload is
+   * forwarded to sinks verbatim. Still honors the logger's configured
+   * level threshold. Useful for advanced usage such as forwarding records
+   * from another logging system or replaying a previously formatted payload.
+   */
+  void log(const log_msg &msg) noexcept {
+    if (!should_log(msg.lvl) || sink_count_ == 0) {
+      return;
+    }
+    for (size_t i = 0; i < sink_count_; ++i) {
+      sinks_[i].log(msg);
+    }
+  }
+
   template <typename... Args>
   void log(level lvl, microfmt::string_view fmt_str, const Args &...args) noexcept {
     log_impl(std::source_location::current(), lvl, fmt_str, args...);

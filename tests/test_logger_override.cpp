@@ -96,6 +96,34 @@ TEST(LoggerConfigurationTest, CompileTimeFormatStringsUseLoggerOverloads) {
   microfmt::log::set_default_logger(nullptr);
 }
 
+TEST(LoggerConfigurationTest, LogAcceptsPreBuiltLogMsgForAdvancedUsage) {
+  captured = {};
+  application_logger.set_level(microfmt::log::level::trace);
+
+  application_logger.log(microfmt::log::log_msg{
+      .logger_name = "forwarded",
+      .lvl = microfmt::log::level::warn,
+      .payload = "relayed payload",
+  });
+
+  EXPECT_EQ(captured.count, 1U);
+  EXPECT_EQ(captured.level, microfmt::log::level::warn);
+  EXPECT_EQ(
+      microfmt::string_view(captured.message.data(), captured.message_size),
+      "relayed payload");
+
+  // Still honors the logger's configured level threshold.
+  captured = {};
+  application_logger.set_level(microfmt::log::level::err);
+  application_logger.log(microfmt::log::log_msg{
+      .lvl = microfmt::log::level::info,
+      .payload = "filtered out",
+  });
+  EXPECT_EQ(captured.count, 0U);
+
+  application_logger.set_level(microfmt::log::level::trace);
+}
+
 TEST(LoggerConfigurationTest, DefaultLoggerCanBeSetOrCleared) {
   captured = {};
   microfmt::log::set_default_logger(nullptr);

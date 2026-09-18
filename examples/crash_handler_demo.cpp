@@ -98,12 +98,22 @@ void crash_handler(int sig, siginfo_t *info, void *ucontext_raw) noexcept {
 // Main: Install Handler, Then Deliberately Crash
 // ============================================================================
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+// GCC statically proves this deliberate wild-pointer dereference is
+// out-of-bounds once inlined; that is the whole point of this demo, so
+// silence the (correct) warning instead of hiding the crash.
+#pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
 int crash_intentionally(int depth, volatile int *bad_ptr) {
   if (depth > 0)
     return crash_intentionally(depth - 1, bad_ptr) + 1;
   // Dereferencing a wild pointer triggers a real SIGSEGV, caught below.
   return *bad_ptr;
 }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 int main() {
   struct sigaction sa{};

@@ -47,7 +47,7 @@ struct fault_recovery_context {
 struct fallible_space_tls_tag {};
 
 // Convenience alias for the tag-differentiated TLS state
-using fallible_tls = tls_state<fault_recovery_context, fallible_space_tls_tag>;
+using fallible_tls = tls_provider<fault_recovery_context *, fallible_space_tls_tag > ;
 
 inline void fallible_signal_handler(int sig, siginfo_t *, void *) noexcept {
   auto *ctx = fallible_tls::get();

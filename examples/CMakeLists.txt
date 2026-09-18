@@ -70,6 +70,7 @@ add_jplcz_microfmt_example(remote_memory_diff_demo remote_memory_diff_demo.cpp)
 add_jplcz_microfmt_example(memory_scanner_demo memory_scanner_demo.cpp)
 add_jplcz_microfmt_example(memory_pattern_scanner_demo memory_pattern_scanner_demo.cpp)
 add_jplcz_microfmt_example(advanced_scanners_demo advanced_scanners_demo.cpp)
+add_jplcz_microfmt_example(vm_code_gen_demo vm_code_gen_demo.cpp)
 add_jplcz_microfmt_example(resolver_demo resolver_demo.cpp)
 add_jplcz_microfmt_example(remote_diag_demo remote_diag_demo.cpp)
 add_jplcz_microfmt_example(unwinder_demo unwinder_demo.cpp)
@@ -133,6 +134,14 @@ if(Boost_FOUND)
       PROPERTIES COMPILE_OPTIONS "-Wno-null-dereference")
   endif()
   add_jplcz_microfmt_example(uuid_demo uuid_demo.cpp)
+
+  add_jplcz_microfmt_example(asio_sink_demo asio_sink_demo.cpp)
+  add_jplcz_microfmt_example(asio_coroutine_demo asio_coroutine_demo.cpp)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set_source_files_properties(
+      asio_coroutine_demo.cpp
+      PROPERTIES COMPILE_OPTIONS "-Wno-null-dereference")
+  endif()
 
   add_executable(demo_boost_describe describe_demo.cpp)
   target_link_libraries(demo_boost_describe PRIVATE jplcz_microfmt::microfmt

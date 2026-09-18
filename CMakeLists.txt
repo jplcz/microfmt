@@ -182,6 +182,11 @@ if(JPLCZ_MICROFMT_BUILD_HEADER_CHECKS)
                 MICROFMT_COMPILE_WITH_BOOST_DESCRIBE=1
                 MICROFMT_ENABLE_BOOST_UUID=1
                 MICROFMT_ENABLE_BOOST_SOURCE_LOCATION=1)
+
+            if(STANDARD GREATER_EQUAL 20)
+                target_compile_definitions(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
+                    MICROFMT_COMPILE_WITH_BOOST_ASIO=1)
+            endif()
         endif()
 
         if(JPLCZ_MICROFMT_HAS_SYSLOG)
@@ -251,6 +256,8 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_gdb_registers.cpp
         tests/test_dwarf_registers.cpp
         tests/test_register_context_with.cpp
+        tests/test_micro_vm.cpp
+        tests/test_vm_label_allocator.cpp
         tests/test_remote_layout_accessor.cpp
         tests/test_remote_basic_string.cpp
         tests/test_remote_page_table_walker.cpp

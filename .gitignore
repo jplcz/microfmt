@@ -14,6 +14,8 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
+*.o
+*.elf
 
 # Python
 __pycache__/

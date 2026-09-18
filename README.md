@@ -30,10 +30,14 @@ Start with the guide that matches what you are building:
 | [Inspector framework](docs/inspector.md) | Remote memory, objects, containers, symbols, registers, and stack unwinding |
 | [Writing low-stack renderers](docs/renderer-guide.md) | Caller-owned scratch storage and small formatter/view design |
 | [Lifetime safety](docs/lifetime-safety.md) | Borrowed values and pointers, lifetime annotations, and compiler diagnostics |
+| [Bare-metal hardware sinks](docs/bare-metal.md) | PL011 UART and ARM semihosting `microfmt::sink` adapters |
 | [Developing jplcz_microfmt](docs/development.md) | Builds, tests, warning policy, public-header checks, and contribution constraints |
 
 The [`examples/`](examples) directory contains runnable programs for the core
-API and nearly every optional formatter, sink, and inspector subsystem.
+API and nearly every optional formatter, sink, and inspector subsystem,
+including a standalone bare-metal QEMU `virt` example
+([`examples/bare_metal/qemu-virt`](examples/bare_metal/qemu-virt)) that boots
+without an OS or libc and formats directly to a PL011 UART.
 
 For firmware, kernel-mode, crash-path, and other security-sensitive code,
 prefer `microfmt::array`, `microfmt::span`, `microfmt::string_view`, and
@@ -80,6 +84,9 @@ adapters cover:
 - Circular trace buffers that retain the newest output.
 - Tee, prefix, transform, and output-limiting sinks.
 - Container and PMR-backed output when dynamic storage is intentional.
+- Boost.Asio `mutable_buffer` and `streambuf` adapters, including a
+  coroutine helper for zero-allocation async formatting and writing.
+- Bare-metal device sinks, such as the ARM PL011 UART controller.
 
 ```cpp
 #include <microfmt/microfmt.hpp>
@@ -103,7 +110,11 @@ record, terminal, or application logger without first constructing a string.
 explicit logger instances, compile-time logging macros, and pluggable sinks.
 
 Available backends include stdio, syslog, Android logcat, systemd journal,
-Tizen DLOG, ring buffers, and user-defined consumers.
+Tizen DLOG, ring buffers, and user-defined consumers. The logger's name is
+forwarded as the native tag/identifier to backends that support one (Android
+logcat, systemd journal, Tizen DLOG), falling back to each sink's own
+configured default when unset. Advanced callers can also dispatch a
+caller-built `log_msg` directly to a logger's sinks, bypassing formatting.
 
 ```cpp
 #include <microfmt/log/logger.hpp>
@@ -303,8 +314,8 @@ ratcheted diagnostic baseline:
 
 See [Developing jplcz_microfmt](docs/development.md) for build options, focused test
 commands, stack-usage checks, and project constraints. Toolchain maintainers
-should also read [Porting jplcz_microfmt](docs/porting.md) for compatibility macros
-and platform hook overrides. See
+should also read [Porting jplcz_microfmt](docs/porting.md) for compatibility macros,
+platform hook overrides, and the tag-differentiated TLS provider. See
 [Lifetime safety and `value_ref`](docs/lifetime-safety.md) for non-owning
 reference rules and compiler annotations.
 

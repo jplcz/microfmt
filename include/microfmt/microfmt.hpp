@@ -1175,16 +1175,19 @@ MICROFMT_ALWAYS_INLINE inline void unrolled_format_impl(const sink &out, std::in
 // Core Execution Loop
 // ============================================================================
 
-inline void vformat_to(const sink &out, microfmt::string_view fmt, span<const void *const> arg_ptrs,
-                       span<const format_fn_t> arg_fns) noexcept {
+inline void vformat_to(const sink &out, const microfmt::string_view fmt, const span<const void *const> arg_ptrs,
+                       const span<const format_fn_t> arg_fns) noexcept {
   size_t arg_idx = 0;
   size_t i = 0;
 
   while (i < fmt.size()) {
-    const char c = fmt[i];
+    const char *unsafe_fmt = fmt.unsafe_data();
+    // UNSAFE: Bounds check in while loop
+    const char c = unsafe_fmt[i];
 
     if (c == '{') {
-      if (i + 1 < fmt.size() && fmt[i + 1] == '{') {
+      // UNSAFE: Bounds check inside this if
+      if (i + 1 < fmt.size() && unsafe_fmt[i + 1] == '{') {
         out.put('{');
         i += 2;
         continue;
@@ -1192,11 +1195,13 @@ inline void vformat_to(const sink &out, microfmt::string_view fmt, span<const vo
 
       size_t close_pos = i + 1;
 
-      while (close_pos < fmt.size() && fmt[close_pos] != '}') {
+      // UNSAFE: Bounds check inside while loop
+      while (close_pos < fmt.size() && unsafe_fmt[close_pos] != '}') {
         ++close_pos;
       }
 
-      if (close_pos < fmt.size() && fmt[close_pos] == '}') {
+      // UNSAFE: Bounds check inside this if
+      if (close_pos < fmt.size() && unsafe_fmt[close_pos] == '}') {
         const microfmt::string_view replacement = fmt.substr(i + 1, close_pos - (i + 1));
         const size_t colon_pos = replacement.find(':');
         const microfmt::string_view index =
@@ -1210,8 +1215,10 @@ inline void vformat_to(const sink &out, microfmt::string_view fmt, span<const vo
         }
 
         if (selected_arg < arg_ptrs.size() && selected_arg < arg_fns.size()) {
-          const void *ptr = arg_ptrs[selected_arg];
-          const format_fn_t fn = arg_fns[selected_arg];
+          // UNSAFE: Explicit validation in if above
+          const void *ptr = arg_ptrs.unsafe_at(selected_arg);
+          // UNSAFE: Explicit validation in if above
+          const format_fn_t fn = arg_fns.unsafe_at(selected_arg);
           if (fn && ptr) {
             fn(ptr, spec, out);
           }
@@ -1221,7 +1228,8 @@ inline void vformat_to(const sink &out, microfmt::string_view fmt, span<const vo
         i = close_pos + 1;
         continue;
       }
-    } else if (c == '}' && i + 1 < fmt.size() && fmt[i + 1] == '}') {
+      // UNSAFE: Bounds check inside this if
+    } else if (c == '}' && i + 1 < fmt.size() && unsafe_fmt[i + 1] == '}') {
       out.put('}');
       i += 2;
       continue;

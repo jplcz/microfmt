@@ -53,13 +53,29 @@ TEST(TizenDlogSinkTest, MapsSeverityAndForwardsLogRecord) {
   });
 
   EXPECT_EQ(captured_dlog.priority, DLOG_FATAL);
+  // The originating logger's name is forwarded as the DLOG tag.
   EXPECT_EQ(microfmt::string_view(captured_dlog.tag.data(),
                                   captured_dlog.tag_size),
-            "microfmt");
+            "telemetry");
   EXPECT_EQ(
       microfmt::string_view(captured_dlog.message.data(),
                             captured_dlog.message_size),
       "sensor failure");
+}
+
+TEST(TizenDlogSinkTest, FallsBackToSinkTagWhenLoggerNameIsEmpty) {
+  captured_dlog = {};
+  microfmt::log::tizen_dlog_sink<32> dlog("microfmt", capture_dlog);
+  auto output = dlog.as_sink();
+
+  output.log(microfmt::log::log_msg{
+      .lvl = microfmt::log::level::info,
+      .payload = "no logger name",
+  });
+
+  EXPECT_EQ(microfmt::string_view(captured_dlog.tag.data(),
+                                  captured_dlog.tag_size),
+            "microfmt");
 }
 
 TEST(TizenDlogSinkTest, HonorsConfiguredSinkThreshold) {

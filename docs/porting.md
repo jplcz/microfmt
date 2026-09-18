@@ -48,6 +48,55 @@ must appear before any microfmt header because the compatibility header uses
 `MICROFMT_TRAP()` must not return. The default implementation uses the
 compiler debug trap when available and falls back to `std::abort()`.
 
+## Thread-local storage (TLS) provider
+
+`microfmt/detail/tls_provider.hpp` supplies `microfmt::detail::tls_provider<T,
+Tag>`, a tag-differentiated per-thread (or per-task) storage cell used by
+freestanding-friendly features such as the fallible address space's
+signal-safe recovery context. Storage is uniquely keyed by both the stored
+type `T` and a unique `Tag` type, so unrelated features never collide even if
+they happen to store the same `T`:
+
+```cpp
+struct my_feature_tls_tag {};
+using my_tls = microfmt::detail::tls_provider<int, my_feature_tls_tag>;
+
+my_tls::set(42);
+int value = my_tls::get(); // 42, reference-returning get() is also mutable in place
+```
+
+`get()` returns `T &` (default-constructed to `T{}` before the first `set()`
+call on a given thread/task) and `set(T value)` moves a new value into the
+slot. A partial specialization for pointer types, `tls_provider<T *, Tag>`,
+stores `T *` directly and defaults to `nullptr`.
+
+### Selecting a storage model
+
+The active implementation is selected at compile time with the
+`MICROFMT_TLS_MODEL` macro, which must be defined (if at all) before the first
+inclusion of `tls_provider.hpp`:
+
+| Macro value                        | Model                                                          |
+| ----------------------------------- | --------------------------------------------------------------- |
+| `MICROFMT_TLS_MODEL_THREAD_LOCAL` (default) | Standard C++ `thread_local` storage.                     |
+| `MICROFMT_TLS_MODEL_PTHREAD`        | POSIX `pthread_key_t`-based storage with lazy heap allocation and automatic cleanup on thread exit. |
+| `MICROFMT_TLS_MODEL_SINGLE`         | Single global instance shared by every caller; suitable for single-threaded or bare-metal targets without per-task storage. |
+| `MICROFMT_TLS_MODEL_WIN32`          | Win32 Fiber Local Storage (FLS), with automatic cleanup when a fiber/thread exits. |
+| `MICROFMT_TLS_MODEL_OS`             | Stub for custom OS or bare-metal task-control-block mappings; the platform must provide its own `tls_provider<T, Tag>::get()`/`set()` definitions. |
+
+```cpp
+#define MICROFMT_TLS_MODEL MICROFMT_TLS_MODEL_PTHREAD
+#include <microfmt/detail/tls_provider.hpp>
+```
+
+For `MICROFMT_TLS_MODEL_OS`, `tls_provider<T, Tag>` is declared but not
+defined; provide an explicit specialization per `T`/`Tag` pair (or a matching
+partial specialization) that implements `get()`/`set()` against the target
+RTOS's task-local storage facilities.
+
+See [Bare-metal hardware sinks](bare-metal.md) for the PL011 UART and ARM
+semihosting `microfmt::sink` adapters shipped under `microfmt/hw/`.
+
 ## Adding a platform or compiler
 
 Keep compiler-specific syntax inside `compat.hpp`. Prefer standard feature-test
