@@ -9,7 +9,6 @@
 #include "../microfmt.hpp"
 #include <boost/dynamic_bitset.hpp>
 #include <boost/logic/tribool.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
 #include <boost/rational.hpp>
 #include <cstddef>
 #include <limits>
@@ -95,86 +94,6 @@ template <> struct formatter<boost::logic::tribool> {
       out.write("indeterminate");
     } else {
       out.write(value ? "true" : "false");
-    }
-  }
-};
-
-template <unsigned MinBits, unsigned MaxBits,
-          boost::multiprecision::cpp_integer_type SignType,
-          boost::multiprecision::cpp_int_check_type Checked, typename Allocator,
-          boost::multiprecision::expression_template_option ExpressionTemplates>
-struct formatter<boost::multiprecision::number<
-    boost::multiprecision::cpp_int_backend<MinBits, MaxBits, SignType, Checked,
-                                           Allocator>,
-    ExpressionTemplates>> {
-  bool binary{false};
-  bool uppercase{false};
-  bool prefix{false};
-
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    for (const char character : ctx.spec()) {
-      if (character == 'b') {
-        binary = true;
-      } else if (character == 'X') {
-        uppercase = true;
-      } else if (character == '#') {
-        prefix = true;
-      }
-    }
-  }
-
-  using integer_type = boost::multiprecision::number<
-      boost::multiprecision::cpp_int_backend<MinBits, MaxBits, SignType,
-                                             Checked, Allocator>,
-      ExpressionTemplates>;
-
-  void format(const integer_type &value, const sink &out) const noexcept {
-    const auto &backend = value.backend();
-    if (backend.sign()) {
-      out.put('-');
-    }
-    if (prefix) {
-      out.write(binary ? "0b" : (uppercase ? "0X" : "0x"));
-    }
-
-    using limb_type =
-        std::remove_cv_t<std::remove_pointer_t<decltype(backend.limbs())>>;
-    constexpr unsigned limb_bits = std::numeric_limits<limb_type>::digits;
-    const auto *limbs = backend.limbs();
-    const std::size_t limb_count = backend.size();
-    if (limb_count == 0 ||
-        (limb_count == 1 && static_cast<limb_type>(limbs[0]) == 0)) {
-      out.put('0');
-      return;
-    }
-
-    bool started = false;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
-    for (std::size_t limb_index = limb_count; limb_index != 0; --limb_index) {
-      const limb_type limb = limbs[limb_index - 1];
-      const unsigned digit_count = binary ? limb_bits : limb_bits / 4;
-      for (unsigned digit_index = digit_count; digit_index != 0;
-           --digit_index) {
-        const unsigned shift =
-            binary ? digit_index - 1 : (digit_index - 1) * 4;
-        const unsigned digit =
-            static_cast<unsigned>((limb >> shift) &
-                                  static_cast<limb_type>(binary ? 1U : 15U));
-        if (!started && digit == 0) {
-          continue;
-        }
-        started = true;
-        if (binary) {
-          out.put(digit == 0 ? '0' : '1');
-        } else {
-          out.put((uppercase ? detail::hex_digits_upper
-                             : detail::hex_digits_lower)[digit]);
-        }
-      }
-    }
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
-    if (!started) {
-      out.put('0');
     }
   }
 };

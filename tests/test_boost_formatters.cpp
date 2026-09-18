@@ -10,7 +10,6 @@
 #include <boost/describe.hpp>
 #include <boost/dynamic_bitset.hpp>
 #include <boost/logic/tribool.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
 #include <boost/optional.hpp>
 #include <boost/outcome/result.hpp>
 #include <boost/rational.hpp>
@@ -110,7 +109,7 @@ TEST(BoostFormattersTest, FormatsAddressesAndEndpointsWithoutStringConversion) {
   EXPECT_EQ(output.view(), "[::1]:443");
 }
 
-TEST(BoostFormattersTest, FormatsBitsetRationalTriboolAndCppInt) {
+TEST(BoostFormattersTest, FormatsBitsetRationalAndTribool) {
   microfmt::buffer_sink<256> output;
 
   const boost::dynamic_bitset<> bits(8, 0xad);
@@ -126,13 +125,6 @@ TEST(BoostFormattersTest, FormatsBitsetRationalTriboolAndCppInt) {
   microfmt::format_to(output.as_sink(), "{} {} {}", boost::logic::tribool(true),
                       boost::logic::tribool(false), unknown);
   EXPECT_EQ(output.view(), "true false indeterminate");
-
-  output.reset();
-  boost::multiprecision::cpp_int integer = 1;
-  integer <<= 68;
-  integer += 0x2a;
-  microfmt::format_to(output.as_sink(), "{:#X}", integer);
-  EXPECT_EQ(output.view(), "0X10000000000000002A");
 }
 
 TEST(BoostFormattersTest, FormatsBoostChronoAndDateTime) {

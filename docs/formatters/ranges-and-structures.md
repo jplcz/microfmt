@@ -180,7 +180,7 @@ include only the required formatter family.
 | `boost_containers.hpp` | `boost::container::static_vector` and `small_vector` |
 | `boost_system.hpp` | Boost.System error codes and conditions |
 | `boost_net.hpp` | Boost.Asio IPv4/IPv6 addresses and IP endpoints |
-| `boost_values.hpp` | Dynamic bitsets, rationals, tribools, and `cpp_int`-backend integers |
+| `boost_values.hpp` | Dynamic bitsets, rationals, and tribools |
 | `boost_time.hpp` | Boost.Chrono durations/time points and Boost.DateTime values |
 
 Optional and result values use `Some`/`None` and `Ok`/`Err`, matching the
