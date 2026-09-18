@@ -93,3 +93,14 @@ jobs:
 
       - name: Build and run consumer
         run: ./scripts/check-cpm-package.sh -DCMAKE_CXX_COMPILER=clang++
+
+  cpack:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build and verify packages
+        run: ./scripts/check-cpack-package.sh -DCMAKE_CXX_COMPILER=clang++

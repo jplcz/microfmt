@@ -751,3 +751,59 @@ if(JPLCZ_MICROFMT_INSTALL)
         COMPONENT Development
     )
 endif()
+
+if(JPLCZ_MICROFMT_IS_TOP_LEVEL AND JPLCZ_MICROFMT_INSTALL)
+    set(CPACK_PACKAGE_NAME "jplcz-microfmt")
+    set(CPACK_PACKAGE_VENDOR "Jaroslaw Pelczar")
+    set(CPACK_PACKAGE_CONTACT "Jaroslaw Pelczar <jarek@jpelczar.com>")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+        "Header-only allocation-free formatting and remote inspection library")
+    set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/jplcz/microfmt")
+    set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+    set(CPACK_PACKAGE_VERSION_MAJOR "${PROJECT_VERSION_MAJOR}")
+    set(CPACK_PACKAGE_VERSION_MINOR "${PROJECT_VERSION_MINOR}")
+    set(CPACK_PACKAGE_VERSION_PATCH "${PROJECT_VERSION_PATCH}")
+    set(CPACK_PACKAGE_INSTALL_DIRECTORY "jplcz_microfmt")
+    set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+    set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+    set(CPACK_VERBATIM_VARIABLES ON)
+    set(CPACK_THREADS 0)
+
+    set(CPACK_SOURCE_GENERATOR "TGZ;ZIP")
+    set(CPACK_SOURCE_IGNORE_FILES
+        "/\\.git/"
+        "/\\.idea/"
+        "/\\.vscode/"
+        "/build[^/]*/"
+        "/cmake-build-[^/]*/"
+        "/_deps/"
+    )
+
+    # Header-only package: archives always work everywhere; DEB/RPM are added
+    # only when their packaging tools are available on the host.
+    set(CPACK_GENERATOR "TGZ;ZIP")
+
+    find_program(JPLCZ_MICROFMT_DPKG_DEB_EXECUTABLE dpkg-deb)
+    if(JPLCZ_MICROFMT_DPKG_DEB_EXECUTABLE)
+        list(APPEND CPACK_GENERATOR "DEB")
+    endif()
+
+    find_program(JPLCZ_MICROFMT_RPMBUILD_EXECUTABLE rpmbuild)
+    if(JPLCZ_MICROFMT_RPMBUILD_EXECUTABLE)
+        list(APPEND CPACK_GENERATOR "RPM")
+    endif()
+
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
+    set(CPACK_DEBIAN_PACKAGE_SECTION "libdevel")
+    set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "${CPACK_PACKAGE_HOMEPAGE_URL}")
+    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "all")
+    set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
+
+    set(CPACK_RPM_PACKAGE_LICENSE "BSD-2-Clause")
+    set(CPACK_RPM_PACKAGE_URL "${CPACK_PACKAGE_HOMEPAGE_URL}")
+    set(CPACK_RPM_PACKAGE_ARCHITECTURE "noarch")
+    set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
+    set(CPACK_RPM_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
+
+    include(CPack)
+endif()

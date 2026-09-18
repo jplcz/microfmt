@@ -135,3 +135,32 @@ same `add_subdirectory` interface documented in
 [Using jplcz_microfmt](usage.md#fetchcontent-and-add_subdirectory). Managers
 that consume installed CMake config packages can use the normal installation
 described in [Using jplcz_microfmt](usage.md#installable-cmake-package).
+
+## CPack
+
+Standalone, top-level configurations with `JPLCZ_MICROFMT_INSTALL=ON` (the
+default) also enable CPack. Build and package with:
+
+```sh
+cmake -S . -B build \
+  -DJPLCZ_MICROFMT_BUILD_TESTS=OFF \
+  -DJPLCZ_MICROFMT_BUILD_EXAMPLES=OFF \
+  -DJPLCZ_MICROFMT_BUILD_BENCHMARKS=OFF \
+  -DJPLCZ_MICROFMT_BUILD_HEADER_CHECKS=OFF
+cmake --build build
+cpack --config build/CPackConfig.cmake
+```
+
+Archive generators (`TGZ`, `ZIP`) are always available. `DEB` and `RPM`
+generators are added automatically when `dpkg-deb` or `rpmbuild` are found on
+the host; since the package is header-only, both are built as
+architecture-independent (`all`/`noarch`) packages. Run
+`cpack --config build/CPackSourceConfig.cmake` for a source archive, which
+excludes VCS metadata and build directories.
+
+Installing any generated package places headers under `include/` and CMake
+package files under `lib/cmake/jplcz_microfmt/`, matching the layout produced
+by `cmake --install`; see
+[Installable CMake package](usage.md#installable-cmake-package) for how
+consumers locate the installed package. `scripts/check-cpack-package.sh`
+builds every available generator and verifies the archive package's contents.

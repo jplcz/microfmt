@@ -150,7 +150,8 @@ GitHub Actions run the following independent validation lanes:
 * `Sanitizers` runs the complete test executable with AddressSanitizer and
   UndefinedBehaviorSanitizer.
 * `Package managers` creates and consumes the Conan 2 package, installs and
-  consumes the vcpkg overlay port, and verifies CPM.cmake integration.
+  consumes the vcpkg overlay port, verifies CPM.cmake integration, and builds
+  CPack archive/DEB/RPM packages.
 * `CodeQL` performs scheduled and change-triggered C++ security analysis.
 * `Dependency review` rejects vulnerable dependency changes in pull requests
   when the repository has GitHub dependency review available.
@@ -209,6 +210,9 @@ VCPKG_ROOT=/path/to/vcpkg ./scripts/check-vcpkg-package.sh
 # CPM.cmake local-checkout consumer
 ./scripts/check-cpm-package.sh
 
+# CPack archive, DEB, and RPM packages
+./scripts/check-cpack-package.sh
+
 # Doxygen output under build/docs/html
 ./scripts/build-docs.sh
 ```
@@ -225,6 +229,7 @@ The scripts accept environment variables for repeatable local customization:
 | `JPLCZ_MICROFMT_CPM_BUILD_DIR` | CPM.cmake consumer build directory |
 | `JPLCZ_MICROFMT_CPM_PATH` | Existing CPM.cmake file instead of downloading one |
 | `JPLCZ_MICROFMT_CPM_VERSION` | CPM.cmake release downloaded when no local file is supplied |
+| `JPLCZ_MICROFMT_CPACK_BUILD_DIR` | CPack build directory |
 
 Additional arguments after the documented positional parameters are forwarded
 to CMake or Conan. The package-manager scripts require their corresponding

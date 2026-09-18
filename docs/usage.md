@@ -73,6 +73,10 @@ The package installs under
 chosen installation prefix, or set `jplcz_microfmt_DIR` directly to that
 directory.
 
+Standalone builds also enable CPack, producing archive, Debian, and RPM
+packages with the same layout as `cmake --install`. See
+[CPack](package-managers.md#cpack) for details.
+
 Alternatively, add `include/` to the include path and include only the headers
 for the facilities in use. The core API is in:
 
