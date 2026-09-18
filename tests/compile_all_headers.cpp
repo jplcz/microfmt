@@ -41,6 +41,7 @@
 #include <microfmt/formatters/posix_time.hpp>
 #include <microfmt/formatters/ranges.hpp>
 #include <microfmt/formatters/register.hpp>
+#include <microfmt/formatters/repeated_view.hpp>
 #include <microfmt/formatters/semver.hpp>
 #include <microfmt/formatters/spi.hpp>
 #include <microfmt/formatters/source_location.hpp>

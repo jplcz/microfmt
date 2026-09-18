@@ -57,6 +57,19 @@ microfmt::format_to(out, MICROFMT_STRING("{:n}"), even);
 Use `b`, `c`, or `n` for outer delimiters. The remainder of the specifier is
 forwarded to each selected element. See `examples/filter_view_demo.cpp`.
 
+## `repeated_view.hpp`
+
+`repeat(value, count)` and `repeat(value, count, separator)` create a view
+that formats the same value `count` times, optionally joined by `separator`.
+
+```cpp
+microfmt::format_to(out, MICROFMT_STRING("{}"), microfmt::repeat('*', 5));
+microfmt::format_to(out, MICROFMT_STRING("{:04x}"), microfmt::repeat(0x2A, 3, "|"));
+```
+
+The complete replacement-field specifier is forwarded to the wrapped value's
+formatter and re-applied on every repetition.
+
 ## `map_view.hpp`
 
 `map_view(container)` formats standard map-like entries as
