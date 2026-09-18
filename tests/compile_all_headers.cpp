@@ -50,6 +50,7 @@
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) ||                     \
     defined(__DragonFly__)
 #include <microfmt/inspector/dl_elf_enumerator.hpp>
+#include <microfmt/inspector/dl_symbol_resolver.hpp>
 #endif
 #include <microfmt/inspector/gdb_decoders.hpp>
 #include <microfmt/inspector/gdb_encoders.hpp>
