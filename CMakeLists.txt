@@ -268,6 +268,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_filter_view.cpp
         tests/test_repeated_view.cpp
         tests/test_memory_diff.cpp
+        tests/test_remote_memory_diff.cpp
         tests/test_additional_formatters.cpp
         tests/test_fmt_compat.cpp
         tests/test_i2c.cpp
@@ -627,6 +628,19 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(jplcz_microfmt_cxx17_memory_diff_tests
         TEST_PREFIX "Cxx17MemoryDiff.")
+
+    add_executable(jplcz_microfmt_cxx17_remote_memory_diff_tests
+        tests/test_remote_memory_diff.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_remote_memory_diff_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_remote_memory_diff_tests)
+    set_target_properties(jplcz_microfmt_cxx17_remote_memory_diff_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    gtest_discover_tests(jplcz_microfmt_cxx17_remote_memory_diff_tests
+        TEST_PREFIX "Cxx17RemoteMemoryDiff.")
 
     if(JPLCZ_MICROFMT_COMPILER_SUPPORTS_CXX23)
         add_executable(jplcz_microfmt_cxx23_tests tests/test_monad.cpp)

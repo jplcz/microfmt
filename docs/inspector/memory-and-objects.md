@@ -238,6 +238,35 @@ grouped into `bytes_per_row` rows (default 16, configurable on the returned
 the absolute address followed by the old and new bytes, each rendered as
 two-digit uppercase hex. See `examples/memory_diff_demo.cpp`.
 
+## Diff two remote memory regions
+
+`remote_memory_diff_view` renders the same row-based diff as
+`memory_diff_view`, but reads both regions through `address_space_ref`
+instead of local byte spans, so old and new snapshots can live in different
+processes, coredumps, or simulated targets. Build one with
+`remote_mem_diff(old_space, old_addr, new_space, new_addr, size,
+scratch_buffer)`, where `scratch_buffer` is a caller-owned
+`span<std::byte>` at least `bytes_per_row * 2` bytes long (default 16, so 32
+bytes) used to stage one row from each side per read.
+
+```cpp
+microfmt::address_space_ref old_space(old_target_tag{}, old_ctx);
+microfmt::address_space_ref new_space(new_target_tag{}, new_ctx);
+std::byte scratch[64];
+
+microfmt::format_to(out, "{}\n",
+                    microfmt::remote_mem_diff(old_space, old_addr, new_space, new_addr, size,
+                                              microfmt::span<std::byte>(scratch, sizeof(scratch))));
+```
+
+Rows are read and compared one at a time; identical runs collapse the same
+way as `memory_diff_view`, and a row that fails to read from either address
+space (for example, a page unmapped in the new snapshot) is reported as
+`[REMOTE READ FAULT]` instead of a byte comparison, without aborting the
+rest of the diff. If `scratch_buffer` is smaller than required, the
+formatter emits an error message instead of reading out of bounds. See
+`examples/remote_memory_diff_demo.cpp`.
+
 ## Scan likely memory addresses
 
 `memory_scanner` combines an `address_space_ref`,
