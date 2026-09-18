@@ -258,6 +258,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_register_context_with.cpp
         tests/test_micro_vm.cpp
         tests/test_vm_label_allocator.cpp
+        tests/test_variable_context.cpp
         tests/test_remote_layout_accessor.cpp
         tests/test_remote_basic_string.cpp
         tests/test_remote_page_table_walker.cpp

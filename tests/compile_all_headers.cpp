@@ -82,6 +82,7 @@
 #include <microfmt/inspector/remote_vector.hpp>
 #include <microfmt/inspector/task.hpp>
 #include <microfmt/inspector/thread.hpp>
+#include <microfmt/inspector/variable_context.hpp>
 #include <microfmt/inspector/vm_code_gen.hpp>
 #include <microfmt/inspector/vm_label_allocator.hpp>
 #include <microfmt/markdown.hpp>
