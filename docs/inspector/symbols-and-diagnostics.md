@@ -61,6 +61,34 @@ needed.
 `raw_resolved_symbol`; the reference derives offsets from the matched symbol
 and image in `resolved_symbol_info`.
 
+### `dl_symbol_resolver.hpp`: a ready-made `dladdr` backend
+
+`dl_symbol_resolver.hpp` provides a ready-to-use `symbol_resolver_traits`
+specialization for Linux and BSD systems (guarded by an `#error` on other
+OSes), backed by POSIX `dladdr()`:
+
+```cpp
+#include <microfmt/inspector/dl_symbol_resolver.hpp>
+
+auto resolver =
+    microfmt::symbol_resolver_ref::make<microfmt::dl_symbol_resolver_tag>();
+
+char name_scratch[128];
+microfmt::symbol_resolution_context symbol_context{name_scratch};
+microfmt::format_to(output, MICROFMT_STRING("{:#}"),
+                    microfmt::make_remote_symbol(program_counter, resolver,
+                                                 symbol_context));
+// e.g. "my_app!my_namespace::my_function(int)+0x36"
+```
+
+`dladdr()` reports the nearest preceding symbol and its owning shared
+object/executable for an address in the calling process. The resolver is
+stateless (`context_type = void`); `symbol_name`/`image_name` point to storage
+owned by the dynamic linker and remain valid for as long as the owning image
+stays loaded, so `scratch` is unused. Build with `-rdynamic` (or export
+dynamic symbols by other means) so non-exported/static symbols in the main
+executable are visible to `dladdr()`.
+
 Use `remote_symbol_view` or `make_remote_symbol(...)` to format an address with
 a resolver and a caller-owned `symbol_resolution_context`. The context keeps
 both symbol-name scratch and resolver temporaries outside formatter stack
@@ -106,3 +134,16 @@ Pass a `symbol_resolution_context` to every symbol or diagnostic view. Its
 bounded scratch span and temporary records must remain exclusive to that
 formatting operation; nested symbol formatting needs a separate context so an
 inner resolver cannot overwrite text that an outer view still references.
+
+## Primary use case: an in-process crash handler
+
+`examples/crash_handler_demo.cpp` is a complete, standalone program combining
+this guide's `dl_symbol_resolver.hpp` with the register contexts and
+`ucontext_adapter.hpp` backend from
+[Architectures and registers](architectures-and-registers.md). It installs a
+real `SIGSEGV`/`SIGBUS` handler that, on a genuine fault, dumps all CPU
+registers and resolves the faulting program counter to a demangled
+`image!symbol+offset` string, then terminates the process. Reading it end to
+end is a good way to see how the address-space, register-context, and
+symbol-resolver layers described across these guides fit together in a single
+diagnostic path.

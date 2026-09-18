@@ -39,14 +39,14 @@ decoder state, or symbol buffers in formatter-local arrays. See the
 | Guide | Use it for | Primary headers |
 |---|---|---|
 | [Traits, contexts, and type erasure](inspector/traits-and-contexts.md) | Implementing provider traits, choosing context ownership, crossing `*_ref` boundaries, const-correct borrowing, and testing custom providers | `address_space.hpp`, `register_context.hpp`, `remote_container.hpp`, `unwind_hint.hpp`, `elf_enumerator.hpp` |
-| [Memory and remote objects](inspector/memory-and-objects.md) | Target transports, address translation and classification, remote page-table walking, bounded memory scanning, byte-level memory diffing (local and remote), foreign and C++ string objects, reusable layout queries, ABI-width pointer wrappers, and reflected structures | `address_space.hpp`, `address_translator.hpp`, `remote_page_table_walker.hpp`, `memory_classifier.hpp`, `memory_diff.hpp`, `remote_memory_diff.hpp`, `memory_scanner.hpp`, `compat32.hpp`, `foreign_string_view.hpp`, `remote_layout_accessor.hpp`, `remote_basic_string.hpp`, `remote_object.hpp`, `remote_smart_ptr.hpp` |
+| [Memory and remote objects](inspector/memory-and-objects.md) | Target transports, address translation and classification, remote page-table walking, bounded memory scanning, byte-level memory diffing (local and remote), foreign and C++ string objects, reusable layout queries, ABI-width pointer wrappers, and reflected structures | `address_space.hpp`, `fallible_address_space.hpp`, `address_translator.hpp`, `remote_page_table_walker.hpp`, `memory_classifier.hpp`, `memory_diff.hpp`, `remote_memory_diff.hpp`, `memory_scanner.hpp`, `compat32.hpp`, `foreign_string_view.hpp`, `remote_layout_accessor.hpp`, `remote_basic_string.hpp`, `remote_object.hpp`, `remote_smart_ptr.hpp` |
 | [Memory pattern scanners](inspector/memory-pattern-scanners.md) | Exact and masked signatures, scalar range searches, dependent field predicates, scratch sizing, custom scanner traits, and error handling | `memory_pattern_scanner.hpp`, `advanced_scanners.hpp` |
 | [Remote containers](inspector/containers.md) | Vectors, linked lists, hash tables, binary trees, and custom container layouts | `remote_container.hpp`, `remote_vector.hpp`, `remote_forward_list.hpp`, `remote_hash_table.hpp`, `remote_binary_tree.hpp` |
 | [Metadata maps](inspector/metadata.md) | Fixed-capacity heterogeneous properties, type-erased generators, formatting, and lifetime requirements | `metadata_map.hpp`, `concrete_metadata_map.hpp`, `value_ref.hpp` |
 | [Tasks and threads](inspector/tasks-and-threads.md) | Scheduler descriptors, thread enumeration, register contexts, and unified metadata views | `task.hpp`, `thread.hpp`, `metadata_map.hpp` |
 | [GDB Remote Serial Protocol](inspector/gdb-protocol.md) | Request and response payloads, register layouts and data, target XML, binary escaping, checksums, and streaming framing | `gdb_encoders.hpp`, `gdb_decoders.hpp`, `gdb_register_array.hpp`, `register_xml_printer.hpp`, `gdb_stream.hpp` |
-| [Symbols and diagnostics](inspector/symbols-and-diagnostics.md) | ELF image discovery, symbol resolution, demangling, and diagnostic views | `elf_enumerator.hpp`, `dl_elf_enumerator.hpp`, `symbol_resolver.hpp`, `demangle.hpp`, `remote_diagnostics.hpp` |
-| [Architectures and registers](inspector/architectures-and-registers.md) | Register contexts, architecture catalogs, system and timer registers, address candidates, and register rendering | `register_context.hpp`, `dwarf_registers.hpp`, `dwarf_abi.hpp`, `register_view.hpp` |
+| [Symbols and diagnostics](inspector/symbols-and-diagnostics.md) | ELF image discovery, symbol resolution, demangling, and diagnostic views | `elf_enumerator.hpp`, `dl_elf_enumerator.hpp`, `symbol_resolver.hpp`, `dl_symbol_resolver.hpp`, `demangle.hpp`, `remote_diagnostics.hpp` |
+| [Architectures and registers](inspector/architectures-and-registers.md) | Register contexts, architecture catalogs, system and timer registers, address candidates, register rendering, and POSIX signal-handler register contexts | `register_context.hpp`, `dwarf_registers.hpp`, `dwarf_abi.hpp`, `register_view.hpp`, `ucontext_adapter.hpp` |
 | [Generic unwinding](inspector/unwinding.md) | Frame cursors, backtraces, frame-pointer walkers, custom-context recovery hints, and chained unwinders | `frame_pointer.hpp`, `fp_unwinder.hpp`, `dwarf_abi.hpp`, `dwarf_decoder.hpp`, `unwind_hint.hpp`, `chained_unwinder.hpp`, `hybrid_unwinder.hpp`, `exception_frame.hpp` |
 | [ARM EXIDX unwinding](inspector/arm-unwinding.md) | ARM EHABI `.ARM.exidx` and `.ARM.extab` decoding | `arm_exidx_decoder.hpp`, `arm_exidx_search.hpp`, `arm_exidx_unwinder.hpp`, `arm_extab_decoder.hpp`, `arm_extab_stream.hpp` |
 
@@ -106,4 +106,7 @@ The `examples/` directory contains complete runnable demonstrations, including
 `advanced_scanners_demo.cpp`, `remote_struct_demo.cpp`,
 `task_thread_demo.cpp`,
 `remote_vector_context_demo.cpp`, `remote_hash_table_demo.cpp`,
-`resolver_demo.cpp`, and `unwinder_demo.cpp`.
+`resolver_demo.cpp`, `unwinder_demo.cpp`,
+`fallible_address_space_demo.cpp`, and `crash_handler_demo.cpp` (a standalone
+in-process crash handler combining `ucontext_adapter.hpp`, register contexts,
+and `dl_symbol_resolver.hpp`).

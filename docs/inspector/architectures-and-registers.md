@@ -59,6 +59,37 @@ for existing free functions while keeping their selection at compile time.
 The state, address-space context, and scratch storage must outlive every
 unwinder or view that borrows the handle.
 
+### `ucontext_adapter.hpp`: a ready-made POSIX `ucontext_t` backend
+
+`ucontext_adapter.hpp` provides ready-to-use `register_context_ref` factories
+for Linux and FreeBSD (guarded by an `#error` on other OSes), backed by the
+POSIX `ucontext_t`/`mcontext_t` structures delivered to a `SA_SIGINFO` signal
+handler's third argument or captured by `getcontext()`. It covers x86, x86_64,
+ARM, AArch64, and RISC-V, mapping each architecture's DWARF register indexes
+onto the OS-specific `gregs`/`mcontext_t` layout:
+
+```cpp
+#include <microfmt/inspector/ucontext_adapter.hpp>
+
+void handler(int, siginfo_t *, void *ucontext_raw) noexcept {
+  auto &uctx = *static_cast<ucontext_t *>(ucontext_raw);
+  const microfmt::address_space_ref space{microfmt::local_space_tag{}};
+  std::byte scratch[16];
+
+  auto context =
+      microfmt::make_ucontext_register_context_ref(uctx, space, scratch);
+  // context.read(microfmt::dwarf::x86_64::rip, ...), register_context_view, ...
+}
+```
+
+`make_ucontext_register_context_ref` returns a read-only context; use
+`make_mutable_ucontext_register_context_ref` (taking a non-const `ucontext_t&`)
+when the caller also needs to rewrite registers in place, for example
+redirecting `pc`/`sp` before a `setcontext()`/`swapcontext()` resume. Both
+factories are zero-allocation and `noexcept`; unsupported register indexes or
+architecture/OS combinations return `false` from reads/writes without
+touching the output.
+
 ### Bind register structures at compile time
 
 `register_context_ref_with<State, FieldTraits...>` adapts an existing C or C++
@@ -289,3 +320,17 @@ When extending the catalog:
 
 Do not add aliases as duplicate descriptors in one catalog: descriptor indexes
 must remain unique within each returned array.
+
+## Primary use case: an in-process crash handler
+
+`examples/crash_handler_demo.cpp` is a complete, standalone program combining
+this guide's `ucontext_adapter.hpp` backend and `register_context_view` with
+`dl_symbol_resolver.hpp` from
+[Symbols and diagnostics](symbols-and-diagnostics.md). It installs a real
+`SIGSEGV`/`SIGBUS` handler that, on a genuine fault, reads the delivered
+`ucontext_t` into a `register_context_ref`, renders every register, and
+resolves the faulting program counter to a demangled `image!symbol+offset`
+string — writing only through `fd_sink`'s raw `write(2)` to stay
+async-signal-safe. It is a good end-to-end reference for wiring register
+contexts into a real signal handler.
+

@@ -7,16 +7,13 @@
 // resolves the faulting PC to a module/symbol (via dl_symbol_resolver.hpp),
 // then deliberately triggers a real segfault to exercise it end-to-end.
 //
-// NOTE: For simplicity this demo prints via microfmt's stdio sink from
-// inside the signal handler, which is not strictly async-signal-safe (it
-// calls into libc's buffered I/O). Real production crash handlers should
-// use only async-signal-safe primitives (e.g. write(2) directly). This is
-// acceptable for a single-threaded demo that immediately terminates.
+// The handler writes only through `microfmt::fd_sink(STDERR_FILENO)`, which
+// calls raw `write(2)` directly with no libc stdio buffering, locking, or
+// allocation, keeping it async-signal-safe.
 
 #include <csignal>
 #include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 #include <ucontext.h>
 #include <unistd.h>
 
@@ -58,8 +55,10 @@ namespace arch_dwarf = microfmt::dwarf::riscv;
 namespace {
 
 void crash_handler(int sig, siginfo_t *info, void *ucontext_raw) noexcept {
-  auto &uctx = *static_cast<ucontext_t *>(ucontext_raw);
-  auto out = microfmt::stdout_sink();
+  ucontext_t uctx = *static_cast<ucontext_t *>(ucontext_raw);
+
+  // Raw write(2) via fd_sink: no stdio buffering, locking, or allocation.
+  auto out = microfmt::fd_sink(STDERR_FILENO);
 
   microfmt::println(out, "");
   microfmt::println(out, "================ CRASH DETECTED ================");
@@ -69,7 +68,7 @@ void crash_handler(int sig, siginfo_t *info, void *ucontext_raw) noexcept {
   // Build a read-only register context over the delivered ucontext_t.
   const microfmt::address_space_ref space(microfmt::local_space_tag{});
   std::byte reg_scratch[16];
-  auto reg_ctx = microfmt::make_ucontext_register_context_ref(uctx, space, reg_scratch);
+  auto reg_ctx = microfmt::make_mutable_ucontext_register_context_ref(uctx, space, reg_scratch);
 
   microfmt::println(out, "");
   microfmt::println(out, "-- Registers --");
@@ -87,11 +86,6 @@ void crash_handler(int sig, siginfo_t *info, void *ucontext_raw) noexcept {
   }
 
   microfmt::println(out, "==================================================");
-
-  // _exit() skips the normal libc atexit/flush machinery, so any buffered
-  // stdio output (including everything printed before the fault) would
-  // otherwise be silently lost.
-  std::fflush(stdout);
 
   // Terminate immediately; the process state after a real fault is not
   // safe to resume from and we must not return from this handler.
@@ -112,7 +106,7 @@ int crash_intentionally(int depth, volatile int *bad_ptr) {
 }
 
 int main() {
-  struct sigaction sa {};
+  struct sigaction sa{};
   sa.sa_sigaction = crash_handler;
   sa.sa_flags = SA_SIGINFO;
   sigemptyset(&sa.sa_mask);
@@ -125,6 +119,11 @@ int main() {
   microfmt::println("=========================================================="
                     "======================");
   microfmt::println("Installing SIGSEGV/SIGBUS handler, then deliberately faulting...");
+
+  // The handler below terminates via _exit(), which skips libc's normal
+  // flush-on-exit; flush stdout here (regular, non-signal-handler code) so
+  // this banner isn't lost.
+  std::fflush(stdout);
 
   // NOLINTNEXTLINE(performance-no-int-to-ptr)
   auto *wild_ptr = reinterpret_cast<volatile int *>(static_cast<uintptr_t>(0x10));

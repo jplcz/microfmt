@@ -102,6 +102,41 @@ if (!result) {
 it in tests or self-inspection only; it does not make arbitrary addresses safe
 to read or write.
 
+### `fallible_address_space.hpp`: a signal-safe local transport
+
+`fallible_local_space_tag` provides an `address_space_traits` specialization
+for Linux, FreeBSD, and macOS that recovers from `SIGSEGV`/`SIGBUS` instead of
+crashing the process, letting a caller safely probe an arbitrary or untrusted
+local pointer:
+
+```cpp
+#include <microfmt/inspector/fallible_address_space.hpp>
+
+const microfmt::address_space_ref space(microfmt::fallible_local_space_tag{});
+
+int value = 0;
+auto result = space.read_bytes(untrusted_addr, &value, sizeof(value));
+if (!result) {
+  // untrusted_addr was unmapped or otherwise faulted; the process is
+  // still alive and can continue.
+}
+```
+
+Internally, `read_bytes`, `write_bytes`, and `read_string` each install a
+process-wide `SIGSEGV`/`SIGBUS` handler on first use (once, lazily), save a
+`sigsetjmp` recovery point in thread-local storage (via `tls_provider.hpp`),
+and perform the raw copy inside that guarded region. A fault during the copy
+`siglongjmp`s back and the operation returns `false` instead of terminating
+the process. The previous thread-local recovery context is saved and restored
+around each call, so nested/reentrant fallible operations on the same thread
+are safe. An unrelated fault (no fallible operation active on the faulting
+thread) falls through to the default handler and re-raises, so genuine crashes
+are not silently swallowed.
+
+This transport only protects the local process's own memory accesses; it does
+not read or write another process's or target's memory, and it is not a
+substitute for validating addresses ahead of time when performance matters.
+
 ## Translate virtual addresses
 
 `address_translator_ref` type-erases a platform virtual-to-physical
