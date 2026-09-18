@@ -292,7 +292,8 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_pmr_sink.cpp
         tests/test_platform_log_sinks.cpp
         tests/test_pointer.cpp
-        tests/test_logger_override.cpp)
+        tests/test_logger_override.cpp
+        tests/test_tls_provider.cpp)
     target_link_libraries(jplcz_microfmt_tests PRIVATE jplcz_microfmt GTest::gtest_main
         nlohmann_json::nlohmann_json)
     target_compile_features(jplcz_microfmt_tests PRIVATE cxx_std_20)
@@ -425,6 +426,19 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(jplcz_microfmt_cxx17_scratch_allocator_tests
         TEST_PREFIX "Cxx17ScratchAllocator.")
+
+    add_executable(jplcz_microfmt_cxx17_tls_provider_tests
+        tests/test_tls_provider.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_tls_provider_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_tls_provider_tests)
+    set_target_properties(jplcz_microfmt_cxx17_tls_provider_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    gtest_discover_tests(jplcz_microfmt_cxx17_tls_provider_tests
+        TEST_PREFIX "Cxx17TlsProvider.")
 
     add_executable(jplcz_microfmt_cxx17_value_ref_tests tests/test_value_ref.cpp)
     target_link_libraries(jplcz_microfmt_cxx17_value_ref_tests PRIVATE
