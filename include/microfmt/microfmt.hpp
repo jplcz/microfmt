@@ -167,6 +167,28 @@ private:
   size_t m_pos{0};
 };
 
+namespace detail {
+
+struct buffer_sink_base {
+  char *m_data;
+  std::size_t m_capacity;
+  std::size_t m_pos;
+
+  MICROFMT_CONSTEXPR20 static void write_thunk(void *ctx, microfmt::string_view sv) noexcept {
+    auto *self = static_cast<buffer_sink_base *>(ctx);
+    const std::size_t avail = (self->m_pos < self->m_capacity) ? (self->m_capacity - self->m_pos) : 0;
+    const std::size_t n = std::min(sv.size(), avail);
+    if (n > 0) {
+      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      std::copy_n(sv.data(), n, self->m_data + self->m_pos);
+      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      self->m_pos += n;
+    }
+  }
+};
+
+} // namespace detail
+
 /**
  * @brief Output sink that stores formatted characters in an internal fixed-size
  * stack/inline buffer.
@@ -177,12 +199,12 @@ private:
  *
  * @tparam N The capacity of the internal storage buffer in bytes.
  */
-template <std::size_t N> class buffer_sink {
+template <std::size_t N> class buffer_sink : detail::buffer_sink_base {
 public:
   /**
    * @brief Constructs an empty buffer sink.
    */
-  constexpr buffer_sink() noexcept = default;
+  constexpr buffer_sink() noexcept : detail::buffer_sink_base{m_storage, N, 0} {}
 
   /**
    * @brief Creates a type-erased @ref sink adapter pointing to this instance.
@@ -191,18 +213,7 @@ public:
    * to this buffer.
    */
   [[nodiscard]] MICROFMT_CONSTEXPR20 sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
-    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
-                  auto *self = static_cast<buffer_sink<N> *>(ctx);
-                  const std::size_t avail = (self->m_pos < N) ? (N - self->m_pos) : 0;
-                  const std::size_t n = std::min(sv.size(), avail);
-                  if (n > 0) {
-                    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
-                    std::copy_n(sv.data(), n, self->m_data + self->m_pos);
-                    MICROFMT_END_UNSAFE_BUFFER_USAGE;
-
-                    self->m_pos += n;
-                  }
-                }};
+    return sink{this, &detail::buffer_sink_base::write_thunk};
   }
 
   /**
@@ -263,8 +274,7 @@ public:
   constexpr void reset() noexcept { m_pos = 0; }
 
 private:
-  char m_data[N]{};
-  std::size_t m_pos{0};
+  char m_storage[N]{};
 };
 
 /**
@@ -371,6 +381,30 @@ public:
   }
 };
 
+namespace detail {
+
+struct c_string_sink_base {
+  char *m_data;
+  std::size_t m_max_payload; // N - 1
+  std::size_t m_pos;
+
+  MICROFMT_CONSTEXPR20 static void write_thunk(void *ctx, microfmt::string_view sv) noexcept {
+    auto *self = static_cast<c_string_sink_base *>(ctx);
+    const std::size_t avail = (self->m_pos < self->m_max_payload) ? (self->m_max_payload - self->m_pos) : 0;
+    const std::size_t n = std::min(sv.size(), avail);
+
+    if (n > 0) {
+      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      std::copy_n(sv.data(), n, self->m_data + self->m_pos);
+      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      self->m_pos += n;
+      self->m_data[self->m_pos] = '\0';
+    }
+  }
+};
+
+} // namespace detail
+
 /**
  * @brief Output sink that guarantees a null-terminated string within a
  * fixed-size buffer.
@@ -380,14 +414,14 @@ public:
  *
  * @tparam N Total buffer size including the null terminator (must be >= 1).
  */
-template <std::size_t N> class c_string_sink {
+template <std::size_t N> class c_string_sink : detail::c_string_sink_base {
   static_assert(N > 0, "c_string_sink buffer size must be at least 1 byte");
 
 public:
   /**
    * @brief Constructs an empty, null-terminated string sink.
    */
-  constexpr c_string_sink() noexcept { m_data[0] = '\0'; }
+  constexpr c_string_sink() noexcept : detail::c_string_sink_base{m_storage, N - 1, 0} { m_storage[0] = '\0'; }
 
   /**
    * @brief Creates a type-erased @ref sink adapter pointing to this instance.
@@ -396,19 +430,7 @@ public:
    * null-terminate.
    */
   [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
-    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
-                  auto *self = static_cast<c_string_sink<N> *>(ctx);
-                  constexpr std::size_t max_payload = N - 1;
-
-                  const std::size_t avail = (self->m_pos < max_payload) ? (max_payload - self->m_pos) : 0;
-                  const std::size_t n = std::min(sv.size(), avail);
-
-                  if (n > 0) {
-                    std::copy_n(sv.data(), n, self->m_data + self->m_pos);
-                    self->m_pos += n;
-                    self->m_data[self->m_pos] = '\0';
-                  }
-                }};
+    return sink{this, &detail::c_string_sink_base::write_thunk};
   }
 
   /**
@@ -453,8 +475,7 @@ public:
   }
 
 private:
-  char m_data[N]{};
-  std::size_t m_pos{0};
+  char m_storage[N]{};
 };
 
 /**
@@ -706,34 +727,25 @@ template <> struct formatter<std::string_view> {
   void format(std::string_view val, const sink &out) const noexcept { out.write(microfmt::string_view(val)); }
 };
 
-template <> struct formatter<const char *> {
+namespace detail {
+
+struct const_char_like {
   constexpr void parse(format_parse_context &) noexcept {}
   void format(const char *val, const sink &out) const noexcept {
-    out.write(val ? microfmt::string_view(val) : "(null)");
+    out.write(val ? microfmt::string_view(val) : microfmt::string_view("(null)", 6));
   }
 };
+
+} // namespace detail
+
+template <> struct formatter<const char *> : detail::const_char_like {};
 
 // String literal / character array specialization
-template <size_t N> struct formatter<char[N]> {
-  constexpr void parse(format_parse_context &) noexcept {}
-  void format(const char *val, const sink &out) const noexcept {
-    out.write(val ? microfmt::string_view(val) : "(null)");
-  }
-};
+template <size_t N> struct formatter<char[N]> : detail::const_char_like {};
 
-template <size_t N> struct formatter<const char[N]> {
-  constexpr void parse(format_parse_context &) noexcept {}
-  void format(const char *val, const sink &out) const noexcept {
-    out.write(val ? microfmt::string_view(val) : "(null)");
-  }
-};
+template <size_t N> struct formatter<const char[N]> : detail::const_char_like {};
 
-template <> struct formatter<char *> {
-  constexpr void parse(format_parse_context &) noexcept {}
-  void format(const char *val, const sink &out) const noexcept {
-    out.write(val ? microfmt::string_view(val) : "(null)");
-  }
-};
+template <> struct formatter<char *> : detail::const_char_like {};
 
 namespace detail {
 
@@ -900,7 +912,7 @@ struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T,
     if (flags.is_hex) {
       start = detail::format_hex_backward(end, uval, flags.uppercase);
       if (flags.alt_form) {
-        prefix = flags.uppercase ? "0X" : "0x";
+        prefix = flags.uppercase ? microfmt::string_view("0X") : microfmt::string_view("0x");
       }
     } else {
       start = detail::format_dec_backward(end, uval);
@@ -920,7 +932,9 @@ template <> struct formatter<char> {
 
 template <> struct formatter<bool> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(bool val, const sink &out) const noexcept { out.write(val ? "true" : "false"); }
+  void format(bool val, const sink &out) const noexcept {
+    out.write(val ? std::string_view("true") : std::string_view("false"));
+  }
 };
 
 // Raw Pointers
