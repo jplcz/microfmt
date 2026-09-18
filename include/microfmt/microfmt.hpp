@@ -190,7 +190,7 @@ public:
    * @return A lightweight @ref sink struct configured with a callback to append
    * to this buffer.
    */
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] MICROFMT_CONSTEXPR20 sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<buffer_sink<N> *>(ctx);
                   const std::size_t avail = (self->m_pos < N) ? (N - self->m_pos) : 0;
@@ -521,10 +521,27 @@ inline constexpr char digit_pairs[201] = "00010203040506070809"
                                          "80818283848586878889"
                                          "90919293949596979899";
 
+// 2-digit lookup table for values 00-99
+inline constexpr std::array<char, 200> digits_lut = {
+    '0', '0', '0', '1', '0', '2', '0', '3', '0', '4', '0', '5', '0', '6', '0', '7', '0', '8', '0', '9', '1', '0', '1',
+    '1', '1', '2', '1', '3', '1', '4', '1', '5', '1', '6', '1', '7', '1', '8', '1', '9', '2', '0', '2', '1', '2', '2',
+    '2', '3', '2', '4', '2', '5', '2', '6', '2', '7', '2', '8', '2', '9', '3', '0', '3', '1', '3', '2', '3', '3', '3',
+    '4', '3', '5', '3', '6', '3', '7', '3', '8', '3', '9', '4', '0', '4', '1', '4', '2', '4', '3', '4', '4', '4', '5',
+    '4', '6', '4', '7', '4', '8', '4', '9', '5', '0', '5', '1', '5', '2', '5', '3', '5', '4', '5', '5', '5', '6', '5',
+    '7', '5', '8', '5', '9', '6', '0', '6', '1', '6', '2', '6', '3', '6', '4', '6', '5', '6', '6', '6', '7', '6', '8',
+    '6', '9', '7', '0', '7', '1', '7', '2', '7', '3', '7', '4', '7', '5', '7', '6', '7', '7', '7', '8', '7', '9', '8',
+    '0', '8', '1', '8', '2', '8', '3', '8', '4', '8', '5', '8', '6', '8', '7', '8', '8', '8', '9', '9', '0', '9', '1',
+    '9', '2', '9', '3', '9', '4', '9', '5', '9', '6', '9', '7', '9', '8', '9', '9'};
+
+inline constexpr std::array<char, 16> hex_digits_lower = {'0', '1', '2', '3', '4', '5', '6', '7',
+                                                          '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+inline constexpr std::array<char, 16> hex_digits_upper = {'0', '1', '2', '3', '4', '5', '6', '7',
+                                                          '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+
 MICROFMT_ALWAYS_INLINE
 inline void format_integer_core(const sink &out, uint64_t val, bool is_negative, uint32_t radix, bool uppercase,
                                 int min_width) noexcept {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
   MICROFMT_DEBUG_ASSERT(radix == 2 || radix == 10 || radix == 16, "integer radix must be 2, 10, or 16");
   microfmt::array<char, 24> buf; // Reclaimed immediately upon leaf exit
   size_t idx = buf.size();
@@ -532,7 +549,7 @@ inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
   if (val == 0) {
     buf[--idx] = '0';
   } else if (radix == 16) {
-    const char *hex_digits = uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
+    const auto &hex_digits = uppercase ? hex_digits_upper : hex_digits_lower;
     while (val > 0) {
       buf[--idx] = hex_digits[val & 0xF];
       val >>= 4;
@@ -554,7 +571,7 @@ inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
       buf[idx + 1] = digit_pairs[rem + 1];
     }
   } else {
-    const char *digits = uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
+    const auto &digits = uppercase ? hex_digits_upper : hex_digits_lower;
     while (val > 0 && idx > 0) {
       buf[--idx] = digits[val % radix];
       val /= radix;
@@ -582,7 +599,6 @@ inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
   }
 
   out.write(microfmt::string_view(&buf[idx], digits_len));
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
 }
 
 MICROFMT_ALWAYS_INLINE
@@ -721,30 +737,13 @@ template <> struct formatter<char *> {
 
 namespace detail {
 
-// 2-digit lookup table for values 00-99
-inline constexpr std::array<char, 200> digits_lut = {
-    '0', '0', '0', '1', '0', '2', '0', '3', '0', '4', '0', '5', '0', '6', '0', '7', '0', '8', '0', '9', '1', '0', '1',
-    '1', '1', '2', '1', '3', '1', '4', '1', '5', '1', '6', '1', '7', '1', '8', '1', '9', '2', '0', '2', '1', '2', '2',
-    '2', '3', '2', '4', '2', '5', '2', '6', '2', '7', '2', '8', '2', '9', '3', '0', '3', '1', '3', '2', '3', '3', '3',
-    '4', '3', '5', '3', '6', '3', '7', '3', '8', '3', '9', '4', '0', '4', '1', '4', '2', '4', '3', '4', '4', '4', '5',
-    '4', '6', '4', '7', '4', '8', '4', '9', '5', '0', '5', '1', '5', '2', '5', '3', '5', '4', '5', '5', '5', '6', '5',
-    '7', '5', '8', '5', '9', '6', '0', '6', '1', '6', '2', '6', '3', '6', '4', '6', '5', '6', '6', '6', '7', '6', '8',
-    '6', '9', '7', '0', '7', '1', '7', '2', '7', '3', '7', '4', '7', '5', '7', '6', '7', '7', '7', '8', '7', '9', '8',
-    '0', '8', '1', '8', '2', '8', '3', '8', '4', '8', '5', '8', '6', '8', '7', '8', '8', '8', '9', '9', '0', '9', '1',
-    '9', '2', '9', '3', '9', '4', '9', '5', '9', '6', '9', '7', '9', '8', '9', '9'};
-
-inline constexpr std::array<char, 16> hex_digits_lower = {'0', '1', '2', '3', '4', '5', '6', '7',
-                                                          '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-inline constexpr std::array<char, 16> hex_digits_upper = {'0', '1', '2', '3', '4', '5', '6', '7',
-                                                          '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-
 // =============================================================================
 // Fast Backward Decimal Formatting
 // =============================================================================
 
 template <typename UInt>
-MICROFMT_ALWAYS_INLINE MICROFMT_UNSAFE_BUFFER_USAGE inline char *format_dec_backward(char *ptr, UInt value) noexcept {
+MICROFMT_ALWAYS_INLINE MICROFMT_UNSAFE_BUFFER_USAGE MICROFMT_CONSTEXPR20 inline char *
+format_dec_backward(char *ptr, UInt value) noexcept {
   // Process 2 digits at a time using the lookup table
   while (value >= 100) {
     const auto rem = static_cast<unsigned>(value % 100);
@@ -770,8 +769,8 @@ MICROFMT_ALWAYS_INLINE MICROFMT_UNSAFE_BUFFER_USAGE inline char *format_dec_back
 // =============================================================================
 
 template <typename UInt>
-MICROFMT_UNSAFE_BUFFER_USAGE MICROFMT_ALWAYS_INLINE inline char *format_hex_backward(char *ptr, UInt value,
-                                                                                     bool uppercase) noexcept {
+MICROFMT_UNSAFE_BUFFER_USAGE MICROFMT_ALWAYS_INLINE MICROFMT_CONSTEXPR20 inline char *
+format_hex_backward(char *ptr, UInt value, bool uppercase) noexcept {
   const auto &lut = uppercase ? hex_digits_upper : hex_digits_lower;
   if (value == 0) {
     *--ptr = '0';
@@ -1224,7 +1223,7 @@ inline void vformat_to(const sink &out, microfmt::string_view fmt, span<const vo
 // ============================================================================
 
 template <typename... Args>
-inline void format_to(const sink &out, microfmt::string_view fmt, const Args &...args) noexcept {
+MICROFMT_CONSTEXPR20 inline void format_to(const sink &out, microfmt::string_view fmt, const Args &...args) noexcept {
   if constexpr (sizeof...(Args) == 0) {
     vformat_to(out, fmt, {}, {});
   } else {
@@ -1236,14 +1235,15 @@ inline void format_to(const sink &out, microfmt::string_view fmt, const Args &..
 }
 
 template <typename OutputIt, typename... Args>
-inline OutputIt format_to(OutputIt it, microfmt::string_view fmt, const Args &...args) noexcept {
+MICROFMT_CONSTEXPR20 inline OutputIt format_to(OutputIt it, microfmt::string_view fmt, const Args &...args) noexcept {
   iterator_sink<OutputIt> isink(it);
   format_to(isink.as_sink(), fmt, args...);
   return isink.current();
 }
 
 template <size_t N, typename... Args>
-[[nodiscard]] inline buffer_sink<N> format(microfmt::string_view fmt, const Args &...args) noexcept {
+[[nodiscard]] MICROFMT_CONSTEXPR20 inline buffer_sink<N> format(microfmt::string_view fmt,
+                                                                const Args &...args) noexcept {
   buffer_sink<N> buf;
   format_to(buf.as_sink(), fmt, args...);
   return buf;
@@ -1266,7 +1266,8 @@ template <typename Provider> struct compile_string_holder {
 
 // Compile-time unrolled overload (Zero stack arg_ptrs, zero indirect thunks)
 template <typename StrProvider, typename... Args>
-inline void format_to(const sink &out, compile_string_holder<StrProvider>, const Args &...args) noexcept {
+MICROFMT_CONSTEXPR20 inline void format_to(const sink &out, compile_string_holder<StrProvider>,
+                                           const Args &...args) noexcept {
   constexpr size_t num_pieces = detail::compiled_string_storage<StrProvider>::compiled.count;
 
   detail::unrolled_format_impl<StrProvider>(out, std::make_index_sequence<num_pieces>{}, args...);
@@ -1274,7 +1275,8 @@ inline void format_to(const sink &out, compile_string_holder<StrProvider>, const
 
 // Compile-time overload
 template <typename OutputIt, typename StrProvider, typename... Args>
-inline OutputIt format_to(OutputIt it, compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
+MICROFMT_CONSTEXPR20 inline OutputIt format_to(OutputIt it, compile_string_holder<StrProvider> fmt,
+                                               const Args &...args) noexcept {
   iterator_sink<OutputIt> isink(it);
   format_to(isink.as_sink(), fmt, args...);
   return isink.current();
@@ -1282,7 +1284,8 @@ inline OutputIt format_to(OutputIt it, compile_string_holder<StrProvider> fmt, c
 
 // Compile-time overload
 template <size_t N, typename StrProvider, typename... Args>
-[[nodiscard]] inline buffer_sink<N> format(compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
+[[nodiscard]] MICROFMT_CONSTEXPR20 inline buffer_sink<N> format(compile_string_holder<StrProvider> fmt,
+                                                                const Args &...args) noexcept {
   buffer_sink<N> buf;
   format_to(buf.as_sink(), fmt, args...);
   return buf;

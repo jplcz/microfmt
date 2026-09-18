@@ -135,8 +135,10 @@
 #endif
 
 #if defined(MICROFMT_ENABLE_BOOST_SOURCE_LOCATION)
+// clang-format off
 #if MICROFMT_HAS_INCLUDE(<boost/assert/source_location.hpp>)
 #include <boost/assert/source_location.hpp>
+// clang-format on
 #define MICROFMT_HAS_BOOST_SOURCE_LOCATION 1
 #else
 #error "MICROFMT_ENABLE_BOOST_SOURCE_LOCATION requires <boost/assert/source_location.hpp>"
@@ -153,8 +155,10 @@
 
 #if defined(MICROFMT_ENABLE_BOOST_UUID) || defined(BOOST_UUID_UUID_HPP) || defined(BOOST_UUID_HPP)
 #if !defined(BOOST_UUID_UUID_HPP) && !defined(BOOST_UUID_HPP)
+// clang-format off
 #if MICROFMT_HAS_INCLUDE(<boost/uuid/uuid.hpp>)
 #include <boost/uuid/uuid.hpp>
+// clang-format on
 #else
 #error "MICROFMT_ENABLE_BOOST_UUID requires <boost/uuid/uuid.hpp>"
 #endif
@@ -174,4 +178,10 @@
 #define MICROFMT_HAS_ANDROID_LOG 1
 #else
 #define MICROFMT_HAS_ANDROID_LOG 0
+#endif
+
+#if MICROFMT_CXX20
+#define MICROFMT_CONSTEXPR20 constexpr
+#else
+#define MICROFMT_CONSTEXPR20
 #endif
