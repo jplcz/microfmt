@@ -50,22 +50,27 @@ struct microfmt::frame_unwinder_traits<microfmt::fp_unwinder_tag<AbiTraits>> {
    *
    * @param context Required borrow of the unwinder context.
    * @param reg_ctx Target register context handle.
+   * @param current_pc Unused: pure frame-pointer-chain walking needs no
+   * unwind-descriptor lookup, so it never consults the current PC.
    * @param next_fp Receives the caller's frame pointer.
    * @param next_pc Receives the normalized caller program counter.
    * @return `true` when both frame slots were read and form a valid caller
    * frame; otherwise `false`.
    */
   static bool step(value_ref<const context_type> context,
-                   register_context_ref reg_ctx,
+                   register_context_ref reg_ctx, uintptr_t /*current_pc*/,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
     if (!reg_ctx)
       return false;
 
     // Read current frame pointer dynamically from register context using
-    // AbiTraits
+    // AbiTraits. On architectures whose frame-pointer register is fixed
+    // (all but ARM), this is just AbiTraits::fp_reg; on ARM it depends on
+    // the live ARM/Thumb instruction-set state (see
+    // arm_abi_traits::resolve_fp_reg).
+    const uint32_t fp_reg = resolve_fp_register<AbiTraits>(reg_ctx);
     typename AbiTraits::register_type raw_fp = 0;
-    if (!reg_ctx.read_raw(AbiTraits::fp_reg, &raw_fp,
-                          AbiTraits::pointer_size)) {
+    if (!reg_ctx.read_raw(fp_reg, &raw_fp, AbiTraits::pointer_size)) {
       return false;
     }
 

@@ -109,6 +109,39 @@ private:
           }
         }
       }
+      // 1001nnnn (nnnn != 13,15): vsp = r[nnnn]. Extremely common with
+      // frame-pointer-based prologues (e.g. `vsp = r11`), where 0x9D/0x9F
+      // are reserved encodings that must be ignored.
+      else if ((opcode & 0xF0) == 0x90 && opcode != 0x9D && opcode != 0x9F) {
+        uint32_t reg_val = 0;
+        uint32_t reg_num = static_cast<uint32_t>(opcode & 0x0F);
+        if (!reg_ctx.read(reg_num, reg_val))
+          return false;
+        io_sp = reg_val;
+      }
+      // 10100nnn: Pop r4-r[4+nnn]. 10101nnn: Pop r4-r[4+nnn] and r14.
+      else if ((opcode & 0xF0) == 0xA0) {
+        uint8_t count = opcode & 0x07;
+        bool pop_lr = (opcode & 0x08) != 0;
+
+        for (int i = 0; i <= count; ++i, io_sp += 4) {
+          uint32_t val = 0;
+          if (space.read_bytes(io_sp, &val, 4)) {
+            uint32_t dwarf_reg = static_cast<uint32_t>(dwarf::arm32::r4) + static_cast<uint32_t>(i);
+            if (!reg_ctx.write(dwarf_reg, val))
+              return false;
+          }
+        }
+
+        if (pop_lr) {
+          uint32_t val = 0;
+          if (space.read_bytes(io_sp, &val, 4)) {
+            if (!reg_ctx.write(static_cast<uint32_t>(dwarf::arm32::r14), val))
+              return false;
+          }
+          io_sp += 4;
+        }
+      }
       // 10111xxx: Pop VFP double-precision registers d(8) to d(8+xxx)
       else if ((opcode & 0xF8) == 0xB8) {
         uint8_t count = opcode & 0x07;

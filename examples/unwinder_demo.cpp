@@ -101,7 +101,8 @@ template <> struct microfmt::frame_unwinder_traits<arch_x86_64_tag> {
   using context_type = arch_unwinder_context;
 
   static bool step(microfmt::value_ref<const context_type> context,
-                   microfmt::register_context_ref reg_ctx, uintptr_t &next_fp,
+                   microfmt::register_context_ref reg_ctx,
+                   uintptr_t /*current_pc*/, uintptr_t &next_fp,
                    uintptr_t &next_pc) noexcept {
     uint64_t raw_fp = 0;
     if (!reg_ctx.read(microfmt::dwarf::x86_64::fp, raw_fp))

@@ -9,8 +9,11 @@
 
 #include "dwarf_registers.hpp"
 #include "gdb_registers.hpp"
+#include "register_context.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
+#include <utility>
 
 namespace microfmt {
 
@@ -68,6 +71,31 @@ struct arm_abi_traits {
   normalize_pc(uintptr_t raw_ra) noexcept {
     // Clear the Thumb-2 mode bit (bit 0)
     return raw_ra & ~static_cast<uintptr_t>(1);
+  }
+
+  /**
+   * @brief Resolves which register actually holds the frame pointer for the
+   * *current* instruction set state.
+   *
+   * Unlike every other supported architecture, ARM's frame-pointer register
+   * is not fixed: GCC/Clang use R11 in ARM (A32) state but R7 in Thumb/Thumb-2
+   * state. Consulting the static @ref fp_reg alone silently mis-decodes any
+   * Thumb frame. The definitive source of truth is the Thumb bit (bit 5,
+   * `0x20`) of CPSR; when the register context cannot supply CPSR (e.g. a
+   * synthetic/simulated register file in a test), this falls back to @ref
+   * fp_reg (A32/R11).
+   *
+   * @param reg_ctx Register context to consult for CPSR.
+   * @return `7` (R7) in Thumb state, otherwise @ref fp_reg (`11`, R11).
+   */
+  [[nodiscard]] static uint32_t
+  resolve_fp_reg(register_context_ref reg_ctx) noexcept {
+    uint32_t cpsr = 0;
+    if (reg_ctx && reg_ctx.read(dwarf::arm32::cpsr, cpsr)) {
+      constexpr uint32_t thumb_bit = 0x20U; // CPSR.T
+      return (cpsr & thumb_bit) != 0U ? 7U : fp_reg;
+    }
+    return fp_reg;
   }
 };
 
@@ -350,6 +378,46 @@ struct x86_64_abi_traits {
     return raw_ra;
   }
 };
+
+namespace detail {
+
+/// Detects whether `AbiTraits` supplies a dynamic, register-context-aware
+/// `resolve_fp_reg(register_context_ref)` (currently only @ref
+/// arm_abi_traits, whose frame-pointer register depends on the live
+/// ARM/Thumb instruction-set state).
+template <typename AbiTraits, typename = void>
+struct has_resolve_fp_reg : std::false_type {};
+
+template <typename AbiTraits>
+struct has_resolve_fp_reg<
+    AbiTraits, std::void_t<decltype(AbiTraits::resolve_fp_reg(
+                   std::declval<register_context_ref>()))>> : std::true_type {
+};
+
+} // namespace detail
+
+/**
+ * @brief Resolves the frame-pointer register to use for @p AbiTraits.
+ *
+ * Architectures whose frame-pointer register is fixed (all except ARM) fall
+ * back to the static @c AbiTraits::fp_reg. ARM's frame-pointer register
+ * instead depends on the live ARM/Thumb instruction-set state (R11 vs. R7),
+ * so @ref arm_abi_traits::resolve_fp_reg consults CPSR (or a documented
+ * fallback) via @p reg_ctx.
+ *
+ * @tparam AbiTraits Architecture ABI traits.
+ * @param reg_ctx Register context to consult, if the traits need it.
+ * @return DWARF register number holding the frame pointer.
+ */
+template <typename AbiTraits>
+[[nodiscard]] uint32_t
+resolve_fp_register(register_context_ref reg_ctx) noexcept {
+  if constexpr (detail::has_resolve_fp_reg<AbiTraits>::value) {
+    return AbiTraits::resolve_fp_reg(reg_ctx);
+  } else {
+    return AbiTraits::fp_reg;
+  }
+}
 
 template <typename Traits> struct validate_abi_traits {
   static_assert(

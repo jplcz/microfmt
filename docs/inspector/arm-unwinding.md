@@ -16,8 +16,7 @@ metadata incrementally to recover the caller frame without allocating.
 |---|---|
 | `arm_exidx_search.hpp` | Decode PREL31 values and locate the matching EXIDX entry for a program counter |
 | `arm_exidx_decoder.hpp` | Interpret compact inline EXIDX bytecode |
-| `arm_extab_decoder.hpp` | Decode EXIDX entries that refer to extended tables |
-| `arm_extab_stream.hpp` | Execute bounded extended-table bytecode streams |
+| `arm_extab_stream.hpp` | Decode and execute out-of-line `.ARM.extab` bytecode streams (generic model) |
 | `arm_exidx_unwinder.hpp` | Adapt EXIDX lookup and decoding to `frame_unwinder_ref` |
 
 `elf_enumerator_ref` locates the loaded image that owns a return address and

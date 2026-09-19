@@ -401,8 +401,23 @@ struct microfmt::frame_unwinder_traits<
       microfmt::dwarf_unwinder_context<AbiTraits, MaxStateStackDepth>;
   using decoder_type = microfmt::dwarf_cfi_decoder<AbiTraits>;
 
+  /**
+   * @brief Unwinds one frame using the module's DWARF CFI FDE and
+   * register_context_ref.
+   *
+   * @param context The @ref dwarf_unwinder_context.
+   * @param reg_ctx Target register context handle.
+   * @param current_pc Program counter of the frame being unwound *from*,
+   * supplied by the caller/iterator; used only to locate the FDE that covers
+   * this frame (previously this was read out of @c AbiTraits::ra_reg, which
+   * required callers to pre-seed that register with the crash PC before the
+   * first step -- no longer necessary).
+   * @param next_fp Receives the caller's frame pointer.
+   * @param next_pc Receives the caller's program counter.
+   * @return `true` on success.
+   */
   static bool step(value_ref<const context_type> context,
-                   register_context_ref reg_ctx,
+                   register_context_ref reg_ctx, uintptr_t current_pc,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
     if (!reg_ctx)
       return false;
@@ -412,17 +427,7 @@ struct microfmt::frame_unwinder_traits<
       return false;
     }
 
-    // SELECTIVE REGISTER ACCESS: Read current program counter (PC) from
-    // register context
-    typename AbiTraits::register_type raw_pc = 0;
-    if (!reg_ctx.read_raw(AbiTraits::ra_reg, &raw_pc,
-                          AbiTraits::pointer_size)) {
-      if (!reg_ctx.read_raw(dwarf::x86_64::pc, &raw_pc,
-                            AbiTraits::pointer_size))
-        return false;
-    }
-    uintptr_t fault_pc =
-        AbiTraits::normalize_pc(static_cast<uintptr_t>(raw_pc));
+    uintptr_t fault_pc = AbiTraits::normalize_pc(current_pc);
 
     microfmt::elf_image_info &img = *context->img_storage;
     img = {};

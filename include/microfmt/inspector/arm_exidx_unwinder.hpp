@@ -9,8 +9,8 @@
 
 #include "arm_exidx_decoder.hpp"
 #include "arm_exidx_search.hpp"
-#include "arm_extab_decoder.hpp"
 #include "arm_extab_stream.hpp"
+#include "dwarf_abi.hpp"
 #include "elf_enumerator.hpp"
 #include "frame_pointer.hpp"
 #include <cstdint>
@@ -50,8 +50,14 @@ struct arm_exidx_unwinder_context {
 
 /**
  * @brief Tag selecting the EXIDX unwinder in the traits customization point.
+ *
+ * @tparam AbiTraits ABI traits providing the SP/LR/FP register indices (see
+ * @ref arm_abi_traits). Defaulted since ARM32 is the only architecture with a
+ * `.ARM.exidx`/`.ARM.extab` format, but templated (rather than hardcoded on
+ * `dwarf::arm32`) so the SP/LR register-number source of truth lives in one
+ * place shared with the DWARF and frame-pointer unwinder backends.
  */
-struct arm_exidx_unwinder_tag {};
+template <typename AbiTraits = arm_abi_traits> struct arm_exidx_unwinder_tag {};
 
 // ============================================================================
 // EXIDX Unwinder Traits Implementation
@@ -60,7 +66,8 @@ struct arm_exidx_unwinder_tag {};
 /**
  * @brief Specializes @ref frame_unwinder_traits for the EXIDX unwinder.
  */
-template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
+template <typename AbiTraits>
+struct frame_unwinder_traits<arm_exidx_unwinder_tag<AbiTraits>> {
   /// Stateful context type.
   using context_type = arm_exidx_unwinder_context;
 
@@ -70,28 +77,38 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
    *
    * @param context The @ref arm_exidx_unwinder_context.
    * @param reg_ctx Target register context handle.
+   * @param current_pc Program counter of the frame being unwound *from*,
+   * supplied by the caller/iterator. Used only to locate the `.ARM.exidx`
+   * entry covering this frame -- callers no longer need to pre-seed LR (or
+   * any other register) with it before the first step. The *real* LR/SP/FP
+   * register values (read via @p reg_ctx, using @p AbiTraits) are still
+   * exactly what gets restored/returned as the caller's frame.
    * @param next_fp Receives the caller's frame pointer.
    * @param next_pc Receives the caller's program counter.
    * @return `true` on success.
    */
   static bool step(value_ref<const context_type> context,
-                   register_context_ref reg_ctx, uintptr_t &next_fp,
-                   uintptr_t &next_pc) noexcept {
+                   register_context_ref reg_ctx, uintptr_t current_pc,
+                   uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
     if (!reg_ctx)
       return false;
 
     if (!context->elf_img_storage || !context->enumerator)
       return false;
 
-    // Read current SP and LR from register context
-    uint32_t current_sp = 0;
-    uint32_t return_lr = 0;
-    if (!reg_ctx.read(dwarf::arm32::sp, current_sp))
+    // Read the current SP from register context; the untouched hardware LR
+    // is kept as the fallback return address for frames whose bytecode
+    // never explicitly restores it (see below).
+    typename AbiTraits::register_type current_sp = 0;
+    typename AbiTraits::register_type return_lr = 0;
+    if (!reg_ctx.read_raw(AbiTraits::sp_reg, &current_sp,
+                          AbiTraits::pointer_size))
       return false;
-    if (!reg_ctx.read(dwarf::arm32::lr, return_lr))
+    if (!reg_ctx.read_raw(AbiTraits::ra_reg, &return_lr,
+                          AbiTraits::pointer_size))
       return false;
 
-    uintptr_t fault_pc = static_cast<uintptr_t>(return_lr & ~1U);
+    uintptr_t fault_pc = AbiTraits::normalize_pc(current_pc);
     uintptr_t virtual_sp = static_cast<uintptr_t>(current_sp);
     bool unwind_applied = false;
 
@@ -133,11 +150,12 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
           if (raw_unwind_data == 0x1)
             return false;
 
+          // Per the ARM EHABI (#6.2 Generic Model / #6.3 Compact Model): bit
+          // 31 SET means the unwind opcodes are packed inline in this very
+          // word (compact model, personality index in bits 27:24); bit 31
+          // CLEAR means this word is instead a PREL31-encoded pointer to an
+          // out-of-line entry in `.ARM.extab` (generic model).
           if ((raw_unwind_data & 0x80000000U) != 0U) {
-            uintptr_t extab_addr = exidx_table_searcher::decode_prel31(word2_address, raw_unwind_data);
-            unwind_applied = extab_stream_executor::execute(
-                context->space, extab_addr, virtual_sp, reg_ctx);
-          } else {
             MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
 
             unwind_applied =
@@ -146,6 +164,10 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
                     reg_ctx);
 
             MICROFMT_END_UNSAFE_BUFFER_USAGE;
+          } else {
+            uintptr_t extab_addr = exidx_table_searcher::decode_prel31(word2_address, raw_unwind_data);
+            unwind_applied = extab_stream_executor::execute(
+                context->space, extab_addr, virtual_sp, reg_ctx);
           }
         }
       }
@@ -154,21 +176,25 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
     if (!unwind_applied)
       return false;
 
-    const uint32_t updated_sp = static_cast<uint32_t>(virtual_sp);
-    if (!reg_ctx.write(dwarf::arm32::sp, updated_sp))
+    const auto updated_sp = static_cast<typename AbiTraits::register_type>(virtual_sp);
+    if (!reg_ctx.write_raw(AbiTraits::sp_reg, &updated_sp, AbiTraits::pointer_size))
       return false;
 
-    uint32_t updated_fp = 0;
-    if (!reg_ctx.read(dwarf::arm32::fp, updated_fp)) {
+    // The frame-pointer register itself depends on the live ARM/Thumb
+    // instruction-set state (R11 vs. R7); consult AbiTraits rather than
+    // assuming R11, so Thumb-compiled frames report the correct value.
+    const uint32_t fp_reg = resolve_fp_register<AbiTraits>(reg_ctx);
+    typename AbiTraits::register_type updated_fp = 0;
+    if (!reg_ctx.read_raw(fp_reg, &updated_fp, AbiTraits::pointer_size)) {
       updated_fp = updated_sp;
     }
 
-    uint32_t updated_lr = 0;
-    if (!reg_ctx.read(dwarf::arm32::lr, updated_lr))
+    typename AbiTraits::register_type updated_lr = 0;
+    if (!reg_ctx.read_raw(AbiTraits::ra_reg, &updated_lr, AbiTraits::pointer_size))
       return false;
 
     next_fp = static_cast<uintptr_t>(updated_fp);
-    next_pc = static_cast<uintptr_t>(updated_lr & ~1U);
+    next_pc = AbiTraits::normalize_pc(static_cast<uintptr_t>(updated_lr));
     return true;
   }
 };
@@ -177,8 +203,11 @@ template <> struct frame_unwinder_traits<arm_exidx_unwinder_tag> {
  * @brief Self-contained holder owning the EXIDX scratch storage.
  *
  * Non-copyable/non-movable to guarantee stable interior pointers.
+ *
+ * @tparam AbiTraits ABI traits forwarded to @ref arm_exidx_unwinder_tag;
+ * defaults to @ref arm_abi_traits.
  */
-struct arm_exidx_unwinder_holder {
+template <typename AbiTraits = arm_abi_traits> struct arm_exidx_unwinder_holder {
   /// Storage for the located ELF image.
   elf_image_info img_storage{};
   /// Unwinder context referencing the owned storage.
@@ -205,7 +234,9 @@ struct arm_exidx_unwinder_holder {
    * @brief Builds a type-erased unwinder handle bound to this holder.
    * @return An @ref frame_unwinder_ref over @ref ctx.
    */
-  [[nodiscard]] frame_unwinder_ref make_ref() noexcept { return frame_unwinder_ref(arm_exidx_unwinder_tag{}, ctx); }
+  [[nodiscard]] frame_unwinder_ref make_ref() noexcept {
+    return frame_unwinder_ref(arm_exidx_unwinder_tag<AbiTraits>{}, ctx);
+  }
 };
 
 } // namespace microfmt

@@ -77,7 +77,8 @@ public:
      * @brief Advances one frame using register context.
      */
     bool (*step)(const void *ctx, register_context_ref reg_ctx,
-                 uintptr_t &next_fp, uintptr_t &next_pc) noexcept;
+                 uintptr_t current_pc, uintptr_t &next_fp,
+                 uintptr_t &next_pc) noexcept;
   };
 
   /**
@@ -136,12 +137,22 @@ public:
   /**
    * @brief Advances from the current frame to its caller using
    * register_context_ref.
+   *
+   * @param reg_ctx Target register context handle.
+   * @param current_pc Program counter of the frame being unwound *from*
+   * (supplied by the caller/iterator, not read out of @p reg_ctx); backends
+   * use this purely to look up the applicable unwind descriptor (`.ARM.exidx`
+   * entry, DWARF FDE, unwind hint, ...) for the current frame. Register
+   * restoration (SP/FP/LR/...) still happens via @p reg_ctx itself.
+   * @param next_fp Receives the caller's frame pointer.
+   * @param next_pc Receives the caller's program counter.
    */
-  [[nodiscard]] bool step(register_context_ref reg_ctx, uintptr_t &next_fp,
+  [[nodiscard]] bool step(register_context_ref reg_ctx, uintptr_t current_pc,
+                          uintptr_t &next_fp,
                           uintptr_t &next_pc) const noexcept {
     if (!vtbl_)
       return false;
-    return vtbl_->step(ctx_.get(), reg_ctx, next_fp, next_pc);
+    return vtbl_->step(ctx_.get(), reg_ctx, current_pc, next_fp, next_pc);
   }
 
   [[nodiscard]] constexpr explicit operator bool() const noexcept {
@@ -151,16 +162,18 @@ public:
 private:
   template <typename ArchTag>
   static bool step_entry(const void *context, register_context_ref registers,
-                         uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
+                         uintptr_t current_pc, uintptr_t &next_fp,
+                         uintptr_t &next_pc) noexcept {
     using context_type = typename frame_unwinder_traits<ArchTag>::context_type;
     if constexpr (std::is_void_v<context_type>) {
-      return frame_unwinder_traits<ArchTag>::step(registers, next_fp, next_pc);
+      return frame_unwinder_traits<ArchTag>::step(registers, current_pc,
+                                                  next_fp, next_pc);
     } else {
       const auto &typed_context =
           *static_cast<const context_type *>(context);
       return frame_unwinder_traits<ArchTag>::step(
-          value_ref<const context_type>(typed_context), registers, next_fp,
-          next_pc);
+          value_ref<const context_type>(typed_context), registers, current_pc,
+          next_fp, next_pc);
     }
   }
 
@@ -229,6 +242,14 @@ public:
   /**
    * @brief Constructs an iterator rooted at the given frame and register
    * context.
+   *
+   * @p initial_pc is tracked internally and fed back into the unwinder's
+   * `step()` on every call, purely to let the backend look up the unwind
+   * descriptor covering the *current* frame (`.ARM.exidx` entry, DWARF FDE,
+   * unwind hint, ...). Callers do **not** need to pre-seed any register
+   * (e.g. the link register) with the crash/current PC before iterating;
+   * @p reg_ctx only needs to reflect the real register values of the frame
+   * being unwound.
    */
   constexpr frame_pointer_iterator(frame_unwinder_ref unwinder,
                                    register_context_ref reg_ctx,
@@ -263,7 +284,7 @@ public:
     uintptr_t next_fp = 0;
     uintptr_t next_pc = 0;
 
-    if (!unwinder_.step(reg_ctx_, next_fp, next_pc)) {
+    if (!unwinder_.step(reg_ctx_, frame_.pc, next_fp, next_pc)) {
       is_valid_ = false;
       return false;
     }

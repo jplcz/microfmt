@@ -48,7 +48,7 @@ decoder state, or symbol buffers in formatter-local arrays. See the
 | [Symbols and diagnostics](inspector/symbols-and-diagnostics.md) | ELF image discovery, symbol resolution, demangling, and diagnostic views | `elf_enumerator.hpp`, `dl_elf_enumerator.hpp`, `symbol_resolver.hpp`, `dl_symbol_resolver.hpp`, `demangle.hpp`, `remote_diagnostics.hpp` |
 | [Architectures and registers](inspector/architectures-and-registers.md) | Register contexts, architecture catalogs, system and timer registers, address candidates, register rendering, and POSIX signal-handler register contexts | `register_context.hpp`, `dwarf_registers.hpp`, `dwarf_abi.hpp`, `register_view.hpp`, `ucontext_adapter.hpp` |
 | [Generic unwinding](inspector/unwinding.md) | Frame cursors, backtraces, frame-pointer walkers, custom-context recovery hints, and chained unwinders | `frame_pointer.hpp`, `fp_unwinder.hpp`, `dwarf_abi.hpp`, `dwarf_decoder.hpp`, `unwind_hint.hpp`, `chained_unwinder.hpp`, `hybrid_unwinder.hpp`, `exception_frame.hpp` |
-| [ARM EXIDX unwinding](inspector/arm-unwinding.md) | ARM EHABI `.ARM.exidx` and `.ARM.extab` decoding | `arm_exidx_decoder.hpp`, `arm_exidx_search.hpp`, `arm_exidx_unwinder.hpp`, `arm_extab_decoder.hpp`, `arm_extab_stream.hpp` |
+| [ARM EXIDX unwinding](inspector/arm-unwinding.md) | ARM EHABI `.ARM.exidx` and `.ARM.extab` decoding | `arm_exidx_decoder.hpp`, `arm_exidx_search.hpp`, `arm_exidx_unwinder.hpp`, `arm_extab_stream.hpp` |
 
 ## Minimal remote-object example
 

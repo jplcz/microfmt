@@ -33,9 +33,13 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
    *
    * Hint routines receive the same mutable register context used by the other
    * unwinder tiers. They may read or update GPRs and other target registers.
+   *
+   * @param current_pc Program counter of the frame being unwound *from*,
+   * supplied by the caller/iterator; forwarded to every tier so none of them
+   * need a register pre-seeded with it.
    */
   static bool step(value_ref<const context_type> context,
-                   register_context_ref reg_ctx,
+                   register_context_ref reg_ctx, uintptr_t current_pc,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
     if (!reg_ctx)
       return false;
@@ -44,21 +48,23 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
     uintptr_t trial_pc = 0;
 
     if (context->exidx_unwinder &&
-        context->exidx_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
+        context->exidx_unwinder.step(reg_ctx, current_pc, trial_fp,
+                                     trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
     }
 
     if (context->dwarf_unwinder &&
-        context->dwarf_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
+        context->dwarf_unwinder.step(reg_ctx, current_pc, trial_fp,
+                                     trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
     }
 
     if (context->fp_unwinder &&
-        context->fp_unwinder.step(reg_ctx, trial_fp, trial_pc)) {
+        context->fp_unwinder.step(reg_ctx, current_pc, trial_fp, trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
@@ -67,15 +73,12 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
     if (!context->hints)
       return false;
 
-    typename AbiTraits::register_type raw_pc = 0;
-    if (!reg_ctx.read_raw(AbiTraits::ra_reg, &raw_pc,
-                          AbiTraits::pointer_size) || raw_pc == 0)
+    if (current_pc == 0)
       return false;
 
-    const uintptr_t current_pc =
-        AbiTraits::normalize_pc(static_cast<uintptr_t>(raw_pc));
     unwind_hint hint{};
-    if (!context->hints.find_hint(current_pc, hint) || !hint.routine)
+    if (!context->hints.find_hint(AbiTraits::normalize_pc(current_pc), hint) ||
+        !hint.routine)
       return false;
 
     // The hint receives reg_ctx directly. Do not snapshot only FP/PC here:

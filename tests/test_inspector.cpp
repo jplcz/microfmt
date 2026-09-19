@@ -1667,30 +1667,30 @@ TEST(InspectorFrameUnwinder, StepsFrameRecordsAndRejectsInvalidRecords) {
   uintptr_t next_pc = 0;
 
   EXPECT_TRUE(microfmt::frame_unwinder_traits<tag>::step(
-      const_owner.context(), register_context, next_fp, next_pc));
+      const_owner.context(), register_context, 0, next_fp, next_pc));
   EXPECT_EQ(next_fp, address_of(caller));
   EXPECT_EQ(next_pc, 0x100u);
 
   auto unwinder = owner.ref();
-  EXPECT_TRUE(unwinder.step(register_context, next_fp, next_pc));
+  EXPECT_TRUE(unwinder.step(register_context, 0, next_fp, next_pc));
   EXPECT_FALSE(
       microfmt::frame_unwinder_traits<tag>::step(
-          const_owner.context(), microfmt::register_context_ref{}, next_fp,
+          const_owner.context(), microfmt::register_context_ref{}, 0, next_fp,
           next_pc));
 
   register_state.value = address_of(current) + 1;
   EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
-      const_owner.context(), register_context, next_fp, next_pc));
+      const_owner.context(), register_context, 0, next_fp, next_pc));
 
   frame_record non_advancing{0, 0x100};
   non_advancing.saved_fp = address_of(non_advancing);
   register_state.value = address_of(non_advancing);
   EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
-      const_owner.context(), register_context, next_fp, next_pc));
+      const_owner.context(), register_context, 0, next_fp, next_pc));
   frame_record no_return_address{address_of(caller), 0};
   register_state.value = address_of(no_return_address);
   EXPECT_FALSE(microfmt::frame_unwinder_traits<tag>::step(
-      const_owner.context(), register_context, next_fp, next_pc));
+      const_owner.context(), register_context, 0, next_fp, next_pc));
 }
 
 } // namespace

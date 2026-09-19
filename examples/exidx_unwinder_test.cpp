@@ -136,7 +136,10 @@ int main() {
   uintptr_t fn0_target = 0x0800'1000;
   int32_t prel31_0 = static_cast<int32_t>(fn0_target - exidx_table_base);
   exidx_region[0] = static_cast<uint32_t>(prel31_0);
-  exidx_region[1] = 0x0084'80B0; // Pop R11 and LR, then finish
+  // Compact model (ARM EHABI #6.3): bit 31 set, personality index 0 in bits
+  // 27:24, inline opcode bytes in bits 23:0 (0x84 0x80 0xB0 => pop R11/LR,
+  // then finish).
+  exidx_region[1] = 0x8084'80B0;
 
   // Entry 1: Function at 0x08002000 (System_MainLoop)
   uintptr_t entry1_addr = exidx_table_base + 8;
@@ -182,7 +185,7 @@ int main() {
   microfmt::arm_exidx_unwinder_context exidx_ctx{
       .space = space, .enumerator = enumerator, .elf_img_storage = &off_stack_img_storage};
 
-  microfmt::frame_unwinder_ref unwinder(microfmt::arm_exidx_unwinder_tag{}, exidx_ctx);
+  microfmt::frame_unwinder_ref unwinder(microfmt::arm_exidx_unwinder_tag<>{}, exidx_ctx);
 
   char scratch[64];
   microfmt::symbol_resolution_context symbol_context{scratch};
@@ -195,7 +198,6 @@ int main() {
   arm_register_file register_file;
   register_file.values[microfmt::dwarf::arm32::fp] = initial_fp;
   register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::lr] = initial_pc;
   std::byte register_scratch[sizeof(uint64_t)]{};
   auto register_context =
       microfmt::make_register_context_ref<read_arm_register,
@@ -208,7 +210,6 @@ int main() {
 
   register_file.values[microfmt::dwarf::arm32::fp] = initial_fp;
   register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::lr] = initial_pc;
   microfmt::frame_pointer_iterator verbose_it(unwinder, register_context, initial_fp, initial_pc);
   microfmt::remote_backtrace_view verbose_bt(verbose_it, resolver, symbol_context);
   microfmt::println("\nVerbose Backtrace Result:\n{:#}", verbose_bt);

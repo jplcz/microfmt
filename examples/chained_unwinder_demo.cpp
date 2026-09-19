@@ -96,7 +96,8 @@ template <> struct microfmt::frame_unwinder_traits<standard_fp_unwinder_tag> {
 
   static bool step(microfmt::value_ref<const context_type> context,
                    microfmt::register_context_ref reg_ctx,
-                   uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
+                   uintptr_t /*current_pc*/, uintptr_t &next_fp,
+                   uintptr_t &next_pc) noexcept {
     uint32_t current_fp = 0;
     if (!reg_ctx.read(microfmt::dwarf::arm32::fp, current_fp) ||
         current_fp == 0 || (current_fp % 4) != 0)
@@ -150,7 +151,9 @@ int main() {
   uintptr_t fn0_target = 0x0800'1000;
   int32_t prel31_0 = static_cast<int32_t>(fn0_target - exidx_table_base);
   exidx_region[0] = static_cast<uint32_t>(prel31_0);
-  exidx_region[1] = 0x0084'80B0;
+  // Compact model (ARM EHABI #6.3): bit 31 set, personality index 0, inline
+  // opcode bytes 0x84 0x80 0xB0 (pop R11/LR, then finish).
+  exidx_region[1] = 0x8084'80B0;
   uintptr_t entry1_addr = exidx_table_base + 8;
   uintptr_t fn1_target = 0x0800'2000;
   int32_t prel31_1 = static_cast<int32_t>(fn1_target - entry1_addr);
@@ -208,7 +211,7 @@ int main() {
       .space = space, .enumerator = enumerator,
       .elf_img_storage = &off_stack_img_storage};
   microfmt::frame_unwinder_ref exidx_unwinder(
-      microfmt::arm_exidx_unwinder_tag{}, exidx_ctx);
+      microfmt::arm_exidx_unwinder_tag<>{}, exidx_ctx);
   microfmt::frame_unwinder_ref fp_unwinder(standard_fp_unwinder_tag{}, space);
   microfmt::chained_unwinder_context<microfmt::arm_abi_traits> chained_ctx{
       .space = space, .exidx_unwinder = exidx_unwinder,
@@ -223,7 +226,6 @@ int main() {
   arm_register_file register_file;
   register_file.values[microfmt::dwarf::arm32::fp] = initial_fp;
   register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::lr] = initial_pc;
   std::byte register_scratch[sizeof(uint64_t)]{};
   auto register_context =
       microfmt::make_register_context_ref<read_arm_register,
@@ -236,7 +238,6 @@ int main() {
 
   register_file.values[microfmt::dwarf::arm32::fp] = initial_fp;
   register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
-  register_file.values[microfmt::dwarf::arm32::lr] = initial_pc;
   microfmt::frame_pointer_iterator verbose_it(robust_unwinder, register_context,
                                               initial_fp, initial_pc);
   microfmt::remote_backtrace_view verbose_bt(verbose_it, resolver,

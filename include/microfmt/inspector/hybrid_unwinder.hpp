@@ -280,7 +280,7 @@ public:
     // Normal FP unwind step
     uintptr_t next_fp = 0;
     uintptr_t next_pc = 0;
-    if (!fp_unwinder_.step(reg_ctx_, next_fp, next_pc)) {
+    if (!fp_unwinder_.step(reg_ctx_, current_.pc, next_fp, next_pc)) {
       is_valid_ = false;
       return false;
     }

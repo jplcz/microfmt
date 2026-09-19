@@ -26,13 +26,18 @@ namespace microfmt::detail {
  * DWARF register index (see @ref microfmt::dwarf).
  *
  * Supports Linux and FreeBSD across x86, x86_64, ARM, AArch64, and RISC-V.
- * @p out_value must be exactly `sizeof(uint64_t)` bytes; unsupported
- * register indices or architectures/OSes return `false` without touching
+ * @p out_value may be any size from 1 up to `sizeof(uint64_t)` bytes: the
+ * full register value is always read into a 64-bit temporary first, then
+ * only the low @p value_size bytes are copied out, so 32-bit-register
+ * architectures (x86, ARM32, RISC-V32) can be read with a native-width
+ * `uint32_t` (or narrower) destination without truncation surprises on
+ * little-endian targets. Unsupported register indices, architectures/OSes,
+ * or an oversized @p value_size return `false` without touching
  * @p out_value.
  */
 inline bool ucontext_read_register(const void *ctx, address_space_ref, uint32_t dwarf_reg_index, void *out_value,
                                    size_t value_size) noexcept {
-  if (!ctx || !out_value || value_size != sizeof(uint64_t))
+  if (!ctx || !out_value || value_size == 0 || value_size > sizeof(uint64_t))
     return false;
 
   const auto &uc = *static_cast<const ucontext_t *>(ctx);
@@ -177,7 +182,9 @@ inline bool ucontext_read_register(const void *ctx, address_space_ref, uint32_t 
 
 #elif defined(__arm__)
   // arm_r0..arm_r10, arm_fp, arm_ip, arm_sp, arm_lr, arm_pc map 1:1 onto
-  // DWARF ARM32 r0-r15.
+  // DWARF ARM32 r0-r15; arm_cpsr maps to dwarf::arm32::cpsr, needed to
+  // detect the live ARM/Thumb instruction-set state (CPSR.T) when resolving
+  // which register (R11 vs. R7) actually holds the frame pointer.
   switch (dwarf_reg_index) {
   case dwarf::arm32::r0:
     value = uc.uc_mcontext.arm_r0;
@@ -241,6 +248,10 @@ inline bool ucontext_read_register(const void *ctx, address_space_ref, uint32_t 
     break;
   case dwarf::arm32::r15:
     value = uc.uc_mcontext.arm_pc;
+    found = true;
+    break;
+  case dwarf::arm32::cpsr:
+    value = uc.uc_mcontext.arm_cpsr;
     found = true;
     break;
   default:
@@ -460,13 +471,17 @@ inline bool ucontext_read_register(const void *ctx, address_space_ref, uint32_t 
  * DWARF register index (see @ref microfmt::dwarf).
  *
  * Mirrors @ref ucontext_read_register; supports the same architectures and
- * OSes. @p in_value must be exactly `sizeof(uint64_t)` bytes; unsupported
- * register indices or architectures/OSes return `false` without modifying
- * @p ctx.
+ * OSes. @p in_value may be any size from 1 up to `sizeof(uint64_t)` bytes:
+ * the bytes are copied into the low bits of a zero-initialized 64-bit
+ * temporary before truncating to the target register's native width, so
+ * 32-bit-register architectures can be written from a native-width
+ * `uint32_t` (or narrower) source. Unsupported register indices,
+ * architectures/OSes, or an oversized @p value_size return `false` without
+ * modifying @p ctx.
  */
 inline bool ucontext_write_register(void *ctx, address_space_ref, uint32_t dwarf_reg_index, const void *in_value,
                                     size_t value_size) noexcept {
-  if (!ctx || !in_value || value_size != sizeof(uint64_t))
+  if (!ctx || !in_value || value_size == 0 || value_size > sizeof(uint64_t))
     return false;
 
   uint64_t value = 0;
@@ -668,6 +683,10 @@ inline bool ucontext_write_register(void *ctx, address_space_ref, uint32_t dwarf
     break;
   case dwarf::arm32::r15:
     uc.uc_mcontext.arm_pc = static_cast<uint32_t>(value);
+    found = true;
+    break;
+  case dwarf::arm32::cpsr:
+    uc.uc_mcontext.arm_cpsr = static_cast<uint32_t>(value);
     found = true;
     break;
   default:
