@@ -29,6 +29,7 @@ Start with the guide that matches what you are building:
 | [Formatter guide](docs/formatters.md) | Binary and diagnostic values, ranges, time, units, protocols, structured output, and presentation |
 | [Inspector framework](docs/inspector.md) | Remote memory, objects, containers, symbols, registers, and stack unwinding |
 | [Writing low-stack renderers](docs/renderer-guide.md) | Caller-owned scratch storage and small formatter/view design |
+| [Extending microfmt](docs/extending.md) | Copy-paste templates for custom formatters, sinks, and inspector providers |
 | [Lifetime safety](docs/lifetime-safety.md) | Borrowed values and pointers, lifetime annotations, and compiler diagnostics |
 | [Bare-metal hardware sinks](docs/bare-metal.md) | PL011 UART and ARM semihosting `microfmt::sink` adapters |
 | [Developing jplcz_microfmt](docs/development.md) | Builds, tests, warning policy, public-header checks, and contribution constraints |

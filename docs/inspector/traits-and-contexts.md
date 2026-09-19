@@ -6,6 +6,11 @@ SPDX-License-Identifier: BSD-2-Clause
 
 # Inspector: traits, contexts, and type erasure
 
+For a minimal copy-paste provider skeleton, see
+[Extending microfmt](../extending.md#3-context_type-based-provider-template).
+This page covers the pattern rationale, worked examples, and lifetime rules
+in depth.
+
 Inspector providers use tags and trait specializations to select behavior at
 compile time while exposing small type-erased `*_ref` handles to consumers.
 This pattern avoids virtual inheritance, allocation, and caller-supplied

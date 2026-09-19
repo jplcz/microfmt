@@ -6,6 +6,10 @@ SPDX-License-Identifier: BSD-2-Clause
 
 # Writing low-stack renderers
 
+For a minimal copy-paste formatter skeleton, see
+[Extending microfmt](extending.md#1-formatter-template). This page covers the
+design rules in depth.
+
 In `microfmt`, a `formatter<T>` is an adapter from a value to a `sink`. Keep
 that adapter small. Any work that needs traversal state, decoding storage,
 temporary text, or a substantial input object belongs in a dedicated view
