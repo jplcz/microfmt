@@ -96,12 +96,12 @@ public:
     return view_.back();
   }
 
-  [[nodiscard]] constexpr const_reference unsafe_front() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const_reference unsafe_front() const noexcept MICROFMT_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!empty(), "front() called on empty string_view");
     return view_.front();
   }
 
-  [[nodiscard]] constexpr const_reference unsafe_back() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const_reference unsafe_back() const noexcept MICROFMT_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!empty(), "back() called on empty string_view");
     return view_.back();
   }
@@ -112,7 +112,7 @@ public:
     return basic_string_view(view_.substr(pos, count));
   }
 
-  [[nodiscard]] constexpr basic_string_view
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr basic_string_view
   unsafe_substr(size_type pos = 0, size_type count = npos) const noexcept MICROFMT_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(pos <= size(), "substr position out of bounds");
     return basic_string_view(view_.substr(pos, count));
@@ -140,7 +140,7 @@ public:
     return view_.data();
   }
 
-  [[nodiscard]] constexpr const_pointer unsafe_data() const noexcept MICROFMT_LIFETIMEBOUND { return view_.data(); }
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const_pointer unsafe_data() const noexcept MICROFMT_LIFETIMEBOUND { return view_.data(); }
 
   [[nodiscard]] constexpr base to_std() const noexcept MICROFMT_LIFETIMEBOUND { return view_; }
   [[nodiscard]] constexpr operator base() const noexcept MICROFMT_LIFETIMEBOUND { return view_; }
@@ -150,7 +150,7 @@ public:
     view_.remove_prefix(n);
   }
 
-  constexpr void unsafe_remove_prefix(size_type n) & noexcept {
+  MICROFMT_UNSAFE_BUFFER_USAGE constexpr void unsafe_remove_prefix(size_type n) & noexcept {
     MICROFMT_DEBUG_ASSERT(n <= size(), "remove_prefix exceeds view size");
     view_.remove_prefix(n);
   }
@@ -160,7 +160,7 @@ public:
     view_.remove_suffix(n);
   }
 
-  constexpr void unsafe_remove_suffix(size_type n) & noexcept {
+  MICROFMT_UNSAFE_BUFFER_USAGE constexpr void unsafe_remove_suffix(size_type n) & noexcept {
     MICROFMT_DEBUG_ASSERT(n <= size(), "remove_suffix exceeds view size");
     view_.remove_suffix(n);
   }

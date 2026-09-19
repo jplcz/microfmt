@@ -147,6 +147,18 @@ TEST(ValuePtr, PreservesPointeeConversions) {
   EXPECT_EQ(erased.get(), static_cast<const void *>(&value));
 }
 
+TEST(ValuePtr, UnsafeDerefSkipsTheCheckedNullGuard) {
+  int value = 5;
+  microfmt::value_ptr<int> ptr(&value);
+
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  EXPECT_EQ(ptr.unsafe_deref(), 5);
+  ptr.unsafe_deref() = 6;
+  MICROFMT_END_UNSAFE_BUFFER_USAGE
+
+  EXPECT_EQ(value, 6);
+}
+
 TEST(ValuePtr, DeductionGuidePreservesPointeeType) {
   const int value = 19;
   microfmt::value_ptr ptr(&value);

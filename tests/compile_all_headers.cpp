@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <microfmt/array.hpp>
+#include <microfmt/checked_value.hpp>
 #include <microfmt/detail/assert.hpp>
 #include <microfmt/detail/compat.hpp>
 #include <microfmt/detail/tls_provider.hpp>

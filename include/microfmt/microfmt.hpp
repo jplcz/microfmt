@@ -542,10 +542,12 @@ namespace detail {
 // 2-digit lookup table for values 00-99
 inline constexpr auto digits_lut = []() {
   array<char, 200> arr{};
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
   for (int i = 0; i < 100; ++i) {
     arr.unsafe_at(2 * (size_t)i) = static_cast<char>('0' + (i / 10));
     arr.unsafe_at(2 * (size_t)i + 1) = static_cast<char>('0' + (i % 10));
   }
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
   return arr;
 }();
 

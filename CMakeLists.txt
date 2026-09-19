@@ -256,6 +256,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_array.cpp
         tests/test_scratch_allocator.cpp
         tests/test_value_ref.cpp
+        tests/test_checked_value.cpp
         tests/test_metadata_map.cpp
         tests/test_task_thread.cpp
         tests/test_gdb_protocol.cpp
@@ -462,6 +463,19 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(jplcz_microfmt_cxx17_value_ref_tests
         TEST_PREFIX "Cxx17ValueRef.")
+
+    add_executable(jplcz_microfmt_cxx17_checked_value_tests
+        tests/test_checked_value.cpp)
+    target_link_libraries(jplcz_microfmt_cxx17_checked_value_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_checked_value_tests)
+    set_target_properties(jplcz_microfmt_cxx17_checked_value_tests PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF
+    )
+    gtest_discover_tests(jplcz_microfmt_cxx17_checked_value_tests
+        TEST_PREFIX "Cxx17CheckedValue.")
 
     add_executable(jplcz_microfmt_cxx17_metadata_map_tests
         tests/test_metadata_map.cpp)

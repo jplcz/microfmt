@@ -62,12 +62,12 @@ template <typename T, std::size_t N> struct MICROFMT_OWNER array {
     return data_[index];
   }
 
-  [[nodiscard]] constexpr T &unsafe_at(size_type index) & noexcept {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_at(size_type index) & noexcept {
     MICROFMT_DEBUG_ASSERT(index < N, "array index out of bounds");
     return data_[index];
   }
 
-  [[nodiscard]] constexpr const T &unsafe_at(size_type index) const & noexcept {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_at(size_type index) const & noexcept {
     MICROFMT_DEBUG_ASSERT(index < N, "array index out of bounds");
     return data_[index];
   }
@@ -89,13 +89,13 @@ template <typename T, std::size_t N> struct MICROFMT_OWNER array {
     return std::cref(data_[N - 1]);
   }
 
-  [[nodiscard]] constexpr T &unsafe_front() & noexcept { return data_[0]; }
-  [[nodiscard]] constexpr const T &unsafe_front() const & noexcept { return data_[0]; }
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_front() & noexcept { return data_[0]; }
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_front() const & noexcept { return data_[0]; }
   T &unsafe_front() && = delete;
   const T &unsafe_front() const && = delete;
 
-  [[nodiscard]] constexpr T &unsafe_back() & noexcept { return data_[N - 1]; }
-  [[nodiscard]] constexpr const T &unsafe_back() const & noexcept { return data_[N - 1]; }
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_back() & noexcept { return data_[N - 1]; }
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_back() const & noexcept { return data_[N - 1]; }
   T &unsafe_back() && = delete;
   const T &unsafe_back() const && = delete;
 
@@ -266,34 +266,34 @@ template <typename T> struct array<T, 0> {
     return *static_cast<const T *>(nullptr);
   }
 
-  [[nodiscard]] constexpr T &unsafe_at(size_type) & noexcept {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_at(size_type) & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "array index out of bounds");
     return *static_cast<T *>(nullptr);
   }
 
-  [[nodiscard]] constexpr const T &unsafe_at(size_type) const & noexcept {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_at(size_type) const & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "array index out of bounds");
     return *static_cast<const T *>(nullptr);
   }
 
-  [[nodiscard]] constexpr T &unsafe_front() & noexcept {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_front() & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "front() called on empty array");
     return *static_cast<T *>(nullptr);
   }
 
-  [[nodiscard]] constexpr const T &unsafe_front() const & noexcept {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_front() const & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "front() called on empty array");
     return *static_cast<const T *>(nullptr);
   }
   T &unsafe_front() && = delete;
   const T &unsafe_front() const && = delete;
 
-  [[nodiscard]] constexpr T &unsafe_back() & noexcept {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_back() & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "back() called on empty array");
     return *static_cast<T *>(nullptr);
   }
 
-  [[nodiscard]] constexpr const T &unsafe_back() const & noexcept {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_back() const & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "back() called on empty array");
     return *static_cast<const T *>(nullptr);
   }

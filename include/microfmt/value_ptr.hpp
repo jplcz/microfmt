@@ -8,6 +8,7 @@
  * @brief Nullable non-owning pointer wrapper with lifetime annotations. */
 
 #include "lifetime.hpp"
+#include "detail/assert.hpp"
 #include <cstddef>
 #include <type_traits>
 
@@ -45,12 +46,36 @@ public:
             std::enable_if_t<!std::is_void_v<U>, int> = 0>
   [[nodiscard]] constexpr U &
   operator*() const noexcept MICROFMT_LIFETIMEBOUND {
+    MICROFMT_ASSERT(ptr_ != nullptr, "value_ptr: dereferencing a null pointer");
     return *ptr_;
   }
 
   [[nodiscard]] constexpr T *
   operator->() const noexcept MICROFMT_LIFETIMEBOUND {
+    MICROFMT_ASSERT(ptr_ != nullptr, "value_ptr: dereferencing a null pointer");
     return ptr_;
+  }
+
+  /**
+   * @brief Dereferences without the always-on null check.
+   *
+   * Explicitly-unsafe tier: only a `MICROFMT_DEBUG_ASSERT`, so it is compiled
+   * out under `NDEBUG` (unless `MICROFMT_DEBUG` is also defined). Use only
+   * once the caller has already established non-null via `operator bool()`
+   * or `get()` and dereferences repeatedly on a hot path where the checked
+   * `operator*`/`operator->` overhead is unacceptable.
+   *
+   * Marked `MICROFMT_UNSAFE_BUFFER_USAGE`: under Clang's
+   * `-Wunsafe-buffer-usage`, every call site must be wrapped in
+   * `MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE`,
+   * making the opt-out to the unsafe tier explicit and greppable at each use.
+   */
+  template <typename U = T,
+            std::enable_if_t<!std::is_void_v<U>, int> = 0>
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr U &
+  unsafe_deref() const noexcept MICROFMT_LIFETIMEBOUND {
+    MICROFMT_DEBUG_ASSERT(ptr_ != nullptr, "value_ptr: dereferencing a null pointer");
+    return *ptr_;
   }
 
   [[nodiscard]] constexpr explicit operator bool() const noexcept {

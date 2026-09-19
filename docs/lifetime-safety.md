@@ -58,6 +58,16 @@ formatting lifetime requirements.
 subdirectory. Read-only adapters such as `hash_view`, `variant_view`, and the
 `{fmt}` compatibility output iterator store `value_ref<const T>` explicitly.
 
+`value_ref` never needs its own "unsafe" tier: its invariant (constructed only
+from a valid lvalue, with no way to become null or dangle afterward) makes a
+null check provably redundant, so `operator*` dereferences through
+`value_ptr::unsafe_deref()` internally, wrapped in
+`MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE`,
+rather than paying for `value_ptr`'s checked-tier null guard on every access.
+This is the same trade-off a hot-path caller makes explicitly with
+`unsafe_deref()`, just applied once, centrally, by a wrapper whose own type
+already proves the precondition.
+
 ## Store nullable borrows with `value_ptr`
 
 `microfmt::value_ptr<T>` is a nullable, non-owning pointer wrapper. It retains
@@ -71,6 +81,38 @@ microfmt::value_ptr<device> ptr(&state);
 
 if (ptr) {
   ptr->reset();
+}
+```
+
+`operator*` and `operator->` assert that the pointer is non-null before
+dereferencing (`MICROFMT_ASSERT`, the same "Checked" tier every other hardened
+container in this library defaults to), so passing a null `value_ptr` into
+them traps instead of silently invoking undefined behavior. Use `get()` or
+`operator bool()` first when the pointer may be null and you want to avoid
+even the trap:
+
+```cpp
+microfmt::value_ptr<device> maybe(nullptr);
+if (device *raw = maybe.get()) {
+  raw->reset();
+}
+```
+
+`unsafe_deref()` is the explicitly-unsafe tier: it only pays for a
+`MICROFMT_DEBUG_ASSERT`, which compiles out entirely under `NDEBUG` (unless
+`MICROFMT_DEBUG` is also defined), so it still catches bugs in debug and test
+builds but has zero overhead once the null check has already been proven
+elsewhere. It is additionally marked `MICROFMT_UNSAFE_BUFFER_USAGE`, so under
+Clang's `-Wunsafe-buffer-usage` every call site must be wrapped in
+`MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE` —
+making each opt-out explicit and greppable, not just documented in a comment:
+
+```cpp
+microfmt::value_ptr<device> ptr(&state);
+if (ptr) {
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  ptr.unsafe_deref().reset(); // already proven non-null just above
+  MICROFMT_END_UNSAFE_BUFFER_USAGE
 }
 ```
 
@@ -320,6 +362,149 @@ rather than the container: Clang's consumed analysis tracks individual
 local variables and data members, not elements reached through a container's
 `operator[]` or iterators, so annotating the container class adds no
 additional coverage.
+
+### `checked_value<T>`: a ready-made consumed-state type
+
+`<microfmt/checked_value.hpp>` is a concrete, ready-to-use implementation of
+the pattern described above: a move-only wrapper that gives a value of type
+`T` best-effort, Rust-like use-after-move checking, on every compiler at
+runtime and additionally at compile time under Clang's `-Wconsumed`. Reach
+for it instead of hand-rolling the pattern from scratch whenever "moved-from
+values must not be used again" is the invariant you need.
+
+Every instance is in one of two typestates:
+
+- **`unconsumed`** — the value is present and every accessor is callable.
+- **`consumed`** — the value has been moved out (via the move
+  constructor/assignment or `take()`); further access traps at runtime via
+  `MICROFMT_ASSERT`, and Clang additionally reports it statically.
+
+```mermaid
+stateDiagram-v2
+    [*] --> unconsumed: construct
+    unconsumed --> unconsumed: get, deref, clone
+    unconsumed --> consumed: move construct or assign
+    unconsumed --> consumed: take
+    consumed --> unconsumed: assign a fresh value
+    consumed --> [*]: destroy
+    unconsumed --> [*]: destroy
+
+    note right of consumed
+        get, deref, take, and clone
+        trap on this state via
+        MICROFMT_ASSERT, and Clang
+        warns under -Wconsumed
+    end note
+```
+
+The only way back from `consumed` to `unconsumed` is assigning a fresh
+`checked_value` into the moved-from slot — exactly like reassigning a moved-
+from Rust binding revives it as a new owned value:
+
+```cpp
+microfmt::checked_value<int> a(1);
+microfmt::checked_value<int> b(std::move(a)); // a: unconsumed -> consumed
+a.get();                                      // traps + -Wconsumed warning
+
+a = microfmt::checked_value<int>(99);         // a: consumed -> unconsumed
+a.get();                                      // fine again: 99
+```
+
+`checked_value<T *>` (the partial specialization for raw pointers) adds a
+second, orthogonal axis: nullability. It keeps the same two-state
+`unconsumed`/`consumed` typestate as the primary template, but its
+dereferencing operators (`operator*`, `operator->`) additionally check the
+pointer value itself, independent of the typestate:
+
+```mermaid
+stateDiagram-v2
+    state consumed_check <<choice>>
+    state null_check <<choice>>
+
+    [*] --> unconsumed: construct
+
+    unconsumed --> consumed_check: deref
+    consumed_check --> TRAP_moved: moved from
+    consumed_check --> null_check: not moved from
+    null_check --> TRAP_null: null pointer
+    null_check --> Dereferenced: non-null pointer
+
+    unconsumed --> consumed: move or take
+    consumed --> unconsumed: assign a fresh value
+
+    note right of TRAP_moved
+        MICROFMT_ASSERT access after move
+    end note
+    note right of TRAP_null
+        MICROFMT_ASSERT dereferencing a null pointer
+    end note
+```
+
+Because `get()`, `is_null()`, and `operator bool()` never dereference the
+pointer, they only need the first check (`moved_from_`) and are safe to call
+on a null pointer to test it before reaching for `operator*`/`operator->`:
+
+```cpp
+microfmt::checked_value<widget *> p(maybe_null_widget());
+if (p) {                 // operator bool(): moved_from_ check only
+  p->render();            // operator->(): moved_from_ check + null check
+}
+```
+
+`take()` on the pointer specialization additionally nulls the source's
+pointer slot (on top of setting `moved_from_`), so even a disabled assert
+(`MICROFMT_DISABLE_ASSERT`) degrades to a safe null dereference rather than
+reading stale memory — the same defense-in-depth `std::unique_ptr` gives its
+moved-from state.
+
+CTAD cannot select the pointer specialization from a bare `nullptr` literal:
+`checked_value b(nullptr);` would deduce the unhelpful
+`checked_value<std::nullptr_t>` (no null-checking at all), so that
+instantiation is rejected with a `static_assert` pointing at the fix. Name
+the pointee type explicitly instead:
+
+```cpp
+microfmt::checked_value<widget *> p(nullptr); // OK: picks the T* specialization
+```
+
+Both the primary template and the pointer specialization also offer an
+explicitly-unsafe tier: `unsafe_get()` (both templates) and `unsafe_deref()`
+(pointer specialization only) skip `get()`/`operator*`/`operator->`'s
+`MICROFMT_ASSERT` in favor of `MICROFMT_DEBUG_ASSERT`, which compiles out
+under `NDEBUG` (unless `MICROFMT_DEBUG` is also defined). Use them only once
+`unconsumed` state (and, for pointers, non-null) is already established —
+for example, right after construction, or once `-Wconsumed` has statically
+proven it — and the checked accessor's overhead is unacceptable on a hot
+path. Like `value_ptr::unsafe_deref`, both are marked
+`MICROFMT_UNSAFE_BUFFER_USAGE`, so every call site must be wrapped in
+`MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE`:
+
+```cpp
+microfmt::checked_value<widget *> p(&some_widget);
+
+MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+p.unsafe_deref().render(); // already known unconsumed and non-null
+MICROFMT_END_UNSAFE_BUFFER_USAGE
+```
+
+See `include/microfmt/checked_value.hpp` and `tests/test_checked_value.cpp`
+for the full API (`take()`, `clone()`, `as_known()`) and worked examples.
+
+### `MICROFMT_UNSAFE_BUFFER_USAGE` covers the whole library, not just these types
+
+The explicitly-unsafe tier described above is not unique to `value_ptr`,
+`value_ref`, and `checked_value`. Every pre-existing `unsafe_*` accessor in
+the hardened containers — `array::unsafe_at`/`unsafe_front`/`unsafe_back`,
+`span::unsafe_subspan`/`unsafe_data`/`unsafe_at`/`unsafe_front`/
+`unsafe_back`/`unsafe_first`/`unsafe_last`, and
+`string_view::unsafe_front`/`unsafe_back`/`unsafe_substr`/`unsafe_data`/
+`unsafe_remove_prefix`/`unsafe_remove_suffix` — is also marked
+`MICROFMT_UNSAFE_BUFFER_USAGE`, including the internal uses inside the core
+`vformat_to` formatting loop itself. This makes the whole library's
+explicitly-unsafe tier uniformly enforced: an unwrapped call to *any*
+`unsafe_*` method, anywhere, is a Clang `-Wunsafe-buffer-usage` diagnostic,
+not just a documented convention. `scripts/check-unsafe-buffer-usage.sh` is
+the acceptance gate that keeps this at zero diagnostics.
 
 ### When not to use it
 

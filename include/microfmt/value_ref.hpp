@@ -50,7 +50,14 @@ public:
 
   [[nodiscard]] constexpr T &
   operator*() const noexcept MICROFMT_LIFETIMEBOUND {
-    return *m_ptr;
+    // Bypass value_ptr's checked null-guard: a value_ref is only ever
+    // constructed from a valid lvalue and never becomes null afterward, so
+    // the check is provably redundant here and would be pure overhead. This
+    // is exactly the verified use MICROFMT_BEGIN/END_UNSAFE_BUFFER_USAGE
+    // exists for.
+    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+    return m_ptr.unsafe_deref();
+    MICROFMT_END_UNSAFE_BUFFER_USAGE
   }
 
   [[nodiscard]] constexpr T *

@@ -130,7 +130,9 @@ TEST(CoreSpan, ProvidesCheckedAndFallibleAccess) {
 
   EXPECT_EQ(view.front(), 10);
   EXPECT_EQ(view.back(), 40);
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
   EXPECT_EQ(view.unsafe_at(2), 30);
+  MICROFMT_END_UNSAFE_BUFFER_USAGE
   EXPECT_EQ(*view.rbegin(), 40);
 
   ASSERT_TRUE(view.try_at(1).has_value());

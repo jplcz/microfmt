@@ -179,7 +179,7 @@ public:
   /**
    * @brief Creates a subspan with debug-only precondition checks.
    */
-  [[nodiscard]] constexpr span<T>
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr span<T>
   unsafe_subspan(std::size_t offset,
                  std::size_t count = static_cast<std::size_t>(-1)) const & noexcept MICROFMT_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(offset <= m_size, "subspan offset exceeds span size");
@@ -207,7 +207,7 @@ public:
   /**
    * @brief Returns the data pointer with a debug-only non-empty check.
    */
-  [[nodiscard]] constexpr T *unsafe_data() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T *unsafe_data() const & noexcept MICROFMT_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!empty(), "span has no data");
     return m_ptr;
   }
@@ -252,7 +252,7 @@ public:
   /**
    * @brief Accesses an element with a debug-only bounds check.
    */
-  [[nodiscard]] constexpr T &unsafe_at(std::size_t idx) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_at(std::size_t idx) const & noexcept MICROFMT_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(idx < m_size, "span index out of bounds");
     return m_ptr[idx];
   }
@@ -279,14 +279,14 @@ public:
     return m_ptr[m_size - 1];
   }
 
-  [[nodiscard]] constexpr T &unsafe_front() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_front() const & noexcept MICROFMT_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!empty(), "front() called on empty span");
     return *m_ptr;
   }
 
   T &unsafe_front() const && = delete;
 
-  [[nodiscard]] constexpr T &unsafe_back() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_back() const & noexcept MICROFMT_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!empty(), "back() called on empty span");
     return m_ptr[m_size - 1];
   }
@@ -315,12 +315,12 @@ public:
     return span<T>(pointer_at(m_size - count), count);
   }
 
-  [[nodiscard]] constexpr span<T> unsafe_first(std::size_t count) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr span<T> unsafe_first(std::size_t count) const & noexcept MICROFMT_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(count <= m_size, "first count exceeds span size");
     return span<T>(m_ptr, count);
   }
 
-  [[nodiscard]] constexpr span<T> unsafe_last(std::size_t count) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr span<T> unsafe_last(std::size_t count) const & noexcept MICROFMT_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(count <= m_size, "last count exceeds span size");
     return span<T>(pointer_at(m_size - count), count);
   }
