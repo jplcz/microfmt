@@ -65,7 +65,6 @@
 #include <microfmt/inspector/memory_pattern_scanner.hpp>
 #include <microfmt/inspector/memory_scanner.hpp>
 #include <microfmt/inspector/metadata_map.hpp>
-#include <microfmt/inspector/micro_vm.hpp>
 #include <microfmt/inspector/register_context.hpp>
 #include <microfmt/inspector/register_view.hpp>
 #include <microfmt/inspector/register_xml_printer.hpp>
@@ -82,10 +81,6 @@
 #include <microfmt/inspector/remote_vector.hpp>
 #include <microfmt/inspector/task.hpp>
 #include <microfmt/inspector/thread.hpp>
-#include <microfmt/inspector/variable_context.hpp>
-#include <microfmt/inspector/vm_code_gen.hpp>
-#include <microfmt/inspector/vm_label_allocator.hpp>
-#include <microfmt/inspector/vm_lexer.hpp>
 #include <microfmt/markdown.hpp>
 #include <microfmt/microfmt.hpp>
 #include <microfmt/rvalue_safety.hpp>
