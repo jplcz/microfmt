@@ -133,6 +133,43 @@ void write_errno_string(const sink &out, int value) noexcept {
 } // namespace microfmt::detail
 ```
 
+## Assert failures on kernel/bare-metal targets
+
+`microfmt/detail/assert.hpp` reports `MICROFMT_ASSERT`/`MICROFMT_DEBUG_ASSERT`
+failures. On hosted platforms this goes through a replaceable
+`assert_handler_t` (see `set_assert_handler`), whose built-in
+`default_assert_handler` formats the failing expression, file, line, and
+message with `std::fprintf(stderr, ...)` — this requires a hosted C library
+and is unsuitable for kernel/freestanding builds.
+
+Defining `MICROFMT_KERNEL` before including `assert.hpp` removes that runtime,
+function-pointer-based indirection (and the `<cstdio>` include) entirely.
+Instead, `MICROFMT_ASSERT`/`MICROFMT_DEBUG_ASSERT` expand to call a
+port-supplied `MICROFMT_KERNEL_PANIC(expression, file, line, message)` macro
+directly, immediately followed by `MICROFMT_TRAP()`. The port must define this
+macro (a "kernel panic trait") before the first inclusion of `assert.hpp`;
+omitting it is a compile error:
+
+- Preferred: delegate to a printf-like kernel panic/log function, passing the
+  four fields through as format arguments.
+- Fallback: write the four fields out individually as raw strings (e.g. via a
+  UART or semihosting `microfmt::sink`) when no printf-like facility exists.
+
+```cpp
+#define MICROFMT_KERNEL
+#define MICROFMT_KERNEL_PANIC(expression, file, line, message)                 \
+  kernel_panicf("[ASSERT] %s at %s:%d (%s)\n", expression, file, line, message)
+#include <microfmt/detail/assert.hpp>
+```
+
+`MICROFMT_KERNEL_PANIC` need not return (most kernel panic facilities halt or
+reset the system), but if it does, the subsequent `MICROFMT_TRAP()` call still
+applies.
+
+`MICROFMT_DISABLE_ASSERT_STDIO` remains available for hosted targets that want
+to silently drop assert diagnostics without a kernel panic facility; it has no
+effect when `MICROFMT_KERNEL` is defined.
+
 ## Adding a platform or compiler
 
 Keep compiler-specific syntax inside `compat.hpp`. Prefer standard feature-test
