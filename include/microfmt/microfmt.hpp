@@ -934,9 +934,7 @@ template <> struct formatter<char> {
 
 template <> struct formatter<bool> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(bool val, const sink &out) const noexcept {
-    out.write(val ? std::string_view("true") : std::string_view("false"));
-  }
+  void format(bool val, const sink &out) const noexcept { out.write(val ? string_view("true") : string_view("false")); }
 };
 
 // Raw Pointers
