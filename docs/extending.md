@@ -440,11 +440,119 @@ Adapting this template:
   mandatory operations un-detected (a missing specialization should fail to
   compile) and gate every optional operation behind a `has_your_provider_*`
   trait-detection struct, following the `write` example.
-* If some contexts are stateless (no per-instance data), add a second
-  constructor overload and a second `s_vtbl` instantiation branch guarded on
-  `std::is_void_v<typename Traits::context_type>`, mirroring
-  `address_space_ref`'s stateless-tag constructor in
-  `include/microfmt/inspector/address_space.hpp`.
+* If some backends have no per-instance data, give them `context_type = void`
+  traits instead of an empty struct — see 3c below for the ref-side changes
+  this requires.
 * Keep every vtable function pointer `noexcept`; the handle's own public
   methods should be `noexcept` as well so failures are reported through
   return values, not exceptions.
+
+### 3c. Stateless traits (`context_type = void`)
+
+Some backends have no per-instance data at all — every call is answered
+purely from global/static state (the current process's own address space,
+a fixed hardware register bank, a compile-time-known symbol table, ...).
+For these, declare `using context_type = void;` and drop the
+`value_ref<...>` parameter from every operation entirely, rather than
+specializing traits with an empty placeholder struct.
+
+```cpp
+// A stateless backend: no context object, so every operation is a plain
+// static function with no context parameter at all.
+struct your_stateless_provider_tag {};
+
+template <> struct your_provider_traits<your_stateless_provider_tag> {
+  using context_type = void;
+
+  static bool read(int key, int &out_value) noexcept {
+    // ... answer purely from global/static state, no `ctx` parameter ...
+    out_value = key * 2;
+    return true;
+  }
+};
+```
+
+The `*_ref` handle from 3b needs two changes to support both stateful and
+stateless tags side by side: a second constructor overload taking only the
+tag (no context argument), enabled via `std::is_void_v<...>`; and an
+`if constexpr` branch inside each entry trampoline that skips the
+`value_ref` wrapping entirely for stateless tags. Both branches populate the
+same `s_vtbl<Tag>`, so callers use `read()`/`write()` identically regardless
+of which kind of tag they were bound to:
+
+```cpp
+class your_provider_ref {
+public:
+  struct vtable {
+    bool (*read)(const void *ctx, int key, int &out_value) noexcept;
+  };
+
+  constexpr your_provider_ref() noexcept = default;
+
+  // Stateless tag: no context object required.
+  template <typename Tag, typename Traits = your_provider_traits<Tag>,
+            std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
+  constexpr explicit your_provider_ref(Tag) noexcept
+      : ctx_(nullptr), vtbl_(&s_vtbl<Tag>) {}
+
+  // Stateful tag: bind to a caller-owned context (same as 3b).
+  template <typename Tag, typename Context,
+            typename Traits = your_provider_traits<Tag>,
+            std::enable_if_t<!std::is_void_v<typename Traits::context_type> &&
+                                 std::is_convertible_v<
+                                     Context *, typename Traits::context_type *>,
+                             int> = 0>
+  constexpr your_provider_ref(Tag, Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
+      : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
+
+  [[nodiscard]] bool read(int key, int &out_value) const noexcept {
+    return vtbl_ && vtbl_->read(ctx_, key, out_value);
+  }
+
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return vtbl_ != nullptr; }
+
+private:
+  template <typename Tag>
+  static bool read_entry(const void *ctx, int key, int &out_value) noexcept {
+    using context_type = typename your_provider_traits<Tag>::context_type;
+    if constexpr (std::is_void_v<context_type>) {
+      // Stateless: `ctx` is always nullptr here, ignore it and call the
+      // traits operation directly.
+      (void)ctx;
+      return your_provider_traits<Tag>::read(key, out_value);
+    } else {
+      const auto &typed = *static_cast<const context_type *>(ctx);
+      return your_provider_traits<Tag>::read(
+          microfmt::value_ref<const context_type>(typed), key, out_value);
+    }
+  }
+
+  template <typename Tag>
+  static constexpr vtable s_vtbl{&read_entry<Tag>};
+
+  const void *ctx_{nullptr};
+  const vtable *vtbl_{nullptr};
+};
+
+// --- Usage: no context object anywhere. ---
+your_provider_ref stateless_ref{your_stateless_provider_tag{}};
+int value = 0;
+if (stateless_ref.read(21, value)) { /* value == 42 */ }
+```
+
+Notes:
+
+* An *optional* stateless operation needs its own SFINAE-detection struct,
+  separate from the stateful one, since its expected signature has no
+  `value_ref<...>` parameter to detect against (mirror
+  `detail::has_stateless_address_space_write_bytes` alongside
+  `detail::has_address_space_write_bytes` in
+  `include/microfmt/inspector/address_space.hpp`).
+* Do not default-construct an empty `context_type` struct just to keep a
+  single code path; `void` is the correct signal both to the compiler (no
+  storage, no pointer dereference) and to a reader of the traits
+  specialization (this backend genuinely has no per-instance state).
+* A tag's traits must pick one shape per operation (stateless or stateful,
+  not both); the two constructor overloads above are already mutually
+  exclusive on `std::is_void_v<typename Traits::context_type>`, so a given
+  `Tag` can only ever match one of them.
