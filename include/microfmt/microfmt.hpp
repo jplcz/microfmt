@@ -535,8 +535,8 @@ namespace detail {
 inline constexpr auto digits_lut = []() {
   array<char, 200> arr{};
   for (int i = 0; i < 100; ++i) {
-    arr.unsafe_at(2 * i) = static_cast<char>('0' + (i / 10));
-    arr.unsafe_at(2 * i + 1) = static_cast<char>('0' + (i % 10));
+    arr.unsafe_at(2 * (size_t)i) = static_cast<char>('0' + (i / 10));
+    arr.unsafe_at(2 * (size_t)i + 1) = static_cast<char>('0' + (i % 10));
   }
   return arr;
 }();
