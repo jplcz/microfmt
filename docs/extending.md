@@ -179,6 +179,23 @@ recurring pattern instead of virtual interfaces: an empty tag selects a
 operations; a typed wrapper or caller-owned object holds the `context_type`
 by value; and a type-erased `*_ref` borrows it for use in non-templated code.
 
+There are two different tasks this pattern covers, with two different
+templates below:
+
+* **3a. Plug into an existing provider abstraction** — specialize an
+  *already-defined* `*_traits<Tag>` (e.g. `address_space_traits`,
+  `register_context_traits`) for your own backend. This is by far the more
+  common case and requires no vtable code at all; the library already
+  defines the `*_ref` type and its vtable.
+* **3b. Define a brand-new provider abstraction** — you are adding a new
+  kind of pluggable customization point to your own code (not one of the
+  library's existing ones), so you need the tag, the traits primary
+  template, the type-erased `*_ref` class, *and* its vtable derivation.
+  Use this template when 3a does not apply because no matching `*_traits`
+  exists yet.
+
+### 3a. Specialize an existing provider
+
 ```cpp
 // 1. An empty tag identifies your implementation.
 struct your_provider_tag {};
@@ -236,3 +253,198 @@ for the full pattern rationale, three fully worked examples (a custom address
 space, a custom remote forward list, and a custom unwind-hint registry),
 ownership/lifetime rules, and the testing checklist every provider
 specialization should satisfy.
+
+### 3b. Define a new provider abstraction (full vtable derivation)
+
+This is the complete, self-contained template for creating a new
+`*_ref`-style type-erased handle from scratch: a tag, a traits primary
+template, a two-word handle (context pointer + vtable pointer) with a
+mandatory operation and an optional operation, and an owning wrapper. Every
+`*_ref` type in the inspector (`address_space_ref`, `register_context_ref`,
+`unwind_hint_registry_ref`, ...) is built from this same skeleton — copy it,
+rename the placeholders, and add/remove operations as needed.
+
+```cpp
+#include <microfmt/value_ref.hpp>
+#include <microfmt/lifetime.hpp> // MICROFMT_LIFETIMEBOUND
+#include <type_traits>
+#include <utility>
+
+// 1. An empty tag identifies a concrete implementation.
+struct your_provider_tag {};
+
+// 2. Primary template, intentionally left undefined. Each backend provides
+//    a specialization (see step 6) with a `context_type` and static
+//    operations; instantiating the primary template is a compile error,
+//    which is the desired "you forgot to specialize this" diagnostic.
+template <typename Tag> struct your_provider_traits;
+
+namespace detail {
+
+// 3. Compile-time detection for an *optional* trait operation ("write").
+//    Required operations (like "read") need no detection: just call them
+//    directly from the vtable trampoline in step 4 and let a missing
+//    specialization fail to compile with a clear error.
+template <typename Tag, typename = void>
+struct has_your_provider_write : std::false_type {};
+
+template <typename Tag>
+struct has_your_provider_write<
+    Tag, std::void_t<decltype(your_provider_traits<Tag>::write(
+             std::declval<microfmt::value_ref<
+                 typename your_provider_traits<Tag>::context_type>>(),
+             std::declval<int>(), std::declval<int>()))>> : std::true_type {};
+
+} // namespace detail
+
+// 4. The type-erased handle: one context pointer plus one vtable pointer.
+//    No virtual base class, no RTTI, no allocation -- `s_vtbl<Tag>` below
+//    is a distinct static object per Tag, and its address acts as a
+//    lightweight, per-Tag "type id" the handle carries around.
+class your_provider_ref {
+public:
+  struct vtable {
+    bool (*read)(const void *ctx, int key, int &out_value) noexcept;
+    // `write` is nullptr for backends whose traits omit it (read-only).
+    bool (*write)(void *ctx, int key, int value) noexcept;
+  };
+
+  constexpr your_provider_ref() noexcept = default;
+
+  // Binds the handle to a caller-owned context. `Context` must be (or
+  // derive from) the Tag's declared `context_type`.
+  template <typename Tag, typename Context,
+            typename Traits = your_provider_traits<Tag>,
+            std::enable_if_t<std::is_convertible_v<
+                                 Context *, typename Traits::context_type *>,
+                             int> = 0>
+  constexpr your_provider_ref(Tag, Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
+      : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
+
+  [[nodiscard]] bool read(int key, int &out_value) const noexcept {
+    return vtbl_ && vtbl_->read(ctx_, key, out_value);
+  }
+
+  // Optional operations are exposed via a `can_*`/operation pair so callers
+  // can distinguish "unsupported" from "failed this time".
+  [[nodiscard]] bool can_write() const noexcept { return vtbl_ && vtbl_->write; }
+
+  bool write(int key, int value) const noexcept {
+    return vtbl_ && vtbl_->write &&
+           vtbl_->write(const_cast<void *>(ctx_), key, value);
+  }
+
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return vtbl_ != nullptr; }
+
+private:
+  // Trampolines recover the concrete `context_type` from the erased `void*`
+  // and forward to the Traits specialization selected by `Tag`. One
+  // trampoline instantiation exists per Tag the handle is ever bound to.
+  template <typename Tag>
+  static bool read_entry(const void *ctx, int key, int &out_value) noexcept {
+    using context_type = typename your_provider_traits<Tag>::context_type;
+    const auto &typed = *static_cast<const context_type *>(ctx);
+    return your_provider_traits<Tag>::read(
+        microfmt::value_ref<const context_type>(typed), key, out_value);
+  }
+
+  // Optional-operation trampolines are themselves selected at compile time:
+  // `if constexpr` picks between a real trampoline and a null function
+  // pointer, so unsupported operations cost nothing and are detectable via
+  // `vtbl_->write == nullptr` (exposed above as `can_write()`).
+  template <typename Tag>
+  static constexpr auto write_entry() noexcept {
+    using context_type = typename your_provider_traits<Tag>::context_type;
+    if constexpr (detail::has_your_provider_write<Tag>::value) {
+      return +[](void *ctx, int key, int value) noexcept {
+        auto &typed = *static_cast<context_type *>(ctx);
+        return your_provider_traits<Tag>::write(
+            microfmt::value_ref<context_type>(typed), key, value);
+      };
+    } else {
+      return static_cast<bool (*)(void *, int, int) noexcept>(nullptr);
+    }
+  }
+
+  // One `constexpr` vtable instance per Tag, built once at compile time and
+  // stored in `.rodata` -- this *is* the "vtable derivation": deriving a
+  // concrete function-pointer table from whatever `Tag`'s Traits
+  // specialization provides, with no runtime registration step.
+  template <typename Tag>
+  static constexpr vtable s_vtbl{&read_entry<Tag>, write_entry<Tag>()};
+
+  const void *ctx_{nullptr};
+  const vtable *vtbl_{nullptr};
+};
+
+// 5. Optional owning wrapper: holds `context_type` by value so the context
+//    and the handle share a single object's lifetime.
+template <typename Tag> class your_provider {
+public:
+  using traits_type = your_provider_traits<Tag>;
+  using context_type = typename traits_type::context_type;
+
+  constexpr explicit your_provider(context_type context) noexcept
+      : context_(std::move(context)) {}
+
+  [[nodiscard]] constexpr your_provider_ref ref() noexcept MICROFMT_LIFETIMEBOUND {
+    return your_provider_ref(Tag{}, context_);
+  }
+
+private:
+  context_type context_;
+};
+
+// 6. A concrete backend: specialize the traits primary template from step 2.
+struct your_provider_context {
+  int storage[16]{};
+};
+
+template <> struct your_provider_traits<your_provider_tag> {
+  using context_type = your_provider_context;
+
+  static bool read(microfmt::value_ref<const context_type> ctx, int key,
+                    int &out_value) noexcept {
+    if (key < 0 || key >= 16)
+      return false;
+    out_value = ctx->storage[key];
+    return true;
+  }
+
+  // Omit entirely (do not stub it out) for a read-only backend; `can_write()`
+  // will then report `false` for handles bound to this Tag.
+  static bool write(microfmt::value_ref<context_type> ctx, int key,
+                    int value) noexcept {
+    if (key < 0 || key >= 16)
+      return false;
+    ctx->storage[key] = value;
+    return true;
+  }
+};
+
+// --- Usage ---
+your_provider_context state{};
+your_provider_ref ref{your_provider_tag{}, state};
+int value = 0;
+if (ref.read(3, value)) { /* ... */ }
+if (ref.can_write())
+  ref.write(3, 99);
+
+your_provider<your_provider_tag> owned{your_provider_context{}};
+auto owned_ref = owned.ref();
+```
+
+Adapting this template:
+
+* Add one `<operation>_entry`/`vtable` field pair per operation; keep
+  mandatory operations un-detected (a missing specialization should fail to
+  compile) and gate every optional operation behind a `has_your_provider_*`
+  trait-detection struct, following the `write` example.
+* If some contexts are stateless (no per-instance data), add a second
+  constructor overload and a second `s_vtbl` instantiation branch guarded on
+  `std::is_void_v<typename Traits::context_type>`, mirroring
+  `address_space_ref`'s stateless-tag constructor in
+  `include/microfmt/inspector/address_space.hpp`.
+* Keep every vtable function pointer `noexcept`; the handle's own public
+  methods should be `noexcept` as well so failures are reported through
+  return values, not exceptions.
