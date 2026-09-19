@@ -8,7 +8,7 @@ set -uo pipefail
 readonly script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly source_dir="$(cd -- "${script_dir}/.." && pwd)"
 readonly compiler="${MICROFMT_UNSAFE_BUFFER_CXX:-clang++-24}"
-readonly max_warnings="${MICROFMT_UNSAFE_BUFFER_MAX_WARNINGS:-96}"
+readonly max_warnings="${MICROFMT_UNSAFE_BUFFER_MAX_WARNINGS:-0}"
 read -r -a standards <<<"${MICROFMT_UNSAFE_BUFFER_STANDARDS:-17 20 23}"
 
 if ! command -v "${compiler}" >/dev/null 2>&1; then
@@ -53,9 +53,8 @@ for standard in "${standards[@]}"; do
     uniq -c |
     sort -nr || true
 
-  if [[ "${MICROFMT_UNSAFE_BUFFER_VERBOSE:-0}" == "1" ]]; then
-    cat "${log_file}"
-  fi
+  printf '    full diagnostic report:\n'
+  cat "${log_file}"
 
   if ((warning_count > max_warnings)); then
     failures+=(

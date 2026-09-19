@@ -396,9 +396,9 @@ struct c_string_sink_base {
     if (n > 0) {
       MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
       std::copy_n(sv.data(), n, self->m_data + self->m_pos);
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
       self->m_pos += n;
       self->m_data[self->m_pos] = '\0';
+      MICROFMT_END_UNSAFE_BUFFER_USAGE;
     }
   }
 };
@@ -531,17 +531,6 @@ template <typename Callable>
 
 namespace detail {
 
-inline constexpr char digit_pairs[201] = "00010203040506070809"
-                                         "10111213141516171819"
-                                         "20212223242526272829"
-                                         "30313233343536373839"
-                                         "40414243444546474849"
-                                         "50515253545556575859"
-                                         "60616263646566676869"
-                                         "70717273747576777879"
-                                         "80818283848586878889"
-                                         "90919293949596979899";
-
 // 2-digit lookup table for values 00-99
 inline constexpr std::array<char, 200> digits_lut = {
     '0', '0', '0', '1', '0', '2', '0', '3', '0', '4', '0', '5', '0', '6', '0', '7', '0', '8', '0', '9', '1', '0', '1',
@@ -580,16 +569,16 @@ inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
       const auto rem = static_cast<uint32_t>(val % 100);
       val /= 100;
       idx -= 2;
-      buf[idx] = digit_pairs[rem * 2];
-      buf[idx + 1] = digit_pairs[rem * 2 + 1];
+      buf[idx] = digits_lut[rem * 2];
+      buf[idx + 1] = digits_lut[rem * 2 + 1];
     }
     if (val < 10) {
       buf[--idx] = static_cast<char>('0' + val);
     } else {
       const auto rem = static_cast<uint32_t>(val * 2);
       idx -= 2;
-      buf[idx] = digit_pairs[rem];
-      buf[idx + 1] = digit_pairs[rem + 1];
+      buf[idx] = digits_lut[rem];
+      buf[idx + 1] = digits_lut[rem + 1];
     }
   } else {
     const auto &digits = uppercase ? hex_digits_upper : hex_digits_lower;
@@ -1180,6 +1169,7 @@ inline void vformat_to(const sink &out, const microfmt::string_view fmt, const s
   size_t arg_idx = 0;
   size_t i = 0;
 
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
   while (i < fmt.size()) {
     const char *unsafe_fmt = fmt.unsafe_data();
     // UNSAFE: Bounds check in while loop
@@ -1238,6 +1228,7 @@ inline void vformat_to(const sink &out, const microfmt::string_view fmt, const s
     out.put(c);
     ++i;
   }
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
 }
 
 // ============================================================================

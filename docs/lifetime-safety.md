@@ -137,11 +137,13 @@ Run the current Clang 24 migration check with:
 ./scripts/check-unsafe-buffer-usage.sh
 ```
 
-The check covers the public headers in C++17, C++20, and C++23 modes. It uses
-a ratcheted warning baseline so new unsafe-buffer diagnostics fail the check
-while existing call sites can be migrated incrementally. Set
-`MICROFMT_UNSAFE_BUFFER_VERBOSE=1` to print complete diagnostics, or lower
-`MICROFMT_UNSAFE_BUFFER_MAX_WARNINGS` when warnings are removed.
+The check covers the public headers in C++17, C++20, and C++23 modes. It
+always prints the full diagnostic report for each standard, plus a per-file
+warning-count summary, and fails if any standard produces more than
+`MICROFMT_UNSAFE_BUFFER_MAX_WARNINGS` (default `0`) diagnostics — i.e. the
+headers must be entirely clean of unsafe-buffer-usage warnings by default.
+Raise `MICROFMT_UNSAFE_BUFFER_MAX_WARNINGS` temporarily while migrating a
+batch of call sites.
 
 Use `MICROFMT_LIFETIMEBOUND` on parameters or accessors whose result borrows
 from an input or from `*this`. Mark owning containers with `MICROFMT_OWNER`
