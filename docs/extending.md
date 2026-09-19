@@ -21,6 +21,15 @@ template, replace the placeholder names, and consult the linked guide for
 design rules (stack budget, lifetime, const/mutable access, testing
 conventions) once the skeleton compiles.
 
+> **VS Code snippets:** the templates in section 3 (`3a`/`3b`/`3c`) are also
+> available as editor snippets — `mf-provider-specialize`,
+> `mf-provider-vtable`, `mf-provider-stateless` — generated into
+> `.vscode/microfmt.code-snippets` by
+> `tools/snippets/generate-vscode-snippets.py` from the plain-text templates
+> under `tools/snippets/templates/`. That file is gitignored like the rest of
+> `.vscode/`; run the script locally (or after editing
+> `tools/snippets/manifest.json`/`templates/*.tmpl`) to (re)generate it.
+
 ## 1. Formatter template
 
 A formatter is an adapter from a value to a `sink`. `parse` reads the

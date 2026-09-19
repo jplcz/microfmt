@@ -1,0 +1,34 @@
+// 1. An empty tag identifies your implementation.
+struct ${1:your_provider}_tag {};
+
+// 2. State your provider needs, held by value (no virtual base, no vtable).
+struct ${1:your_provider}_context {
+  ${2:// ... whatever your operations need to read (and, if mutable, write) ...}
+};
+
+// 3. Specialize the relevant *_traits<Tag> in namespace microfmt.
+//    Replace `${3:some_provider}_traits`/`${4:operation}` with the concrete
+//    inspector trait/operation you are implementing -- see the table in
+//    docs/inspector/traits-and-contexts.md for the full list.
+template <>
+struct microfmt::${3:some_provider}_traits<${1:your_provider}_tag> {
+  using context_type = ${1:your_provider}_context;
+
+  // Read-only operation: value_ref<const context_type>.
+  static bool ${4:operation}(microfmt::value_ref<const context_type> context,
+                        ${5:/* ... operation-specific parameters ... */}) noexcept {
+    // ... implement using context->... ...
+    return true;
+  }
+};
+
+// 4a. Borrow a caller-owned context directly (useful when it is shared);
+//     the *_ref type is constructed from the tag and a context reference:
+${1:your_provider}_context state{};
+microfmt::${3:some_provider}_ref ${1:your_provider}_ref{${1:your_provider}_tag{}, state};
+
+// 4b. Or use a typed wrapper that owns context_type by value, when the
+//     state naturally belongs to the provider itself, then call .ref():
+microfmt::${3:some_provider}<${1:your_provider}_tag> ${1:your_provider}_owned{${1:your_provider}_context{}};
+auto ${1:your_provider}_owned_ref = ${1:your_provider}_owned.ref();
+$0

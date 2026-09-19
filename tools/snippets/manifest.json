@@ -1,0 +1,23 @@
+[
+  {
+    "name": "microfmt: specialize existing provider (context_type)",
+    "prefix": "mf-provider-specialize",
+    "description": "Specialize an existing microfmt context_type-based provider trait (e.g. address_space_traits) for a new backend. See docs/extending.md section 3a.",
+    "scope": "cpp,c",
+    "file": "provider-specialize.cpp.tmpl"
+  },
+  {
+    "name": "microfmt: new provider abstraction (vtable derivation)",
+    "prefix": "mf-provider-vtable",
+    "description": "Full copy-paste template for a brand-new context_type-based provider: tag, traits primary template, type-erased *_ref with vtable, owning wrapper, and a concrete backend. See docs/extending.md section 3b.",
+    "scope": "cpp,c",
+    "file": "provider-vtable.cpp.tmpl"
+  },
+  {
+    "name": "microfmt: stateless provider traits (context_type = void)",
+    "prefix": "mf-provider-stateless",
+    "description": "Stateless traits specialization (context_type = void) for a context_type-based provider, plus the *_ref changes needed to support it. See docs/extending.md section 3c.",
+    "scope": "cpp,c",
+    "file": "provider-stateless.cpp.tmpl"
+  }
+]

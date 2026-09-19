@@ -1,0 +1,25 @@
+// A stateless backend: no context object, so every operation is a plain
+// static function with no context parameter at all.
+struct ${1:your_stateless_provider}_tag {};
+
+template <> struct ${2:your_provider}_traits<${1:your_stateless_provider}_tag> {
+  using context_type = void;
+
+  static bool ${3:read}(int key, int &out_value) noexcept {
+    // ... answer purely from global/static state, no `ctx` parameter ...
+    ${4:out_value = key * 2;
+    return true;}
+  }
+};
+
+// The corresponding *_ref handle needs two changes to support both stateful
+// and stateless tags side by side (see docs/extending.md 3c for the full
+// listing): a second constructor overload taking only the tag, enabled via
+// `std::is_void_v<...>`, and an `if constexpr` branch inside each entry
+// trampoline that skips the `value_ref` wrapping for stateless tags.
+
+// --- Usage: no context object anywhere. ---
+${2:your_provider}_ref ${1:your_stateless_provider}_ref{${1:your_stateless_provider}_tag{}};
+int ${5:value} = 0;
+if (${1:your_stateless_provider}_ref.${3:read}(21, ${5:value})) { /* ... */ }
+$0
