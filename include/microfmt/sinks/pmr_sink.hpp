@@ -105,7 +105,7 @@ public:
     if (size_ >= current_cap_) {
       grow();
     }
-    MICROFMT_ASSERT(size_ < current_cap_, "Array access out of bounds");
+    RELOCO_ASSERT(size_ < current_cap_, "Array access out of bounds");
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     current_chunk_->data[size_++] = c;
     RELOCO_END_UNSAFE_BUFFER_USAGE;

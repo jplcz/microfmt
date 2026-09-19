@@ -2,12 +2,9 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <microfmt/array.hpp>
-#include <microfmt/checked_value.hpp>
 #include <microfmt/detail/assert.hpp>
 #include <microfmt/detail/compat.hpp>
 #include <microfmt/detail/tls_provider.hpp>
-#include <microfmt/expected.hpp>
 #include <microfmt/formatters/ansi.hpp>
 #include <microfmt/formatters/base_views.hpp>
 #include <microfmt/formatters/binary.hpp>
@@ -88,7 +85,7 @@
 #include <microfmt/markdown.hpp>
 #include <microfmt/microfmt.hpp>
 #include <microfmt/microfmt_config.hpp>
-#include <microfmt/rvalue_safety.hpp>
+#include <microfmt/reloco.hpp>
 #include <microfmt/scratch_allocator.hpp>
 #include <microfmt/sinks/container_sink.hpp>
 #include <microfmt/sinks/pmr_sink.hpp>
@@ -96,10 +93,6 @@
 #include <microfmt/sinks/stdio.hpp>
 #include <microfmt/sinks/styled_sink.hpp>
 #include <microfmt/sinks/tee_sink.hpp>
-#include <microfmt/span.hpp>
-#include <microfmt/string_view.hpp>
-#include <microfmt/value_ptr.hpp>
-#include <microfmt/value_ref.hpp>
 
 #if MICROFMT_HEADER_CHECK_STANDARD >= 20
 #include <microfmt/log/logger.hpp>
@@ -134,11 +127,11 @@
 #endif
 
 #if MICROFMT_HEADER_CHECK_STANDARD == 17
-static_assert(MICROFMT_CXX17 && !MICROFMT_CXX20, "The C++17 header check must use C++17 mode.");
+static_assert(RELOCO_CXX17 && !RELOCO_CXX20, "The C++17 header check must use C++17 mode.");
 #elif MICROFMT_HEADER_CHECK_STANDARD == 20
-static_assert(MICROFMT_CXX20 && !MICROFMT_CXX23, "The C++20 header check must use C++20 mode.");
+static_assert(RELOCO_CXX20 && !RELOCO_CXX23, "The C++20 header check must use C++20 mode.");
 #elif MICROFMT_HEADER_CHECK_STANDARD == 23
-static_assert(MICROFMT_CXX23, "The C++23 header check must use C++23 mode.");
+static_assert(RELOCO_CXX23, "The C++23 header check must use C++23 mode.");
 #else
 #error "MICROFMT_HEADER_CHECK_STANDARD must name the selected C++ standard."
 #endif

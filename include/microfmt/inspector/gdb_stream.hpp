@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../microfmt.hpp"
-#include "../span.hpp"
+#include "../reloco.hpp"
 
 namespace microfmt::gdb {
 

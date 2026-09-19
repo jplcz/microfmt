@@ -7,7 +7,7 @@
  * @brief Thread descriptor with telemetry and register context integration. */
 
 #include "../formatters/json.hpp"
-#include "../lifetime.hpp"
+#include "../reloco.hpp"
 #include "../microfmt.hpp"
 #include "metadata_map.hpp"
 #include "register_context.hpp"

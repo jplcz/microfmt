@@ -7,8 +7,7 @@
 #include "address_space.hpp"
 #include "dwarf_registers.hpp"
 #include "../microfmt.hpp"
-#include "../span.hpp"
-#include "../value_ref.hpp"
+#include "../reloco.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <cstring>

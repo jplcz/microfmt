@@ -6,9 +6,7 @@
 /** @file concrete_metadata_map.hpp
  * @brief Concrete mutable metadata map with explicit view state. */
 
-#include "../lifetime.hpp"
-#include "../span.hpp"
-#include "../value_ref.hpp"
+#include "../reloco.hpp"
 #include "metadata_map.hpp"
 #include <type_traits>
 

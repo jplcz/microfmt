@@ -22,7 +22,7 @@ struct is_range<
     T, std::void_t<decltype(std::begin(std::declval<const T &>())), decltype(std::end(std::declval<const T &>()))>>
     : std::true_type {};
 
-#if MICROFMT_CXX20
+#if RELOCO_CXX20
 // Fixed string helper for compile-time format string & delimiter NTTPs
 template <size_t N> struct fixed_string {
   char buf[N + 1]{};
@@ -58,7 +58,7 @@ template <typename It, typename Sentinel = It> struct join_view {
   // Custom per-element specifier (e.g. "02x")
 };
 
-#if MICROFMT_CXX20
+#if RELOCO_CXX20
 // ============================================================================
 // Zero-Size Specifier join_as_view (Compile-Time NTTPs)
 // ============================================================================
@@ -93,7 +93,7 @@ template <typename Range,
               !std::is_lvalue_reference_v<Range> && detail::is_range<std::remove_reference_t<Range>>::value, int> = 0>
 [[nodiscard]] constexpr auto join(Range &&, microfmt::string_view = ", ") noexcept = delete;
 
-#if MICROFMT_CXX20
+#if RELOCO_CXX20
 // Compile-time join_as (zero runtime overhead)
 template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "", typename Range,
           std::enable_if_t<detail::is_range<Range>::value, int> = 0>
@@ -145,7 +145,7 @@ template <typename It, typename Sentinel> struct formatter<join_view<It, Sentine
   }
 };
 
-#if MICROFMT_CXX20
+#if RELOCO_CXX20
 // ============================================================================
 // Formatter for join_as_view (Zero runtime state overhead)
 // ============================================================================

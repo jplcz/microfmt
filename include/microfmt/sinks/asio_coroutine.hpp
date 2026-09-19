@@ -10,7 +10,7 @@
  * writing over Boost.Asio streams.
  */
 
-#include "../lifetime.hpp"
+#include "../reloco.hpp"
 #include "../microfmt.hpp"
 #include "asio_sink.hpp"
 #include <boost/asio/awaitable.hpp>

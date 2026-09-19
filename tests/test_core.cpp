@@ -106,7 +106,7 @@ TEST(CoreSink, SpanSinkAccessorsAndReset) {
   EXPECT_TRUE(output.view().empty());
   EXPECT_EQ(output.available(), 5U);
 
-#if MICROFMT_HAS_STD_SPAN
+#if RELOCO_HAS_STD_SPAN
   microfmt::span_sink standard_output{std::span<char>(storage)};
   microfmt::format_to(standard_output.as_sink(), "xy");
   EXPECT_EQ(standard_output.view(), "xy");
@@ -123,7 +123,7 @@ TEST(CoreSink, BufferSinkAccessors) {
   const auto output_span = output.as_span();
   EXPECT_EQ(output_span.size(), 4U);
   EXPECT_EQ(microfmt::string_view(output_span.data(), output_span.size()), "abcd");
-#if MICROFMT_HAS_STD_SPAN
+#if RELOCO_HAS_STD_SPAN
   const auto standard_span = output.as_std_span();
   EXPECT_EQ(standard_span.size(), 4U);
   EXPECT_EQ(standard_span.data(), output_span.data());

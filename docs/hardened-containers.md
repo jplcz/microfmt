@@ -54,19 +54,19 @@ concurrent operations.
 Unlike conventional standard-library containers, where unchecked element
 access is commonly the default, microfmt and reloco make checked behavior the
 default and require an explicit opt-out. Checked operations use
-`MICROFMT_ASSERT`. These checks remain active in release builds and are not
+`RELOCO_ASSERT`. These checks remain active in release builds and are not
 removed merely because `NDEBUG` is defined. Invalid checked access calls the
 configured assertion handler and then traps.
 
 This makes hardening opt-out rather than opt-in: applications get checked
-behavior by default and must explicitly define `MICROFMT_DISABLE_ASSERT` to
+behavior by default and must explicitly define `RELOCO_DISABLE_ASSERT` to
 remove it. Do this only after proving that every checked precondition is
 satisfied. With assertions disabled, violating a precondition is undefined
 behavior; the macro is a performance and code-size tradeoff, not an error
 recovery mode.
 
 ```cmake
-target_compile_definitions(firmware PRIVATE MICROFMT_DISABLE_ASSERT=1)
+target_compile_definitions(firmware PRIVATE RELOCO_DISABLE_ASSERT=1)
 ```
 
 The opt-out applies globally to checked microfmt operations in that target.
@@ -88,11 +88,11 @@ void assertion_log(const char *expression, const char *file, int line,
 microfmt::set_assert_handler(assertion_log);
 ```
 
-Define `MICROFMT_DISABLE_ASSERT_STDIO` to suppress the default standard-error
+Define `RELOCO_DISABLE_ASSERT_STDIO` to suppress the default standard-error
 dependency while preserving checks and traps:
 
 ```cmake
-target_compile_definitions(firmware PRIVATE MICROFMT_DISABLE_ASSERT_STDIO=1)
+target_compile_definitions(firmware PRIVATE RELOCO_DISABLE_ASSERT_STDIO=1)
 ```
 
 Install a custom handler before a failure can occur if the default handler is

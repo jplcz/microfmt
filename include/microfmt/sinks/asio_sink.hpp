@@ -6,7 +6,7 @@
 
 /** @file asio_sink.hpp @brief Boost.Asio buffer and stream sink adapters for zero-allocation formatting. */
 
-#include "../lifetime.hpp"
+#include "../reloco.hpp"
 #include "../microfmt.hpp"
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/streambuf.hpp>

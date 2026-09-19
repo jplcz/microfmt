@@ -11,8 +11,7 @@
 #include <cstdint>
 
 #include "../microfmt.hpp"
-#include "../span.hpp"
-#include "../string_view.hpp"
+#include "../reloco.hpp"
 
 namespace microfmt {
 
@@ -57,7 +56,7 @@ template <typename T1, typename T2>
       span<const std::byte>(reinterpret_cast<const std::byte *>(new_span.data()), new_span.size_bytes()), base_addr, 16};
 }
 
-#if MICROFMT_HAS_STD_SPAN
+#if RELOCO_HAS_STD_SPAN
 /**
  * @brief Creates a memory diff view over two standard `std::span` containers.
  */

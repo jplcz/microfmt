@@ -112,7 +112,7 @@ public:
     if (bytes_remaining_in_word_ > 0) {
       RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
-      MICROFMT_DEBUG_ASSERT(buffer_idx_ < std::size(current_word_buffer_), "Index out of range");
+      RELOCO_DEBUG_ASSERT(buffer_idx_ < std::size(current_word_buffer_), "Index out of range");
       out_byte = current_word_buffer_[buffer_idx_++];
 
       RELOCO_END_UNSAFE_BUFFER_USAGE;

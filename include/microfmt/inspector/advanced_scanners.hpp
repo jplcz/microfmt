@@ -14,7 +14,7 @@
 #pragma once
 
 #include "../microfmt.hpp"
-#include "../span.hpp"
+#include "../reloco.hpp"
 #include "address_space.hpp"
 #include "memory_pattern_scanner.hpp" // For memory_scan_result and linear_memory_scanner_context
 #include <cstddef>

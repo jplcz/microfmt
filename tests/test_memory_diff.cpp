@@ -144,7 +144,7 @@ TEST(MemoryDiffViewTest, ConstructsFromMixedSpanElementTypes) {
   EXPECT_EQ(diff.new_data.size(), sizeof(new_words));
 }
 
-#if MICROFMT_HAS_STD_SPAN
+#if RELOCO_HAS_STD_SPAN
 TEST(MemoryDiffViewTest, ConstructsFromStdSpanOverloads) {
   const std::array<uint8_t, 4> old_buf{{1, 2, 3, 4}};
   const std::array<uint8_t, 4> new_buf{{1, 2, 3, 5}};

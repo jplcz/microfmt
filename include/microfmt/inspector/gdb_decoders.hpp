@@ -8,7 +8,7 @@
 
 #include "../microfmt.hpp"
 #include "../scratch_allocator.hpp"
-#include "../span.hpp"
+#include "../reloco.hpp"
 #include "gdb_encoders.hpp"
 #include "gdb_packet_recognizer.hpp"
 

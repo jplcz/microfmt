@@ -7,7 +7,7 @@
 #include "../microfmt.hpp"
 #include <cerrno>
 
-#ifndef MICROFMT_KERNEL
+#ifndef RELOCO_KERNEL
 #ifndef MICROFMT_USE_SYSTEM_ERROR
 #define MICROFMT_USE_SYSTEM_ERROR 0
 #endif
@@ -23,7 +23,7 @@ namespace microfmt {
 
 namespace detail {
 
-#if defined(MICROFMT_KERNEL)
+#if defined(RELOCO_KERNEL)
 // Kernel mode: Forward declaration. The kernel developer provides the actual
 // implementation linking against kernel logging/error facilities.
 void write_errno_string(const sink &out, int value) noexcept;

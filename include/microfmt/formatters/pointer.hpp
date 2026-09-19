@@ -250,7 +250,7 @@ template <typename T> struct formatter<raw_range_view<T>> {
         out.write(range.separator);
       }
       RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
-      MICROFMT_DEBUG_ASSERT(range.begin_ptr + idx < range.end_ptr, "Index out of range");
+      RELOCO_DEBUG_ASSERT(range.begin_ptr + idx < range.end_ptr, "Index out of range");
       elem_fmt.format(range.begin_ptr[idx], out);
       RELOCO_END_UNSAFE_BUFFER_USAGE;
     }

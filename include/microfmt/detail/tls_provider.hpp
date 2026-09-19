@@ -68,14 +68,14 @@ struct pt_helpers {
   static void create(pthread_key_t &key, void (*deleter)(void *)) noexcept {
     const int rc = pthread_key_create(&key, deleter);
     if (rc != 0) {
-      MICROFMT_TRAP();
+      RELOCO_TRAP();
     }
   }
   static void *get(pthread_key_t key) noexcept { return pthread_getspecific(key); }
   static void set(pthread_key_t key, void *p) noexcept {
     const int rc = pthread_setspecific(key, p);
     if (rc != 0) {
-      MICROFMT_TRAP();
+      RELOCO_TRAP();
     }
   }
   template <typename T> static void default_deleter(void *p) noexcept { delete static_cast<T *>(p); }
@@ -125,7 +125,7 @@ struct tls_provider<T, Tag, std::enable_if_t<!std::is_pointer_v<T> && !can_fit_i
     void *ptr = pt_helpers::get(key_);
     if (!ptr) {
       ptr = new T();
-      MICROFMT_ASSERT(ptr != nullptr, "Object not created ?");
+      RELOCO_ASSERT(ptr != nullptr, "Object not created ?");
       pt_helpers::set(key_, ptr);
     }
     return *static_cast<T *>(ptr);
@@ -140,7 +140,7 @@ struct tls_provider<T, Tag, std::enable_if_t<!std::is_pointer_v<T> && !can_fit_i
     void *ptr = pt_helpers::get(key_);
     if (!ptr) {
       ptr = new T(std::move(value));
-      MICROFMT_ASSERT(ptr != nullptr, "Object not created ?");
+      RELOCO_ASSERT(ptr != nullptr, "Object not created ?");
       pt_helpers::set(key_, ptr);
     } else {
       *static_cast<T *>(ptr) = std::move(value);
@@ -235,7 +235,7 @@ struct win32_helpers {
   static DWORD create(PFLS_CALLBACK_FUNCTION deleter) noexcept {
     DWORD key = FlsAlloc(deleter);
     if (key == FLS_OUT_OF_INDEXES) {
-      MICROFMT_TRAP();
+      RELOCO_TRAP();
     }
     return key;
   }
@@ -244,7 +244,7 @@ struct win32_helpers {
 
   static void set(DWORD key, void *p) noexcept {
     if (!FlsSetValue(key, p)) {
-      MICROFMT_TRAP();
+      RELOCO_TRAP();
     }
   }
 
@@ -291,7 +291,7 @@ struct tls_provider<T, Tag, std::enable_if_t<!std::is_pointer_v<T> && !can_fit_i
     void *ptr = win32_helpers::get(key_);
     if (!ptr) {
       ptr = new T();
-      MICROFMT_ASSERT(ptr != nullptr, "Object not created ?");
+      RELOCO_ASSERT(ptr != nullptr, "Object not created ?");
       win32_helpers::set(key_, ptr);
     }
     return *static_cast<T *>(ptr);
@@ -306,7 +306,7 @@ struct tls_provider<T, Tag, std::enable_if_t<!std::is_pointer_v<T> && !can_fit_i
     void *ptr = win32_helpers::get(key_);
     if (!ptr) {
       ptr = new T(std::move(value));
-      MICROFMT_ASSERT(ptr != nullptr, "Object not created ?");
+      RELOCO_ASSERT(ptr != nullptr, "Object not created ?");
       win32_helpers::set(key_, ptr);
     } else {
       *static_cast<T *>(ptr) = std::move(value);

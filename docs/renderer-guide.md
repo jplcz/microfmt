@@ -64,7 +64,7 @@ Pass scratch storage to a view explicitly. The view stores only handles: a
 the source, and a `microfmt::span<char>` over storage owned by its caller.
 
 ```cpp
-#include <microfmt/value_ref.hpp>
+#include <microfmt/reloco.hpp>
 
 class packet_view {
 public:

@@ -7,7 +7,7 @@
 /** @file address_space.hpp @brief Type-erased remote address-space access and
  * remote string/object views. */
 
-#include "../lifetime.hpp"
+#include "../reloco.hpp"
 #include "../microfmt.hpp"
 #include "../scratch_allocator.hpp"
 

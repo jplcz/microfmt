@@ -7,7 +7,7 @@
 /** @file logger.hpp @brief Configurable structured loggers and helper functions. */
 
 #include "sink.hpp"
-#include "../array.hpp"
+#include "../reloco.hpp"
 #include <cstddef>
 #include <string_view>
 #include <utility>

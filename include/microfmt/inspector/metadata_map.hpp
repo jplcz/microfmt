@@ -6,7 +6,7 @@
 /** @file metadata_map.hpp
  * @brief Type-erased, zero-allocation metadata map generator view. */
 
-#include "../lifetime.hpp"
+#include "../reloco.hpp"
 #include "../markdown.hpp"
 #include "../microfmt.hpp"
 

@@ -68,7 +68,7 @@ in the formatter. Wrap `your_type` in a small view class instead, and give
 the view caller-owned scratch storage:
 
 ```cpp
-#include <microfmt/value_ref.hpp>
+#include <microfmt/reloco.hpp>
 
 class your_type_view {
 public:
@@ -281,8 +281,7 @@ mandatory operation and an optional operation, and an owning wrapper. Every
 rename the placeholders, and add/remove operations as needed.
 
 ```cpp
-#include <microfmt/value_ref.hpp>
-#include <microfmt/lifetime.hpp> // RELOCO_LIFETIMEBOUND
+#include <microfmt/reloco.hpp> // RELOCO_LIFETIMEBOUND, value_ref
 #include <type_traits>
 #include <utility>
 

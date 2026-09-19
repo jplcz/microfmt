@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../microfmt.hpp"
-#include "../span.hpp"
+#include "../reloco.hpp"
 #include "dwarf_abi.hpp"
 #include "register_context.hpp" // Assuming the provided snippet is here
 #include <cstdint>

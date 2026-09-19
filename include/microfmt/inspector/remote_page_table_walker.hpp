@@ -7,10 +7,7 @@
 /** @file remote_page_table_walker.hpp
  * @brief Bounded architecture-neutral remote page-table walking. */
 
-#include "../array.hpp"
-#include "../expected.hpp"
-#include "../span.hpp"
-#include "../value_ptr.hpp"
+#include "../reloco.hpp"
 #include "address_space.hpp"
 #include "address_translator.hpp"
 

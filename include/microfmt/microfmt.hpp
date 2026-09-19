@@ -15,14 +15,9 @@
 #include <tuple>
 #include <type_traits>
 
-#include "array.hpp"
 #include "detail/assert.hpp"
 #include "detail/compat.hpp"
-#include "expected.hpp"
-#include "span.hpp"
-#include "string_view.hpp"
-#include "value_ptr.hpp"
-#include "value_ref.hpp"
+#include "reloco.hpp"
 
 namespace microfmt {
 
@@ -101,7 +96,7 @@ public:
   explicit constexpr span_sink(span<char> buf RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_buf(buf), m_pos(0) {}
 
-#if MICROFMT_HAS_STD_SPAN
+#if RELOCO_HAS_STD_SPAN
   /**
    * @brief Constructs a span sink over a @c std::span of character storage.
    *
@@ -176,7 +171,7 @@ struct buffer_sink_base {
   std::size_t m_capacity;
   std::size_t m_pos;
 
-  MICROFMT_CONSTEXPR20 static void write_thunk(void *ctx, microfmt::string_view sv) noexcept {
+  RELOCO_CONSTEXPR20 static void write_thunk(void *ctx, microfmt::string_view sv) noexcept {
     auto *self = static_cast<buffer_sink_base *>(ctx);
     const std::size_t avail = (self->m_pos < self->m_capacity) ? (self->m_capacity - self->m_pos) : 0;
     const std::size_t n = std::min(sv.size(), avail);
@@ -214,7 +209,7 @@ public:
    * @return A lightweight @ref sink struct configured with a callback to append
    * to this buffer.
    */
-  [[nodiscard]] MICROFMT_CONSTEXPR20 sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_CONSTEXPR20 sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, &detail::buffer_sink_base::write_thunk};
   }
 
@@ -262,7 +257,7 @@ public:
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
-#if MICROFMT_HAS_STD_SPAN
+#if RELOCO_HAS_STD_SPAN
   /**
    * @brief Returns a standard `std::span` view over the written portion of the
    * buffer.
@@ -398,7 +393,7 @@ struct c_string_sink_base {
   std::size_t m_max_payload; // N - 1
   std::size_t m_pos;
 
-  MICROFMT_CONSTEXPR20 static void write_thunk(void *ctx, microfmt::string_view sv) noexcept {
+  RELOCO_CONSTEXPR20 static void write_thunk(void *ctx, microfmt::string_view sv) noexcept {
     auto *self = static_cast<c_string_sink_base *>(ctx);
     const std::size_t avail = (self->m_pos < self->m_max_payload) ? (self->m_max_payload - self->m_pos) : 0;
     const std::size_t n = std::min(sv.size(), avail);
@@ -559,10 +554,10 @@ inline constexpr std::array<char, 16> hex_digits_lower = {'0', '1', '2', '3', '4
 inline constexpr std::array<char, 16> hex_digits_upper = {'0', '1', '2', '3', '4', '5', '6', '7',
                                                           '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
-MICROFMT_ALWAYS_INLINE
+RELOCO_ALWAYS_INLINE
 inline void format_integer_core(const sink &out, uint64_t val, bool is_negative, uint32_t radix, bool uppercase,
                                 int min_width) noexcept {
-  MICROFMT_DEBUG_ASSERT(radix == 2 || radix == 10 || radix == 16, "integer radix must be 2, 10, or 16");
+  RELOCO_DEBUG_ASSERT(radix == 2 || radix == 10 || radix == 16, "integer radix must be 2, 10, or 16");
   microfmt::array<char, 24> buf; // Reclaimed immediately upon leaf exit
   size_t idx = buf.size();
 
@@ -621,12 +616,12 @@ inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
   out.write(microfmt::string_view(&buf[idx], digits_len));
 }
 
-MICROFMT_ALWAYS_INLINE
+RELOCO_ALWAYS_INLINE
 inline void format_unsigned(const sink &out, uint64_t val, uint32_t radix, bool uppercase, int min_width = 0) noexcept {
   format_integer_core(out, val, false, radix, uppercase, min_width);
 }
 
-MICROFMT_ALWAYS_INLINE
+RELOCO_ALWAYS_INLINE
 inline void format_signed(const sink &out, int64_t val, int min_width = 0) noexcept {
   if (val < 0) {
     // Safe conversion for INT64_MIN (-9223372036854775808)
@@ -693,7 +688,7 @@ public:
   [[nodiscard]] constexpr bool starts_with(char ch) const noexcept { return !m_spec.empty() && m_spec.front() == ch; }
 
   [[nodiscard]] constexpr bool starts_with(microfmt::string_view prefix) const noexcept {
-#if MICROFMT_CXX20
+#if RELOCO_CXX20
     return m_spec.starts_with(prefix);
 #else
     return m_spec.size() >= prefix.size() && m_spec.substr(0, prefix.size()) == prefix;
@@ -755,7 +750,7 @@ namespace detail {
 // =============================================================================
 
 template <typename UInt>
-MICROFMT_ALWAYS_INLINE RELOCO_UNSAFE_BUFFER_USAGE MICROFMT_CONSTEXPR20 inline char *
+RELOCO_ALWAYS_INLINE RELOCO_UNSAFE_BUFFER_USAGE RELOCO_CONSTEXPR20 inline char *
 format_dec_backward(char *ptr, UInt value) noexcept {
   // Process 2 digits at a time using the lookup table
   while (value >= 100) {
@@ -782,7 +777,7 @@ format_dec_backward(char *ptr, UInt value) noexcept {
 // =============================================================================
 
 template <typename UInt>
-RELOCO_UNSAFE_BUFFER_USAGE MICROFMT_ALWAYS_INLINE MICROFMT_CONSTEXPR20 inline char *
+RELOCO_UNSAFE_BUFFER_USAGE RELOCO_ALWAYS_INLINE RELOCO_CONSTEXPR20 inline char *
 format_hex_backward(char *ptr, UInt value, bool uppercase) noexcept {
   const auto &lut = uppercase ? hex_digits_upper : hex_digits_lower;
   if (value == 0) {
@@ -797,7 +792,7 @@ format_hex_backward(char *ptr, UInt value, bool uppercase) noexcept {
 }
 
 // Low-overhead emission routine with zero-padding and width handling
-MICROFMT_ALWAYS_INLINE
+RELOCO_ALWAYS_INLINE
 inline void emit_formatted_int(const sink &out, const char *digits, size_t digits_len, bool is_negative,
                                microfmt::string_view prefix, uint8_t width, bool zero_pad) noexcept {
   const size_t prefix_len = prefix.size();
@@ -924,7 +919,7 @@ struct int_formatter_specs {
 template <typename T>
 struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool> && !std::is_same_v<T, char>>>
     : detail::int_formatter_specs {
-  MICROFMT_ALWAYS_INLINE void format(T val, const sink &out) const noexcept {
+  RELOCO_ALWAYS_INLINE void format(T val, const sink &out) const noexcept {
     if constexpr (sizeof(T) <= sizeof(uint64_t)) {
       if constexpr (std::is_signed_v<T>) {
         format_int_impl<int64_t>(static_cast<int64_t>(val), out);
@@ -1011,7 +1006,7 @@ inline void format_type_thunk(const void *val_ptr, microfmt::string_view spec, c
   }
 }
 
-#if MICROFMT_CXX20
+#if RELOCO_CXX20
 template <typename T> using microfmt_remove_cvref_t = std::remove_cvref_t<T>;
 #else
 template <typename T> using microfmt_remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
@@ -1140,7 +1135,7 @@ constexpr compiled_format<MaxPieces> compile_format_string(microfmt::string_view
 
 // Helper to extract the N-th argument from a parameter pack
 template <size_t TargetIdx, size_t CurIdx, typename T, typename... Rest>
-MICROFMT_ALWAYS_INLINE inline const void *get_arg_by_index(const T &first, const Rest &...rest) noexcept {
+RELOCO_ALWAYS_INLINE inline const void *get_arg_by_index(const T &first, const Rest &...rest) noexcept {
   if constexpr (TargetIdx == CurIdx) {
     return static_cast<const void *>(&first);
   } else {
@@ -1155,7 +1150,7 @@ template <typename StrProvider> struct compiled_string_storage {
 
 // Formats a single compiled piece with zero runtime indirect thunks
 template <typename StrProvider, size_t PieceIdx, typename... Args>
-MICROFMT_ALWAYS_INLINE inline void emit_piece_by_index(const sink &out,
+RELOCO_ALWAYS_INLINE inline void emit_piece_by_index(const sink &out,
                                                        const std::tuple<const Args &...> &arg_tuple) noexcept {
   constexpr auto &piece = compiled_string_storage<StrProvider>::compiled.pieces[PieceIdx];
 
@@ -1174,7 +1169,7 @@ MICROFMT_ALWAYS_INLINE inline void emit_piece_by_index(const sink &out,
 }
 
 template <typename StrProvider, typename... Args, size_t... Is>
-MICROFMT_ALWAYS_INLINE inline void unrolled_format_impl(const sink &out, std::index_sequence<Is...>,
+RELOCO_ALWAYS_INLINE inline void unrolled_format_impl(const sink &out, std::index_sequence<Is...>,
                                                         const Args &...args) noexcept {
   auto arg_tuple = std::forward_as_tuple(args...);
   (void)arg_tuple;
@@ -1259,7 +1254,7 @@ inline void vformat_to(const sink &out, const microfmt::string_view fmt, const s
 // ============================================================================
 
 template <typename... Args>
-MICROFMT_CONSTEXPR20 inline void format_to(const sink &out, microfmt::string_view fmt, const Args &...args) noexcept {
+RELOCO_CONSTEXPR20 inline void format_to(const sink &out, microfmt::string_view fmt, const Args &...args) noexcept {
   if constexpr (sizeof...(Args) == 0) {
     vformat_to(out, fmt, {}, {});
   } else {
@@ -1271,14 +1266,14 @@ MICROFMT_CONSTEXPR20 inline void format_to(const sink &out, microfmt::string_vie
 }
 
 template <typename OutputIt, typename... Args>
-MICROFMT_CONSTEXPR20 inline OutputIt format_to(OutputIt it, microfmt::string_view fmt, const Args &...args) noexcept {
+RELOCO_CONSTEXPR20 inline OutputIt format_to(OutputIt it, microfmt::string_view fmt, const Args &...args) noexcept {
   iterator_sink<OutputIt> isink(it);
   format_to(isink.as_sink(), fmt, args...);
   return isink.current();
 }
 
 template <size_t N, typename... Args>
-[[nodiscard]] MICROFMT_CONSTEXPR20 inline buffer_sink<N> format(microfmt::string_view fmt,
+[[nodiscard]] RELOCO_CONSTEXPR20 inline buffer_sink<N> format(microfmt::string_view fmt,
                                                                 const Args &...args) noexcept {
   buffer_sink<N> buf;
   format_to(buf.as_sink(), fmt, args...);
@@ -1302,7 +1297,7 @@ template <typename Provider> struct compile_string_holder {
 
 // Compile-time unrolled overload (Zero stack arg_ptrs, zero indirect thunks)
 template <typename StrProvider, typename... Args>
-MICROFMT_CONSTEXPR20 inline void format_to(const sink &out, compile_string_holder<StrProvider>,
+RELOCO_CONSTEXPR20 inline void format_to(const sink &out, compile_string_holder<StrProvider>,
                                            const Args &...args) noexcept {
   constexpr size_t num_pieces = detail::compiled_string_storage<StrProvider>::compiled.count;
 
@@ -1311,7 +1306,7 @@ MICROFMT_CONSTEXPR20 inline void format_to(const sink &out, compile_string_holde
 
 // Compile-time overload
 template <typename OutputIt, typename StrProvider, typename... Args>
-MICROFMT_CONSTEXPR20 inline OutputIt format_to(OutputIt it, compile_string_holder<StrProvider> fmt,
+RELOCO_CONSTEXPR20 inline OutputIt format_to(OutputIt it, compile_string_holder<StrProvider> fmt,
                                                const Args &...args) noexcept {
   iterator_sink<OutputIt> isink(it);
   format_to(isink.as_sink(), fmt, args...);
@@ -1320,7 +1315,7 @@ MICROFMT_CONSTEXPR20 inline OutputIt format_to(OutputIt it, compile_string_holde
 
 // Compile-time overload
 template <size_t N, typename StrProvider, typename... Args>
-[[nodiscard]] MICROFMT_CONSTEXPR20 inline buffer_sink<N> format(compile_string_holder<StrProvider> fmt,
+[[nodiscard]] RELOCO_CONSTEXPR20 inline buffer_sink<N> format(compile_string_holder<StrProvider> fmt,
                                                                 const Args &...args) noexcept {
   buffer_sink<N> buf;
   format_to(buf.as_sink(), fmt, args...);

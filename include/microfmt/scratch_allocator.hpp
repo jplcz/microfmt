@@ -3,8 +3,7 @@
 
 #pragma once
 
-#include "lifetime.hpp"
-#include "span.hpp"
+#include "reloco.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <new>

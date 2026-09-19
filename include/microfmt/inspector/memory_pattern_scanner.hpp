@@ -14,7 +14,7 @@
 #pragma once
 
 #include "../microfmt.hpp"
-#include "../span.hpp"
+#include "../reloco.hpp"
 #include "address_space.hpp"
 #include <cstddef>
 #include <cstdint>

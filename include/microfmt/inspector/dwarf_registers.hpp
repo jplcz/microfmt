@@ -4,8 +4,7 @@
 
 #pragma once
 
-#include "../array.hpp"
-#include "../string_view.hpp"
+#include "../reloco.hpp"
 #include <cstdint>
 
 namespace microfmt::dwarf {

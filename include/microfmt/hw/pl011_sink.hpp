@@ -7,7 +7,7 @@
 /** @file pl011_sink.hpp @brief ARM PL011 UART controller and sink adapter. */
 
 #include "../microfmt.hpp"
-#include "../string_view.hpp"
+#include "../reloco.hpp"
 #include <cstdint>
 
 namespace microfmt {

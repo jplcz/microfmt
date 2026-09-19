@@ -8,7 +8,7 @@
  * enumeration, and fixed-capacity registries. */
 
 #include "../microfmt.hpp"
-#include "../value_ref.hpp"
+#include "../reloco.hpp"
 #include <cstdint>
 #include <string_view>
 #include <type_traits>
