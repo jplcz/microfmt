@@ -12,115 +12,73 @@
 
 namespace microfmt::gdb {
 
-namespace detail {
-
 /**
- * @brief Level 2: Sub-match rule for multi-character packets.
- */
-struct sub_match {
-  string_view prefix;
-  packet_type type;
-};
-
-// ============================================================================
-// Level 2 Sub-tables (Must be ordered with longer prefixes first if they overlap)
-// ============================================================================
-
-inline constexpr sub_match q_matches[] = {{"qSearch:memory", packet_type::search_memory},
-                                          {"qThreadExtraInfo", packet_type::query_thread_extra_info},
-                                          {"qSupported", packet_type::query_supported},
-                                          {"qfThreadInfo", packet_type::query_first_thread_info},
-                                          {"qsThreadInfo", packet_type::query_subsequent_thread},
-                                          {"qAttached", packet_type::query_attached},
-                                          {"qOffsets", packet_type::query_offsets},
-                                          {"qTStatus", packet_type::query_trace_status},
-                                          {"qSymbol", packet_type::query_symbol},
-                                          {"qCRC", packet_type::query_crc},
-                                          {"qC", packet_type::query_current_thread}};
-
-inline constexpr sub_match Q_matches[] = {{"QStartNoAckMode", packet_type::set_start_noack_mode},
-                                          {"QProgramSignals", packet_type::set_program_signals},
-                                          {"QThreadEvents", packet_type::set_thread_events},
-                                          {"QPassSignals", packet_type::set_pass_signals},
-                                          {"QNonStop", packet_type::set_non_stop}};
-
-inline constexpr sub_match v_matches[] = {{"vMustReplyEmpty", packet_type::v_must_reply_empty},
-                                          {"vCont?", packet_type::v_cont_supported},
-                                          {"vAttach", packet_type::v_attach},
-                                          {"vStopped", packet_type::v_stopped},
-                                          {"vCont", packet_type::v_cont},
-                                          {"vKill", packet_type::v_kill},
-                                          {"vRun", packet_type::v_run}};
-
-/**
- * @brief Level 1: Primary lookup entry mapped to an ASCII character.
- */
-struct primary_match {
-  packet_type single_type{packet_type::unknown};
-  const sub_match *sub_matches{nullptr};
-  size_t sub_count{0};
-};
-
-/**
- * @brief Compile-time builder for the 128-entry ASCII primary lookup table.
- */
-struct lookup_table_t {
-  primary_match entries[128]{};
-
-  constexpr lookup_table_t() noexcept {
-    // Direct single-character matches
-    entries['?'].single_type = packet_type::halt_reason;
-    entries['c'].single_type = packet_type::continue_exec;
-    entries['C'].single_type = packet_type::continue_with_signal;
-    entries['s'].single_type = packet_type::step_exec;
-    entries['S'].single_type = packet_type::step_with_signal;
-    entries['k'].single_type = packet_type::kill;
-    entries['D'].single_type = packet_type::detach;
-    entries['R'].single_type = packet_type::restart;
-    entries['!'].single_type = packet_type::enable_extended_mode;
-
-    entries['g'].single_type = packet_type::read_general_registers;
-    entries['G'].single_type = packet_type::write_general_registers;
-    entries['p'].single_type = packet_type::read_single_register;
-    entries['P'].single_type = packet_type::write_single_register;
-
-    entries['m'].single_type = packet_type::read_memory;
-    entries['M'].single_type = packet_type::write_memory_hex;
-    entries['X'].single_type = packet_type::write_memory_binary;
-
-    entries['Z'].single_type = packet_type::insert_break_watch;
-    entries['z'].single_type = packet_type::remove_break_watch;
-
-    entries['H'].single_type = packet_type::set_thread;
-    entries['T'].single_type = packet_type::thread_is_alive;
-    entries['F'].single_type = packet_type::file_io_request;
-
-    // Map multi-character sub-tables
-    entries['q'].sub_matches = q_matches;
-    entries['q'].sub_count = sizeof(q_matches) / sizeof(q_matches[0]);
-
-    entries['Q'].sub_matches = Q_matches;
-    entries['Q'].sub_count = sizeof(Q_matches) / sizeof(Q_matches[0]);
-
-    entries['v'].sub_matches = v_matches;
-    entries['v'].sub_count = sizeof(v_matches) / sizeof(v_matches[0]);
-  }
-};
-
-// Generate the table entirely at compile time
-inline constexpr lookup_table_t gdb_lookup_table{};
-
-} // namespace detail
-
-/**
- * @brief Fast, zero-allocation packet payload recognizer.
+ * @brief Zero-allocation packet payload recognizer.
  */
 class packet_recognizer {
 public:
+  struct packet_entry {
+    microfmt::string_view prefix;
+    packet_type type;
+
+    constexpr bool operator<(const packet_entry &other) const noexcept { return prefix < other.prefix; }
+  };
+
+  static constexpr size_t k_count_multichar = []() -> size_t {
+    size_t count = 0;
+#define __INSPECTOR_GDB_PACKET_TYPE_X(name, str)                                                                       \
+  if constexpr (sizeof(str) > 2) {                                                                                     \
+    ++count;                                                                                                           \
+  }
+    INSPECTOR_GDB_PACKET_LIST(__INSPECTOR_GDB_PACKET_TYPE_X)
+#undef __INSPECTOR_GDB_PACKET_TYPE_X
+    return count;
+  }();
+
+  static constexpr auto k_multi_char_table = []() {
+    std::array<packet_entry, k_count_multichar> sub{};
+    size_t idx = 0;
+#define __INSPECTOR_GDB_PACKET_TYPE_X(name, str)                                                                       \
+  if constexpr (sizeof(str) > 2) {                                                                                     \
+    sub[idx++] = packet_entry{str, packet_type::name};                                                                 \
+  }
+    INSPECTOR_GDB_PACKET_LIST(__INSPECTOR_GDB_PACKET_TYPE_X)
+#undef __INSPECTOR_GDB_PACKET_TYPE_X
+
+    return sub;
+  }();
+
+  struct dispatch_entry {
+    packet_type type;
+    bool is_multi_char;
+  };
+
+  static constexpr auto k_first_byte_table = []() {
+    std::array<packet_type, 128> table{};
+    for (size_t i = 0; i < 128; ++i) {
+      table[i] = packet_type::unknown;
+    }
+
+#define __INSPECTOR_GDB_PACKET_TYPE_X(name, str)                                                                       \
+  if constexpr (sizeof(str) > 2) {                                                                                     \
+    unsigned char c = static_cast<unsigned char>((str)[0]);                                                            \
+    if (c < 128) {                                                                                                     \
+      table[c] = packet_type::_multi_char_marker;                                                                      \
+    }                                                                                                                  \
+  } else if constexpr (sizeof(str) == 2) {                                                                             \
+    unsigned char c = static_cast<unsigned char>((str)[0]);                                                            \
+    if (c < 128) {                                                                                                     \
+      table[c] = packet_type::name;                                                                                    \
+    }                                                                                                                  \
+  }
+    INSPECTOR_GDB_PACKET_LIST(__INSPECTOR_GDB_PACKET_TYPE_X)
+#undef __INSPECTOR_GDB_PACKET_TYPE_X
+
+    return table;
+  }();
+
   /**
    * @brief Identifies the high-level packet_type from a raw GDB packet payload.
-   *
-   * Uses a fast two-level O(1) + O(N) lookup without dynamic memory.
    *
    * @param payload Unescaped packet payload string (without '$' and '#XX').
    * @return Resolved packet_type, or unknown if unrecognized.
@@ -130,32 +88,26 @@ public:
       return packet_type::unknown;
     }
 
-    // Level 1: O(1) Array Lookup
-    const auto first_char = static_cast<unsigned char>(payload[0]);
-    if (first_char > 127) {
+    unsigned char first_char = static_cast<unsigned char>(payload[0]);
+    if (first_char >= 128) {
       return packet_type::unknown;
     }
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
-    const auto &entry = detail::gdb_lookup_table.entries[static_cast<size_t>(first_char)];
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    packet_type match = k_first_byte_table[first_char];
 
-    // Level 2: Sub-table string prefix match
-    if (entry.sub_count > 0) {
-      for (size_t i = 0; i < entry.sub_count; ++i) {
-        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
-        const auto &sub = entry.sub_matches[i];
-        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    // Level 1: O(1) Direct match for single-character commands
+    if (match != packet_type::_multi_char_marker) {
+      return match;
+    }
 
-        // Check if payload starts with the prefix
-        if (payload.size() >= sub.prefix.size() && payload.substr(0, sub.prefix.size()) == sub.prefix) {
-          return sub.type;
-        }
+    // Level 2: Linear search over the small unified multi-character table (~23 entries)
+    for (const auto &entry : k_multi_char_table) {
+      if (payload.substr(0, entry.prefix.size()) == entry.prefix) {
+        return entry.type;
       }
     }
 
-    // Return single character match (or unknown if unmapped)
-    return entry.single_type;
+    return packet_type::unknown;
   }
 };
 

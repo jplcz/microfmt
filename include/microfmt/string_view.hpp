@@ -41,34 +41,26 @@ public:
   constexpr basic_string_view() noexcept = default;
   constexpr basic_string_view(const basic_string_view &) noexcept = default;
   constexpr basic_string_view &operator=(const basic_string_view &) noexcept = default;
-  constexpr basic_string_view(
-      base rhs MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  constexpr basic_string_view(base rhs MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : view_(rhs) {}
 
   template <typename Allocator>
-  constexpr basic_string_view(
-      const std::basic_string<CharT, TraitsT, Allocator> &rhs
-          MICROFMT_LIFETIMEBOUND
-              MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  constexpr basic_string_view(const std::basic_string<CharT, TraitsT, Allocator> &rhs MICROFMT_LIFETIMEBOUND
+                                  MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : view_(rhs.data(), rhs.size()) {}
 
   template <typename Allocator> basic_string_view(std::basic_string<CharT, TraitsT, Allocator> &&) = delete;
 
   constexpr basic_string_view(std::nullptr_t) noexcept {}
 
-  constexpr basic_string_view(
-      const CharT *str MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
-      size_type len) noexcept
+  constexpr basic_string_view(const CharT *str MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+                              size_type len) noexcept
       : view_(str == nullptr ? base() : base(str, len)) {
     MICROFMT_ASSERT(str != nullptr || len == 0, "string_view data is null with non-zero length");
   }
-  
+
   MICROFMT_ALWAYS_INLINE
-  constexpr basic_string_view(
-      const CharT *str MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  constexpr basic_string_view(const CharT *str MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : view_(str == nullptr ? base() : base(str)) {}
 
   [[nodiscard]] constexpr size_type size() const noexcept { return view_.size(); }
@@ -241,6 +233,18 @@ public:
   friend constexpr bool operator!=(basic_string_view lhs, const CharT *rhs) noexcept { return !(lhs == rhs); }
 
   friend constexpr bool operator!=(const CharT *lhs, basic_string_view rhs) noexcept { return !(lhs == rhs); }
+
+  friend constexpr bool operator<(basic_string_view lhs, basic_string_view rhs) noexcept {
+    return lhs.view_ < rhs.view_;
+  }
+
+  friend constexpr bool operator<(basic_string_view lhs, base rhs) noexcept { return lhs.view_ < rhs; }
+
+  friend constexpr bool operator<(base lhs, basic_string_view rhs) noexcept { return lhs < rhs.view_; }
+
+  friend constexpr bool operator<(basic_string_view lhs, const CharT *rhs) noexcept { return lhs.view_ < base(rhs); }
+
+  friend constexpr bool operator<(const CharT *lhs, basic_string_view rhs) noexcept { return base(lhs) < rhs.view_; }
 
   [[nodiscard]] static constexpr basic_string_view from_range(const CharT *first, const CharT *last) noexcept {
     MICROFMT_ASSERT(first <= last, "invalid pointer range for string_view");
