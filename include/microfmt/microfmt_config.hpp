@@ -41,32 +41,13 @@
 // Available customization points (see docs/porting.md for details)
 // ============================================================================
 //
-// RELOCO_KERNEL
-//     Define to build for kernel/freestanding targets. Requires
-//     RELOCO_KERNEL_PANIC (see below) and disables every hosted-only
-//     standard library include across the library.
-//
-// RELOCO_KERNEL_PANIC(expression, file, line, message)
-//     Required when RELOCO_KERNEL is defined. Must be defined as a
-//     function-like macro that reports assertion failures through the
-//     target's own panic/log facility (printf-like, or a sequence of raw
-//     string writes as a last resort).
-//
-// RELOCO_TRAP()
-//     Must not return. Defaults to a compiler debug trap, falling back to
-//     std::abort().
-//
-// RELOCO_UNREACHABLE() / RELOCO_HAS_UNREACHABLE
-//     Optimizer hint for unreachable code. Set RELOCO_HAS_UNREACHABLE to 0
-//     alongside a no-op RELOCO_UNREACHABLE() if the platform has none.
-//
-// RELOCO_DISABLE_ASSERT / RELOCO_DISABLE_ASSERT_STDIO
-//     Disable RELOCO_ASSERT/RELOCO_DEBUG_ASSERT entirely, or just their
-//     default std::fprintf(stderr, ...) diagnostic, respectively.
-//
+// RELOCO_KERNEL, RELOCO_KERNEL_PANIC, RELOCO_TRAP, RELOCO_UNREACHABLE /
+// RELOCO_HAS_UNREACHABLE, RELOCO_DISABLE_ASSERT / RELOCO_DISABLE_ASSERT_STDIO,
 // RELOCO_DEBUG
-//     Force RELOCO_DEBUG_ASSERT to stay active even when NDEBUG is
-//     defined, instead of compiling down to RELOCO_UNREACHABLE()/no-op.
+//     Owned by reloco (see reloco/reloco_config.hpp); microfmt uses them
+//     directly rather than a MICROFMT_* alias. They may still be overridden
+//     here, since microfmt_user_config.hpp (see MICROFMT_CONFIG above) is
+//     included before any header applies its own default.
 //
 // MICROFMT_TLS_MODEL
 //     Selects the microfmt::detail::tls_provider storage model. One of
