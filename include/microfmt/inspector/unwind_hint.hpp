@@ -59,6 +59,15 @@ struct unwind_hint {
    * @return `true` when the routine successfully recovered the next frame.
    *         Return `false` if the context is invalid, saved registers are
    *         absent, or the recovered addresses cannot advance the walk.
+   *
+   * @note Routines are not required to also write @p next_fp/@p next_pc back
+   * into @p reg_ctx's fp/return-address registers themselves --
+   * `chained_unwinder_tag` does this on every routine's behalf after a
+   * successful call, since it (unlike this type-erased routine) knows the
+   * concrete `AbiTraits` needed to pick the right registers. This keeps
+   * `reg_ctx` self-consistent for subsequent steps through any tier, since
+   * `reg_ctx` is always a mutable scratch snapshot (a dead-process register
+   * view or a local copy), never a live process to resume.
    */
   using unwind_routine_t = bool (*)(address_space_ref space,
                                     register_context_ref reg_ctx,

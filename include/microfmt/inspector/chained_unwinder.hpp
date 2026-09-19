@@ -11,6 +11,7 @@
 #include "register_context.hpp"
 #include "unwind_hint.hpp"
 #include <cstdint>
+#include <tuple>
 
 namespace microfmt {
 
@@ -84,7 +85,30 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
     // The hint receives reg_ctx directly. Do not snapshot only FP/PC here:
     // non-standard unwinders can keep addresses in, and recover values from,
     // any GPR. The routine may also mutate the register context in-place.
-    return hint.routine(context->space, reg_ctx, next_fp, next_pc);
+    if (!hint.routine(context->space, reg_ctx, next_fp, next_pc))
+      return false;
+
+    // reg_ctx is always a mutable scratch snapshot (a dead-process register
+    // view or a local ucontext_t/GPR-array copy), never a live process to
+    // resume. Hint routines are plain type-erased function pointers with no
+    // AbiTraits of their own, so a routine author may reasonably fill only
+    // next_fp/next_pc without also writing the fp/ra registers back into
+    // reg_ctx; without that write-back, a *subsequent* step() (through this
+    // same hint tier, or any other tier that reads the same registers) would
+    // silently re-read this frame's now-stale fp/ra and loop forever, as
+    // fp_unwinder_tag/dwarf_unwinder_tag did before they were fixed to write
+    // their own results back. chained_unwinder_tag knows AbiTraits, so it
+    // closes that gap here on every hint routine's behalf, best-effort (a
+    // read-only register context still lets this single step succeed via
+    // next_fp/next_pc, it just can't chain further through this tier).
+    const auto fp_value = static_cast<typename AbiTraits::register_type>(next_fp);
+    const auto ra_value = static_cast<typename AbiTraits::register_type>(next_pc);
+    std::ignore = reg_ctx.write_raw(resolve_fp_register<AbiTraits>(reg_ctx),
+                                    &fp_value, AbiTraits::pointer_size);
+    std::ignore = reg_ctx.write_raw(AbiTraits::ra_reg, &ra_value,
+                                    AbiTraits::pointer_size);
+
+    return true;
   }
 };
 

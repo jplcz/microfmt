@@ -1629,6 +1629,7 @@ struct fake_fp_abi {
   using register_type = uintptr_t;
   static constexpr size_t pointer_size = sizeof(uintptr_t);
   static constexpr uint32_t fp_reg = 6;
+  static constexpr uint32_t ra_reg = 16;
   static constexpr ptrdiff_t fp_slot_offset = 0;
   static constexpr ptrdiff_t ra_slot_offset = static_cast<ptrdiff_t>(sizeof(uintptr_t));
 

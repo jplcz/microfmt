@@ -43,9 +43,33 @@ struct arm_abi_traits {
   /// FP register number.
   static constexpr uint32_t fp_reg = dwarf::arm32::fp; // R11 (Traditional ARM)
 
-  // Frame pointer layout offsets relative to current FP
-  static constexpr ptrdiff_t fp_slot_offset = 0; // Saved FP is at [FP + 0]
-  static constexpr ptrdiff_t ra_slot_offset = 4; // Saved LR is at [FP + 4]
+  // Frame pointer layout offsets relative to current FP, for @ref
+  // fp_unwinder_tag's naive FP-chain walking (as opposed to the
+  // EXIDX-bytecode-driven `arm_exidx_unwinder_tag`, which needs no static
+  // offset assumption at all).
+  //
+  // These describe GCC's *ARM (A32)* `-O0` prologue convention only:
+  // `push {..., fp, lr}` (any earlier callee-saved scratch registers, e.g.
+  // r4, may also be pushed) followed by `add fp, sp, <#pushed-bytes-1..2
+  // registers>`, which always lands `fp` exactly on the saved-LR word
+  // (`fp+0`), with the saved caller FP immediately below it (`fp-4`) --
+  // verified against real arm-linux-gnueabi-gcc output; this holds
+  // regardless of how many extra registers are pushed alongside {fp, lr}
+  // since fp/lr are always the last two (adjacent, ascending-register-number
+  // order) entries of the push list.
+  //
+  // Thumb/Thumb-2 mode (R7 frame pointer) does NOT follow a fixed offset:
+  // GCC emits `mov r7, sp` (or `add r7, sp, #0`) *after* allocating the
+  // local-variable area when any extra scratch register is pushed alongside
+  // {r7, lr}, so r7 ends up pointing at the locals base rather than at the
+  // {r7, lr} pair, and the true offset then depends on the (per-function,
+  // frame-size-dependent) local allocation size. There is no single constant
+  // that describes this, so `fp_unwinder_tag<arm_abi_traits>` is reliable
+  // only while executing in ARM (A32) state; treat Thumb-state fallback
+  // results as unreliable (prefer `arm_exidx_unwinder_tag`, which decodes
+  // the real bytecode/CFI instead of guessing a fixed layout).
+  static constexpr ptrdiff_t fp_slot_offset = -4; // Saved FP is at [FP - 4]
+  static constexpr ptrdiff_t ra_slot_offset = 0;  // Saved LR is at [FP + 0]
 
   /**
    * @brief Reports whether a register holds the return address.
@@ -96,6 +120,50 @@ struct arm_abi_traits {
       return (cpsr & thumb_bit) != 0U ? 7U : fp_reg;
     }
     return fp_reg;
+  }
+
+  /**
+   * @brief Resolves the FP-relative saved-FP/saved-RA slot offsets for the
+   * *current* instruction-set state, for @ref fp_unwinder_tag's naive
+   * FP-chain walking.
+   *
+   * In ARM (A32) state, `fp` always ends up pointing directly at the
+   * saved-LR word regardless of how many other callee-saved scratch
+   * registers (e.g. r4) are pushed alongside `{fp, lr}` -- `fp`/`lr` are
+   * always the last two, adjacent entries of the push list -- so @ref
+   * fp_slot_offset (`-4`) / @ref ra_slot_offset (`0`) hold universally.
+   *
+   * In Thumb/Thumb-2 state this is *not* true: GCC emits `mov r7, sp` (or
+   * `add r7, sp, #0`) *after* allocating the local-variable area whenever any
+   * extra scratch register is pushed alongside `{r7, lr}`, so `r7` ends up
+   * pointing at the locals base rather than at the `{r7, lr}` pair, and the
+   * true offset then varies per function with its (frame-size-dependent)
+   * local allocation. There is no fixed constant that describes this, so
+   * this reports failure in Thumb state rather than returning a
+   * plausible-looking but wrong offset.
+   *
+   * @param reg_ctx Register context to consult for CPSR.
+   * @param[out] out_fp_slot_offset Receives @ref fp_slot_offset when
+   * successful.
+   * @param[out] out_ra_slot_offset Receives @ref ra_slot_offset when
+   * successful.
+   * @return `true` in ARM (A32) state (or when CPSR cannot be read, matching
+   * @ref resolve_fp_reg's fallback); `false` in Thumb/Thumb-2 state, where
+   * FP-chain walking cannot be trusted.
+   */
+  [[nodiscard]] static bool
+  resolve_frame_slot_offsets(register_context_ref reg_ctx,
+                            ptrdiff_t &out_fp_slot_offset,
+                            ptrdiff_t &out_ra_slot_offset) noexcept {
+    uint32_t cpsr = 0;
+    if (reg_ctx && reg_ctx.read(dwarf::arm32::cpsr, cpsr)) {
+      constexpr uint32_t thumb_bit = 0x20U; // CPSR.T
+      if ((cpsr & thumb_bit) != 0U)
+        return false;
+    }
+    out_fp_slot_offset = fp_slot_offset;
+    out_ra_slot_offset = ra_slot_offset;
+    return true;
   }
 };
 
@@ -394,6 +462,21 @@ struct has_resolve_fp_reg<
                    std::declval<register_context_ref>()))>> : std::true_type {
 };
 
+/// Detects whether `AbiTraits` supplies a dynamic, register-context-aware
+/// `resolve_frame_slot_offsets(register_context_ref, ptrdiff_t&,
+/// ptrdiff_t&)` (currently only @ref arm_abi_traits, whose FP-chain slot
+/// layout depends on the live ARM/Thumb instruction-set state and is only
+/// reliable in ARM/A32 state).
+template <typename AbiTraits, typename = void>
+struct has_resolve_frame_slot_offsets : std::false_type {};
+
+template <typename AbiTraits>
+struct has_resolve_frame_slot_offsets<
+    AbiTraits,
+    std::void_t<decltype(AbiTraits::resolve_frame_slot_offsets(
+        std::declval<register_context_ref>(), std::declval<ptrdiff_t &>(),
+        std::declval<ptrdiff_t &>()))>> : std::true_type {};
+
 } // namespace detail
 
 /**
@@ -416,6 +499,40 @@ resolve_fp_register(register_context_ref reg_ctx) noexcept {
     return AbiTraits::resolve_fp_reg(reg_ctx);
   } else {
     return AbiTraits::fp_reg;
+  }
+}
+
+/**
+ * @brief Resolves the FP-relative saved-FP/saved-RA slot offsets to use for
+ * @p AbiTraits's naive FP-chain walking (@ref fp_unwinder_tag).
+ *
+ * Architectures whose FP-chain layout is fixed (all except ARM) fall back to
+ * the static @c AbiTraits::fp_slot_offset / @c AbiTraits::ra_slot_offset and
+ * always succeed. ARM's layout instead depends on the live ARM/Thumb
+ * instruction-set state -- reliable only in ARM (A32) state -- so @ref
+ * arm_abi_traits::resolve_frame_slot_offsets consults CPSR via @p reg_ctx and
+ * reports failure in Thumb/Thumb-2 state rather than guessing.
+ *
+ * @tparam AbiTraits Architecture ABI traits.
+ * @param reg_ctx Register context to consult, if the traits need it.
+ * @param[out] out_fp_slot_offset Receives the saved-FP slot offset.
+ * @param[out] out_ra_slot_offset Receives the saved-RA slot offset.
+ * @return `true` when the offsets are trustworthy for the current state;
+ * `false` when FP-chain walking cannot be relied on (e.g. ARM in Thumb
+ * state).
+ */
+template <typename AbiTraits>
+[[nodiscard]] bool
+resolve_frame_slot_offsets(register_context_ref reg_ctx,
+                          ptrdiff_t &out_fp_slot_offset,
+                          ptrdiff_t &out_ra_slot_offset) noexcept {
+  if constexpr (detail::has_resolve_frame_slot_offsets<AbiTraits>::value) {
+    return AbiTraits::resolve_frame_slot_offsets(reg_ctx, out_fp_slot_offset,
+                                                out_ra_slot_offset);
+  } else {
+    out_fp_slot_offset = AbiTraits::fp_slot_offset;
+    out_ra_slot_offset = AbiTraits::ra_slot_offset;
+    return true;
   }
 }
 

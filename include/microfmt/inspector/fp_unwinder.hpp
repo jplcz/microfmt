@@ -13,6 +13,7 @@
 #include "frame_pointer.hpp"
 #include "register_context.hpp"
 #include <cstdint>
+#include <tuple>
 
 namespace microfmt {
 
@@ -83,14 +84,25 @@ struct microfmt::frame_unwinder_traits<microfmt::fp_unwinder_tag<AbiTraits>> {
     if ((current_fp % ptr_size) != 0)
       return false;
 
+    // Resolve the FP-relative saved-FP/saved-RA slot offsets dynamically.
+    // On architectures whose FP-chain layout is fixed (all but ARM), this
+    // is just AbiTraits::fp_slot_offset/ra_slot_offset; on ARM it is only
+    // reliable in A32 state (see arm_abi_traits::resolve_frame_slot_offsets)
+    // -- fail cleanly in Thumb state instead of applying a plausible-looking
+    // but wrong offset.
+    ptrdiff_t fp_slot_offset = 0;
+    ptrdiff_t ra_slot_offset = 0;
+    if (!resolve_frame_slot_offsets<AbiTraits>(reg_ctx, fp_slot_offset,
+                                              ra_slot_offset))
+      return false;
+
     typename AbiTraits::register_type saved_fp = 0;
     typename AbiTraits::register_type saved_ra = 0;
 
-    // Read stack slots using architecture-specific offsets from AbiTraits
     uintptr_t fp_addr = static_cast<uintptr_t>(
-        static_cast<ptrdiff_t>(current_fp) + AbiTraits::fp_slot_offset);
+        static_cast<ptrdiff_t>(current_fp) + fp_slot_offset);
     uintptr_t ra_addr = static_cast<uintptr_t>(
-        static_cast<ptrdiff_t>(current_fp) + AbiTraits::ra_slot_offset);
+        static_cast<ptrdiff_t>(current_fp) + ra_slot_offset);
 
     if (!context->space.read_bytes(fp_addr, &saved_fp, ptr_size))
       return false;
@@ -100,6 +112,20 @@ struct microfmt::frame_unwinder_traits<microfmt::fp_unwinder_tag<AbiTraits>> {
     if (saved_fp <= current_fp || saved_ra == 0) {
       return false;
     }
+
+    // reg_ctx is always a mutable scratch snapshot (a dead-process register
+    // view or a local ucontext_t/GPR-array copy) when it supports writes at
+    // all, never a live process to resume -- so writing the recovered
+    // registers back into it is both safe and desirable: it is what lets a
+    // *subsequent* step() (whether another fp_unwinder step, or a different
+    // tier's step reading the same fp/ra registers) see the caller's frame
+    // instead of silently re-reading this frame's now-stale values (which
+    // would otherwise loop forever). This is best-effort: read-only register
+    // contexts (e.g. an immutable core-dump view) still let this single step
+    // succeed via the next_fp/next_pc outputs, they just can't chain further
+    // through this same tier.
+    std::ignore = reg_ctx.write_raw(fp_reg, &saved_fp, ptr_size);
+    std::ignore = reg_ctx.write_raw(AbiTraits::ra_reg, &saved_ra, ptr_size);
 
     next_fp = static_cast<uintptr_t>(saved_fp);
     next_pc = AbiTraits::normalize_pc(static_cast<uintptr_t>(saved_ra));

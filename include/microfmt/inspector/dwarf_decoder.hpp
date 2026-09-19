@@ -15,6 +15,7 @@
 #include "register_context.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <tuple>
 
 namespace microfmt {
 
@@ -344,6 +345,23 @@ public:
 
     out_fp = static_cast<uintptr_t>(saved_fp);
     out_pc = AbiTraits::normalize_pc(static_cast<uintptr_t>(saved_ra));
+
+    // reg_ctx is always a mutable scratch snapshot (a dead-process register
+    // view or a local ucontext_t/GPR-array copy), never a live process to
+    // resume -- write the caller's recovered SP (CFA)/FP/RA back into it so a
+    // *subsequent* step (whether another DWARF FDE for the caller, or a
+    // different unwinder tier) sees the caller's live registers instead of
+    // silently re-reading this frame's now-stale values (which would
+    // otherwise loop forever re-resolving the same frame). Best-effort:
+    // read-only register contexts still let this single step succeed via
+    // out_fp/out_pc, they just can't chain further through this tier.
+    auto cfa_reg_val = static_cast<register_type>(cfa);
+    std::ignore =
+        reg_ctx.write_raw(AbiTraits::sp_reg, &cfa_reg_val, AbiTraits::pointer_size);
+    std::ignore =
+        reg_ctx.write_raw(AbiTraits::fp_reg, &saved_fp, AbiTraits::pointer_size);
+    std::ignore =
+        reg_ctx.write_raw(AbiTraits::ra_reg, &saved_ra, AbiTraits::pointer_size);
 
     return true;
   }
