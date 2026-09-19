@@ -31,6 +31,9 @@ option(JPLCZ_MICROFMT_BUILD_HEADER_CHECKS
 option(JPLCZ_MICROFMT_INSTALL
     "Install jplcz_microfmt headers and CMake package metadata"
     ${JPLCZ_MICROFMT_IS_TOP_LEVEL})
+option(JPLCZ_MICROFMT_BUILD_MANPAGES
+    "Generate man(7) pages from the Markdown docs using pandoc, when available"
+    OFF)
 
 if(JPLCZ_MICROFMT_BUILD_TESTS OR JPLCZ_MICROFMT_BUILD_EXAMPLES OR
    JPLCZ_MICROFMT_BUILD_HEADER_CHECKS)
@@ -772,6 +775,25 @@ if(JPLCZ_MICROFMT_INSTALL)
         COMPONENT Development
     )
 
+    # Plain-text/Markdown documentation (no Doxygen/HTML build step
+    # required). `docs/` is installed as a subdirectory, matching the
+    # source-tree layout, so README.md's relative `docs/...` links and the
+    # cross-links between guides under docs/ keep resolving after install.
+    install(
+        FILES
+            "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
+            "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}"
+        COMPONENT Documentation
+    )
+
+    install(
+        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs/"
+        DESTINATION "${CMAKE_INSTALL_DOCDIR}/docs"
+        COMPONENT Documentation
+        PATTERN "*.css" EXCLUDE
+    )
+
     configure_package_config_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/jplcz_microfmtConfig.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfig.cmake"
@@ -805,6 +827,76 @@ if(JPLCZ_MICROFMT_INSTALL)
         DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/jplcz_microfmt"
         COMPONENT Development
     )
+endif()
+
+if(JPLCZ_MICROFMT_BUILD_MANPAGES)
+    # man(7) pages generated from the same Markdown docs installed above, via
+    # pandoc (no Doxygen/HTML involved). Opt-in: most consumers never need
+    # man pages, and not every platform ships pandoc, so this only runs when
+    # explicitly requested.
+    find_program(JPLCZ_MICROFMT_PANDOC_EXECUTABLE pandoc)
+    if(NOT JPLCZ_MICROFMT_PANDOC_EXECUTABLE)
+        message(FATAL_ERROR
+            "JPLCZ_MICROFMT_BUILD_MANPAGES=ON requires pandoc, which was not "
+            "found on PATH. Install pandoc or turn this option off.")
+    endif()
+
+    include(GNUInstallDirs) # idempotent if already included above
+
+    set(JPLCZ_MICROFMT_MAN_SECTION 7)
+    set(JPLCZ_MICROFMT_MAN_HEADER "jplcz_microfmt Manual")
+    set(JPLCZ_MICROFMT_MAN_FOOTER "jplcz_microfmt ${PROJECT_VERSION}")
+    set(JPLCZ_MICROFMT_MAN_OUTPUT_DIR
+        "${CMAKE_CURRENT_BINARY_DIR}/man/man${JPLCZ_MICROFMT_MAN_SECTION}")
+    file(MAKE_DIRECTORY "${JPLCZ_MICROFMT_MAN_OUTPUT_DIR}")
+
+    file(GLOB JPLCZ_MICROFMT_MAN_DOC_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/docs/*.md")
+    list(SORT JPLCZ_MICROFMT_MAN_DOC_SOURCES)
+
+    # README.md becomes the top-level jplcz_microfmt(7) overview page; every
+    # top-level docs/*.md guide becomes jplcz_microfmt-<name>(7). Guides
+    # nested under docs/formatters/ and docs/inspector/ are deep-dive
+    # references linked from the top-level guides and are not converted
+    # individually.
+    set(JPLCZ_MICROFMT_MAN_SOURCES
+        "${CMAKE_CURRENT_SOURCE_DIR}/README.md" ${JPLCZ_MICROFMT_MAN_DOC_SOURCES})
+    set(JPLCZ_MICROFMT_MAN_OUTPUTS "")
+
+    foreach(doc IN LISTS JPLCZ_MICROFMT_MAN_SOURCES)
+        get_filename_component(JPLCZ_MICROFMT_MAN_NAME "${doc}" NAME_WE)
+        if(JPLCZ_MICROFMT_MAN_NAME STREQUAL "README")
+            set(JPLCZ_MICROFMT_MAN_PAGE_NAME "jplcz_microfmt")
+        else()
+            set(JPLCZ_MICROFMT_MAN_PAGE_NAME "jplcz_microfmt-${JPLCZ_MICROFMT_MAN_NAME}")
+        endif()
+        set(JPLCZ_MICROFMT_MAN_OUTPUT
+            "${JPLCZ_MICROFMT_MAN_OUTPUT_DIR}/${JPLCZ_MICROFMT_MAN_PAGE_NAME}.${JPLCZ_MICROFMT_MAN_SECTION}")
+        add_custom_command(
+            OUTPUT "${JPLCZ_MICROFMT_MAN_OUTPUT}"
+            COMMAND "${JPLCZ_MICROFMT_PANDOC_EXECUTABLE}"
+                    -s -f gfm -t man
+                    "-Mtitle=${JPLCZ_MICROFMT_MAN_PAGE_NAME}"
+                    "-Msection=${JPLCZ_MICROFMT_MAN_SECTION}"
+                    "-Mheader=${JPLCZ_MICROFMT_MAN_HEADER}"
+                    "-Mfooter=${JPLCZ_MICROFMT_MAN_FOOTER}"
+                    "${doc}"
+                    -o "${JPLCZ_MICROFMT_MAN_OUTPUT}"
+            DEPENDS "${doc}"
+            COMMENT "pandoc: ${JPLCZ_MICROFMT_MAN_PAGE_NAME}.${JPLCZ_MICROFMT_MAN_SECTION}"
+            VERBATIM
+        )
+        list(APPEND JPLCZ_MICROFMT_MAN_OUTPUTS "${JPLCZ_MICROFMT_MAN_OUTPUT}")
+    endforeach()
+
+    add_custom_target(jplcz_microfmt_manpages ALL DEPENDS ${JPLCZ_MICROFMT_MAN_OUTPUTS})
+
+    if(JPLCZ_MICROFMT_INSTALL)
+        install(
+            FILES ${JPLCZ_MICROFMT_MAN_OUTPUTS}
+            DESTINATION "${CMAKE_INSTALL_MANDIR}/man${JPLCZ_MICROFMT_MAN_SECTION}"
+            COMPONENT Documentation
+        )
+    endif()
 endif()
 
 if(JPLCZ_MICROFMT_IS_TOP_LEVEL AND JPLCZ_MICROFMT_INSTALL)

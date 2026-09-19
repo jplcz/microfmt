@@ -107,6 +107,13 @@ The CMake options `JPLCZ_MICROFMT_BUILD_TESTS`, `JPLCZ_MICROFMT_BUILD_EXAMPLES`,
 `JPLCZ_MICROFMT_BUILD_BENCHMARKS`, and `JPLCZ_MICROFMT_BUILD_HEADER_CHECKS` can disable
 unneeded targets for a smaller local build.
 
+Set `JPLCZ_MICROFMT_BUILD_MANPAGES=ON` to additionally generate `man(7)` pages
+from the Markdown docs via `pandoc` (fails the configure step if `pandoc` is
+not on `PATH`); see
+[Installable CMake package](usage.md#installable-cmake-package) for the
+generated page names and install location. This is unrelated to the
+Doxygen HTML API reference produced by `scripts/build-docs.sh`.
+
 `JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS` is enabled by default. It applies
 compiler-specific GCC or Clang warning sets, including conversion,
 sign-conversion, shadowing, alignment, and undefined-macro diagnostics.

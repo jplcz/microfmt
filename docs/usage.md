@@ -76,6 +76,16 @@ architecture-specific binaries to match. Set `CMAKE_PREFIX_PATH` to the
 chosen installation prefix, or set `jplcz_microfmt_DIR` directly to that
 directory.
 
+The install also copies `README.md`, `LICENSE`, and the full `docs/` guide
+tree under `${CMAKE_INSTALL_DOCDIR}` (typically
+`share/doc/jplcz_microfmt/`), preserving the source layout so the
+cross-links between guides keep resolving. No Doxygen or HTML build step is
+involved. Set `JPLCZ_MICROFMT_BUILD_MANPAGES=ON` to additionally render each
+top-level guide to a `man(7)` page with `pandoc` (`jplcz_microfmt(7)` for
+`README.md`, `jplcz_microfmt-usage(7)` for `docs/usage.md`, and so on),
+installed under `${CMAKE_INSTALL_MANDIR}/man7`; the configure step fails if
+`pandoc` is not found while this option is enabled.
+
 Standalone builds also enable CPack, producing archive, Debian, and RPM
 packages with the same layout as `cmake --install`. See
 [CPack](package-managers.md#cpack) for details.

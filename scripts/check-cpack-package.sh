@@ -56,7 +56,10 @@ for required in \
   "include/microfmt/microfmt.hpp" \
   "share/cmake/jplcz_microfmt/jplcz_microfmtConfig.cmake" \
   "share/cmake/jplcz_microfmt/jplcz_microfmtConfigVersion.cmake" \
-  "share/cmake/jplcz_microfmt/jplcz_microfmtTargets.cmake"; do
+  "share/cmake/jplcz_microfmt/jplcz_microfmtTargets.cmake" \
+  "share/doc/jplcz_microfmt/README.md" \
+  "share/doc/jplcz_microfmt/LICENSE" \
+  "share/doc/jplcz_microfmt/docs/usage.md"; do
   if [[ ! -f "${package_root}/${required}" ]]; then
     printf 'error: archive package is missing %s\n' "${required}" >&2
     exit 1
