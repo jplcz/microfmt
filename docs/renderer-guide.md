@@ -60,19 +60,24 @@ packet is rendered repeatedly or from a stack-limited execution context.
 ## Put the work in a view
 
 Pass scratch storage to a view explicitly. The view stores only handles: a
-reference or pointer to the source and a `microfmt::span<char>` over storage
-owned by its caller.
+`microfmt::value_ref` (or `microfmt::value_ptr` for an optional source) to
+the source, and a `microfmt::span<char>` over storage owned by its caller.
 
 ```cpp
+#include <microfmt/value_ref.hpp>
+
 class packet_view {
 public:
-  constexpr packet_view(const packet &source,
+  // `value_ref<const packet>` rejects rvalue/temporary bindings, so a
+  // dangling `source_` is a compile error instead of a runtime hazard. See
+  // [Lifetime safety](lifetime-safety.md) for the full rationale.
+  constexpr packet_view(microfmt::value_ref<const packet> source,
                         microfmt::span<char> scratch) noexcept
       : source_(source), scratch_(scratch) {}
 
   void render(const microfmt::sink &out) const noexcept {
     const size_t decoded =
-        decode_packet(source_, scratch_.data(), scratch_.size());
+        decode_packet(*source_, scratch_.data(), scratch_.size());
     const size_t size =
         decoded < scratch_.size() ? decoded : scratch_.size();
     microfmt::format_to(out, MICROFMT_STRING("{}"),
@@ -80,7 +85,7 @@ public:
   }
 
 private:
-  const packet &source_;
+  microfmt::value_ref<const packet> source_;
   microfmt::span<char> scratch_;
 };
 
@@ -101,7 +106,8 @@ or other dedicated owner:
 class telemetry_renderer {
 public:
   packet_view view(const packet &value) noexcept {
-    return packet_view{value, microfmt::span<char>{scratch_, sizeof(scratch_)}};
+    return packet_view{microfmt::value_ref<const packet>(value),
+                       microfmt::span<char>{scratch_, sizeof(scratch_)}};
   }
 
 private:
@@ -165,7 +171,7 @@ Use a temporary view when it only contains references and spans:
 
 ```cpp
 microfmt::format_to(out, MICROFMT_STRING("packet={}"),
-                    packet_view{packet, scratch});
+                    packet_view{microfmt::value_ref<const packet>(packet), scratch});
 ```
 
 Use a persistent renderer object when it owns a dedicated work buffer or
@@ -184,12 +190,16 @@ Before adding a renderer, confirm that:
 1. The formatter contains only small parsing state and no large local
    structures.
 2. The view carries all source references and traversal state.
-3. Temporary storage is explicit, bounded, and owned outside the formatter.
-4. Every read and write respects the supplied scratch span's capacity.
-5. Nested and concurrent use have a documented scratch-buffer strategy.
-6. Literal internal format strings use `MICROFMT_STRING(...)` only where the
+3. A view that stores a plain handle to its source uses `microfmt::value_ref`
+   (or `microfmt::value_ptr` if the source may be absent) instead of a raw
+   reference or pointer, so binding a temporary is a compile error instead
+   of a dangling reference.
+4. Temporary storage is explicit, bounded, and owned outside the formatter.
+5. Every read and write respects the supplied scratch span's capacity.
+6. Nested and concurrent use have a documented scratch-buffer strategy.
+7. Literal internal format strings use `MICROFMT_STRING(...)` only where the
    unrolled code size is justified; otherwise prefer runtime
    `microfmt::string_view` formats, since a renderer template may be
    instantiated over many types.
-7. Tests cover normal output, constrained scratch capacity, and nested or
+8. Tests cover normal output, constrained scratch capacity, and nested or
    repeated rendering when applicable.

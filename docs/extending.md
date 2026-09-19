@@ -68,18 +68,24 @@ in the formatter. Wrap `your_type` in a small view class instead, and give
 the view caller-owned scratch storage:
 
 ```cpp
+#include <microfmt/value_ref.hpp>
+
 class your_type_view {
 public:
-  constexpr your_type_view(const your_type &source,
+  // `value_ref<const your_type>` rejects rvalue/temporary bindings, so a
+  // dangling `source_` is a compile error instead of a runtime hazard. See
+  // [Lifetime safety](lifetime-safety.md) for the full rationale.
+  constexpr your_type_view(microfmt::value_ref<const your_type> source,
                            microfmt::span<char> scratch) noexcept
       : source_(source), scratch_(scratch) {}
 
   void render(const microfmt::sink &out) const noexcept {
-    // Use scratch_ for any decoding/traversal storage; write incrementally.
+    // Use *source_ (or source_->...) plus scratch_ for any decoding or
+    // traversal storage; write incrementally.
   }
 
 private:
-  const your_type &source_;
+  microfmt::value_ref<const your_type> source_;
   microfmt::span<char> scratch_;
 };
 
@@ -94,7 +100,8 @@ template <> struct microfmt::formatter<your_type_view> {
 // Usage: caller supplies and owns the scratch buffer.
 char scratch[128];
 microfmt::format_to(out, MICROFMT_STRING("{}"),
-                    your_type_view{value, microfmt::span<char>{scratch}});
+                    your_type_view{microfmt::value_ref<const your_type>(value),
+                                  microfmt::span<char>{scratch}});
 ```
 
 See [Writing low-stack renderers](renderer-guide.md) for the full rationale,
@@ -396,7 +403,10 @@ public:
   constexpr explicit your_provider(context_type context) noexcept
       : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr your_provider_ref ref() noexcept MICROFMT_LIFETIMEBOUND {
+  // Ref-qualified `&`: calling `.ref()` on a temporary owning wrapper is a
+  // compile error, since the returned handle would otherwise outlive the
+  // `context_` it points into.
+  [[nodiscard]] constexpr your_provider_ref ref() & noexcept MICROFMT_LIFETIMEBOUND {
     return your_provider_ref(Tag{}, context_);
   }
 

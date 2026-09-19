@@ -120,7 +120,10 @@ public:
   constexpr explicit ${1:your_provider}(context_type context) noexcept
       : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr ${1:your_provider}_ref ref() noexcept MICROFMT_LIFETIMEBOUND {
+  // Ref-qualified `&`: calling `.ref()` on a temporary owning wrapper is a
+  // compile error, since the returned handle would otherwise outlive the
+  // `context_` it points into.
+  [[nodiscard]] constexpr ${1:your_provider}_ref ref() & noexcept MICROFMT_LIFETIMEBOUND {
     return ${1:your_provider}_ref(Tag{}, context_);
   }
 

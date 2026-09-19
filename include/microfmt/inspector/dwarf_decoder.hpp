@@ -400,7 +400,7 @@ struct dwarf_unwinder_holder {
   dwarf_unwinder_holder(dwarf_unwinder_holder &&) = delete;
   dwarf_unwinder_holder &operator=(dwarf_unwinder_holder &&) = delete;
 
-  [[nodiscard]] frame_unwinder_ref make_ref() noexcept {
+  [[nodiscard]] frame_unwinder_ref make_ref() & noexcept {
     return frame_unwinder_ref(
         dwarf_unwinder_tag<AbiTraits, MaxStateStackDepth>{}, ctx);
   }

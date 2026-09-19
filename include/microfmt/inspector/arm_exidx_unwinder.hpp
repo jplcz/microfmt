@@ -234,7 +234,7 @@ template <typename AbiTraits = arm_abi_traits> struct arm_exidx_unwinder_holder 
    * @brief Builds a type-erased unwinder handle bound to this holder.
    * @return An @ref frame_unwinder_ref over @ref ctx.
    */
-  [[nodiscard]] frame_unwinder_ref make_ref() noexcept {
+  [[nodiscard]] frame_unwinder_ref make_ref() & noexcept {
     return frame_unwinder_ref(arm_exidx_unwinder_tag<AbiTraits>{}, ctx);
   }
 };
