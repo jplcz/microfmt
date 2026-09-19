@@ -46,11 +46,9 @@ using reloco::unexpected;
 
 using reloco::basic_string_view;
 using reloco::string_view;
-using reloco::string_view_error;
 using reloco::wstring_view;
 
 using reloco::span;
-using reloco::span_error;
 
 using reloco::value_ptr;
 using reloco::value_ref;
