@@ -775,22 +775,26 @@ if(JPLCZ_MICROFMT_INSTALL)
     configure_package_config_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/jplcz_microfmtConfig.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfig.cmake"
-        INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/jplcz_microfmt"
+        INSTALL_DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/jplcz_microfmt"
         NO_SET_AND_CHECK_MACRO
         NO_CHECK_REQUIRED_COMPONENTS_MACRO
     )
 
+    # Header-only INTERFACE library: the package config is architecture
+    # independent (no compiled binaries to match ABI/bitness against), so
+    # skip the platform check and install under share/, not lib/.
     write_basic_package_version_file(
         "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfigVersion.cmake"
         VERSION "${PROJECT_VERSION}"
         COMPATIBILITY SameMajorVersion
+        ARCH_INDEPENDENT
     )
 
     install(
         EXPORT jplcz_microfmtTargets
         FILE jplcz_microfmtTargets.cmake
         NAMESPACE jplcz_microfmt::
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/jplcz_microfmt"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/jplcz_microfmt"
         COMPONENT Development
     )
 
@@ -798,7 +802,7 @@ if(JPLCZ_MICROFMT_INSTALL)
         FILES
             "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfig.cmake"
             "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfigVersion.cmake"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/jplcz_microfmt"
+        DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/jplcz_microfmt"
         COMPONENT Development
     )
 endif()

@@ -54,9 +54,9 @@ package_root="$(find "${extract_dir}" -mindepth 1 -maxdepth 1 -type d)"
 
 for required in \
   "include/microfmt/microfmt.hpp" \
-  "lib/cmake/jplcz_microfmt/jplcz_microfmtConfig.cmake" \
-  "lib/cmake/jplcz_microfmt/jplcz_microfmtConfigVersion.cmake" \
-  "lib/cmake/jplcz_microfmt/jplcz_microfmtTargets.cmake"; do
+  "share/cmake/jplcz_microfmt/jplcz_microfmtConfig.cmake" \
+  "share/cmake/jplcz_microfmt/jplcz_microfmtConfigVersion.cmake" \
+  "share/cmake/jplcz_microfmt/jplcz_microfmtTargets.cmake"; do
   if [[ ! -f "${package_root}/${required}" ]]; then
     printf 'error: archive package is missing %s\n' "${required}" >&2
     exit 1

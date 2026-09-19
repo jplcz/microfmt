@@ -18,7 +18,7 @@ vcpkg_cmake_configure(
 vcpkg_cmake_install()
 vcpkg_cmake_config_fixup(
     PACKAGE_NAME jplcz_microfmt
-    CONFIG_PATH lib/cmake/jplcz_microfmt
+    CONFIG_PATH share/cmake/jplcz_microfmt
 )
 
 file(REMOVE_RECURSE

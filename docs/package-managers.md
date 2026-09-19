@@ -159,8 +159,8 @@ architecture-independent (`all`/`noarch`) packages. Run
 excludes VCS metadata and build directories.
 
 Installing any generated package places headers under `include/` and CMake
-package files under `lib/cmake/jplcz_microfmt/`, matching the layout produced
-by `cmake --install`; see
+package files under `share/cmake/jplcz_microfmt/`, matching the layout
+produced by `cmake --install`; see
 [Installable CMake package](usage.md#installable-cmake-package) for how
 consumers locate the installed package. `scripts/check-cpack-package.sh`
 builds every available generator and verifies the archive package's contents.

@@ -68,8 +68,11 @@ find_package(jplcz_microfmt CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 ```
 
-The package installs under
-`${CMAKE_INSTALL_LIBDIR}/cmake/jplcz_microfmt`. Set `CMAKE_PREFIX_PATH` to the
+The package installs its CMake config under
+`${CMAKE_INSTALL_DATADIR}/cmake/jplcz_microfmt` (typically
+`share/cmake/jplcz_microfmt`) rather than under `lib/`, since
+`jplcz_microfmt` is a header-only INTERFACE library with no
+architecture-specific binaries to match. Set `CMAKE_PREFIX_PATH` to the
 chosen installation prefix, or set `jplcz_microfmt_DIR` directly to that
 directory.
 
