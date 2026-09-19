@@ -90,10 +90,18 @@ inline void write_escaped_string(const sink &out, microfmt::string_view str) noe
 
 class array_writer;
 
-/** @brief RAII writer for a streaming JSON object. */
-class object_writer {
+/** @brief RAII writer for a streaming JSON object.
+ *
+ * Consumed-state tracked: writes are only valid while `unconsumed`; @ref end
+ * transitions the object to `consumed`, after which Clang's `-Wconsumed`
+ * flags any further `key`/`kv`/`nested_*` call as a compile-time diagnostic.
+ */
+class MICROFMT_CONSUMABLE(unconsumed) object_writer {
 public:
-  explicit object_writer(sink out) noexcept : out_(std::move(out)) { out_.put('{'); }
+  explicit object_writer(sink out) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+      : out_(std::move(out)) {
+    out_.put('{');
+  }
 
   ~object_writer() noexcept {
     if (!closed_) {
@@ -104,26 +112,27 @@ public:
   // Non-copyable, movable
   object_writer(const object_writer &) = delete;
   object_writer &operator=(const object_writer &) = delete;
-  object_writer(object_writer &&other) noexcept
+  object_writer(object_writer &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
       : out_(std::move(other.out_)), first_(other.first_), closed_(other.closed_) {
     other.closed_ = true;
   }
 
   // Key-Value primitives
-  object_writer &key(microfmt::string_view k) noexcept {
+  object_writer &key(microfmt::string_view k) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     prefix();
     write_escaped_string(out_, k);
     out_.put(':');
     return *this;
   }
 
-  object_writer &kv(microfmt::string_view k, microfmt::string_view val) noexcept {
+  object_writer &kv(microfmt::string_view k, microfmt::string_view val) noexcept
+      MICROFMT_CALLABLE_WHEN("unconsumed") {
     key(k);
     write_escaped_string(out_, val);
     return *this;
   }
 
-  object_writer &kv(microfmt::string_view k, const char *val) noexcept {
+  object_writer &kv(microfmt::string_view k, const char *val) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     key(k);
     if (val == nullptr) {
       out_.write("null");
@@ -133,17 +142,18 @@ public:
     return *this;
   }
 
-  template <std::size_t N> object_writer &kv(microfmt::string_view k, const char (&val)[N]) noexcept {
+  template <std::size_t N>
+  object_writer &kv(microfmt::string_view k, const char (&val)[N]) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     return kv(k, microfmt::string_view(val, N - 1));
   }
 
-  object_writer &kv(microfmt::string_view k, bool val) noexcept {
+  object_writer &kv(microfmt::string_view k, bool val) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     key(k);
     out_.write(val ? "true" : "false");
     return *this;
   }
 
-  object_writer &kv(microfmt::string_view k, std::nullptr_t) noexcept {
+  object_writer &kv(microfmt::string_view k, std::nullptr_t) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     key(k);
     out_.write("null");
     return *this;
@@ -151,22 +161,24 @@ public:
 
   template <typename T,
             typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value, int>::type = 0>
-  object_writer &kv(microfmt::string_view k, T val) noexcept {
+  object_writer &kv(microfmt::string_view k, T val) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     key(k);
     detail::write_integer(out_, val);
     return *this;
   }
 
   // Nested Object
-  [[nodiscard]] object_writer nested_object(microfmt::string_view k) noexcept {
+  [[nodiscard]] object_writer nested_object(microfmt::string_view k) noexcept MICROFMT_CALLABLE_WHEN("unconsumed")
+      MICROFMT_RETURN_TYPESTATE(unconsumed) {
     key(k);
     return object_writer(out_);
   }
 
   // Nested Array
-  [[nodiscard]] array_writer nested_array(microfmt::string_view k) noexcept;
+  [[nodiscard]] array_writer nested_array(microfmt::string_view k) noexcept MICROFMT_CALLABLE_WHEN("unconsumed")
+      MICROFMT_RETURN_TYPESTATE(unconsumed);
 
-  void end() noexcept {
+  void end() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "consumed") MICROFMT_SET_TYPESTATE(consumed) {
     if (!closed_) {
       out_.put('}');
       closed_ = true;
@@ -186,10 +198,16 @@ private:
   bool closed_{false};
 };
 
-/** @brief RAII writer for a streaming JSON array. */
-class array_writer {
+/** @brief RAII writer for a streaming JSON array.
+ *
+ * Consumed-state tracked: see @ref object_writer for the state contract.
+ */
+class MICROFMT_CONSUMABLE(unconsumed) array_writer {
 public:
-  explicit array_writer(sink out) noexcept : out_(std::move(out)) { out_.put('['); }
+  explicit array_writer(sink out) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+      : out_(std::move(out)) {
+    out_.put('[');
+  }
 
   ~array_writer() noexcept {
     if (!closed_) {
@@ -200,18 +218,18 @@ public:
 
   array_writer(const array_writer &) = delete;
   array_writer &operator=(const array_writer &) = delete;
-  array_writer(array_writer &&other) noexcept
+  array_writer(array_writer &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
       : out_(std::move(other.out_)), first_(other.first_), closed_(other.closed_) {
     other.closed_ = true;
   }
 
-  array_writer &val(microfmt::string_view v) noexcept {
+  array_writer &val(microfmt::string_view v) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     prefix();
     write_escaped_string(out_, v);
     return *this;
   }
 
-  array_writer &val(const char *v) noexcept {
+  array_writer &val(const char *v) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     prefix();
     if (v == nullptr) {
       out_.write("null");
@@ -221,17 +239,18 @@ public:
     return *this;
   }
 
-  template <std::size_t N> array_writer &val(const char (&v)[N]) noexcept {
+  template <std::size_t N>
+  array_writer &val(const char (&v)[N]) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     return val(microfmt::string_view(v, N - 1));
   }
 
-  array_writer &val(bool v) noexcept {
+  array_writer &val(bool v) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     prefix();
     out_.write(v ? "true" : "false");
     return *this;
   }
 
-  array_writer &val(std::nullptr_t) noexcept {
+  array_writer &val(std::nullptr_t) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     prefix();
     out_.write("null");
     return *this;
@@ -239,18 +258,19 @@ public:
 
   template <typename T,
             typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value, int>::type = 0>
-  array_writer &val(T v) noexcept {
+  array_writer &val(T v) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     prefix();
     detail::write_integer(out_, v);
     return *this;
   }
 
-  [[nodiscard]] object_writer obj() noexcept {
+  [[nodiscard]] object_writer obj() noexcept MICROFMT_CALLABLE_WHEN("unconsumed")
+      MICROFMT_RETURN_TYPESTATE(unconsumed) {
     prefix();
     return object_writer(out_);
   }
 
-  void end() noexcept {
+  void end() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "consumed") MICROFMT_SET_TYPESTATE(consumed) {
     if (!closed_) {
       out_.put(']');
       closed_ = true;

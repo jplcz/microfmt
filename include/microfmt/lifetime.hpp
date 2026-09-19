@@ -215,7 +215,10 @@
 
 /**
  * Restricts a method so it can only be called in a specific state.
- * @example void write() MICROFMT_CALLABLE_WHEN(unconsumed);
+ * Clang requires the state names as quoted string literals here (unlike
+ * @c MICROFMT_CONSUMABLE, @c MICROFMT_SET_TYPESTATE, and
+ * @c MICROFMT_RETURN_TYPESTATE, which take bare identifiers).
+ * @example void write() MICROFMT_CALLABLE_WHEN("unconsumed");
  */
 #if defined(__clang__) && MICROFMT_HAS_ATTRIBUTE(callable_when)
 #define MICROFMT_CALLABLE_WHEN(...) __attribute__((callable_when(__VA_ARGS__)))

@@ -120,6 +120,37 @@ resettable or idempotent objects. `MICROFMT_MALLOC_PAIR` is for heap-like GCC
 allocators; it does not apply to `scratch_allocator`, which returns borrowed
 storage and has no deallocation operation.
 
+### Consumed-state (`-Wconsumed`) annotations
+
+`MICROFMT_CONSUMABLE`, `MICROFMT_CALLABLE_WHEN`, `MICROFMT_SET_TYPESTATE`, and
+`MICROFMT_RETURN_TYPESTATE` describe monotonic "unconsumed → consumed" object
+states to Clang's `-Wconsumed` analysis. They suit RAII writers with a
+close/finalize operation after which further writes are invalid, such as
+`json::object_writer`/`array_writer` and `cbor::map_writer`/`array_writer`:
+
+```cpp
+class MICROFMT_CONSUMABLE(unconsumed) object_writer {
+public:
+  explicit object_writer(sink out) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed);
+
+  object_writer &key(microfmt::string_view k) noexcept MICROFMT_CALLABLE_WHEN("unconsumed");
+
+  void end() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "consumed")
+      MICROFMT_SET_TYPESTATE(consumed);
+};
+```
+
+Every constructor that yields a fresh, usable object — including move
+constructors — needs an explicit `MICROFMT_RETURN_TYPESTATE(unconsumed)`;
+without it, Clang treats the object as already consumed and warns on the
+first legitimate call. Idempotent close/finalize methods should list every
+state from which they may legally be called (for example
+`MICROFMT_CALLABLE_WHEN("unconsumed", "consumed")`) so that a repeat call from
+a destructor is not itself flagged. Unlike `MICROFMT_CONSUMABLE`,
+`MICROFMT_SET_TYPESTATE`, and `MICROFMT_RETURN_TYPESTATE`, which take bare
+state identifiers, `MICROFMT_CALLABLE_WHEN` requires its state names as
+quoted string literals.
+
 Strict Clang builds explicitly enable the supported `-Wdangling`,
 `-Wdangling-gsl`, `-Wdangling-assignment-gsl`, `-Wdangling-field`, and
 `-Wreturn-stack-address` diagnostics. CMake probes each flag before adding it,
