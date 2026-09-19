@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "../microfmt_config.hpp"
+
 /*
  * Assembler-only helpers for emitting arrays of microfmt::unwind_hint records.
  *

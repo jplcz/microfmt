@@ -86,6 +86,7 @@
 #include <microfmt/inspector/thread.hpp>
 #include <microfmt/markdown.hpp>
 #include <microfmt/microfmt.hpp>
+#include <microfmt/microfmt_config.hpp>
 #include <microfmt/rvalue_safety.hpp>
 #include <microfmt/scratch_allocator.hpp>
 #include <microfmt/sinks/container_sink.hpp>

@@ -7,6 +7,8 @@
 /** @file compat.hpp
  * @brief Compiler, language-version, and optional-library feature detection. */
 
+#include "../microfmt_config.hpp"
+
 #include <cstdlib>
 
 #if defined(_MSVC_LANG)

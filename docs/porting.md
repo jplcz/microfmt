@@ -6,6 +6,46 @@ SPDX-License-Identifier: BSD-2-Clause
 
 # Porting microfmt
 
+`microfmt/microfmt_config.hpp` is the single build-time customization entry
+point for every optional feature macro (`MICROFMT_KERNEL`,
+`MICROFMT_TLS_MODEL`, `MICROFMT_USE_SYSTEM_ERROR`, `MICROFMT_DISABLE_ASSERT*`,
+the Boost integration switches, the default-logger switches, etc.). It is
+included first, before anything else, by `microfmt/detail/compat.hpp`, so it
+is always processed before any header applies its own default for one of
+these macros.
+
+Do not edit `microfmt_config.hpp` directly to set overrides. Instead, define
+`MICROFMT_CONFIG` (e.g. `-DMICROFMT_CONFIG=1`) to opt in to including a header
+named `microfmt_user_config.hpp`, which must be reachable on the compiler's
+include search path (e.g. in an application-owned include directory listed
+*before* microfmt's own `include/` directory). When `MICROFMT_CONFIG` is
+defined, `microfmt_user_config.hpp` is included first, so every `#define` it
+contains takes precedence over both this file and the individual
+`#ifndef`-guarded defaults each feature header applies on its own. A compiler
+`-D` flag works exactly the same way for any individual macro and can be used
+instead of, or together with, `microfmt_user_config.hpp`.
+
+```cpp
+// microfmt_user_config.hpp, in a directory added to the include path ahead
+// of microfmt's own include/ directory.
+#pragma once
+#define MICROFMT_TLS_MODEL MICROFMT_TLS_MODEL_PTHREAD
+#define MICROFMT_ENABLE_DEFAULT_LOGGER
+```
+
+Build with `-DMICROFMT_CONFIG=1` (or an equivalent build-system define) so the
+header above is picked up; without it, `microfmt_user_config.hpp` is never
+included even if present on the include path.
+
+Every microfmt header that participates in the normal C++ include graph
+reaches `microfmt_config.hpp` transitively — through `compat.hpp` — before
+checking any `MICROFMT_*` customization macro, so this mechanism covers the
+whole library uniformly, not just `compat.hpp` itself.
+`microfmt/inspector/unwind_hint_asm.h` is the one header consumed outside that
+graph (it is included directly from `.S` assembler files); it also includes
+`microfmt_config.hpp` explicitly so its own `MICROFMT_UNWIND_HINT_POINTER_SIZE`
+macro is customizable through the same `MICROFMT_CONFIG` mechanism.
+
 `microfmt/detail/compat.hpp` is the central compatibility layer for compiler,
 language-standard, standard-library, and platform feature detection. Porting
 work should add detection there and consume the resulting `MICROFMT_*` macro
@@ -17,6 +57,7 @@ boolean `MICROFMT_CXX11`, `MICROFMT_CXX14`, `MICROFMT_CXX17`,
 attributes and the `MICROFMT_HAS_*` feature macros used by conditional APIs.
 These definitions are intended to isolate newer language features while the
 library is progressively adapted for C++11.
+
 
 ## Override trap and unreachable operations
 
