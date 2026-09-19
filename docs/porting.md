@@ -97,6 +97,42 @@ RTOS's task-local storage facilities.
 See [Bare-metal hardware sinks](bare-metal.md) for the PL011 UART and ARM
 semihosting `microfmt::sink` adapters shipped under `microfmt/hw/`.
 
+## errno formatting on kernel/bare-metal targets
+
+`microfmt/formatters/errno.hpp` formats `microfmt::posix_errno` (produced by
+`format_errno(int)` or `current_errno()`) as a human-readable message plus the
+raw numeric code, e.g. `No such file or directory (os:2)`. Message rendering
+is delegated to `microfmt::detail::write_errno_string(const sink &, int)`,
+which has two selectable implementations:
+
+| Macro                          | Behavior                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| `MICROFMT_USE_SYSTEM_ERROR=1`   | Uses `std::error_code`/`std::system_category()` to render the message.  |
+| `MICROFMT_USE_SYSTEM_ERROR=0` (default) | Uses `strerror_s`/`strerror_r`/`strerror`, selected per-platform, avoiding `<string>`/`<system_error>`. |
+
+Both are host/user-space implementations and are compiled only when
+`MICROFMT_KERNEL` is *not* defined. Set `MICROFMT_USE_SYSTEM_ERROR` before the
+first inclusion of `errno.hpp` if the default choice does not fit the target.
+
+For kernel or freestanding targets, define `MICROFMT_KERNEL` before including
+`errno.hpp`. This suppresses every host-only include (`<string>`,
+`<system_error>`, `<cstring>`) and forward-declares
+`microfmt::detail::write_errno_string` instead of providing a definition. The
+port must supply exactly one definition, linked against the target's own
+error-message facility (e.g. kernel log tables or a custom `strerror`
+equivalent):
+
+```cpp
+#define MICROFMT_KERNEL
+#include <microfmt/formatters/errno.hpp>
+
+namespace microfmt::detail {
+void write_errno_string(const sink &out, int value) noexcept {
+  out.write(platform_errno_to_string(value));
+}
+} // namespace microfmt::detail
+```
+
 ## Adding a platform or compiler
 
 Keep compiler-specific syntax inside `compat.hpp`. Prefer standard feature-test
