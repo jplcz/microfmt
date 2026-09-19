@@ -35,7 +35,7 @@ inline bool dl_phdr_image_bounds(const dl_phdr_info &info, uintptr_t &out_base, 
   uintptr_t max_vaddr = 0;
   bool have_load = false;
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   for (size_t i = 0; i < static_cast<size_t>(info.dlpi_phnum); ++i) {
     const auto &phdr = info.dlpi_phdr[i];
@@ -50,7 +50,7 @@ inline bool dl_phdr_image_bounds(const dl_phdr_info &info, uintptr_t &out_base, 
     have_load = true;
   }
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   if (!have_load)
     return false;
@@ -73,7 +73,7 @@ inline bool dl_phdr_exidx_bounds(const dl_phdr_info &info, uintptr_t &out_start,
   uintptr_t end = 0;
   bool have_exidx = false;
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   for (size_t i = 0; i < static_cast<size_t>(info.dlpi_phnum); ++i) {
     const auto &phdr = info.dlpi_phdr[i];
@@ -85,7 +85,7 @@ inline bool dl_phdr_exidx_bounds(const dl_phdr_info &info, uintptr_t &out_start,
     break;
   }
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   if (!have_exidx || end <= start)
     return false;
@@ -124,12 +124,12 @@ inline bool decode_eh_frame_hdr(uintptr_t hdr_start, uintptr_t hdr_end, uintptr_
   if (hdr_end < hdr_start || hdr_end - hdr_start < 8)
     return false;
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   // NOLINTNEXTLINE(performance-no-int-to-ptr)
   const auto *bytes = reinterpret_cast<const unsigned char *>(hdr_start);
   const unsigned char version = bytes[0];
   const unsigned char eh_frame_ptr_enc = bytes[1];
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   if (version != 1 || eh_frame_ptr_enc == k_dw_eh_pe_omit)
     return false;
@@ -143,10 +143,10 @@ inline bool decode_eh_frame_hdr(uintptr_t hdr_start, uintptr_t hdr_end, uintptr_
 
   const uintptr_t field_addr = hdr_start + 4;
   int32_t raw_value = 0;
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   // NOLINTNEXTLINE(performance-no-int-to-ptr)
   std::memcpy(&raw_value, reinterpret_cast<const void *>(field_addr), sizeof(raw_value));
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   const uintptr_t value = (format == k_dw_eh_pe_udata4) ? static_cast<uintptr_t>(static_cast<uint32_t>(raw_value))
                                                          : static_cast<uintptr_t>(raw_value);
@@ -180,7 +180,7 @@ inline bool dl_phdr_eh_frame_bounds(const dl_phdr_info &info, uintptr_t &out_sta
   uintptr_t hdr_end = 0;
   bool have_eh_frame_hdr = false;
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   for (size_t i = 0; i < static_cast<size_t>(info.dlpi_phnum); ++i) {
     const auto &phdr = info.dlpi_phdr[i];
@@ -192,7 +192,7 @@ inline bool dl_phdr_eh_frame_bounds(const dl_phdr_info &info, uintptr_t &out_sta
     break;
   }
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   if (!have_eh_frame_hdr)
     return false;

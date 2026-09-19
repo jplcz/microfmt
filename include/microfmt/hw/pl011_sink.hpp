@@ -33,10 +33,10 @@ public:
    */
   void enable() const noexcept {
     volatile uint32_t *cr = reinterpret_cast<volatile uint32_t *>(base_ + 0x30);
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     // Bit 0: UARTEN (Enabled), Bit 8: TXE (Transmit Enable), Bit 9: RXE (Receive Enable)
     *cr |= (1 << 0) | (1 << 8) | (1 << 9);
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
   /**
@@ -56,7 +56,7 @@ private:
     volatile uint32_t *dr = reinterpret_cast<volatile uint32_t *>(self->base_);
     volatile uint32_t *fr = reinterpret_cast<volatile uint32_t *>(self->base_ + 0x18); // Flag Register
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     for (char c : str) {
       if (self->translate_crlf_ && c == '\n') {
         wait_for_fifo_slot(fr);
@@ -66,7 +66,7 @@ private:
       wait_for_fifo_slot(fr);
       *dr = static_cast<uint32_t>(c);
     }
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
   static inline void wait_for_fifo_slot(volatile uint32_t *fr_reg) noexcept {

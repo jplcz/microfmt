@@ -93,10 +93,10 @@ TEST(CheckedValueTest, CloneProducesAnIndependentCopy) {
 TEST(CheckedValueTest, UnsafeGetSkipsTheCheckedMovedFromGuard) {
   checked_value<int> value(41);
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   EXPECT_EQ(value.unsafe_get(), 41);
   value.unsafe_get() = 42;
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 
   EXPECT_EQ(value.get(), 42);
 }
@@ -172,19 +172,19 @@ TEST(CheckedValuePointerTest, UnsafeGetSkipsTheCheckedMovedFromGuard) {
   widget w;
   checked_value<widget *> p(&w);
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   EXPECT_EQ(p.unsafe_get(), &w);
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 }
 
 TEST(CheckedValuePointerTest, UnsafeDerefSkipsTheCheckedMovedFromAndNullGuards) {
   widget w;
   checked_value<widget *> p(&w);
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   EXPECT_EQ(p.unsafe_deref().x, 7);
   p.unsafe_deref().x = 9;
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 
   EXPECT_EQ(w.x, 9);
 }

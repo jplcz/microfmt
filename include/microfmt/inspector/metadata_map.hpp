@@ -20,7 +20,7 @@ using property_print_fn_t = void (*)(const void *val_ptr, const sink &out) noexc
 /**
  * @brief Type-erased property entry synthesized during generation.
  */
-struct MICROFMT_POINTER property_entry {
+struct RELOCO_POINTER property_entry {
   microfmt::string_view key{};
   value_ptr<const void> val_ptr{};
   property_print_fn_t print_fn{nullptr};
@@ -52,7 +52,7 @@ using metadata_next_fn_t = bool (*)(void *ctx, property_entry &out) noexcept;
  * Designed for extreme low-stack environments by avoiding heavy C++ iterator state machines
  * in favor of a direct generator pattern (`get_next`).
  */
-class MICROFMT_POINTER metadata_map {
+class RELOCO_POINTER metadata_map {
 public:
   /**
    * @brief Constructs a metadata_map view over an iteration context and a next function.
@@ -61,8 +61,8 @@ public:
    * @param next_fn Function pointer that populates the next property and advances state.
    */
   constexpr metadata_map(
-      void *ctx MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      void *ctx RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS,
                          metadata_next_fn_t next_fn) noexcept
       : m_ctx(ctx), m_next_fn(next_fn) {}
 

@@ -116,9 +116,9 @@ bool read_fallback(const void *opaque, microfmt::address_space_ref,
   if (index != reg_fallback || !output || size != sizeof(uint32_t))
     return false;
   const auto &state = *static_cast<const fallback_state *>(opaque);
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   std::memcpy(output, &state.value, sizeof(state.value));
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
   return true;
 }
 
@@ -127,9 +127,9 @@ bool write_fallback(void *opaque, microfmt::address_space_ref, uint32_t index,
   if (index != reg_fallback || !input || size != sizeof(uint32_t))
     return false;
   auto &state = *static_cast<fallback_state *>(opaque);
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   std::memcpy(&state.value, input, sizeof(state.value));
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
   return true;
 }
 

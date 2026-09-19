@@ -62,7 +62,7 @@ subdirectory. Read-only adapters such as `hash_view`, `variant_view`, and the
 from a valid lvalue, with no way to become null or dangle afterward) makes a
 null check provably redundant, so `operator*` dereferences through
 `value_ptr::unsafe_deref()` internally, wrapped in
-`MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE`,
+`RELOCO_BEGIN_UNSAFE_BUFFER_USAGE`/`RELOCO_END_UNSAFE_BUFFER_USAGE`,
 rather than paying for `value_ptr`'s checked-tier null guard on every access.
 This is the same trade-off a hot-path caller makes explicitly with
 `unsafe_deref()`, just applied once, centrally, by a wrapper whose own type
@@ -72,8 +72,8 @@ already proves the precondition.
 
 `microfmt::value_ptr<T>` is a nullable, non-owning pointer wrapper. It retains
 ordinary pointer size and trivial-copy behavior while marking the type as
-`MICROFMT_POINTER` and marking raw-pointer construction and borrowed accessors
-with `MICROFMT_LIFETIMEBOUND`.
+`RELOCO_POINTER` and marking raw-pointer construction and borrowed accessors
+with `RELOCO_LIFETIMEBOUND`.
 
 ```cpp
 device state{};
@@ -102,17 +102,17 @@ if (device *raw = maybe.get()) {
 `MICROFMT_DEBUG_ASSERT`, which compiles out entirely under `NDEBUG` (unless
 `MICROFMT_DEBUG` is also defined), so it still catches bugs in debug and test
 builds but has zero overhead once the null check has already been proven
-elsewhere. It is additionally marked `MICROFMT_UNSAFE_BUFFER_USAGE`, so under
+elsewhere. It is additionally marked `RELOCO_UNSAFE_BUFFER_USAGE`, so under
 Clang's `-Wunsafe-buffer-usage` every call site must be wrapped in
-`MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE` —
+`RELOCO_BEGIN_UNSAFE_BUFFER_USAGE`/`RELOCO_END_UNSAFE_BUFFER_USAGE` —
 making each opt-out explicit and greppable, not just documented in a comment:
 
 ```cpp
 microfmt::value_ptr<device> ptr(&state);
 if (ptr) {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   ptr.unsafe_deref().reset(); // already proven non-null just above
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 }
 ```
 
@@ -133,64 +133,64 @@ and public C-style callback ABI fields remain raw pointers.
 
 | Macro | Meaning |
 |---|---|
-| `MICROFMT_LIFETIMEBOUND` | A returned or stored borrow cannot outlive the annotated source |
-| `MICROFMT_OWNER` | The annotated type owns the storage reached through it |
-| `MICROFMT_POINTER` | The annotated type is a non-owning pointer-like wrapper |
-| `MICROFMT_UNSAFE_BUFFER_USAGE` | Marks a low-level function using intentionally unchecked buffer operations |
-| `MICROFMT_LIFETIME_CAPTURE_BY(...)` | Declares that one or more named parameters retain a borrow |
-| `MICROFMT_LIFETIME_CAPTURE_BY_THIS` | Declares that an object retains a constructor or member-function argument |
-| `MICROFMT_NONNULL(...)` | Declares pointer parameters that must not be null |
-| `MICROFMT_ATTR_ACCESS(...)` | Describes pointer access direction to GCC and Clang |
-| `MICROFMT_ATTR_ACCESS_SIZE(...)` | Associates pointer access with a size parameter |
-| `MICROFMT_NONSTRING` | Marks a character array as raw storage rather than a NUL-terminated string |
-| `MICROFMT_MALLOC_PAIR(...)` | Associates a GCC allocator with its matching deallocator |
-| `MICROFMT_ASSUME_ALIGNED(...)` | States the minimum alignment of a returned pointer |
-| `MICROFMT_DIAGNOSE_IF(...)` | Adds a Clang call-site diagnostic for an invalid argument condition |
-| `MICROFMT_MUSTTAIL` | Requires a Clang tail call when placed on a return statement |
-| `MICROFMT_COLD`, `MICROFMT_HOT` | Marks whole functions as unlikely or likely execution paths |
-| `MICROFMT_CONSUMABLE(...)` and typestate macros | Describes monotonic object states to Clang's consumed analysis |
+| `RELOCO_LIFETIMEBOUND` | A returned or stored borrow cannot outlive the annotated source |
+| `RELOCO_OWNER` | The annotated type owns the storage reached through it |
+| `RELOCO_POINTER` | The annotated type is a non-owning pointer-like wrapper |
+| `RELOCO_UNSAFE_BUFFER_USAGE` | Marks a low-level function using intentionally unchecked buffer operations |
+| `RELOCO_LIFETIME_CAPTURE_BY(...)` | Declares that one or more named parameters retain a borrow |
+| `RELOCO_LIFETIME_CAPTURE_BY_THIS` | Declares that an object retains a constructor or member-function argument |
+| `RELOCO_NONNULL(...)` | Declares pointer parameters that must not be null |
+| `RELOCO_ATTR_ACCESS(...)` | Describes pointer access direction to GCC and Clang |
+| `RELOCO_ATTR_ACCESS_SIZE(...)` | Associates pointer access with a size parameter |
+| `RELOCO_NONSTRING` | Marks a character array as raw storage rather than a NUL-terminated string |
+| `RELOCO_MALLOC_PAIR(...)` | Associates a GCC allocator with its matching deallocator |
+| `RELOCO_ASSUME_ALIGNED(...)` | States the minimum alignment of a returned pointer |
+| `RELOCO_DIAGNOSE_IF(...)` | Adds a Clang call-site diagnostic for an invalid argument condition |
+| `RELOCO_MUSTTAIL` | Requires a Clang tail call when placed on a return statement |
+| `RELOCO_COLD`, `RELOCO_HOT` | Marks whole functions as unlikely or likely execution paths |
+| `RELOCO_CONSUMABLE(...)` and typestate macros | Describes monotonic object states to Clang's consumed analysis |
 
 The macros expand to compiler attributes when supported and otherwise expand
 to nothing. They must therefore improve diagnostics without changing program
 semantics or becoming the only enforcement of a lifetime rule.
 
 Use the stronger contract macros only when their requirements hold on every
-path. `MICROFMT_ASSUME_ALIGNED` makes misaligned returns undefined behavior,
-`MICROFMT_MUSTTAIL` requires ABI-compatible caller and callee signatures, and
+path. `RELOCO_ASSUME_ALIGNED` makes misaligned returns undefined behavior,
+`RELOCO_MUSTTAIL` requires ABI-compatible caller and callee signatures, and
 the consumable-state macros suit one-way state transitions rather than
-resettable or idempotent objects. `MICROFMT_MALLOC_PAIR` is for heap-like GCC
+resettable or idempotent objects. `RELOCO_MALLOC_PAIR` is for heap-like GCC
 allocators; it does not apply to `scratch_allocator`, which returns borrowed
 storage and has no deallocation operation.
 
 ### Consumed-state (`-Wconsumed`) annotations
 
-`MICROFMT_CONSUMABLE`, `MICROFMT_CALLABLE_WHEN`, `MICROFMT_SET_TYPESTATE`, and
-`MICROFMT_RETURN_TYPESTATE` describe monotonic "unconsumed → consumed" object
+`RELOCO_CONSUMABLE`, `RELOCO_CALLABLE_WHEN`, `RELOCO_SET_TYPESTATE`, and
+`RELOCO_RETURN_TYPESTATE` describe monotonic "unconsumed → consumed" object
 states to Clang's `-Wconsumed` analysis. They suit RAII writers with a
 close/finalize operation after which further writes are invalid, such as
 `json::object_writer`/`array_writer` and `cbor::map_writer`/`array_writer`:
 
 ```cpp
-class MICROFMT_CONSUMABLE(unconsumed) object_writer {
+class RELOCO_CONSUMABLE(unconsumed) object_writer {
 public:
-  explicit object_writer(sink out) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed);
+  explicit object_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed);
 
-  object_writer &key(microfmt::string_view k) noexcept MICROFMT_CALLABLE_WHEN("unconsumed");
+  object_writer &key(microfmt::string_view k) noexcept RELOCO_CALLABLE_WHEN("unconsumed");
 
-  void end() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "consumed")
-      MICROFMT_SET_TYPESTATE(consumed);
+  void end() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "consumed")
+      RELOCO_SET_TYPESTATE(consumed);
 };
 ```
 
 Every constructor that yields a fresh, usable object — including move
-constructors — needs an explicit `MICROFMT_RETURN_TYPESTATE(unconsumed)`;
+constructors — needs an explicit `RELOCO_RETURN_TYPESTATE(unconsumed)`;
 without it, Clang treats the object as already consumed and warns on the
 first legitimate call. Idempotent close/finalize methods should list every
 state from which they may legally be called (for example
-`MICROFMT_CALLABLE_WHEN("unconsumed", "consumed")`) so that a repeat call from
-a destructor is not itself flagged. Unlike `MICROFMT_CONSUMABLE`,
-`MICROFMT_SET_TYPESTATE`, and `MICROFMT_RETURN_TYPESTATE`, which take bare
-state identifiers, `MICROFMT_CALLABLE_WHEN` requires its state names as
+`RELOCO_CALLABLE_WHEN("unconsumed", "consumed")`) so that a repeat call from
+a destructor is not itself flagged. Unlike `RELOCO_CONSUMABLE`,
+`RELOCO_SET_TYPESTATE`, and `RELOCO_RETURN_TYPESTATE`, which take bare
+state identifiers, `RELOCO_CALLABLE_WHEN` requires its state names as
 quoted string literals.
 
 Clang's consumed analysis cannot see through a reference or pointer parameter:
@@ -230,51 +230,51 @@ below).
    accepts arbitrary identifiers here, but `as_known()`-style escape hatches
    (step 5) only make sense against `unknown`, which is always available.
 
-2. **Mark the class `MICROFMT_CONSUMABLE(unconsumed)`** so every instance
+2. **Mark the class `RELOCO_CONSUMABLE(unconsumed)`** so every instance
    starts tracked as fresh by default:
 
    ```cpp
    #include <microfmt/lifetime.hpp>
 
-   class MICROFMT_CONSUMABLE(unconsumed) transaction {
+   class RELOCO_CONSUMABLE(unconsumed) transaction {
      // ...
    };
    ```
 
 3. **Annotate every constructor that must yield a fresh object** —
    including copy/move constructors if the type is copyable/movable — with
-   `MICROFMT_RETURN_TYPESTATE(unconsumed)`. Skipping this is the most common
+   `RELOCO_RETURN_TYPESTATE(unconsumed)`. Skipping this is the most common
    mistake: without it, Clang treats freshly-constructed objects as already
    consumed and warns on the very first legitimate call.
 
    ```cpp
-   explicit transaction(connection &c) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+   explicit transaction(connection &c) noexcept RELOCO_RETURN_TYPESTATE(unconsumed)
        : conn_(c) {}
 
-   transaction(transaction &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+   transaction(transaction &&other) noexcept RELOCO_RETURN_TYPESTATE(unconsumed)
        : conn_(other.conn_), committed_(other.committed_) {
      other.committed_ = true; // the moved-from object is spent too
    }
    ```
 
 4. **Mark every method that must not be called after the terminal
-   transition** with `MICROFMT_CALLABLE_WHEN("unconsumed")` (note the quoted
+   transition** with `RELOCO_CALLABLE_WHEN("unconsumed")` (note the quoted
    string — this macro alone requires it, unlike the others above):
 
    ```cpp
-   void write(microfmt::string_view row) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
+   void write(microfmt::string_view row) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
      conn_->send(row);
    }
    ```
 
-5. **Mark the terminal method(s)** with `MICROFMT_SET_TYPESTATE(consumed)`.
+5. **Mark the terminal method(s)** with `RELOCO_SET_TYPESTATE(consumed)`.
    If the same method may legitimately run more than once (an idempotent
    `close()`/`end()` called from both user code and a destructor), list every
    state it may be called from instead of only `"unconsumed"`:
 
    ```cpp
-   void commit() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "consumed")
-       MICROFMT_SET_TYPESTATE(consumed) {
+   void commit() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "consumed")
+       RELOCO_SET_TYPESTATE(consumed) {
      if (!committed_) {
        conn_->flush();
        committed_ = true;
@@ -298,8 +298,8 @@ below).
    `<microfmt/detail/assert.hpp>`, and return to `"unconsumed"`:
 
    ```cpp
-   transaction &as_known() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "unknown")
-       MICROFMT_RETURN_TYPESTATE(unconsumed) {
+   transaction &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown")
+       RELOCO_RETURN_TYPESTATE(unconsumed) {
      MICROFMT_ASSERT(!committed_, "transaction already committed");
      return *this;
    }
@@ -328,20 +328,20 @@ is optional but harmless as long as the text matches exactly.
 
 ```cpp
 template <typename T>
-class MICROFMT_CONSUMABLE(unconsumed) scoped_handle {
+class RELOCO_CONSUMABLE(unconsumed) scoped_handle {
 public:
-  explicit scoped_handle(T resource) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+  explicit scoped_handle(T resource) noexcept RELOCO_RETURN_TYPESTATE(unconsumed)
       : resource_(std::move(resource)) {}
 
-  scoped_handle(scoped_handle &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+  scoped_handle(scoped_handle &&other) noexcept RELOCO_RETURN_TYPESTATE(unconsumed)
       : resource_(std::move(other.resource_)), released_(other.released_) {
     other.released_ = true;
   }
 
-  [[nodiscard]] T &get() noexcept MICROFMT_CALLABLE_WHEN("unconsumed") { return resource_; }
+  [[nodiscard]] T &get() noexcept RELOCO_CALLABLE_WHEN("unconsumed") { return resource_; }
 
-  void release() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "consumed")
-      MICROFMT_SET_TYPESTATE(consumed) {
+  void release() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "consumed")
+      RELOCO_SET_TYPESTATE(consumed) {
     if (!released_) {
       resource_.close();
       released_ = true;
@@ -476,21 +476,21 @@ under `NDEBUG` (unless `MICROFMT_DEBUG` is also defined). Use them only once
 for example, right after construction, or once `-Wconsumed` has statically
 proven it — and the checked accessor's overhead is unacceptable on a hot
 path. Like `value_ptr::unsafe_deref`, both are marked
-`MICROFMT_UNSAFE_BUFFER_USAGE`, so every call site must be wrapped in
-`MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE`:
+`RELOCO_UNSAFE_BUFFER_USAGE`, so every call site must be wrapped in
+`RELOCO_BEGIN_UNSAFE_BUFFER_USAGE`/`RELOCO_END_UNSAFE_BUFFER_USAGE`:
 
 ```cpp
 microfmt::checked_value<widget *> p(&some_widget);
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 p.unsafe_deref().render(); // already known unconsumed and non-null
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE
 ```
 
 See `include/microfmt/checked_value.hpp` and `tests/test_checked_value.cpp`
 for the full API (`take()`, `clone()`, `as_known()`) and worked examples.
 
-### `MICROFMT_UNSAFE_BUFFER_USAGE` covers the whole library, not just these types
+### `RELOCO_UNSAFE_BUFFER_USAGE` covers the whole library, not just these types
 
 The explicitly-unsafe tier described above is not unique to `value_ptr`,
 `value_ref`, and `checked_value`. Every pre-existing `unsafe_*` accessor in
@@ -499,7 +499,7 @@ the hardened containers — `array::unsafe_at`/`unsafe_front`/`unsafe_back`,
 `unsafe_back`/`unsafe_first`/`unsafe_last`, and
 `string_view::unsafe_front`/`unsafe_back`/`unsafe_substr`/`unsafe_data`/
 `unsafe_remove_prefix`/`unsafe_remove_suffix` — is also marked
-`MICROFMT_UNSAFE_BUFFER_USAGE`, including the internal uses inside the core
+`RELOCO_UNSAFE_BUFFER_USAGE`, including the internal uses inside the core
 `vformat_to` formatting loop itself. This makes the whole library's
 explicitly-unsafe tier uniformly enforced: an unwrapped call to *any*
 `unsafe_*` method, anywhere, is a Clang `-Wunsafe-buffer-usage` diagnostic,
@@ -543,28 +543,28 @@ headers must be entirely clean of unsafe-buffer-usage warnings by default.
 Raise `MICROFMT_UNSAFE_BUFFER_MAX_WARNINGS` temporarily while migrating a
 batch of call sites.
 
-Use `MICROFMT_LIFETIMEBOUND` on parameters or accessors whose result borrows
-from an input or from `*this`. Mark owning containers with `MICROFMT_OWNER`
-and non-owning views or reference wrappers with `MICROFMT_POINTER`. Add
-`MICROFMT_LIFETIME_CAPTURE_BY_THIS` to constructors or member functions that
-retain an input borrow in the object. Use `MICROFMT_LIFETIME_CAPTURE_BY(...)`
+Use `RELOCO_LIFETIMEBOUND` on parameters or accessors whose result borrows
+from an input or from `*this`. Mark owning containers with `RELOCO_OWNER`
+and non-owning views or reference wrappers with `RELOCO_POINTER`. Add
+`RELOCO_LIFETIME_CAPTURE_BY_THIS` to constructors or member functions that
+retain an input borrow in the object. Use `RELOCO_LIFETIME_CAPTURE_BY(...)`
 when another named parameter is the capturer instead. On constructors,
-`MICROFMT_LIFETIMEBOUND` and capture-by-`this` have equivalent Clang lifetime
+`RELOCO_LIFETIMEBOUND` and capture-by-`this` have equivalent Clang lifetime
 semantics; capture-by-`this` is additionally useful for void-returning setters:
 
 ```cpp
-class MICROFMT_POINTER packet_view {
+class RELOCO_POINTER packet_view {
 public:
   explicit packet_view(
-      packet &source MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept;
+      packet &source RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept;
 
   void set_scratch(
       span<std::byte> scratch
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept;
+          RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept;
 
   const packet *
-  get() const noexcept MICROFMT_LIFETIMEBOUND;
+  get() const noexcept RELOCO_LIFETIMEBOUND;
 };
 ```
 
@@ -573,7 +573,7 @@ The public API applies these contracts to the main borrowing boundaries:
 - Type-erased handles such as `sink`, `address_space_ref`,
   `symbol_resolver_ref`, and `frame_unwinder_ref` are pointer-like.
 - Inspector views bind retained scratch spans and caller-owned contexts with
-  `MICROFMT_LIFETIMEBOUND`.
+  `RELOCO_LIFETIMEBOUND`.
 - `scratch_allocator` allocations and remaining spans are tied to the
   allocator and its caller-provided backing storage.
 - Sink adapters bind `as_sink()` to the adapter object, while buffer accessors
@@ -602,8 +602,8 @@ dangling reference on compilers that ignore it.
 
 ## Unsafe buffer boundaries
 
-`MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE` and
-`MICROFMT_END_UNSAFE_BUFFER_USAGE` delimit implementation regions that
+`RELOCO_BEGIN_UNSAFE_BUFFER_USAGE` and
+`RELOCO_END_UNSAFE_BUFFER_USAGE` delimit implementation regions that
 intentionally perform raw buffer operations under Clang's safe-buffer
 analysis. Keep these regions narrow and place checked public APIs around them.
 

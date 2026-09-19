@@ -31,7 +31,7 @@ public:
   tee_sink(tee_sink &&) noexcept = default;
   tee_sink &operator=(tee_sink &&) noexcept = default;
 
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   static_cast<tee_sink *>(ctx)->write(sv);
                 }};

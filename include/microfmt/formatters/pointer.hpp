@@ -97,11 +97,11 @@ template <typename T> [[nodiscard]] constexpr raw_range_view<T> raw_range(const 
 /** Create a value range from a pointer and element count. A null pointer
  *  produces an empty range. */
 template <typename T> [[nodiscard]] constexpr raw_range_view<T> raw_range(const T *first, size_t count) noexcept {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   return raw_range_view<T>{first, first ? first + count : nullptr};
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 /** Formatter for @ref raw_ptr_view.
@@ -249,10 +249,10 @@ template <typename T> struct formatter<raw_range_view<T>> {
       if (idx > 0) {
         out.write(range.separator);
       }
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       MICROFMT_DEBUG_ASSERT(range.begin_ptr + idx < range.end_ptr, "Index out of range");
       elem_fmt.format(range.begin_ptr[idx], out);
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
     }
 
     if (close_c != '\0') {

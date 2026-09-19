@@ -96,7 +96,7 @@ template <> struct formatter<memory_diff_view> {
   }
 
   void format(const memory_diff_view &diff, const sink &out) const noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     const size_t total_size = std::min(diff.old_data.size(), diff.new_data.size());
     const size_t row_size = (diff.bytes_per_row > 0) ? diff.bytes_per_row : 16;
 
@@ -149,7 +149,7 @@ template <> struct formatter<memory_diff_view> {
       detail::format_unsigned(out, identical_rows_streak, 10, false, 0);
       out.write(microfmt::string_view(" identical rows hidden ...]\n"));
     }
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
 private:

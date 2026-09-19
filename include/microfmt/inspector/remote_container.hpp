@@ -50,7 +50,7 @@ struct container_options {
  * @tparam FormatterFn Callable used to format the container.
  */
 template <typename IteratorState, typename FormatterFn>
-class MICROFMT_OWNER container_context {
+class RELOCO_OWNER container_context {
 public:
   /**
    * @brief Stores container traversal state and its formatting callback.
@@ -103,7 +103,7 @@ private:
  * erasure.
  */
 template <typename Tag, typename Dispatcher>
-class MICROFMT_OWNER basic_remote_container {
+class RELOCO_OWNER basic_remote_container {
 public:
   using traits_type = typename Dispatcher::traits_type;
   using context_type = typename traits_type::context_type;
@@ -117,12 +117,12 @@ public:
   }
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
@@ -131,8 +131,8 @@ public:
 
   [[nodiscard]] constexpr remote_container_view
   view(address_space_ref space,
-       span<std::byte> scratch MICROFMT_LIFETIMEBOUND,
-       container_options options = {}) & noexcept MICROFMT_LIFETIMEBOUND;
+       span<std::byte> scratch RELOCO_LIFETIMEBOUND,
+       container_options options = {}) & noexcept RELOCO_LIFETIMEBOUND;
 
   remote_container_view view(address_space_ref, span<std::byte>,
                              container_options = {}) && = delete;
@@ -171,7 +171,7 @@ make_container_context(IteratorState initial_state,
  * @brief General type-erased view over any remote container or data structure.
  *        Manages its own formatting options directly.
  */
-class MICROFMT_POINTER remote_container_view {
+class RELOCO_POINTER remote_container_view {
 public:
   /**
    * @brief Type-erased function signature used to format a container.
@@ -198,10 +198,10 @@ public:
   constexpr remote_container_view(uintptr_t container_addr,
                                   address_space_ref space,
                                   span<std::byte> scratch
-                                      MICROFMT_LIFETIMEBOUND
-                                          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+                                      RELOCO_LIFETIMEBOUND
+                                          RELOCO_LIFETIME_CAPTURE_BY_THIS,
                                   value_ref<Context> ctx
-                                      MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+                                      RELOCO_LIFETIME_CAPTURE_BY_THIS,
                                   container_options options = {}) noexcept
       : container_addr_(container_addr), space_(space), scratch_(scratch),
         ctx_(ctx.pointer()), format_fn_(&Context::format_thunk),
@@ -226,7 +226,7 @@ public:
    * @return Scratch byte span.
    */
   [[nodiscard]] constexpr span<std::byte>
-  scratch() const noexcept MICROFMT_LIFETIMEBOUND {
+  scratch() const noexcept RELOCO_LIFETIMEBOUND {
     return scratch_;
   }
   /**
@@ -234,7 +234,7 @@ public:
    * @return Const reference to the view options.
    */
   [[nodiscard]] constexpr const container_options &
-  options() const & noexcept MICROFMT_LIFETIMEBOUND {
+  options() const & noexcept RELOCO_LIFETIMEBOUND {
     return options_;
   }
   const container_options &options() const && = delete;

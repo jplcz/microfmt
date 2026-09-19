@@ -25,7 +25,7 @@ namespace microfmt {
  * @ref span_sink. Tracks remaining capacity and truncates writes that exceed
  * it instead of overflowing.
  */
-class MICROFMT_POINTER asio_mutable_buffer_sink {
+class RELOCO_POINTER asio_mutable_buffer_sink {
 public:
   /**
    * @brief Constructs a sink over a Boost.Asio mutable buffer.
@@ -34,8 +34,8 @@ public:
    * this sink, and (via @ref written_buffer) any pending async write that
    * consumes its result.
    */
-  explicit asio_mutable_buffer_sink(boost::asio::mutable_buffer buf MICROFMT_LIFETIMEBOUND
-                                         MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  explicit asio_mutable_buffer_sink(boost::asio::mutable_buffer buf RELOCO_LIFETIMEBOUND
+                                         RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : data_(static_cast<char *>(buf.data())), capacity_(buf.size()) {}
 
   asio_mutable_buffer_sink(const asio_mutable_buffer_sink &) = delete;
@@ -46,7 +46,7 @@ public:
   /**
    * @brief Creates a type-erased @ref sink adapter pointing to this instance.
    */
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND { return sink{this, &write_impl}; }
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND { return sink{this, &write_impl}; }
 
   /**
    * @brief Returns the total number of bytes written to the buffer so far.
@@ -61,7 +61,7 @@ public:
    * The returned buffer aliases this sink's backing storage and must not
    * outlive it.
    */
-  [[nodiscard]] boost::asio::const_buffer written_buffer() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] boost::asio::const_buffer written_buffer() const noexcept RELOCO_LIFETIMEBOUND {
     return boost::asio::const_buffer(data_, size_);
   }
 
@@ -77,9 +77,9 @@ private:
       to_copy = self->capacity_ - self->size_;
     }
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(self->data_ + self->size_, str.data(), to_copy);
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     self->size_ += to_copy;
   }
@@ -93,7 +93,7 @@ private:
  * @brief A sink adapter that writes formatted output into a
  * `boost::asio::streambuf` dynamic buffer.
  */
-class MICROFMT_POINTER asio_streambuf_sink {
+class RELOCO_POINTER asio_streambuf_sink {
 public:
   /**
    * @brief Constructs a sink over an externally owned Boost.Asio streambuf.
@@ -102,15 +102,15 @@ public:
    * @param max_chars Maximum number of characters accepted before further
    * writes are silently dropped.
    */
-  explicit asio_streambuf_sink(boost::asio::streambuf &buf MICROFMT_LIFETIMEBOUND
-                                    MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+  explicit asio_streambuf_sink(boost::asio::streambuf &buf RELOCO_LIFETIMEBOUND
+                                    RELOCO_LIFETIME_CAPTURE_BY_THIS,
                                 size_t max_chars = 1024) noexcept
       : streambuf_(&buf), max_chars_(max_chars) {}
 
   /**
    * @brief Creates a type-erased @ref sink adapter pointing to this instance.
    */
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND { return sink{this, &write_impl}; }
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND { return sink{this, &write_impl}; }
 
 private:
   static void write_impl(void *ctx, microfmt::string_view str) noexcept {

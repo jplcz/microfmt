@@ -50,14 +50,14 @@ inline constexpr bool is_hashable_v = is_hashable<T>::value;
  *
  * @tparam T Hashable value type.
  */
-template <typename T> class MICROFMT_POINTER hash_view {
+template <typename T> class RELOCO_POINTER hash_view {
 public:
   /**
    * @brief Constructs a hash view referencing an existing value.
    * @param val Value whose `std::hash` result will be formatted.
    */
   constexpr explicit hash_view(
-      const T &val MICROFMT_LIFETIMEBOUND) noexcept
+      const T &val RELOCO_LIFETIMEBOUND) noexcept
       : val_(val) {}
 
   constexpr explicit hash_view(const T &&) = delete;
@@ -87,7 +87,7 @@ private:
  */
 template <typename T, std::enable_if_t<detail::is_hashable_v<T>, int> = 0>
 [[nodiscard]] constexpr auto
-as_hash(const T &val MICROFMT_LIFETIMEBOUND) noexcept {
+as_hash(const T &val RELOCO_LIFETIMEBOUND) noexcept {
   return hash_view<T>{val};
 }
 

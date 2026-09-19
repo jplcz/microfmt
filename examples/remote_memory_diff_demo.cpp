@@ -35,9 +35,9 @@ template <> struct microfmt::address_space_traits<guest_space_tag> {
     const uintptr_t offset = addr - context->base;
     if (offset > context->size || size > context->size - offset)
       return false;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(dest, context->data + offset, size);
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
 
@@ -57,7 +57,7 @@ int main() {
   // ------------------------------------------------------------------------
   std::puts("=== 1. Local Process Snapshot Diff ===");
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   alignas(16) uint8_t region[32];
   for (size_t i = 0; i < sizeof(region); ++i)
@@ -71,7 +71,7 @@ int main() {
   region[16] = 0xff;
   region[17] = 0xff;
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   const auto local_space = microfmt::address_space_ref(microfmt::local_space_tag{});
   std::byte scratch[64]; // >= bytes_per_row * 2 for the default 16-byte rows.
@@ -89,7 +89,7 @@ int main() {
   // ------------------------------------------------------------------------
   std::puts("=== 2. Remote Target Diff With a Faulted Page ===");
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   uint8_t old_image[16];
   for (size_t i = 0; i < sizeof(old_image); ++i)
@@ -99,7 +99,7 @@ int main() {
   std::memcpy(new_image, old_image, sizeof(new_image));
   new_image[4] = 0xAA; // One byte changed within the still-mapped row.
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   guest_space_context old_ctx{old_image, 0x4000, sizeof(old_image)};
   guest_space_context new_ctx{new_image, 0x4000, sizeof(new_image)};

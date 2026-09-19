@@ -62,7 +62,7 @@ using thread_next_fn_t = bool (*)(void *ctx, thread_info &out) noexcept;
 /**
  * @brief Comprehensive system task (Team) descriptor.
  */
-struct MICROFMT_POINTER task_info {
+struct RELOCO_POINTER task_info {
   // Classic Task Data
   uint64_t team_id{0}; // PID (Team ID)
   string_view name{};
@@ -98,7 +98,7 @@ struct MICROFMT_POINTER task_info {
    * @brief Exposes a unified metadata_map view for classic task data and extended metadata.
    */
   [[nodiscard]] constexpr metadata_map
-  make_metadata_view(metadata_state &the_state) const & noexcept MICROFMT_LIFETIMEBOUND {
+  make_metadata_view(metadata_state &the_state) const & noexcept RELOCO_LIFETIMEBOUND {
     the_state.task = this;
     the_state.step = 0;
     the_state.in_extended = false;

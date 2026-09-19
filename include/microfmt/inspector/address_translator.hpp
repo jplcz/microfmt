@@ -63,7 +63,7 @@ template <typename Tag> struct address_translator_traits;
  * Packs a context pointer and a virtual table into two words, avoiding
  * allocations, RTTI, and virtual dispatch.
  */
-class MICROFMT_POINTER address_translator_ref {
+class RELOCO_POINTER address_translator_ref {
 public:
   /**
    * @brief Virtual table of address translation operations.
@@ -108,8 +108,8 @@ public:
                         const Context *, const typename Traits::context_type *>,
                 int> = 0>
   constexpr address_translator_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
-               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
+               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context,
@@ -128,7 +128,7 @@ public:
       typename Traits = address_translator_traits<Tag>,
       std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
   [[nodiscard]] static constexpr address_translator_ref
-  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return address_translator_ref(Tag{}, ctx);
   }
 
@@ -184,7 +184,7 @@ template <typename Tag,
 class address_translator;
 
 template <typename Tag>
-class MICROFMT_OWNER address_translator<Tag, false> {
+class RELOCO_OWNER address_translator<Tag, false> {
 public:
   using traits_type = address_translator_traits<Tag>;
   using context_type = typename traits_type::context_type;
@@ -193,17 +193,17 @@ public:
       : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   [[nodiscard]] constexpr address_translator_ref
-  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return address_translator_ref(Tag{}, context_);
   }
 

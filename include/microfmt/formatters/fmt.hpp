@@ -46,7 +46,7 @@ struct format_parse_context {
 // Output Iterator Adapter wrapping microfmt::sink
 // ============================================================================
 
-class MICROFMT_POINTER sink_output_iterator {
+class RELOCO_POINTER sink_output_iterator {
 public:
   using iterator_category = std::output_iterator_tag;
   using value_type = void;
@@ -54,7 +54,7 @@ public:
   using pointer = void;
   using reference = void;
 
-  constexpr explicit sink_output_iterator(const microfmt::sink &s MICROFMT_LIFETIMEBOUND) noexcept : sink_(s) {}
+  constexpr explicit sink_output_iterator(const microfmt::sink &s RELOCO_LIFETIMEBOUND) noexcept : sink_(s) {}
 
   sink_output_iterator &operator=(char c) noexcept {
     sink_->put(c);
@@ -105,11 +105,11 @@ format_to_n_result<char *> format_to_n(char *out, size_t n, microfmt::string_vie
                        const size_t available = st->capacity - st->size;
                        const size_t to_copy = (sv.size() < available) ? sv.size() : available;
                        for (size_t i = 0; i < to_copy; ++i) {
-                         MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+                         RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
                          st->data[st->size + i] = sv[i];
 
-                         MICROFMT_END_UNSAFE_BUFFER_USAGE;
+                         RELOCO_END_UNSAFE_BUFFER_USAGE;
                        }
                      }
                      st->size += sv.size();
@@ -119,11 +119,11 @@ format_to_n_result<char *> format_to_n(char *out, size_t n, microfmt::string_vie
 
   const size_t written = (state.size < state.capacity) ? state.size : state.capacity;
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   return {out + written, state.size};
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 // ============================================================================
@@ -142,9 +142,9 @@ OutputIt format_to(OutputIt out, microfmt::string_view fmt_str, const Args &...a
   microfmt::sink s{&state, [](void *ctx, microfmt::string_view sv) noexcept {
                      auto *st = static_cast<PtrSinkState *>(ctx);
                      for (char c : sv) {
-                       MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+                       RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
                        *st->ptr++ = c;
-                       MICROFMT_END_UNSAFE_BUFFER_USAGE;
+                       RELOCO_END_UNSAFE_BUFFER_USAGE;
                      }
                    }};
 
@@ -171,13 +171,13 @@ template <typename... Args> [[nodiscard]] auto format(microfmt::string_view fmt_
 // fmt::print & fmt::println
 // ============================================================================
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 inline void stdout_writer(void *, microfmt::string_view sv) noexcept { std::fwrite(sv.data(), 1, sv.size(), stdout); }
 
 inline void stderr_writer(void *, microfmt::string_view sv) noexcept { std::fwrite(sv.data(), 1, sv.size(), stderr); }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 template <typename... Args> void print(microfmt::string_view fmt_str, const Args &...args) noexcept {
   microfmt::sink term{nullptr, stdout_writer};

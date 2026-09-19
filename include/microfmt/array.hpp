@@ -17,11 +17,11 @@
 #include <utility>
 
 // The built-in array operations below are bounds-checked before indexing.
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 namespace microfmt {
 
-template <typename T, std::size_t N> struct MICROFMT_OWNER array {
+template <typename T, std::size_t N> struct RELOCO_OWNER array {
   static_assert(N > 0, "use the zero-size array specialization");
 
   T data_[N];
@@ -38,7 +38,7 @@ template <typename T, std::size_t N> struct MICROFMT_OWNER array {
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  MICROFMT_BLOCK_RVALUE_ACCESS(T);
+  RELOCO_BLOCK_RVALUE_ACCESS(T);
 
   [[nodiscard]] expected<std::reference_wrapper<T>, span_error> try_at(size_type index) & noexcept {
     if (index >= N)
@@ -62,12 +62,12 @@ template <typename T, std::size_t N> struct MICROFMT_OWNER array {
     return data_[index];
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_at(size_type index) & noexcept {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_at(size_type index) & noexcept {
     MICROFMT_DEBUG_ASSERT(index < N, "array index out of bounds");
     return data_[index];
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_at(size_type index) const & noexcept {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_at(size_type index) const & noexcept {
     MICROFMT_DEBUG_ASSERT(index < N, "array index out of bounds");
     return data_[index];
   }
@@ -89,50 +89,50 @@ template <typename T, std::size_t N> struct MICROFMT_OWNER array {
     return std::cref(data_[N - 1]);
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_front() & noexcept { return data_[0]; }
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_front() const & noexcept { return data_[0]; }
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_front() & noexcept { return data_[0]; }
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_front() const & noexcept { return data_[0]; }
   T &unsafe_front() && = delete;
   const T &unsafe_front() const && = delete;
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_back() & noexcept { return data_[N - 1]; }
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_back() const & noexcept { return data_[N - 1]; }
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_back() & noexcept { return data_[N - 1]; }
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_back() const & noexcept { return data_[N - 1]; }
   T &unsafe_back() && = delete;
   const T &unsafe_back() const && = delete;
 
-  [[nodiscard]] constexpr span<T> as_span() & noexcept MICROFMT_LIFETIMEBOUND { return span<T>(data_, N); }
+  [[nodiscard]] constexpr span<T> as_span() & noexcept RELOCO_LIFETIMEBOUND { return span<T>(data_, N); }
 
-  [[nodiscard]] constexpr span<const T> as_span() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr span<const T> as_span() const & noexcept RELOCO_LIFETIMEBOUND {
     return span<const T>(data_, N);
   }
 
   [[nodiscard]] static constexpr size_type size() noexcept { return N; }
   [[nodiscard]] static constexpr bool empty() noexcept { return false; }
 
-  [[nodiscard]] constexpr T *data() & noexcept MICROFMT_LIFETIMEBOUND { return data_; }
-  [[nodiscard]] constexpr const T *data() const & noexcept MICROFMT_LIFETIMEBOUND { return data_; }
+  [[nodiscard]] constexpr T *data() & noexcept RELOCO_LIFETIMEBOUND { return data_; }
+  [[nodiscard]] constexpr const T *data() const & noexcept RELOCO_LIFETIMEBOUND { return data_; }
 
-  [[nodiscard]] constexpr iterator begin() & noexcept MICROFMT_LIFETIMEBOUND { return data_; }
-  [[nodiscard]] constexpr iterator end() & noexcept MICROFMT_LIFETIMEBOUND { return data_ + N; }
-  [[nodiscard]] constexpr const_iterator begin() const & noexcept MICROFMT_LIFETIMEBOUND { return data_; }
-  [[nodiscard]] constexpr const_iterator end() const & noexcept MICROFMT_LIFETIMEBOUND { return data_ + N; }
-  [[nodiscard]] constexpr const_iterator cbegin() const & noexcept MICROFMT_LIFETIMEBOUND { return data_; }
-  [[nodiscard]] constexpr const_iterator cend() const & noexcept MICROFMT_LIFETIMEBOUND { return data_ + N; }
-  [[nodiscard]] constexpr reverse_iterator rbegin() & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr iterator begin() & noexcept RELOCO_LIFETIMEBOUND { return data_; }
+  [[nodiscard]] constexpr iterator end() & noexcept RELOCO_LIFETIMEBOUND { return data_ + N; }
+  [[nodiscard]] constexpr const_iterator begin() const & noexcept RELOCO_LIFETIMEBOUND { return data_; }
+  [[nodiscard]] constexpr const_iterator end() const & noexcept RELOCO_LIFETIMEBOUND { return data_ + N; }
+  [[nodiscard]] constexpr const_iterator cbegin() const & noexcept RELOCO_LIFETIMEBOUND { return data_; }
+  [[nodiscard]] constexpr const_iterator cend() const & noexcept RELOCO_LIFETIMEBOUND { return data_ + N; }
+  [[nodiscard]] constexpr reverse_iterator rbegin() & noexcept RELOCO_LIFETIMEBOUND {
     return reverse_iterator(end());
   }
-  [[nodiscard]] constexpr reverse_iterator rend() & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr reverse_iterator rend() & noexcept RELOCO_LIFETIMEBOUND {
     return reverse_iterator(begin());
   }
-  [[nodiscard]] constexpr const_reverse_iterator rbegin() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_reverse_iterator rbegin() const & noexcept RELOCO_LIFETIMEBOUND {
     return const_reverse_iterator(end());
   }
-  [[nodiscard]] constexpr const_reverse_iterator rend() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_reverse_iterator rend() const & noexcept RELOCO_LIFETIMEBOUND {
     return const_reverse_iterator(begin());
   }
-  [[nodiscard]] constexpr const_reverse_iterator crbegin() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_reverse_iterator crbegin() const & noexcept RELOCO_LIFETIMEBOUND {
     return const_reverse_iterator(cend());
   }
-  [[nodiscard]] constexpr const_reverse_iterator crend() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_reverse_iterator crend() const & noexcept RELOCO_LIFETIMEBOUND {
     return const_reverse_iterator(cbegin());
   }
 
@@ -149,14 +149,14 @@ template <typename T, std::size_t N> struct MICROFMT_OWNER array {
   }
 
   template <std::size_t Offset, std::size_t Count>
-  [[nodiscard]] constexpr span<T> static_subspan() & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr span<T> static_subspan() & noexcept RELOCO_LIFETIMEBOUND {
     static_assert(Offset <= N, "static subspan offset exceeds array bounds");
     static_assert(Count <= N - Offset, "static subspan count exceeds array bounds");
     return span<T>(data_ + Offset, Count);
   }
 
   template <std::size_t Offset, std::size_t Count>
-  [[nodiscard]] constexpr span<const T> static_subspan() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr span<const T> static_subspan() const & noexcept RELOCO_LIFETIMEBOUND {
     static_assert(Offset <= N, "static subspan offset exceeds array bounds");
     static_assert(Count <= N - Offset, "static subspan count exceeds array bounds");
     return span<const T>(data_ + Offset, Count);
@@ -210,7 +210,7 @@ template <typename T> struct array<T, 0> {
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  MICROFMT_BLOCK_RVALUE_ACCESS(T);
+  RELOCO_BLOCK_RVALUE_ACCESS(T);
 
   [[nodiscard]] expected<std::reference_wrapper<T>, span_error> try_at(size_type) & noexcept {
     return unexpected(span_error::out_of_bounds);
@@ -266,34 +266,34 @@ template <typename T> struct array<T, 0> {
     return *static_cast<const T *>(nullptr);
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_at(size_type) & noexcept {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_at(size_type) & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "array index out of bounds");
     return *static_cast<T *>(nullptr);
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_at(size_type) const & noexcept {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_at(size_type) const & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "array index out of bounds");
     return *static_cast<const T *>(nullptr);
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_front() & noexcept {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_front() & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "front() called on empty array");
     return *static_cast<T *>(nullptr);
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_front() const & noexcept {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_front() const & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "front() called on empty array");
     return *static_cast<const T *>(nullptr);
   }
   T &unsafe_front() && = delete;
   const T &unsafe_front() const && = delete;
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_back() & noexcept {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_back() & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "back() called on empty array");
     return *static_cast<T *>(nullptr);
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_back() const & noexcept {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_back() const & noexcept {
     MICROFMT_DEBUG_ASSERT(false, "back() called on empty array");
     return *static_cast<const T *>(nullptr);
   }
@@ -386,4 +386,4 @@ template <std::size_t I, typename T, std::size_t N> struct tuple_element<I, micr
 
 } // namespace std
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

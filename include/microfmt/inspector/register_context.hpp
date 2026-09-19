@@ -118,7 +118,7 @@ struct mapped_register_context_tag {};
  * @brief Zero-allocation, type-erased handle for inspecting and modifying CPU
  * registers from a frame context.
  */
-class MICROFMT_POINTER register_context_ref {
+class RELOCO_POINTER register_context_ref {
 public:
   constexpr register_context_ref() noexcept = default;
 
@@ -128,11 +128,11 @@ public:
                                  State *, typename Traits::context_type *>,
                              int> = 0>
   constexpr register_context_ref(
-      Tag, State &state MICROFMT_LIFETIMEBOUND
-               MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      Tag, State &state RELOCO_LIFETIMEBOUND
+               RELOCO_LIFETIME_CAPTURE_BY_THIS,
       address_space_ref space,
-      span<std::byte> scratch MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      span<std::byte> scratch RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : state_(&state), mutable_state_(&state), vtable_(&s_vtable<Tag>),
         space_(space), scratch_(scratch) {}
 
@@ -143,11 +143,11 @@ public:
                                  const typename Traits::context_type *>,
                              int> = 0>
   constexpr register_context_ref(
-      Tag, const State &state MICROFMT_LIFETIMEBOUND
-               MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      Tag, const State &state RELOCO_LIFETIMEBOUND
+               RELOCO_LIFETIME_CAPTURE_BY_THIS,
       address_space_ref space,
-      span<std::byte> scratch MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      span<std::byte> scratch RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : state_(&state), vtable_(&s_vtable<Tag>), space_(space),
         scratch_(scratch) {}
 
@@ -219,7 +219,7 @@ public:
     return space_;
   }
   [[nodiscard]] constexpr span<std::byte>
-  scratch() const noexcept MICROFMT_LIFETIMEBOUND {
+  scratch() const noexcept RELOCO_LIFETIMEBOUND {
     return scratch_;
   }
 
@@ -277,8 +277,8 @@ private:
 template <auto Read, typename State>
 [[nodiscard]] constexpr register_context_ref
 make_read_only_register_context_ref(
-    State &state MICROFMT_LIFETIMEBOUND, address_space_ref space,
-    span<std::byte> scratch MICROFMT_LIFETIMEBOUND) noexcept {
+    State &state RELOCO_LIFETIMEBOUND, address_space_ref space,
+    span<std::byte> scratch RELOCO_LIFETIMEBOUND) noexcept {
   using state_type = std::remove_const_t<State>;
   using tag = read_only_register_context_tag<state_type, Read>;
   return register_context_ref(tag{}, state, space, scratch);
@@ -287,8 +287,8 @@ make_read_only_register_context_ref(
 template <auto Read, auto Write, typename State>
 [[nodiscard]] constexpr register_context_ref
 make_register_context_ref(
-    State &state MICROFMT_LIFETIMEBOUND, address_space_ref space,
-    span<std::byte> scratch MICROFMT_LIFETIMEBOUND) noexcept {
+    State &state RELOCO_LIFETIMEBOUND, address_space_ref space,
+    span<std::byte> scratch RELOCO_LIFETIMEBOUND) noexcept {
   using state_type = std::remove_const_t<State>;
   using tag = read_write_register_context_tag<state_type, Read, Write>;
   return register_context_ref(tag{}, state, space, scratch);
@@ -297,34 +297,34 @@ make_register_context_ref(
 /**
  * @brief Typed owner for a register-context traits specialization.
  */
-template <typename Tag> class MICROFMT_OWNER register_context {
+template <typename Tag> class RELOCO_OWNER register_context {
 public:
   using traits_type = register_context_traits<Tag>;
   using context_type = typename traits_type::context_type;
 
   constexpr register_context(
       context_type context, address_space_ref space,
-      span<std::byte> scratch MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      span<std::byte> scratch RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : context_(std::move(context)), space_(space), scratch_(scratch) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   [[nodiscard]] constexpr register_context_ref
-  ref() & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() & noexcept RELOCO_LIFETIMEBOUND {
     return register_context_ref(Tag{}, context_, space_, scratch_);
   }
 
   [[nodiscard]] constexpr register_context_ref
-  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return register_context_ref(Tag{}, context_, space_, scratch_);
   }
 
@@ -561,7 +561,7 @@ struct register_callback_field {
  * instead of returning a value stored in the bound state.
  */
 template <typename State, typename... FieldTraits>
-class MICROFMT_POINTER register_context_ref_with {
+class RELOCO_POINTER register_context_ref_with {
 public:
   static_assert(sizeof...(FieldTraits) != 0,
                 "at least one register field trait is required");
@@ -574,21 +574,21 @@ public:
       "register field values must be trivially copyable");
 
   constexpr register_context_ref_with(
-      State &state MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      State &state RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS,
       address_space_ref space,
-      span<std::byte> scratch MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      span<std::byte> scratch RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS,
       register_context_ref fallback = {}) noexcept
       : state_(state), mutable_state_(&state), space_(space),
         scratch_(scratch), fallback_(fallback) {}
 
   constexpr register_context_ref_with(
-      const State &state MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      const State &state RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS,
       address_space_ref space,
-      span<std::byte> scratch MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      span<std::byte> scratch RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS,
       register_context_ref fallback = {}) noexcept
       : state_(state), space_(space), scratch_(scratch),
         fallback_(fallback) {}
@@ -606,13 +606,13 @@ public:
    * fallback context must outlive the returned reference.
    */
   [[nodiscard]] constexpr register_context_ref
-  ref() & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() & noexcept RELOCO_LIFETIMEBOUND {
     using tag = detail::mapped_register_context_tag<State, FieldTraits...>;
     return register_context_ref(tag{}, *this, space_, scratch_);
   }
 
   [[nodiscard]] constexpr operator register_context_ref() & noexcept
-      MICROFMT_LIFETIMEBOUND {
+      RELOCO_LIFETIMEBOUND {
     return ref();
   }
 
@@ -634,17 +634,17 @@ private:
       typename Field::value_type value{};
       if (!Field::read(*state_, space_, index, value))
         return false;
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       std::memcpy(destination, &value, sizeof(value));
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
       return true;
     } else {
       const auto *value = Field::get(*state_, index);
       if (!value)
         return false;
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       std::memcpy(destination, value, sizeof(*value));
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
       return true;
     }
   }
@@ -662,18 +662,18 @@ private:
 
     if constexpr (detail::has_register_field_write<Field, State>::value) {
       typename Field::value_type value{};
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       std::memcpy(&value, source, sizeof(value));
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
       return Field::write(*mutable_state_, space_, index, value);
     } else if constexpr (detail::has_mutable_register_field_get<Field,
                                                                  State>::value) {
       auto *value = Field::get(*mutable_state_, index);
       if (!value)
         return false;
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       std::memcpy(value, source, sizeof(*value));
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
       return true;
     } else {
       return false;

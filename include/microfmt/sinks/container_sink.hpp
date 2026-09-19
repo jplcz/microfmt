@@ -52,9 +52,9 @@ inline constexpr bool is_growable_char_container = detail::is_growable_char_cont
 // ============================================================================
 
 template <typename Container, typename std::enable_if<is_growable_char_container<Container>, int>::type = 0>
-class MICROFMT_POINTER container_sink {
+class RELOCO_POINTER container_sink {
 public:
-  explicit constexpr container_sink(Container &target MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  explicit constexpr container_sink(Container &target RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : target_(&target) {}
 
   container_sink(const container_sink &) = delete;
@@ -62,7 +62,7 @@ public:
   container_sink(container_sink &&) noexcept = default;
   container_sink &operator=(container_sink &&) noexcept = default;
 
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this,
                 [](void *ctx, microfmt::string_view sv) noexcept { static_cast<container_sink *>(ctx)->write(sv); }};
   }
@@ -87,7 +87,7 @@ private:
 
 // Helper factory for deduction
 template <typename Container, typename std::enable_if<is_growable_char_container<Container>, int>::type = 0>
-[[nodiscard]] constexpr auto make_container_sink(Container &c MICROFMT_LIFETIMEBOUND) noexcept {
+[[nodiscard]] constexpr auto make_container_sink(Container &c RELOCO_LIFETIMEBOUND) noexcept {
   return container_sink<Container>{c};
 }
 

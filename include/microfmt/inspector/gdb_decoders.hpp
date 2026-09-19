@@ -171,7 +171,7 @@ public:
   }
 
 private:
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   static span<const uint8_t> decode_hex_bytes(string_view hex, scratch_allocator &scratch) noexcept {
     if ((hex.size() % 2) != 0) {
       return {};
@@ -218,7 +218,7 @@ private:
     // Return a precisely sized span over the decoded segment
     return {dest, written};
   }
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 };
 
 // ============================================================================
@@ -292,9 +292,9 @@ public:
       if (!detail::parse_hex_nibble(hex_data[i * 2], h) || !detail::parse_hex_nibble(hex_data[i * 2 + 1], l)) {
         return {};
       }
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       dest[i] = static_cast<uint8_t>((h << 4) | l);
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
     }
 
     return {dest, len};

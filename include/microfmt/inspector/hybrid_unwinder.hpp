@@ -60,7 +60,7 @@ struct hybrid_frame {
 /**
  * @brief Type-erased hook detecting exception trampolines during unwinding.
  */
-class MICROFMT_POINTER exception_matcher_ref {
+class RELOCO_POINTER exception_matcher_ref {
 public:
   /**
    * @brief Virtual table of matcher operations.
@@ -92,8 +92,8 @@ public:
                                  const typename Traits::context_type *>,
                              int> = 0>
   constexpr exception_matcher_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
-               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
+               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context,
@@ -103,7 +103,7 @@ public:
   template <typename Tag, typename Context,
             typename Traits = exception_matcher_traits<Tag>>
   [[nodiscard]] static constexpr exception_matcher_ref
-  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return exception_matcher_ref(Tag{}, ctx);
   }
 
@@ -154,7 +154,7 @@ private:
 /**
  * @brief Typed owner for an exception-matcher traits specialization.
  */
-template <typename Tag> class MICROFMT_OWNER exception_matcher {
+template <typename Tag> class RELOCO_OWNER exception_matcher {
 public:
   using traits_type = exception_matcher_traits<Tag>;
   using context_type = typename traits_type::context_type;
@@ -163,22 +163,22 @@ public:
       : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   [[nodiscard]] constexpr exception_matcher_ref
-  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return exception_matcher_ref(Tag{}, context_);
   }
 
   [[nodiscard]] constexpr operator exception_matcher_ref()
-      const & noexcept MICROFMT_LIFETIMEBOUND {
+      const & noexcept RELOCO_LIFETIMEBOUND {
     return ref();
   }
 
@@ -340,7 +340,7 @@ private:
 /**
  * @brief Formattable view rendering a hybrid backtrace.
  */
-class MICROFMT_POINTER hybrid_backtrace_view {
+class RELOCO_POINTER hybrid_backtrace_view {
 public:
   /**
    * @brief Constructs a hybrid backtrace view.
@@ -351,11 +351,11 @@ public:
    */
   constexpr explicit hybrid_backtrace_view(
                                            hybrid_stack_unwinder &unwinder
-                                               MICROFMT_LIFETIMEBOUND,
+                                               RELOCO_LIFETIMEBOUND,
                                            symbol_resolver_ref resolver,
                                            symbol_resolution_context
                                                &symbol_context
-                                                   MICROFMT_LIFETIMEBOUND,
+                                                   RELOCO_LIFETIMEBOUND,
                                            uint32_t max_depth = 32) noexcept
       : unwinder_(&unwinder), resolver_(resolver),
         symbol_context_(&symbol_context), max_depth_(max_depth) {}
@@ -365,7 +365,7 @@ public:
    * @return Reference to the @ref hybrid_stack_unwinder.
    */
   [[nodiscard]] constexpr hybrid_stack_unwinder &
-  unwinder() const noexcept MICROFMT_LIFETIMEBOUND {
+  unwinder() const noexcept RELOCO_LIFETIMEBOUND {
     return *unwinder_;
   }
   /**
@@ -376,7 +376,7 @@ public:
     return resolver_;
   }
   [[nodiscard]] constexpr symbol_resolution_context &
-  symbol_context() const noexcept MICROFMT_LIFETIMEBOUND {
+  symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
     return *symbol_context_;
   }
   /**

@@ -124,9 +124,9 @@ template <> struct formatter<can_frame_view> {
         if (f.flags & can_flags::esi) {
           fd_flags |= 0x2;
         }
-        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+        RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
         out.put(hex_digits[fd_flags]);
-        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+        RELOCO_END_UNSAFE_BUFFER_USAGE;
       } else if (is_rtr) {
         out.put('#');
         out.put('R');
@@ -137,10 +137,10 @@ template <> struct formatter<can_frame_view> {
       }
 
       for (uint8_t b : f.payload) {
-        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+        RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
         out.put(hex_digits[(b >> 4) & 0x0F]);
         out.put(hex_digits[b & 0x0F]);
-        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+        RELOCO_END_UNSAFE_BUFFER_USAGE;
       }
       return;
     }

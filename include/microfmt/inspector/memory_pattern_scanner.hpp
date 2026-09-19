@@ -58,7 +58,7 @@ template <typename Tag> struct memory_pattern_scanner_traits;
  * Borrows the scanner context and exposes a generic `scan` operation,
  * abstracting the underlying memory traversal and chunking mechanics.
  */
-class MICROFMT_POINTER memory_pattern_scanner_ref {
+class RELOCO_POINTER memory_pattern_scanner_ref {
 public:
   struct vtable {
     expected<memory_scan_result, address_space_error> (*scan)(const void *ctx, uintptr_t start_addr,
@@ -85,7 +85,7 @@ public:
                                  std::is_convertible_v<const Context *, const typename Traits::context_type *>,
                              int> = 0>
   constexpr memory_pattern_scanner_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      Tag, const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
@@ -99,7 +99,7 @@ public:
 
   template <typename Tag, typename Context, typename Traits = memory_pattern_scanner_traits<Tag>,
             std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
-  [[nodiscard]] static constexpr memory_pattern_scanner_ref make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+  [[nodiscard]] static constexpr memory_pattern_scanner_ref make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return memory_pattern_scanner_ref(Tag{}, ctx);
   }
 
@@ -160,23 +160,23 @@ class memory_pattern_scanner;
  *
  * @tparam Tag Tag identifying the scanner implementation.
  */
-template <typename Tag> class MICROFMT_OWNER memory_pattern_scanner<Tag, false> {
+template <typename Tag> class RELOCO_OWNER memory_pattern_scanner<Tag, false> {
 public:
   using traits_type = memory_pattern_scanner_traits<Tag>;
   using context_type = typename traits_type::context_type;
 
   constexpr explicit memory_pattern_scanner(context_type context) noexcept : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   /** @brief Creates a type-erased reference borrowing this scanner's context. */
-  [[nodiscard]] constexpr memory_pattern_scanner_ref ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr memory_pattern_scanner_ref ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return memory_pattern_scanner_ref(Tag{}, context_);
   }
 
@@ -213,8 +213,8 @@ struct linear_memory_scanner_context {
   span<std::byte> scratch;
 
   constexpr linear_memory_scanner_context(address_space_ref space_ref,
-                                          span<std::byte> scratch_buf MICROFMT_LIFETIMEBOUND
-                                              MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+                                          span<std::byte> scratch_buf RELOCO_LIFETIMEBOUND
+                                              RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : space(space_ref), scratch(scratch_buf) {}
 };
 

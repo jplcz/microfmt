@@ -45,7 +45,7 @@ template <typename Tag, typename T> struct value_range_scanner_traits;
  *
  * @tparam T Trivially copyable type to interpret from memory.
  */
-template <typename T> class MICROFMT_POINTER value_range_scanner_ref {
+template <typename T> class RELOCO_POINTER value_range_scanner_ref {
 public:
   static_assert(std::is_trivially_copyable_v<T>, "Scanned type must be trivially copyable.");
 
@@ -68,7 +68,7 @@ public:
                                                        const typename Traits::context_type *>,
                              int> = 0>
   constexpr value_range_scanner_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      Tag, const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
@@ -83,7 +83,7 @@ public:
   template <typename Tag, typename Context, typename Traits = value_range_scanner_traits<Tag, T>,
             std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
   [[nodiscard]] static constexpr value_range_scanner_ref
-  make(const Context &context MICROFMT_LIFETIMEBOUND) noexcept {
+  make(const Context &context RELOCO_LIFETIMEBOUND) noexcept {
     return value_range_scanner_ref(Tag{}, context);
   }
 
@@ -143,7 +143,7 @@ template <typename Tag, typename T,
 class value_range_scanner;
 
 template <typename Tag, typename T>
-class MICROFMT_OWNER value_range_scanner<Tag, T, false> {
+class RELOCO_OWNER value_range_scanner<Tag, T, false> {
 public:
   using traits_type = value_range_scanner_traits<Tag, T>;
   using context_type = typename value_range_scanner_traits<Tag, T>::context_type;
@@ -151,21 +151,21 @@ public:
   constexpr explicit value_range_scanner(context_type context) noexcept : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_range_scanner_ref<T> ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_range_scanner_ref<T> ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_range_scanner_ref<T>(Tag{}, context_);
   }
 
   [[nodiscard]] constexpr operator value_range_scanner_ref<T>()
-      const & noexcept MICROFMT_LIFETIMEBOUND {
+      const & noexcept RELOCO_LIFETIMEBOUND {
     return ref();
   }
 
@@ -215,7 +215,7 @@ template <typename Tag> struct dependent_value_scanner_traits;
  * blocks) by validating internal constraints (e.g., magic numbers combined with
  * bounds-checked enums) when debugging symbols are unavailable.
  */
-class MICROFMT_POINTER dependent_value_scanner_ref {
+class RELOCO_POINTER dependent_value_scanner_ref {
 public:
   struct vtable {
     expected<memory_scan_result, address_space_error> (*scan)(const void *ctx, uintptr_t start_addr,
@@ -237,7 +237,7 @@ public:
                                                        const typename Traits::context_type *>,
                              int> = 0>
   constexpr dependent_value_scanner_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      Tag, const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
@@ -252,7 +252,7 @@ public:
   template <typename Tag, typename Context, typename Traits = dependent_value_scanner_traits<Tag>,
             std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
   [[nodiscard]] static constexpr dependent_value_scanner_ref
-  make(const Context &context MICROFMT_LIFETIMEBOUND) noexcept {
+  make(const Context &context RELOCO_LIFETIMEBOUND) noexcept {
     return dependent_value_scanner_ref(Tag{}, context);
   }
 
@@ -314,7 +314,7 @@ template <typename Tag,
 class dependent_value_scanner;
 
 template <typename Tag>
-class MICROFMT_OWNER dependent_value_scanner<Tag, false> {
+class RELOCO_OWNER dependent_value_scanner<Tag, false> {
 public:
   using traits_type = dependent_value_scanner_traits<Tag>;
   using context_type = typename dependent_value_scanner_traits<Tag>::context_type;
@@ -322,21 +322,21 @@ public:
   constexpr explicit dependent_value_scanner(context_type context) noexcept : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
-  [[nodiscard]] constexpr dependent_value_scanner_ref ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr dependent_value_scanner_ref ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return dependent_value_scanner_ref(Tag{}, context_);
   }
 
   [[nodiscard]] constexpr operator dependent_value_scanner_ref()
-      const & noexcept MICROFMT_LIFETIMEBOUND {
+      const & noexcept RELOCO_LIFETIMEBOUND {
     return ref();
   }
 
@@ -394,9 +394,9 @@ template <typename T> struct value_range_scanner_traits<linear_value_range_scann
       size_t search_limit = to_read - window_size;
       for (size_t offset = 0; offset <= search_limit; offset += stride) {
         T val;
-        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+        RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
         std::memcpy(&val, ctx->scratch.data() + offset, sizeof(T));
-        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+        RELOCO_END_UNSAFE_BUFFER_USAGE;
         if (val >= min_val && val <= max_val) {
           if (current_addr >
               std::numeric_limits<uintptr_t>::max() - offset) {
@@ -448,9 +448,9 @@ template <> struct dependent_value_scanner_traits<linear_dependent_value_scanner
 
       size_t search_limit = to_read - window_size;
       for (size_t offset = 0; offset <= search_limit; offset += stride) {
-        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+        RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
         const void *window = ctx->scratch.data() + offset;
-        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+        RELOCO_END_UNSAFE_BUFFER_USAGE;
         if (predicate(window, user_context)) {
           if (current_addr >
               std::numeric_limits<uintptr_t>::max() - offset) {

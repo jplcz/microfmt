@@ -38,7 +38,7 @@ struct mock_kernel_context {
   size_t image_count;
 };
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 template <> struct microfmt::symbol_resolver_traits<mock_kernel_symbol_tag> {
   using context_type = mock_kernel_context;
@@ -69,7 +69,7 @@ template <> struct microfmt::symbol_resolver_traits<mock_kernel_symbol_tag> {
   }
 };
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 // ----------------------------------------------------------------------------
 // Execution

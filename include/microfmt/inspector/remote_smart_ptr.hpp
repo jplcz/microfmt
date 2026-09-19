@@ -25,7 +25,7 @@ namespace microfmt {
  * @tparam RemotePtr Pointer representation in the target process.
  */
 template <typename T, typename RemotePtr = uintptr_t>
-class MICROFMT_POINTER remote_unique_ptr_view {
+class RELOCO_POINTER remote_unique_ptr_view {
   using pointer_query =
       decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
 
@@ -39,7 +39,7 @@ public:
    */
   constexpr remote_unique_ptr_view(uintptr_t ptr_addr, address_space_ref space,
                                    span<std::byte> scratch
-                                       MICROFMT_LIFETIMEBOUND,
+                                       RELOCO_LIFETIMEBOUND,
                                    ptrdiff_t ptr_offset = 0) noexcept
       : ptr_addr_(ptr_addr), space_(space), scratch_(scratch),
         pointer_(make_remote_offset_query<uintptr_t, RemotePtr>(ptr_offset)) {}
@@ -94,7 +94,7 @@ private:
  */
 template <typename T, typename RemotePtr = uintptr_t,
           typename RemoteRefCount = int32_t>
-class MICROFMT_POINTER remote_shared_ptr_view {
+class RELOCO_POINTER remote_shared_ptr_view {
   using pointer_query =
       decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
   using count_query =
@@ -115,7 +115,7 @@ public:
   constexpr remote_shared_ptr_view(uintptr_t shared_ptr_addr,
                                    address_space_ref space,
                                    span<std::byte> scratch
-                                       MICROFMT_LIFETIMEBOUND,
+                                       RELOCO_LIFETIMEBOUND,
                                    ptrdiff_t ptr_offset,
                                    ptrdiff_t control_block_offset,
                                    ptrdiff_t use_count_offset,
@@ -202,7 +202,7 @@ private:
  */
 template <typename T, typename RemotePtr = uintptr_t,
           typename RemoteRefCount = int32_t>
-class MICROFMT_POINTER remote_intrusive_ptr_view {
+class RELOCO_POINTER remote_intrusive_ptr_view {
   using pointer_query =
       decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
   using count_query =
@@ -220,7 +220,7 @@ public:
   constexpr remote_intrusive_ptr_view(uintptr_t intrusive_ptr_addr,
                                       address_space_ref space,
                                       span<std::byte> scratch
-                                          MICROFMT_LIFETIMEBOUND,
+                                          RELOCO_LIFETIMEBOUND,
                                       ptrdiff_t ptr_offset,
                                       ptrdiff_t ref_count_offset) noexcept
       : addr_(intrusive_ptr_addr), space_(space), scratch_(scratch),

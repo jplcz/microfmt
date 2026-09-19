@@ -4,4 +4,7 @@
 
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+find_dependency(jplcz_reloco CONFIG)
+
 include("${CMAKE_CURRENT_LIST_DIR}/jplcz_microfmtTargets.cmake")

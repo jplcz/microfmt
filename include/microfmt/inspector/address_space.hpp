@@ -128,9 +128,9 @@ template <> struct address_space_traits<local_space_tag> {
       return false;
     if (size == 0)
       return true;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(dest, reinterpret_cast<const void *>(addr), size);
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
 
@@ -146,9 +146,9 @@ template <> struct address_space_traits<local_space_tag> {
       return false;
     if (size == 0)
       return true;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(reinterpret_cast<void *>(addr), src, size);
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
 
@@ -165,7 +165,7 @@ template <> struct address_space_traits<local_space_tag> {
                           bool &null_term) noexcept {
     if (addr == 0)
       return false;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     const auto *src = reinterpret_cast<const char *>(addr);
     size_t i = 0;
@@ -178,7 +178,7 @@ template <> struct address_space_traits<local_space_tag> {
       }
       ++i;
     }
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     out_len = max_len;
     null_term = false;
@@ -196,7 +196,7 @@ template <> struct address_space_traits<local_space_tag> {
  * Packs a context pointer and a virtual table into two words, avoiding
  * allocations, RTTI, and virtual dispatch.
  */
-class MICROFMT_POINTER address_space_ref {
+class RELOCO_POINTER address_space_ref {
 public:
   /**
    * @brief Virtual table of address-space operations.
@@ -245,8 +245,8 @@ public:
                                  std::is_convertible_v<const Context *, const typename Traits::context_type *>,
                              int> = 0>
   constexpr address_space_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
-               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
+               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context,
@@ -275,7 +275,7 @@ public:
    */
   template <typename Tag, typename Context, typename Traits = address_space_traits<Tag>,
             std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
-  [[nodiscard]] static constexpr address_space_ref make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+  [[nodiscard]] static constexpr address_space_ref make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return address_space_ref(Tag{}, ctx);
   }
 
@@ -483,7 +483,7 @@ template <typename Tag,
               std::is_void_v<typename address_space_traits<Tag>::context_type>>
 class address_space;
 
-template <typename Tag> class MICROFMT_OWNER address_space<Tag, false> {
+template <typename Tag> class RELOCO_OWNER address_space<Tag, false> {
 public:
   using traits_type = address_space_traits<Tag>;
   using context_type = typename traits_type::context_type;
@@ -492,17 +492,17 @@ public:
       : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   [[nodiscard]] constexpr address_space_ref
-  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return address_space_ref(Tag{}, context_);
   }
 
@@ -531,7 +531,7 @@ public:
  * Pulls the string through a reusable scratch buffer in bounded chunks to keep
  * stack usage minimal.
  */
-class MICROFMT_POINTER remote_string_view {
+class RELOCO_POINTER remote_string_view {
 public:
   /**
    * @brief Constructs an empty (null) view.
@@ -546,7 +546,7 @@ public:
    * @param max_limit Maximum characters to render.
    */
   constexpr remote_string_view(uintptr_t addr, address_space_ref space,
-                               span<char> scratch MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+                               span<char> scratch RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS,
                                size_t max_limit = 4096) noexcept
       : addr_(addr), space_(space), scratch_(scratch), max_limit_(max_limit) {}
 
@@ -561,7 +561,7 @@ public:
    */
   template <size_t N>
   constexpr remote_string_view(uintptr_t addr, address_space_ref space,
-                               char (&scratch MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS)[N],
+                               char (&scratch RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS)[N],
                                size_t max_limit = 4096) noexcept
       : addr_(addr), space_(space), scratch_(scratch, N), max_limit_(max_limit) {}
 
@@ -579,7 +579,7 @@ public:
    * @brief Returns the scratch chunk buffer.
    * @return Scratch span used for chunked reads.
    */
-  [[nodiscard]] constexpr span<char> scratch() const noexcept MICROFMT_LIFETIMEBOUND { return scratch_; }
+  [[nodiscard]] constexpr span<char> scratch() const noexcept RELOCO_LIFETIMEBOUND { return scratch_; }
   /**
    * @brief Returns the maximum render length.
    * @return Character limit.
@@ -602,7 +602,7 @@ private:
  *
  * @tparam T Object type loaded into a caller-supplied scratch buffer.
  */
-template <typename T> class MICROFMT_POINTER remote_ref {
+template <typename T> class RELOCO_POINTER remote_ref {
 public:
   /**
    * @brief Constructs a remote object reference.
@@ -611,7 +611,7 @@ public:
    * @param scratch Reusable, properly-aligned scratch buffer (`>= sizeof(T)`).
    */
   constexpr remote_ref(uintptr_t addr, address_space_ref space,
-                       span<std::byte> scratch MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+                       span<std::byte> scratch RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : addr_(addr), space_(space), scratch_(scratch) {}
 
   /**

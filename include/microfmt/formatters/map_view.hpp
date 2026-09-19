@@ -161,7 +161,7 @@ struct formatter<map_range_view<KeyExtractor, ValExtractor, Iterator, Sentinel>>
     }
 
     size_t idx = 0;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     for (auto it = view.first; it != view.last; ++it) {
       if (idx++ > 0) {
@@ -192,7 +192,7 @@ struct formatter<map_range_view<KeyExtractor, ValExtractor, Iterator, Sentinel>>
       out.put(close_c);
     }
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 };
 

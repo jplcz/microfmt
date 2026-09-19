@@ -20,7 +20,7 @@ namespace microfmt {
  * Enforces compile-time lifetime safety via value_ref and requires an explicit
  * stack state struct to generate a read-only metadata_map view.
  */
-class MICROFMT_OWNER concrete_metadata_map {
+class RELOCO_OWNER concrete_metadata_map {
 public:
   /**
    * @brief Constructs a concrete metadata map over an external span buffer.
@@ -85,10 +85,10 @@ public:
    * @param state Reference to a stack-allocated span_iteration_state object.
    * @return A lightweight, zero-allocation metadata_map view.
    */
-  [[nodiscard]] constexpr metadata_map make_view(span_iteration_state &state) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr metadata_map make_view(span_iteration_state &state) const & noexcept RELOCO_LIFETIMEBOUND {
     state.current = m_storage.data();
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     state.end = m_storage.data() + m_count;
 
     return metadata_map(&state, [](void *ctx, property_entry &out) noexcept -> bool {
@@ -100,7 +100,7 @@ public:
 
       return true;
     });
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
   metadata_map make_view(span_iteration_state &) const && = delete;

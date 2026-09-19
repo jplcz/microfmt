@@ -98,9 +98,9 @@ inline void format_hexdump(const hexdump_view &h, span<uint8_t> line_buffer, con
       const size_t avail = (offset < h.direct_data.size()) ? (h.direct_data.size() - offset) : 0;
       bytes_valid = std::min(chunk_len, avail);
       if (bytes_valid > 0) {
-        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+        RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
         std::copy_n(h.direct_data.data() + offset, bytes_valid, line_buffer.data());
-        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+        RELOCO_END_UNSAFE_BUFFER_USAGE;
       }
     }
 

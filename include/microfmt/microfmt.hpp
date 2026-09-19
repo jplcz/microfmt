@@ -35,7 +35,7 @@ namespace microfmt {
  * function to stream formatted characters without dynamic allocations, virtual
  * dispatch, or RTTI overhead.
  */
-struct MICROFMT_POINTER sink {
+struct RELOCO_POINTER sink {
   /**
    * @brief Function pointer signature for the write callback.
    *
@@ -88,7 +88,7 @@ struct MICROFMT_POINTER sink {
  * and exposes a non-owning, zero-allocation @ref sink interface. Writes that
  * exceed the remaining capacity are truncated safely.
  */
-class MICROFMT_POINTER span_sink {
+class RELOCO_POINTER span_sink {
 public:
   /**
    * @brief Constructs a span sink over a @ref microfmt::span of character
@@ -96,7 +96,7 @@ public:
    *
    * @param buf The target character buffer view.
    */
-  explicit constexpr span_sink(span<char> buf MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  explicit constexpr span_sink(span<char> buf RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_buf(buf), m_pos(0) {}
 
 #if MICROFMT_HAS_STD_SPAN
@@ -108,7 +108,7 @@ public:
    */
   template <std::size_t Extent>
   explicit constexpr span_sink(
-      std::span<char, Extent> buf MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      std::span<char, Extent> buf RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_buf(buf.data(), buf.size()), m_pos(0) {}
 #endif
 
@@ -118,15 +118,15 @@ public:
    * @return A lightweight @ref sink struct configured with a callback to append
    * to this buffer.
    */
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<span_sink *>(ctx);
                   const size_t avail = (self->m_pos < self->m_buf.size()) ? (self->m_buf.size() - self->m_pos) : 0;
                   const size_t n = std::min(sv.size(), avail);
                   if (n > 0) {
-                    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+                    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
                     std::copy_n(sv.data(), n, self->m_buf.data() + self->m_pos);
-                    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+                    RELOCO_END_UNSAFE_BUFFER_USAGE;
                     self->m_pos += n;
                   }
                 }};
@@ -137,7 +137,7 @@ public:
    *
    * @return Non-owning view of the formatted output.
    */
-  [[nodiscard]] constexpr microfmt::string_view view() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr microfmt::string_view view() const noexcept RELOCO_LIFETIMEBOUND {
     return microfmt::string_view(m_buf.data(), m_pos);
   }
 
@@ -179,9 +179,9 @@ struct buffer_sink_base {
     const std::size_t avail = (self->m_pos < self->m_capacity) ? (self->m_capacity - self->m_pos) : 0;
     const std::size_t n = std::min(sv.size(), avail);
     if (n > 0) {
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       std::copy_n(sv.data(), n, self->m_data + self->m_pos);
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
       self->m_pos += n;
     }
   }
@@ -212,7 +212,7 @@ public:
    * @return A lightweight @ref sink struct configured with a callback to append
    * to this buffer.
    */
-  [[nodiscard]] MICROFMT_CONSTEXPR20 sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] MICROFMT_CONSTEXPR20 sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, &detail::buffer_sink_base::write_thunk};
   }
 
@@ -221,7 +221,7 @@ public:
    *
    * @return Non-owning view of the formatted output.
    */
-  [[nodiscard]] constexpr microfmt::string_view view() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr microfmt::string_view view() const noexcept RELOCO_LIFETIMEBOUND {
     return microfmt::string_view(m_data, m_pos);
   }
 
@@ -252,12 +252,12 @@ public:
    *
    * @return Span containing the written characters.
    */
-  [[nodiscard]] constexpr span<const char> as_span() const noexcept MICROFMT_LIFETIMEBOUND {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  [[nodiscard]] constexpr span<const char> as_span() const noexcept RELOCO_LIFETIMEBOUND {
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     return span<const char>(m_data, m_pos);
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
 #if MICROFMT_HAS_STD_SPAN
@@ -267,12 +267,12 @@ public:
    *
    * @return Standard span containing the written characters.
    */
-  [[nodiscard]] constexpr std::span<const char> as_std_span() const noexcept MICROFMT_LIFETIMEBOUND {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  [[nodiscard]] constexpr std::span<const char> as_std_span() const noexcept RELOCO_LIFETIMEBOUND {
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     return std::span<const char>(m_data, m_pos);
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 #endif
 
@@ -309,7 +309,7 @@ public:
    * @return A lightweight @ref sink struct configured with a callback to
    * forward writes.
    */
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<iterator_sink<OutputIt> *>(ctx);
                   self->m_it = std::copy(sv.begin(), sv.end(), self->m_it);
@@ -347,7 +347,7 @@ public:
    * @return A lightweight @ref sink struct configured to increment the internal
    * counter.
    */
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<counting_sink *>(ctx);
                   self->m_count += sv.size();
@@ -402,11 +402,11 @@ struct c_string_sink_base {
     const std::size_t n = std::min(sv.size(), avail);
 
     if (n > 0) {
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       std::copy_n(sv.data(), n, self->m_data + self->m_pos);
       self->m_pos += n;
       self->m_data[self->m_pos] = '\0';
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
     }
   }
 };
@@ -437,7 +437,7 @@ public:
    * @return A lightweight @ref sink struct configured to append and
    * null-terminate.
    */
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, &detail::c_string_sink_base::write_thunk};
   }
 
@@ -446,7 +446,7 @@ public:
    *
    * @return Pointer to the underlying null-terminated buffer.
    */
-  [[nodiscard]] constexpr const char *c_str() const noexcept MICROFMT_LIFETIMEBOUND { return m_data; }
+  [[nodiscard]] constexpr const char *c_str() const noexcept RELOCO_LIFETIMEBOUND { return m_data; }
 
   /**
    * @brief Returns a string view over the characters written (excluding null
@@ -454,7 +454,7 @@ public:
    *
    * @return Non-owning view of formatted text.
    */
-  [[nodiscard]] constexpr microfmt::string_view view() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr microfmt::string_view view() const noexcept RELOCO_LIFETIMEBOUND {
     return microfmt::string_view(m_data, m_pos);
   }
 
@@ -493,14 +493,14 @@ private:
  * @tparam Callable A callable accepting `(microfmt::string_view)` or `(const char*,
  * std::size_t)`.
  */
-template <typename Callable> class MICROFMT_POINTER callback_sink {
+template <typename Callable> class RELOCO_POINTER callback_sink {
 public:
   /**
    * @brief Constructs a callback sink wrapping a reference to a callable.
    *
    * @param fn Reference to the target callable.
    */
-  explicit constexpr callback_sink(Callable &fn MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  explicit constexpr callback_sink(Callable &fn RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_fn(&fn) {}
 
   /**
@@ -509,7 +509,7 @@ public:
    *
    * @return A lightweight @ref sink struct forwarding writes to the callable.
    */
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{m_fn.get(), [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *fn = static_cast<Callable *>(ctx);
                   (*fn)(sv);
@@ -529,7 +529,7 @@ private:
  * @return Configured @ref callback_sink instance.
  */
 template <typename Callable>
-[[nodiscard]] constexpr callback_sink<Callable> make_callback_sink(Callable &fn MICROFMT_LIFETIMEBOUND) noexcept {
+[[nodiscard]] constexpr callback_sink<Callable> make_callback_sink(Callable &fn RELOCO_LIFETIMEBOUND) noexcept {
   return callback_sink<Callable>(fn);
 }
 
@@ -542,12 +542,12 @@ namespace detail {
 // 2-digit lookup table for values 00-99
 inline constexpr auto digits_lut = []() {
   array<char, 200> arr{};
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   for (int i = 0; i < 100; ++i) {
     arr.unsafe_at(2 * (size_t)i) = static_cast<char>('0' + (i / 10));
     arr.unsafe_at(2 * (size_t)i + 1) = static_cast<char>('0' + (i % 10));
   }
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
   return arr;
 }();
 
@@ -641,7 +641,7 @@ inline void format_signed(const sink &out, int64_t val, int min_width = 0) noexc
 // Format Parse Context & Formatter Customization Point
 // ============================================================================
 
-class MICROFMT_POINTER format_parse_context {
+class RELOCO_POINTER format_parse_context {
 public:
   using iterator = microfmt::string_view::const_iterator;
   using const_iterator = microfmt::string_view::const_iterator;
@@ -649,20 +649,20 @@ public:
   using size_type = std::size_t;
 
   constexpr explicit format_parse_context(
-      microfmt::string_view spec MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      microfmt::string_view spec RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_spec(spec) {}
 
   // --- Core Accessors ---
-  [[nodiscard]] constexpr microfmt::string_view spec() const noexcept MICROFMT_LIFETIMEBOUND { return m_spec; }
+  [[nodiscard]] constexpr microfmt::string_view spec() const noexcept RELOCO_LIFETIMEBOUND { return m_spec; }
   [[nodiscard]] constexpr bool empty() const noexcept { return m_spec.empty(); }
   [[nodiscard]] constexpr size_type size() const noexcept { return m_spec.size(); }
 
   // --- Iterator Interface (Required for std::format/fmtlib-style custom
   // formatters) ---
-  [[nodiscard]] constexpr const_iterator begin() const noexcept MICROFMT_LIFETIMEBOUND { return m_spec.begin(); }
-  [[nodiscard]] constexpr const_iterator end() const noexcept MICROFMT_LIFETIMEBOUND { return m_spec.end(); }
-  [[nodiscard]] constexpr const_iterator cbegin() const noexcept MICROFMT_LIFETIMEBOUND { return m_spec.cbegin(); }
-  [[nodiscard]] constexpr const_iterator cend() const noexcept MICROFMT_LIFETIMEBOUND { return m_spec.cend(); }
+  [[nodiscard]] constexpr const_iterator begin() const noexcept RELOCO_LIFETIMEBOUND { return m_spec.begin(); }
+  [[nodiscard]] constexpr const_iterator end() const noexcept RELOCO_LIFETIMEBOUND { return m_spec.end(); }
+  [[nodiscard]] constexpr const_iterator cbegin() const noexcept RELOCO_LIFETIMEBOUND { return m_spec.cbegin(); }
+  [[nodiscard]] constexpr const_iterator cend() const noexcept RELOCO_LIFETIMEBOUND { return m_spec.cend(); }
 
   // --- Element Access ---
   [[nodiscard]] constexpr char front() const noexcept { return m_spec.empty() ? '\0' : m_spec.front(); }
@@ -701,7 +701,7 @@ public:
   [[nodiscard]] constexpr size_type find(char ch, size_type pos = 0) const noexcept { return m_spec.find(ch, pos); }
 
   [[nodiscard]] constexpr microfmt::string_view
-  substr(size_type pos = 0, size_type count = microfmt::string_view::npos) const noexcept MICROFMT_LIFETIMEBOUND {
+  substr(size_type pos = 0, size_type count = microfmt::string_view::npos) const noexcept RELOCO_LIFETIMEBOUND {
     return m_spec.substr(pos, count);
   }
 
@@ -753,7 +753,7 @@ namespace detail {
 // =============================================================================
 
 template <typename UInt>
-MICROFMT_ALWAYS_INLINE MICROFMT_UNSAFE_BUFFER_USAGE MICROFMT_CONSTEXPR20 inline char *
+MICROFMT_ALWAYS_INLINE RELOCO_UNSAFE_BUFFER_USAGE MICROFMT_CONSTEXPR20 inline char *
 format_dec_backward(char *ptr, UInt value) noexcept {
   // Process 2 digits at a time using the lookup table
   while (value >= 100) {
@@ -780,7 +780,7 @@ format_dec_backward(char *ptr, UInt value) noexcept {
 // =============================================================================
 
 template <typename UInt>
-MICROFMT_UNSAFE_BUFFER_USAGE MICROFMT_ALWAYS_INLINE MICROFMT_CONSTEXPR20 inline char *
+RELOCO_UNSAFE_BUFFER_USAGE MICROFMT_ALWAYS_INLINE MICROFMT_CONSTEXPR20 inline char *
 format_hex_backward(char *ptr, UInt value, bool uppercase) noexcept {
   const auto &lut = uppercase ? hex_digits_upper : hex_digits_lower;
   if (value == 0) {
@@ -880,7 +880,7 @@ struct int_formatter_specs {
   }
 
   template <typename T> void format_int_impl(T val, const sink &out) const noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     constexpr size_t BUF_SIZE = (sizeof(T) <= 4) ? 12 : 24;
     char buffer[BUF_SIZE];
     char *end = buffer + BUF_SIZE;
@@ -913,7 +913,7 @@ struct int_formatter_specs {
 
     const size_t digits_len = static_cast<size_t>(end - start);
     detail::emit_formatted_int(out, start, digits_len, is_negative, prefix, width, flags.zero_pad);
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 };
 
@@ -1190,7 +1190,7 @@ inline void vformat_to(const sink &out, const microfmt::string_view fmt, const s
   size_t arg_idx = 0;
   size_t i = 0;
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   while (i < fmt.size()) {
     const char *unsafe_fmt = fmt.unsafe_data();
     // UNSAFE: Bounds check in while loop
@@ -1249,7 +1249,7 @@ inline void vformat_to(const sink &out, const microfmt::string_view fmt, const s
     out.put(c);
     ++i;
   }
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 // ============================================================================

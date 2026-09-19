@@ -8,13 +8,13 @@
 #include <string_view>
 
 namespace {
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 void stdout_write(void * /*context*/, microfmt::string_view text) noexcept {
   std::fwrite(text.data(), 1, text.size(), stdout);
 }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 } // namespace
 

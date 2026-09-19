@@ -8,7 +8,7 @@
 #include <microfmt/formatters/base_views.hpp>
 #include <microfmt/microfmt.hpp>
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 int main() {
   const uint8_t payload[] = {'M', 'a', 'n'};
@@ -19,4 +19,4 @@ int main() {
               bits.view().data());
 }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

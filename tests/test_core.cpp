@@ -106,11 +106,11 @@ TEST(CoreSpan, ArrayDeductionAndIterators) {
   EXPECT_EQ(s.size(), 4u);
   EXPECT_EQ(*s.begin(), 10);
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
   EXPECT_EQ(*(s.end() - 1), 40);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 
   size_t count = 0;
   for (int n : s) {
@@ -130,9 +130,9 @@ TEST(CoreSpan, ProvidesCheckedAndFallibleAccess) {
 
   EXPECT_EQ(view.front(), 10);
   EXPECT_EQ(view.back(), 40);
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   EXPECT_EQ(view.unsafe_at(2), 30);
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
   EXPECT_EQ(*view.rbegin(), 40);
 
   ASSERT_TRUE(view.try_at(1).has_value());
@@ -384,11 +384,11 @@ TEST(CoreFormat, ParseContextOperations) {
   EXPECT_EQ(context.find(':'), 3U);
   EXPECT_EQ(context.substr(4), "def");
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   context.advance_to(context.begin() + 2);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   EXPECT_EQ(context.spec(), "c:def");
   EXPECT_EQ(context.consume(), 'c');

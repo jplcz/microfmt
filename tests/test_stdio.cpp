@@ -45,7 +45,7 @@ TEST(StdioTest, FilePrintlnAppendsNewline) {
 
 #if MICROFMT_HAS_POSIX_FD
 TEST(StdioTest, PosixPipeSink) {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   int pipefd[2];
   ASSERT_EQ(::pipe(pipefd), 0);
@@ -63,6 +63,6 @@ TEST(StdioTest, PosixPipeSink) {
   read_buf[bytes_read] = '\0';
   EXPECT_STREQ(read_buf, "FD Test: val=42\n");
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 #endif

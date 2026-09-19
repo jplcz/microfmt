@@ -36,7 +36,7 @@ syslog_record captured_syslog;
 #endif
 android_record captured_android_log;
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 void copy_to_buffer(microfmt::string_view text, char *destination, std::size_t capacity, std::size_t &size) noexcept {
   size = text.size() < capacity ? text.size() : capacity;
@@ -44,7 +44,7 @@ void copy_to_buffer(microfmt::string_view text, char *destination, std::size_t c
     destination[i] = text[i];
   }
 }
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 #if defined(MICROFMT_COMPILE_WITH_SYSLOG)
 void capture_syslog(int priority, microfmt::string_view message) noexcept {

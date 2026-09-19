@@ -91,7 +91,7 @@ public:
    * @param max_limit Maximum character render limit.
    */
   [[nodiscard]] constexpr foreign_string_view
-  as_view(address_space_ref space, span<char> scratch MICROFMT_LIFETIMEBOUND, size_t max_limit = 4096) const noexcept {
+  as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND, size_t max_limit = 4096) const noexcept {
     return foreign_string_view(addr_, space, scratch, max_limit);
   }
 
@@ -138,7 +138,7 @@ public:
    * @param max_limit Maximum character render limit.
    */
   [[nodiscard]] constexpr foreign_string_view
-  as_view(address_space_ref space, span<char> scratch MICROFMT_LIFETIMEBOUND, size_t max_limit = 4096) const noexcept {
+  as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND, size_t max_limit = 4096) const noexcept {
     return foreign_string_view(address(), space, scratch, max_limit);
   }
 
@@ -204,11 +204,11 @@ template <typename T, typename Enable = void> struct remote_object_traits {
 // Lightweight type tag to pass types into constructor without instantiation
 template <typename T> struct type_tag {};
 
-class MICROFMT_POINTER remote_object_view {
+class RELOCO_POINTER remote_object_view {
 public:
   template <typename T>
   constexpr remote_object_view(uintptr_t addr, address_space_ref space, type_tag<T>,
-                               span<std::byte> scratch MICROFMT_LIFETIMEBOUND) noexcept
+                               span<std::byte> scratch RELOCO_LIFETIMEBOUND) noexcept
       : addr_(addr), space_(space), fields_(remote_object_traits<T>::fields()),
         struct_size_(remote_object_traits<T>::struct_size), struct_align_(remote_object_traits<T>::struct_align),
         scratch_(scratch) {
@@ -216,18 +216,18 @@ public:
   }
 
   constexpr remote_object_view(uintptr_t addr, address_space_ref space,
-                               span<const remote_field_desc> fields MICROFMT_LIFETIMEBOUND, size_t struct_size,
-                               size_t struct_align, span<std::byte> scratch MICROFMT_LIFETIMEBOUND) noexcept
+                               span<const remote_field_desc> fields RELOCO_LIFETIMEBOUND, size_t struct_size,
+                               size_t struct_align, span<std::byte> scratch RELOCO_LIFETIMEBOUND) noexcept
       : addr_(addr), space_(space), fields_(fields), struct_size_(struct_size), struct_align_(struct_align),
         scratch_(scratch) {}
 
   [[nodiscard]] constexpr uintptr_t address() const noexcept { return addr_; }
   [[nodiscard]] constexpr address_space_ref space() const noexcept { return space_; }
-  [[nodiscard]] constexpr span<const remote_field_desc> fields() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr span<const remote_field_desc> fields() const noexcept RELOCO_LIFETIMEBOUND {
     return fields_;
   }
   [[nodiscard]] constexpr size_t struct_size() const noexcept { return struct_size_; }
-  [[nodiscard]] constexpr span<std::byte> scratch() const noexcept MICROFMT_LIFETIMEBOUND { return scratch_; }
+  [[nodiscard]] constexpr span<std::byte> scratch() const noexcept RELOCO_LIFETIMEBOUND { return scratch_; }
   [[nodiscard]] constexpr bool is_null() const noexcept { return addr_ == 0; }
 
   [[nodiscard]] expected<const void *, remote_load_error> load_raw() const noexcept {
@@ -279,12 +279,12 @@ template <> struct formatter<remote_object_view> {
     auto scratch = view.scratch();
     span<char> work_buf;
     if (scratch.size() > view.struct_size()) {
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
       work_buf = span<char>(reinterpret_cast<char *>(scratch.data() + view.struct_size()),
                             scratch.size() - view.struct_size());
 
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
     }
 
     for (size_t i = 0; i < fields.size(); ++i) {
@@ -294,11 +294,11 @@ template <> struct formatter<remote_object_view> {
       out.write(fields[i].name);
       out.write(": ");
 
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
       const void *field_ptr = reinterpret_cast<const char *>(*obj) + fields[i].offset;
 
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
 
       fields[i].format_fn(view.space(), field_ptr, work_buf, out);
     }

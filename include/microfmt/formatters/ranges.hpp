@@ -28,7 +28,7 @@ template <size_t N> struct fixed_string {
   char buf[N + 1]{};
   size_t size{N};
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
   constexpr fixed_string(const char (&str)[N + 1]) noexcept {
     for (size_t i = 0; i < N; ++i) {
@@ -37,7 +37,7 @@ template <size_t N> struct fixed_string {
     buf[N] = '\0';
   }
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 
   [[nodiscard]] constexpr microfmt::string_view view() const noexcept { return microfmt::string_view(buf, N); }
 };
@@ -132,7 +132,7 @@ template <typename It, typename Sentinel> struct formatter<join_view<It, Sentine
     element_fmt.parse(elem_ctx);
 
     bool is_first = true;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     for (auto it = jv.first; it != jv.last; ++it) {
       if (!is_first) {
@@ -141,7 +141,7 @@ template <typename It, typename Sentinel> struct formatter<join_view<It, Sentine
       is_first = false;
       element_fmt.format(*it, out);
     }
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 };
 
@@ -167,7 +167,7 @@ struct formatter<join_as_view<It, Sentinel, Delim, ElemSpec>> {
     element_fmt.parse(elem_ctx);
 
     bool is_first = true;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     for (auto it = jv.first; it != jv.last; ++it) {
       if (!is_first) {
@@ -177,7 +177,7 @@ struct formatter<join_as_view<It, Sentinel, Delim, ElemSpec>> {
       element_fmt.format(*it, out);
     }
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 };
 #endif

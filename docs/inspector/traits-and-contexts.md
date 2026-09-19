@@ -335,9 +335,9 @@ Type erasure never transfers ownership:
 
 Moving or destroying a typed owner invalidates references and views previously
 created from it. Borrowing constructors and scratch parameters carry
-`MICROFMT_LIFETIMEBOUND` and `MICROFMT_LIFETIME_CAPTURE_BY_THIS` where the
-object retains them. Typed owners are marked `MICROFMT_OWNER`; erased handles
-and views are marked `MICROFMT_POINTER`. Borrow-producing `context()`, `ref()`,
+`RELOCO_LIFETIMEBOUND` and `RELOCO_LIFETIME_CAPTURE_BY_THIS` where the
+object retains them. Typed owners are marked `RELOCO_OWNER`; erased handles
+and views are marked `RELOCO_POINTER`. Borrow-producing `context()`, `ref()`,
 and `view()` operations are lvalue-qualified and their rvalue overloads are
 deleted, preventing references from being obtained from temporary owners even
 on compilers that ignore lifetime attributes.

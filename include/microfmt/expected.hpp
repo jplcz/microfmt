@@ -19,9 +19,9 @@ template <typename E> class unexpected {
 
 public:
   constexpr explicit unexpected(E e) noexcept : m_error(std::move(e)) {}
-  constexpr E &value() & noexcept MICROFMT_LIFETIMEBOUND { return m_error; }
-  constexpr const E &value() const & noexcept MICROFMT_LIFETIMEBOUND { return m_error; }
-  constexpr E &&value() && noexcept MICROFMT_LIFETIMEBOUND { return std::move(m_error); }
+  constexpr E &value() & noexcept RELOCO_LIFETIMEBOUND { return m_error; }
+  constexpr const E &value() const & noexcept RELOCO_LIFETIMEBOUND { return m_error; }
+  constexpr E &&value() && noexcept RELOCO_LIFETIMEBOUND { return std::move(m_error); }
 };
 
 template <typename E> unexpected(E) -> unexpected<E>;
@@ -96,42 +96,42 @@ public:
   constexpr bool has_value() const noexcept { return m_has_value; }
   constexpr explicit operator bool() const noexcept { return m_has_value; }
 
-  constexpr T &value() & noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr T &value() & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(m_has_value, "Result does not contain a value");
     return m_value;
   }
 
-  constexpr T &&value() && noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr T &&value() && noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(m_has_value, "Result does not contain a value");
     return std::move(m_value);
   }
 
-  constexpr const T &value() const & noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr const T &value() const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(m_has_value, "Result does not contain a value");
     return m_value;
   }
 
-  constexpr const T &&value() const && noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr const T &&value() const && noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(m_has_value, "Result does not contain a value");
     return std::move(m_value);
   }
 
-  constexpr E &error() & noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr E &error() & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!m_has_value, "Result does not contain an error");
     return m_error;
   }
 
-  constexpr const E &error() const & noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr const E &error() const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!m_has_value, "Result does not contain an error");
     return m_error;
   }
 
-  constexpr E &&error() && noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr E &&error() && noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!m_has_value, "Result does not contain an error");
     return std::move(m_error);
   }
 
-  constexpr const E &&error() const && noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr const E &&error() const && noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!m_has_value, "Result does not contain an error");
     return std::move(m_error);
   }
@@ -153,13 +153,13 @@ public:
     return m_has_value ? m_value : std::move(fallback);
   }
 
-  constexpr T *operator->() & noexcept MICROFMT_LIFETIMEBOUND { return &value(); }
-  constexpr const T *operator->() const & noexcept MICROFMT_LIFETIMEBOUND { return &value(); }
+  constexpr T *operator->() & noexcept RELOCO_LIFETIMEBOUND { return &value(); }
+  constexpr const T *operator->() const & noexcept RELOCO_LIFETIMEBOUND { return &value(); }
 
-  constexpr T &operator*() & noexcept MICROFMT_LIFETIMEBOUND { return value(); }
-  constexpr const T &operator*() const & noexcept MICROFMT_LIFETIMEBOUND { return value(); }
+  constexpr T &operator*() & noexcept RELOCO_LIFETIMEBOUND { return value(); }
+  constexpr const T &operator*() const & noexcept RELOCO_LIFETIMEBOUND { return value(); }
 
-  MICROFMT_BLOCK_RVALUE_ACCESS(T);
+  RELOCO_BLOCK_RVALUE_ACCESS(T);
 
   constexpr bool operator==(const expected &other) const noexcept {
     if (m_has_value != other.m_has_value)
@@ -203,22 +203,22 @@ public:
     MICROFMT_ASSERT(m_has_value, "Result contains an error");
   }
 
-  constexpr E &error() & noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr E &error() & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!m_has_value, "Result does not contain an error");
     return m_error;
   }
 
-  constexpr const E &error() const & noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr const E &error() const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!m_has_value, "Result does not contain an error");
     return m_error;
   }
 
-  constexpr E &&error() && noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr E &&error() && noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!m_has_value, "Result does not contain an error");
     return std::move(m_error);
   }
 
-  constexpr const E &&error() const && noexcept MICROFMT_LIFETIMEBOUND {
+  constexpr const E &&error() const && noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!m_has_value, "Result does not contain an error");
     return std::move(m_error);
   }

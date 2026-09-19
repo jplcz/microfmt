@@ -7,7 +7,7 @@
 #include <microfmt/microfmt.hpp>
 #include <string_view>
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 namespace {
 
@@ -177,4 +177,4 @@ __attribute__((noinline)) void probe_libc_snprintf_10_mixed_system_state(uint8_t
 
 } // extern "C"
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

@@ -81,7 +81,7 @@ TEST(PointerTest, FormatsTypedPointersAndAllNullRepresentations) {
 }
 
 TEST(PointerTest, FormatsPointerRangesFromBeginEndAndCount) {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   microfmt::buffer_sink<128> output;
   const std::array<int, 3> values{{7, 42, -1}};
@@ -92,11 +92,11 @@ TEST(PointerTest, FormatsPointerRangesFromBeginEndAndCount) {
   output.reset();
   microfmt::format_to(output.as_sink(), "{}", microfmt::raw_range(values.data() + 1, size_t{2}));
   EXPECT_EQ(output.view(), "[42, -1]");
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 TEST(PointerTest, FormatsEmptyAndNullPointerRanges) {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   microfmt::buffer_sink<64> output;
   const int values[] = {1, 2};
@@ -118,7 +118,7 @@ TEST(PointerTest, FormatsEmptyAndNullPointerRanges) {
   microfmt::format_to(output.as_sink(), "{}", reversed);
   EXPECT_EQ(output.view(), "[]");
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 TEST(PointerTest, ForwardsRangeSpecifiersAndSelectsDelimiters) {

@@ -32,11 +32,11 @@ template <typename CharT, typename Traits, typename Alloc> struct formatter<std:
    * @param out Destination sink.
    */
   void format(const std::basic_string<CharT, Traits, Alloc> &val, const sink &out) const noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     out.write(std::basic_string_view<CharT, Traits>(val.data(), val.size()));
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 };
 

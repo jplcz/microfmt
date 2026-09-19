@@ -23,7 +23,7 @@ int main() {
   auto s3 = microfmt::format<64>("Clock Div: {}", microfmt::bin<3>(cr1));
   // Clock Div: 100
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::fwrite(s1.view().data(), 1, s1.size(), stdout);
   std::putchar('\n');
@@ -32,5 +32,5 @@ int main() {
   std::fwrite(s3.view().data(), 1, s3.size(), stdout);
   std::putchar('\n');
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }

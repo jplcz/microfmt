@@ -72,7 +72,7 @@ struct remote_page_table_callbacks {
 /**
  * @brief Borrowed architecture layout used by a remote page-table walker.
  */
-class MICROFMT_POINTER remote_page_table_layout_ref {
+class RELOCO_POINTER remote_page_table_layout_ref {
 public:
   constexpr remote_page_table_layout_ref() noexcept = default;
 
@@ -82,7 +82,7 @@ public:
 
   template <typename State>
   constexpr remote_page_table_layout_ref(
-      const State &state MICROFMT_LIFETIMEBOUND,
+      const State &state RELOCO_LIFETIMEBOUND,
       remote_page_table_callbacks callbacks) noexcept
       : state_(&state), callbacks_(callbacks) {}
 

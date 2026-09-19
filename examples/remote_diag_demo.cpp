@@ -8,7 +8,7 @@
 #include <microfmt/inspector/symbol_resolver.hpp>
 #include <microfmt/sinks/stdio.hpp>
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 #if UINTPTR_MAX < UINT64_MAX
 
@@ -187,4 +187,4 @@ int main() {
 
 #endif
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

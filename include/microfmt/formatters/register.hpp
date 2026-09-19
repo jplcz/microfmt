@@ -162,11 +162,11 @@ template <size_t N, typename UInt> struct formatter<reg_view<N, UInt>> {
 
     size_t printed_count = 0;
     for (size_t i = 0; i < N; ++i) {
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
       const auto &f = d.fields[i];
 
-      MICROFMT_END_UNSAFE_BUFFER_USAGE
+      RELOCO_END_UNSAFE_BUFFER_USAGE
 
       const uint64_t mask = (f.bit_width == 64) ? ~0ULL : ((1ULL << f.bit_width) - 1ULL);
       const uint64_t val = (static_cast<uint64_t>(rv.value) >> f.bit_offset) & mask;

@@ -26,7 +26,7 @@ namespace microfmt {
  * Pulls a string from a custom source or foreign address space through
  * a reusable scratch buffer in bounded chunks.
  */
-class MICROFMT_POINTER foreign_string_view {
+class RELOCO_POINTER foreign_string_view {
 public:
   /**
    * @brief Constructs an empty (null) foreign string view.
@@ -42,7 +42,7 @@ public:
    * @param max_limit Maximum characters to render.
    */
   constexpr foreign_string_view(uintptr_t addr, address_space_ref space,
-                                span<char> scratch MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+                                span<char> scratch RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS,
                                 size_t max_limit = 4096) noexcept
       : addr_(addr), space_(space), scratch_(scratch), max_limit_(max_limit) {}
 
@@ -57,7 +57,7 @@ public:
    */
   template <size_t N>
   constexpr foreign_string_view(uintptr_t addr, address_space_ref space,
-                                char (&scratch MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS)[N],
+                                char (&scratch RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS)[N],
                                 size_t max_limit = 4096) noexcept
       : addr_(addr), space_(space), scratch_(scratch, N), max_limit_(max_limit) {}
 
@@ -77,7 +77,7 @@ public:
    * @brief Returns the scratch chunk buffer.
    * @return Scratch span used for chunked reads.
    */
-  [[nodiscard]] constexpr span<char> scratch() const noexcept MICROFMT_LIFETIMEBOUND { return scratch_; }
+  [[nodiscard]] constexpr span<char> scratch() const noexcept RELOCO_LIFETIMEBOUND { return scratch_; }
 
   /**
    * @brief Returns the maximum render length.

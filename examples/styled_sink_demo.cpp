@@ -8,7 +8,7 @@
 #include <microfmt/sinks/styled_sink.hpp>
 
 int main() {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
   microfmt::buffer_sink<256> transformed_output;
   microfmt::transform_sink uppercase(transformed_output.as_sink(), microfmt::char_transform::to_upper);
@@ -27,5 +27,5 @@ int main() {
   std::printf("limited (%zu bytes): %.*s\n", limited_output.size(), static_cast<int>(limited_output.size()),
               limited_output.view().data());
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 }

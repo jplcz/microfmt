@@ -30,7 +30,7 @@ public:
    * @return `true` when the bytecode was applied; `false` when a personality
    * routine requires an external `.ARM.extab` table read.
    */
-  MICROFMT_UNSAFE_BUFFER_USAGE
+  RELOCO_UNSAFE_BUFFER_USAGE
   static bool execute_bytecode(address_space_ref space, uint32_t unwind_word, uintptr_t &io_sp, uintptr_t &,
                                register_context_ref reg_ctx) noexcept {
     // Check personality routine bits (bits [31:24])
@@ -64,7 +64,7 @@ private:
    * @param bytes The opcode byte to decode.
    * @return `false` to stop decoding (FINISH), `true` to continue.
    */
-  MICROFMT_UNSAFE_BUFFER_USAGE
+  RELOCO_UNSAFE_BUFFER_USAGE
   static bool parse_and_apply_bytes(address_space_ref space, uintptr_t &io_sp, register_context_ref reg_ctx,
                                     const uint8_t bytes[3]) noexcept {
     int idx = 0;

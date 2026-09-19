@@ -86,7 +86,7 @@ inline void format_remote_fault(const sink &out, uintptr_t addr,
  * Renders `(null)`, a raw `0x..` address, or a resolved symbol depending on
  * the format mode and resolver availability.
  */
-class MICROFMT_POINTER remote_fn_ptr {
+class RELOCO_POINTER remote_fn_ptr {
 public:
   /**
    * @brief Constructs an empty (null) view.
@@ -101,7 +101,7 @@ public:
    */
   constexpr remote_fn_ptr(uintptr_t addr, symbol_resolver_ref resolver,
                           symbol_resolution_context &context
-                              MICROFMT_LIFETIMEBOUND) noexcept
+                              RELOCO_LIFETIMEBOUND) noexcept
       : addr_(addr), resolver_(resolver), context_(&context) {}
 
   /**
@@ -125,7 +125,7 @@ public:
    * @brief Returns caller-owned symbol-resolution temporaries.
    */
   [[nodiscard]] constexpr symbol_resolution_context &
-  context() const noexcept MICROFMT_LIFETIMEBOUND {
+  context() const noexcept RELOCO_LIFETIMEBOUND {
     return *context_;
   }
 
@@ -196,7 +196,7 @@ template <> struct formatter<remote_fn_ptr> {
  *
  * @tparam T Referenced remote object type.
  */
-template <typename T> class MICROFMT_POINTER remote_diag_ref {
+template <typename T> class RELOCO_POINTER remote_diag_ref {
 public:
   /**
    * @brief Constructs a diagnostics-aware remote object reference.
@@ -208,9 +208,9 @@ public:
    */
   constexpr remote_diag_ref(uintptr_t addr, address_space_ref space,
                             symbol_resolver_ref resolver,
-                            span<std::byte> scratch MICROFMT_LIFETIMEBOUND,
+                            span<std::byte> scratch RELOCO_LIFETIMEBOUND,
                             symbol_resolution_context &symbol_context
-                                MICROFMT_LIFETIMEBOUND) noexcept
+                                RELOCO_LIFETIMEBOUND) noexcept
       : addr_(addr), space_(space), resolver_(resolver), scratch_(scratch),
         symbol_context_(&symbol_context) {}
 
@@ -230,7 +230,7 @@ public:
    * @return A pointer into the scratch buffer, or a precise loading error.
    */
   [[nodiscard]] expected<T *, remote_load_error>
-  load() const noexcept MICROFMT_LIFETIMEBOUND {
+  load() const noexcept RELOCO_LIFETIMEBOUND {
     if (addr_ == 0)
       return unexpected(remote_load_error::null_address);
     if (scratch_.size() < sizeof(T))
@@ -261,7 +261,7 @@ public:
     return resolver_;
   }
   [[nodiscard]] constexpr symbol_resolution_context &
-  symbol_context() const noexcept MICROFMT_LIFETIMEBOUND {
+  symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
     return *symbol_context_;
   }
 

@@ -67,7 +67,7 @@ template <typename ArchTag> struct frame_unwinder_traits;
  * Packs a context pointer and a virtual table into two words, avoiding
  * allocations, RTTI, and virtual dispatch.
  */
-class MICROFMT_POINTER frame_unwinder_ref {
+class RELOCO_POINTER frame_unwinder_ref {
 public:
   /**
    * @brief Virtual table of unwinder operations.
@@ -106,8 +106,8 @@ public:
                         const Context *, const typename Traits::context_type *>,
                 int> = 0>
   constexpr frame_unwinder_ref(
-      ArchTag, const Context &ctx MICROFMT_LIFETIMEBOUND
-                   MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      ArchTag, const Context &ctx RELOCO_LIFETIMEBOUND
+                   RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<ArchTag>) {}
 
   template <typename ArchTag, typename Context,
@@ -126,7 +126,7 @@ public:
       typename Traits = frame_unwinder_traits<ArchTag>,
       std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
   [[nodiscard]] static constexpr frame_unwinder_ref
-  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return frame_unwinder_ref(ArchTag{}, ctx);
   }
 
@@ -189,7 +189,7 @@ template <typename Tag,
               std::is_void_v<typename frame_unwinder_traits<Tag>::context_type>>
 class frame_unwinder;
 
-template <typename Tag> class MICROFMT_OWNER frame_unwinder<Tag, false> {
+template <typename Tag> class RELOCO_OWNER frame_unwinder<Tag, false> {
 public:
   using traits_type = frame_unwinder_traits<Tag>;
   using context_type = typename traits_type::context_type;
@@ -198,17 +198,17 @@ public:
       : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   [[nodiscard]] constexpr frame_unwinder_ref
-  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return frame_unwinder_ref(Tag{}, context_);
   }
 
@@ -260,11 +260,11 @@ public:
         is_valid_(initial_fp != 0 && initial_pc != 0) {}
 
   [[nodiscard]] constexpr const stack_frame &
-  operator*() const noexcept MICROFMT_LIFETIMEBOUND {
+  operator*() const noexcept RELOCO_LIFETIMEBOUND {
     return frame_;
   }
   [[nodiscard]] constexpr const stack_frame *
-  operator->() const noexcept MICROFMT_LIFETIMEBOUND {
+  operator->() const noexcept RELOCO_LIFETIMEBOUND {
     return &frame_;
   }
 
@@ -324,7 +324,7 @@ private:
 /**
  * @brief Formattable view rendering a remote backtrace.
  */
-class MICROFMT_POINTER remote_backtrace_view {
+class RELOCO_POINTER remote_backtrace_view {
 public:
   /**
    * @brief Constructs a backtrace view.
@@ -336,7 +336,7 @@ public:
   constexpr remote_backtrace_view(frame_pointer_iterator iter,
                                   symbol_resolver_ref resolver,
                                   symbol_resolution_context &symbol_context
-                                      MICROFMT_LIFETIMEBOUND,
+                                      RELOCO_LIFETIMEBOUND,
                                   uint32_t max_depth = 16) noexcept
       : iter_(iter), resolver_(resolver), symbol_context_(&symbol_context),
         max_depth_(max_depth) {}
@@ -356,7 +356,7 @@ public:
     return resolver_;
   }
   [[nodiscard]] constexpr symbol_resolution_context &
-  symbol_context() const noexcept MICROFMT_LIFETIMEBOUND {
+  symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
     return *symbol_context_;
   }
   /**

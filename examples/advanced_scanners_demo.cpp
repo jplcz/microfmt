@@ -29,9 +29,9 @@ bool is_plausible_task(const void *bytes, void *opaque) noexcept {
     return false;
 
   task_record candidate{};
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   std::memcpy(&candidate, bytes, sizeof(candidate));
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   const auto &requirements = *static_cast<const task_requirements *>(opaque);
   return candidate.magic == requirements.magic &&

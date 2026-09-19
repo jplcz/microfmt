@@ -101,7 +101,7 @@ struct elf_image_info {
  *
  * Binds a traits-selected provider context with zero allocation.
  */
-class MICROFMT_POINTER elf_image_enumerator_ref {
+class RELOCO_POINTER elf_image_enumerator_ref {
 public:
   /**
    * @brief Virtual table of image enumeration operations.
@@ -138,8 +138,8 @@ public:
                                  const typename Traits::context_type *>,
                              int> = 0>
   constexpr elf_image_enumerator_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
-               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
+               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context,
@@ -149,7 +149,7 @@ public:
   template <typename Tag, typename Context,
             typename Traits = elf_image_enumerator_traits<Tag>>
   [[nodiscard]] static constexpr elf_image_enumerator_ref
-  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return elf_image_enumerator_ref(Tag{}, ctx);
   }
 
@@ -215,7 +215,7 @@ private:
 /**
  * @brief Typed owner for an ELF image-enumerator traits specialization.
  */
-template <typename Tag> class MICROFMT_OWNER elf_image_enumerator {
+template <typename Tag> class RELOCO_OWNER elf_image_enumerator {
 public:
   using traits_type = elf_image_enumerator_traits<Tag>;
   using context_type = typename traits_type::context_type;
@@ -224,22 +224,22 @@ public:
       : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   [[nodiscard]] constexpr elf_image_enumerator_ref
-  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return elf_image_enumerator_ref(Tag{}, context_);
   }
 
   [[nodiscard]] constexpr operator elf_image_enumerator_ref()
-      const & noexcept MICROFMT_LIFETIMEBOUND {
+      const & noexcept RELOCO_LIFETIMEBOUND {
     return ref();
   }
 
@@ -262,7 +262,7 @@ private:
  * @tparam MaxImages Maximum number of registered images.
  */
 template <size_t MaxImages>
-class MICROFMT_OWNER multi_elf_registry_context {
+class RELOCO_OWNER multi_elf_registry_context {
 public:
   /**
    * @brief Constructs an empty registry.
@@ -277,11 +277,11 @@ public:
   constexpr bool register_image(const elf_image_info &info) noexcept {
     if (image_count_ >= MaxImages)
       return false;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     images_[image_count_++] = info;
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     return true;
   }
@@ -295,11 +295,11 @@ public:
   [[nodiscard]] constexpr bool enumerate(span<elf_image_info> out_buffer, size_t &out_count) const noexcept {
     size_t copy_count = (image_count_ < out_buffer.size()) ? image_count_ : out_buffer.size();
     for (size_t i = 0; i < copy_count; ++i) {
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
       out_buffer[i] = images_[i];
 
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
     }
     out_count = copy_count;
     return true;
@@ -312,7 +312,7 @@ public:
    * @return `true` when an owning image was found.
    */
   [[nodiscard]] constexpr bool find_by_pc(uintptr_t pc, elf_image_info &out_info) const noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     for (size_t i = 0; i < image_count_; ++i) {
       if (images_[i].contains(pc)) {
@@ -321,7 +321,7 @@ public:
       }
     }
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     return false;
   }

@@ -21,7 +21,7 @@ namespace microfmt {
  * ownership. The pointed object must outlive the wrapper and every pointer or
  * reference obtained from it.
  */
-template <typename T> class MICROFMT_POINTER value_ptr {
+template <typename T> class RELOCO_POINTER value_ptr {
 public:
   constexpr value_ptr() noexcept = default;
   constexpr value_ptr(std::nullptr_t) noexcept {}
@@ -29,8 +29,8 @@ public:
   template <typename U,
             typename = std::enable_if_t<std::is_convertible_v<U *, T *>>>
   constexpr value_ptr(
-      U *ptr MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      U *ptr RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ptr_(ptr) {}
 
   template <typename U,
@@ -38,20 +38,20 @@ public:
   constexpr value_ptr(value_ptr<U> other) noexcept : ptr_(other.ptr_) {}
 
   [[nodiscard]] constexpr T *
-  get() const noexcept MICROFMT_LIFETIMEBOUND {
+  get() const noexcept RELOCO_LIFETIMEBOUND {
     return ptr_;
   }
 
   template <typename U = T,
             std::enable_if_t<!std::is_void_v<U>, int> = 0>
   [[nodiscard]] constexpr U &
-  operator*() const noexcept MICROFMT_LIFETIMEBOUND {
+  operator*() const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(ptr_ != nullptr, "value_ptr: dereferencing a null pointer");
     return *ptr_;
   }
 
   [[nodiscard]] constexpr T *
-  operator->() const noexcept MICROFMT_LIFETIMEBOUND {
+  operator->() const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(ptr_ != nullptr, "value_ptr: dereferencing a null pointer");
     return ptr_;
   }
@@ -65,15 +65,15 @@ public:
    * or `get()` and dereferences repeatedly on a hot path where the checked
    * `operator*`/`operator->` overhead is unacceptable.
    *
-   * Marked `MICROFMT_UNSAFE_BUFFER_USAGE`: under Clang's
+   * Marked `RELOCO_UNSAFE_BUFFER_USAGE`: under Clang's
    * `-Wunsafe-buffer-usage`, every call site must be wrapped in
-   * `MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE`,
+   * `RELOCO_BEGIN_UNSAFE_BUFFER_USAGE`/`RELOCO_END_UNSAFE_BUFFER_USAGE`,
    * making the opt-out to the unsafe tier explicit and greppable at each use.
    */
   template <typename U = T,
             std::enable_if_t<!std::is_void_v<U>, int> = 0>
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr U &
-  unsafe_deref() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr U &
+  unsafe_deref() const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(ptr_ != nullptr, "value_ptr: dereferencing a null pointer");
     return *ptr_;
   }

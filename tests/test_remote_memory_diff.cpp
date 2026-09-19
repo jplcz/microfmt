@@ -36,9 +36,9 @@ template <> struct microfmt::address_space_traits<bounded_space_tag> {
     const uintptr_t offset = addr - context->base;
     if (offset > context->size || size > context->size - offset)
       return false;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(dest, context->data + offset, size);
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
 

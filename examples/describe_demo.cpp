@@ -44,11 +44,11 @@ struct SystemState {
 BOOST_DESCRIBE_STRUCT(SystemState, (), (node_id, verbosity, sensor, net))
 
 static void terminal_write(void *, microfmt::string_view sv) noexcept {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::fwrite(sv.data(), 1, sv.size(), stdout);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 int main() {

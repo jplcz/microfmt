@@ -138,11 +138,11 @@ template <typename WordType, size_t N> struct formatter<reg_grid_view<WordType, 
     const uint8_t cols = (d.columns > 0) ? d.columns : 4;
 
     for (size_t i = 0; i < N; ++i) {
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
       microfmt::string_view name = d.names[i];
 
-      MICROFMT_END_UNSAFE_BUFFER_USAGE
+      RELOCO_END_UNSAFE_BUFFER_USAGE
 
       out.write(name);
 
@@ -153,11 +153,11 @@ template <typename WordType, size_t N> struct formatter<reg_grid_view<WordType, 
       }
       out.write("= 0x");
 
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
       detail::format_unsigned(out, static_cast<uint64_t>(gv.values[i]), 16, true, hex_digits);
 
-      MICROFMT_END_UNSAFE_BUFFER_USAGE
+      RELOCO_END_UNSAFE_BUFFER_USAGE
 
       // Newline or column separator
       if ((i + 1) % cols == 0 || (i + 1) == N) {

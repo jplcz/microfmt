@@ -33,7 +33,7 @@ public:
       write_fn_t write_fn = write_to_journal) noexcept
       : write_fn_(write_fn) {}
 
-  [[nodiscard]] log_sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return log_sink{this,
                     [](void *ctx, const log_msg &msg) noexcept {
                       static_cast<systemd_sink *>(ctx)->log_impl(msg);

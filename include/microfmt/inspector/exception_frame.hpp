@@ -76,7 +76,7 @@ template <typename ArchTag> struct exception_frame_traits;
 /**
  * @brief Type-erased, two-word handle decoding exception/trap frames.
  */
-class MICROFMT_POINTER exception_frame_ref {
+class RELOCO_POINTER exception_frame_ref {
 public:
   /**
    * @brief Virtual table of trap-frame operations.
@@ -133,8 +133,8 @@ public:
                         const Context *, const typename Traits::context_type *>,
                 int> = 0>
   constexpr exception_frame_ref(
-      ArchTag, const Context &ctx MICROFMT_LIFETIMEBOUND
-                   MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      ArchTag, const Context &ctx RELOCO_LIFETIMEBOUND
+                   RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<ArchTag>) {}
 
   template <typename ArchTag, typename Context,
@@ -167,7 +167,7 @@ public:
       typename Traits = exception_frame_traits<ArchTag>,
       std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
   [[nodiscard]] static constexpr exception_frame_ref
-  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return exception_frame_ref(ArchTag{}, ctx);
   }
 
@@ -284,7 +284,7 @@ template <typename Tag,
               std::is_void_v<typename exception_frame_traits<Tag>::context_type>>
 class exception_frame;
 
-template <typename Tag> class MICROFMT_OWNER exception_frame<Tag, false> {
+template <typename Tag> class RELOCO_OWNER exception_frame<Tag, false> {
 public:
   using traits_type = exception_frame_traits<Tag>;
   using context_type = typename traits_type::context_type;
@@ -293,17 +293,17 @@ public:
       : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   [[nodiscard]] constexpr exception_frame_ref
-  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return exception_frame_ref(Tag{}, context_);
   }
 
@@ -454,7 +454,7 @@ private:
 /**
  * @brief Formattable summary view of a trap context.
  */
-class MICROFMT_POINTER remote_trap_view {
+class RELOCO_POINTER remote_trap_view {
 public:
   /**
    * @brief Constructs a trap summary view.
@@ -467,7 +467,7 @@ public:
                              exception_frame_ref decoder,
                              symbol_resolver_ref resolver,
                              symbol_resolution_context &symbol_context
-                                 MICROFMT_LIFETIMEBOUND) noexcept
+                                 RELOCO_LIFETIMEBOUND) noexcept
       : trap_(trap), decoder_(decoder), resolver_(resolver),
         symbol_context_(&symbol_context) {}
 
@@ -476,7 +476,7 @@ public:
    * @return Reference to the @ref trap_context.
    */
   [[nodiscard]] constexpr const trap_context &
-  trap() const noexcept MICROFMT_LIFETIMEBOUND {
+  trap() const noexcept RELOCO_LIFETIMEBOUND {
     return trap_;
   }
   /**
@@ -494,7 +494,7 @@ public:
     return resolver_;
   }
   [[nodiscard]] constexpr symbol_resolution_context &
-  symbol_context() const noexcept MICROFMT_LIFETIMEBOUND {
+  symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
     return *symbol_context_;
   }
 

@@ -28,9 +28,9 @@ bool next_property(void *ctx, microfmt::property_entry &out) noexcept {
   if (state.index >= state.size) {
     return false;
   }
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   out = state.entries[state.index++];
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
   return true;
 }
 

@@ -22,7 +22,7 @@ namespace microfmt {
  *
  * @tparam Ts The alternative types of the wrapped variant.
  */
-template <typename... Ts> class MICROFMT_POINTER variant_view {
+template <typename... Ts> class RELOCO_POINTER variant_view {
 public:
   /**
    * @brief The wrapped `std::variant` type.
@@ -38,7 +38,7 @@ public:
    */
   constexpr explicit variant_view(
                                   const variant_type &var
-                                      MICROFMT_LIFETIMEBOUND,
+                                      RELOCO_LIFETIMEBOUND,
                                   microfmt::string_view prefix = "",
                                   microfmt::string_view suffix = "",
                                   bool show_index = false) noexcept
@@ -105,7 +105,7 @@ private:
  */
 template <typename... Ts>
 [[nodiscard]] constexpr auto
-as_variant(const std::variant<Ts...> &var MICROFMT_LIFETIMEBOUND) noexcept {
+as_variant(const std::variant<Ts...> &var RELOCO_LIFETIMEBOUND) noexcept {
   return variant_view<Ts...>(var, "", "", false);
 }
 
@@ -127,7 +127,7 @@ as_variant(const std::variant<Ts...> &&) noexcept = delete;
  */
 template <typename... Ts>
 [[nodiscard]] constexpr auto
-as_variant(const std::variant<Ts...> &var MICROFMT_LIFETIMEBOUND,
+as_variant(const std::variant<Ts...> &var RELOCO_LIFETIMEBOUND,
            microfmt::string_view prefix,
            microfmt::string_view suffix) noexcept {
   return variant_view<Ts...>(var, prefix, suffix, false);
@@ -153,7 +153,7 @@ as_variant(const std::variant<Ts...> &&, microfmt::string_view,
 template <typename... Ts>
 [[nodiscard]] constexpr auto
 as_debug_variant(
-                 const std::variant<Ts...> &var MICROFMT_LIFETIMEBOUND,
+                 const std::variant<Ts...> &var RELOCO_LIFETIMEBOUND,
                  bool show_index = false) noexcept {
   return variant_view<Ts...>(var, "variant", "", show_index);
 }

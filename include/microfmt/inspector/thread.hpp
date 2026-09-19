@@ -62,7 +62,7 @@ namespace microfmt {
 /**
  * @brief Thread descriptor containing thread-specific attributes and CPU register context access.
  */
-struct MICROFMT_POINTER thread_info {
+struct RELOCO_POINTER thread_info {
   // Thread-Specific Data
   uint64_t thread_id{0};
   string_view name{};
@@ -93,7 +93,7 @@ struct MICROFMT_POINTER thread_info {
    * from core thread properties to any attached extended metadata source.
    */
   [[nodiscard]] constexpr metadata_map
-  make_metadata_view(metadata_state &the_state) const & noexcept MICROFMT_LIFETIMEBOUND {
+  make_metadata_view(metadata_state &the_state) const & noexcept RELOCO_LIFETIMEBOUND {
     the_state.thread = this;
     the_state.step = 0;
     the_state.in_extended = false;

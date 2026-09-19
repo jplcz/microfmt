@@ -26,7 +26,7 @@ inline void format_boost_address_v6(const boost::asio::ip::address_v6 &address,
                                     const sink &out) noexcept {
   const auto bytes = address.to_bytes();
   uint16_t words[8]{};
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   for (std::size_t index = 0; index < 8; ++index) {
     words[index] =
         static_cast<uint16_t>((static_cast<uint16_t>(bytes[index * 2]) << 8) |
@@ -63,7 +63,7 @@ inline void format_boost_address_v6(const boost::asio::ip::address_v6 &address,
     detail::format_unsigned(out, words[index], 16, false, 0);
     ++index;
   }
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   if (address.scope_id() != 0) {
     out.put('%');

@@ -33,11 +33,11 @@ int main() {
   auto buf = microfmt::format<128>("Location: [{}]", pos);
 
   // Output: Location: [Lat: 52, Lon: 21]
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::fwrite(buf.view().data(), 1, buf.size(), stdout);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   std::putchar('\n');
 

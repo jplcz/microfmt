@@ -11,11 +11,11 @@
 // Hardware callback example: streams formatted characters directly to
 // stdout/UART
 static void uart_write_callback(void * /*ctx*/, microfmt::string_view sv) noexcept {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::fwrite(sv.data(), 1, sv.size(), stdout);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 struct SystemConfig {
@@ -25,7 +25,7 @@ struct SystemConfig {
   char tag[9];
 };
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 int main() {
   // Sample 28-byte network packet payload
@@ -66,4 +66,4 @@ int main() {
   return 0;
 }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

@@ -18,7 +18,7 @@ struct scanner_classifier_context {
   size_t region_count;
 };
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 template <> struct microfmt::memory_classifier_traits<scanner_classifier_tag> {
   using context_type = scanner_classifier_context;
@@ -36,7 +36,7 @@ template <> struct microfmt::memory_classifier_traits<scanner_classifier_tag> {
   }
 };
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 struct scanner_symbol_context {
   uintptr_t data_address;
@@ -87,11 +87,11 @@ bool read_demo_register(const void *opaque_state, microfmt::address_space_ref, u
     value = &registers.x1;
   if (!value)
     return false;
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::memcpy(output, value, size);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   return true;
 }

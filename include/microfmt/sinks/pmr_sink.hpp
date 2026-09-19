@@ -63,9 +63,9 @@ template <typename... Args>
 // PMR Monotonic Arena Sink (Direct Stream Allocator)
 // ============================================================================
 
-class MICROFMT_POINTER arena_sink {
+class RELOCO_POINTER arena_sink {
 public:
-  explicit arena_sink(std::pmr::memory_resource *mr MICROFMT_LIFETIMEBOUND, std::size_t initial_chunk_size = 128)
+  explicit arena_sink(std::pmr::memory_resource *mr RELOCO_LIFETIMEBOUND, std::size_t initial_chunk_size = 128)
       : mr_(mr) {
     assert(mr_);
     assert(initial_chunk_size != 0);
@@ -97,7 +97,7 @@ public:
     return *this;
   }
 
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept { static_cast<arena_sink *>(ctx)->write(sv); }};
   }
 
@@ -106,9 +106,9 @@ public:
       grow();
     }
     MICROFMT_ASSERT(size_ < current_cap_, "Array access out of bounds");
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     current_chunk_->data[size_++] = c;
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
   void write(microfmt::string_view sv) {
@@ -117,7 +117,7 @@ public:
     }
   }
 
-  [[nodiscard]] microfmt::string_view view() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] microfmt::string_view view() const noexcept RELOCO_LIFETIMEBOUND {
     return microfmt::string_view(current_chunk_->data, size_);
   }
 
@@ -144,11 +144,11 @@ private:
     chunk *previous_chunk = current_chunk_;
     const std::size_t previous_size = size_;
     allocate_chunk(new_capacity);
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     for (std::size_t i = 0; i < previous_size; ++i) {
       current_chunk_->data[i] = previous_chunk->data[i];
     }
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
     size_ = previous_size;
   }
 

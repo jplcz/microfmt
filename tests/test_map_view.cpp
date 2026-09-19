@@ -35,13 +35,13 @@ TEST(MapViewTest, SupportsIteratorRangesAndCustomExtractors) {
   microfmt::buffer_sink<128> output;
   const std::array<std::pair<uint8_t, int>, 3> samples{{{2, 3305}, {3, 3080}, {4, 1812}}};
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   const auto view = microfmt::map_view(
       samples.begin() + 1, samples.end(), [](const auto &sample) noexcept { return sample.first; },
       [](const auto &sample) noexcept { return sample.second; });
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   microfmt::format_to(output.as_sink(), "{:c}", view);
 

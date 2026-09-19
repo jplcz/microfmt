@@ -65,7 +65,7 @@ template <typename DataQuery> struct size_selected_data_query {
  * @tparam Layout Object providing separate `read_size` and
  * `read_data_address` operations.
  */
-template <typename Layout> class MICROFMT_POINTER remote_basic_string_view {
+template <typename Layout> class RELOCO_POINTER remote_basic_string_view {
 public:
   /**
    * @brief Constructs a view over a remote string object.
@@ -77,7 +77,7 @@ public:
    */
   constexpr remote_basic_string_view(
       uintptr_t object_address, address_space_ref space,
-      span<char> scratch MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+      span<char> scratch RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS,
       Layout layout, size_t max_limit = 4096) noexcept
       : object_address_(object_address), space_(space), scratch_(scratch),
         layout_(layout), max_limit_(max_limit) {}
@@ -88,7 +88,7 @@ public:
   template <size_t N>
   constexpr remote_basic_string_view(
       uintptr_t object_address, address_space_ref space,
-      char (&scratch MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS)[N],
+      char (&scratch RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS)[N],
       Layout layout, size_t max_limit = 4096) noexcept
       : object_address_(object_address), space_(space), scratch_(scratch, N),
         layout_(layout), max_limit_(max_limit) {}
@@ -102,7 +102,7 @@ public:
   }
 
   [[nodiscard]] constexpr span<char>
-  scratch() const noexcept MICROFMT_LIFETIMEBOUND {
+  scratch() const noexcept RELOCO_LIFETIMEBOUND {
     return scratch_;
   }
 

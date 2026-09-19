@@ -23,7 +23,7 @@ public:
 
   explicit constexpr syslog_sink(write_fn_t write_fn = write_to_syslog) noexcept : write_fn_(write_fn) {}
 
-  [[nodiscard]] log_sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return log_sink{this,
                     [](void *ctx, const log_msg &msg) noexcept { static_cast<syslog_sink *>(ctx)->log_impl(msg); },
                     nullptr, level::trace};
@@ -31,11 +31,11 @@ public:
 
 private:
   static void write_to_syslog(int priority, microfmt::string_view message) noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     ::syslog(priority, "%.*s", static_cast<int>(message.size()), message.data());
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
   static int priority_for(level lvl) noexcept {

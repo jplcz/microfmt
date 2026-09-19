@@ -10,11 +10,11 @@
 
 #include <microfmt/formatters/json.hpp>
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 #include <nlohmann/json.hpp>
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 TEST(JsonFormatterTest, ObjectAndArrayRoundTrip) {
   microfmt::buffer_sink<512> output;

@@ -33,13 +33,13 @@ template <> struct microfmt::address_space_traits<simulated_guest_space_tag> {
       return false;
     }
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     const auto *src =
         reinterpret_cast<const void *>(context->host_base_addr + addr);
     std::memcpy(dest, src, size);
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     return true;
   }
@@ -47,7 +47,7 @@ template <> struct microfmt::address_space_traits<simulated_guest_space_tag> {
   static bool read_string(microfmt::value_ref<const context_type> context,
                           uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
                           bool &null_term) noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     if (addr == 0 || !dest || max_len == 0)
       return false;
@@ -74,7 +74,7 @@ template <> struct microfmt::address_space_traits<simulated_guest_space_tag> {
     out_len = limit;
     null_term = false;
     return true;
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 };
 
@@ -152,7 +152,7 @@ int main() {
   // --------------------------------------------------------------------------
   // Scenario B: Stateful Foreign Simulated Guest Space with 32-bit Types
   // --------------------------------------------------------------------------
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   alignas(16) uint8_t simulated_ram[1024];
   std::memset(simulated_ram, 0, sizeof(simulated_ram));
@@ -161,7 +161,7 @@ int main() {
   const char guest_comm[] = "init_service32";
   std::memcpy(&simulated_ram[0x80], guest_comm, sizeof(guest_comm));
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   // Place 32-bit guest struct at guest relative address 0x0000'0100
   auto *guest_task_mem = static_cast<Compat32GuestTask *>(static_cast<void *>(&simulated_ram[0x100]));

@@ -104,9 +104,9 @@ template <> struct address_space_traits<fallible_local_space_tag> {
       return false;
     }
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(dest, reinterpret_cast<const void *>(addr), size);
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     detail::fallible_tls::set(old_ctx);
     return true;
@@ -131,9 +131,9 @@ template <> struct address_space_traits<fallible_local_space_tag> {
       return false;
     }
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(reinterpret_cast<void *>(addr), src, size);
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     detail::fallible_tls::set(old_ctx);
     return true;
@@ -156,7 +156,7 @@ template <> struct address_space_traits<fallible_local_space_tag> {
       return false;
     }
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     const char *src = reinterpret_cast<const char *>(addr);
     size_t i = 0;
     while (i < max_len) {
@@ -169,7 +169,7 @@ template <> struct address_space_traits<fallible_local_space_tag> {
       }
       ++i;
     }
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     detail::fallible_tls::set(old_ctx);
     out_len = max_len;

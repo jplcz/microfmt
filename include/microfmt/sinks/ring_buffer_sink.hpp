@@ -33,7 +33,7 @@ public:
   // microfmt::sink Bridge
   // ==========================================================================
 
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this,
                 [](void *ctx, microfmt::string_view sv) noexcept { static_cast<ring_buffer_sink *>(ctx)->write(sv); }};
   }
@@ -82,7 +82,7 @@ public:
   };
 
   // Inspects data chronologically from oldest to newest without copying
-  [[nodiscard]] dump_slices view() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] dump_slices view() const noexcept RELOCO_LIFETIMEBOUND {
     const size_t total_written = count_.load(std::memory_order_relaxed);
     if (total_written == 0) {
       return {};
@@ -98,11 +98,11 @@ public:
     const size_t first_len = Capacity - tail;
     const size_t second_len = tail;
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     return {microfmt::string_view(buffer_.data() + tail, first_len), microfmt::string_view(buffer_.data(), second_len)};
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
   // Flushes full ring buffer content chronologically to an external sink

@@ -44,9 +44,9 @@ bool next_thread(void *ctx, microfmt::thread_info &out) noexcept {
     return false;
   }
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   out = sequence.threads[sequence.index++];
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   return true;
 }

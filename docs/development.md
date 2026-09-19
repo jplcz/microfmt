@@ -59,6 +59,27 @@ cmake --build build --target jplcz_microfmt_check_public_headers
 `jplcz_microfmt_check_public_headers` compiles the applicable public headers as C++17, C++20,
 and, when available, C++23. It is required for changes under `include/`.
 
+### The `jplcz_reloco` dependency
+
+`jplcz_microfmt` depends on [`jplcz_reloco`](https://github.com/jplcz/reloco)
+for hardened container and lifetime-safety primitives. By default it is
+fetched with `FetchContent` from `JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY` at
+`JPLCZ_MICROFMT_RELOCO_GIT_TAG` (a pinned commit or tag). Point
+`JPLCZ_MICROFMT_RELOCO_SOURCE_DIR` at a local checkout to override this, for
+example when developing both projects together or vendoring a pinned copy:
+
+```bash
+cmake -B build -G Ninja \
+  -DJPLCZ_MICROFMT_RELOCO_SOURCE_DIR=/path/to/reloco
+```
+
+`jplcz_reloco`'s own tests, header checks, and strict warnings are disabled
+for this embedded build regardless of its own defaults.
+`JPLCZ_MICROFMT_INSTALL` also controls `jplcz_reloco`'s install rules, so an
+installed `jplcz_microfmt` package always installs and exports the matching
+`jplcz_reloco` package alongside it, and `find_package(jplcz_microfmt)`
+transitively resolves `jplcz_reloco` through `find_dependency`.
+
 ## Build the complete compiler and architecture matrix
 
 Run the matrix script to build Debug, Release, RelWithDebInfo, and MinSizeRel

@@ -96,7 +96,7 @@ struct unwind_hint {
 /**
  * @brief Type-erased, two-word handle to an unwind hint registry.
  */
-class MICROFMT_POINTER unwind_hint_registry_ref {
+class RELOCO_POINTER unwind_hint_registry_ref {
 public:
   /**
    * @brief Virtual table of registry operations.
@@ -127,8 +127,8 @@ public:
                                  const typename Traits::context_type *>,
                              int> = 0>
   constexpr unwind_hint_registry_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
-               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
+               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context,
@@ -138,7 +138,7 @@ public:
   template <typename Tag, typename Context,
             typename Traits = unwind_hint_registry_traits<Tag>>
   [[nodiscard]] static constexpr unwind_hint_registry_ref
-  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return unwind_hint_registry_ref(Tag{}, ctx);
   }
 
@@ -183,7 +183,7 @@ private:
 /**
  * @brief Typed owner for an unwind-hint registry traits specialization.
  */
-template <typename Tag> class MICROFMT_OWNER unwind_hint_registry {
+template <typename Tag> class RELOCO_OWNER unwind_hint_registry {
 public:
   using traits_type = unwind_hint_registry_traits<Tag>;
   using context_type = typename traits_type::context_type;
@@ -192,22 +192,22 @@ public:
       : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   [[nodiscard]] constexpr unwind_hint_registry_ref
-  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return unwind_hint_registry_ref(Tag{}, context_);
   }
 
   [[nodiscard]] constexpr operator unwind_hint_registry_ref()
-      const & noexcept MICROFMT_LIFETIMEBOUND {
+      const & noexcept RELOCO_LIFETIMEBOUND {
     return ref();
   }
 
@@ -229,7 +229,7 @@ private:
  * @tparam MaxHints Maximum number of stored hints.
  */
 template <size_t MaxHints>
-class MICROFMT_OWNER unwind_hint_registry_context {
+class RELOCO_OWNER unwind_hint_registry_context {
 public:
   /**
    * @brief Constructs an empty registry.
@@ -244,11 +244,11 @@ public:
   constexpr bool add_hint(const unwind_hint &hint) noexcept {
     if (hint_count_ >= MaxHints)
       return false;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     hints_[hint_count_++] = hint;
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     return true;
   }
@@ -260,7 +260,7 @@ public:
    * @return `true` when a hint matched.
    */
   [[nodiscard]] constexpr bool find_hint(uintptr_t pc, unwind_hint &out_hint) const noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     for (size_t i = 0; i < hint_count_; ++i) {
       if (hints_[i].contains(pc)) {
@@ -269,7 +269,7 @@ public:
       }
     }
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     return false;
   }

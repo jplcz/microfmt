@@ -15,14 +15,14 @@
 namespace microfmt {
 
 // All of the below classes contain checked pointer arithmetic
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 enum class string_view_error {
   container_empty,
   out_of_bounds,
 };
 
-template <typename CharT, typename TraitsT = std::char_traits<CharT>> class MICROFMT_POINTER basic_string_view {
+template <typename CharT, typename TraitsT = std::char_traits<CharT>> class RELOCO_POINTER basic_string_view {
 public:
   using base = std::basic_string_view<CharT, TraitsT>;
   using traits_type = TraitsT;
@@ -41,116 +41,116 @@ public:
   constexpr basic_string_view() noexcept = default;
   constexpr basic_string_view(const basic_string_view &) noexcept = default;
   constexpr basic_string_view &operator=(const basic_string_view &) noexcept = default;
-  constexpr basic_string_view(base rhs MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  constexpr basic_string_view(base rhs RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : view_(rhs) {}
 
   template <typename Allocator>
-  constexpr basic_string_view(const std::basic_string<CharT, TraitsT, Allocator> &rhs MICROFMT_LIFETIMEBOUND
-                                  MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  constexpr basic_string_view(const std::basic_string<CharT, TraitsT, Allocator> &rhs RELOCO_LIFETIMEBOUND
+                                  RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : view_(rhs.data(), rhs.size()) {}
 
   template <typename Allocator> basic_string_view(std::basic_string<CharT, TraitsT, Allocator> &&) = delete;
 
   constexpr basic_string_view(std::nullptr_t) noexcept {}
 
-  constexpr basic_string_view(const CharT *str MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS,
+  constexpr basic_string_view(const CharT *str RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS,
                               size_type len) noexcept
       : view_(str == nullptr ? base() : base(str, len)) {
     MICROFMT_ASSERT(str != nullptr || len == 0, "string_view data is null with non-zero length");
   }
 
   MICROFMT_ALWAYS_INLINE
-  constexpr basic_string_view(const CharT *str MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  constexpr basic_string_view(const CharT *str RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : view_(str == nullptr ? base() : base(str)) {}
 
   [[nodiscard]] constexpr size_type size() const noexcept { return view_.size(); }
   [[nodiscard]] constexpr size_type length() const noexcept { return view_.length(); }
   [[nodiscard]] constexpr bool empty() const noexcept { return view_.empty(); }
 
-  [[nodiscard]] constexpr const_reference operator[](size_type pos) const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_reference operator[](size_type pos) const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(pos < size(), "string_view index out of bounds");
     return view_[pos];
   }
 
   [[nodiscard]] expected<std::reference_wrapper<const CharT>, string_view_error>
-  try_front() const noexcept MICROFMT_LIFETIMEBOUND {
+  try_front() const noexcept RELOCO_LIFETIMEBOUND {
     if (empty())
       return unexpected(string_view_error::container_empty);
     return std::cref(view_.front());
   }
 
   [[nodiscard]] expected<std::reference_wrapper<const CharT>, string_view_error>
-  try_back() const noexcept MICROFMT_LIFETIMEBOUND {
+  try_back() const noexcept RELOCO_LIFETIMEBOUND {
     if (empty())
       return unexpected(string_view_error::container_empty);
     return std::cref(view_.back());
   }
 
-  [[nodiscard]] constexpr const_reference front() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_reference front() const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!empty(), "front() called on empty string_view");
     return view_.front();
   }
 
-  [[nodiscard]] constexpr const_reference back() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_reference back() const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!empty(), "back() called on empty string_view");
     return view_.back();
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const_reference unsafe_front() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr const_reference unsafe_front() const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!empty(), "front() called on empty string_view");
     return view_.front();
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const_reference unsafe_back() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr const_reference unsafe_back() const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!empty(), "back() called on empty string_view");
     return view_.back();
   }
 
   [[nodiscard]] constexpr basic_string_view substr(size_type pos = 0,
-                                                   size_type count = npos) const noexcept MICROFMT_LIFETIMEBOUND {
+                                                   size_type count = npos) const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(pos <= size(), "substr position out of bounds");
     return basic_string_view(view_.substr(pos, count));
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr basic_string_view
-  unsafe_substr(size_type pos = 0, size_type count = npos) const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr basic_string_view
+  unsafe_substr(size_type pos = 0, size_type count = npos) const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(pos <= size(), "substr position out of bounds");
     return basic_string_view(view_.substr(pos, count));
   }
 
   [[nodiscard]] expected<std::reference_wrapper<const CharT>, string_view_error>
-  try_at(size_type pos) const noexcept MICROFMT_LIFETIMEBOUND {
+  try_at(size_type pos) const noexcept RELOCO_LIFETIMEBOUND {
     if (pos >= size())
       return unexpected(string_view_error::out_of_bounds);
     return std::cref(view_[pos]);
   }
 
   [[nodiscard]] expected<basic_string_view, string_view_error>
-  try_substr(size_type pos, size_type count = npos) const noexcept MICROFMT_LIFETIMEBOUND {
+  try_substr(size_type pos, size_type count = npos) const noexcept RELOCO_LIFETIMEBOUND {
     if (pos > size())
       return unexpected(string_view_error::out_of_bounds);
     return basic_string_view(view_.substr(pos, count));
   }
 
-  [[nodiscard]] constexpr const_pointer data() const noexcept MICROFMT_LIFETIMEBOUND { return view_.data(); }
+  [[nodiscard]] constexpr const_pointer data() const noexcept RELOCO_LIFETIMEBOUND { return view_.data(); }
 
-  [[nodiscard]] expected<const_pointer, string_view_error> try_data() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] expected<const_pointer, string_view_error> try_data() const noexcept RELOCO_LIFETIMEBOUND {
     if (empty())
       return unexpected(string_view_error::container_empty);
     return view_.data();
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const_pointer unsafe_data() const noexcept MICROFMT_LIFETIMEBOUND { return view_.data(); }
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr const_pointer unsafe_data() const noexcept RELOCO_LIFETIMEBOUND { return view_.data(); }
 
-  [[nodiscard]] constexpr base to_std() const noexcept MICROFMT_LIFETIMEBOUND { return view_; }
-  [[nodiscard]] constexpr operator base() const noexcept MICROFMT_LIFETIMEBOUND { return view_; }
+  [[nodiscard]] constexpr base to_std() const noexcept RELOCO_LIFETIMEBOUND { return view_; }
+  [[nodiscard]] constexpr operator base() const noexcept RELOCO_LIFETIMEBOUND { return view_; }
 
   constexpr void remove_prefix(size_type n) & noexcept {
     MICROFMT_ASSERT(n <= size(), "remove_prefix exceeds view size");
     view_.remove_prefix(n);
   }
 
-  MICROFMT_UNSAFE_BUFFER_USAGE constexpr void unsafe_remove_prefix(size_type n) & noexcept {
+  RELOCO_UNSAFE_BUFFER_USAGE constexpr void unsafe_remove_prefix(size_type n) & noexcept {
     MICROFMT_DEBUG_ASSERT(n <= size(), "remove_prefix exceeds view size");
     view_.remove_prefix(n);
   }
@@ -160,7 +160,7 @@ public:
     view_.remove_suffix(n);
   }
 
-  MICROFMT_UNSAFE_BUFFER_USAGE constexpr void unsafe_remove_suffix(size_type n) & noexcept {
+  RELOCO_UNSAFE_BUFFER_USAGE constexpr void unsafe_remove_suffix(size_type n) & noexcept {
     MICROFMT_DEBUG_ASSERT(n <= size(), "remove_suffix exceeds view size");
     view_.remove_suffix(n);
   }
@@ -199,18 +199,18 @@ public:
 
   [[nodiscard]] constexpr bool starts_with(CharT ch) const noexcept { return !empty() && front() == ch; }
 
-  [[nodiscard]] constexpr const_iterator begin() const noexcept MICROFMT_LIFETIMEBOUND { return view_.begin(); }
-  [[nodiscard]] constexpr const_iterator end() const noexcept MICROFMT_LIFETIMEBOUND { return view_.end(); }
-  [[nodiscard]] constexpr const_iterator cbegin() const noexcept MICROFMT_LIFETIMEBOUND { return view_.cbegin(); }
-  [[nodiscard]] constexpr const_iterator cend() const noexcept MICROFMT_LIFETIMEBOUND { return view_.cend(); }
-  [[nodiscard]] constexpr const_reverse_iterator rbegin() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_iterator begin() const noexcept RELOCO_LIFETIMEBOUND { return view_.begin(); }
+  [[nodiscard]] constexpr const_iterator end() const noexcept RELOCO_LIFETIMEBOUND { return view_.end(); }
+  [[nodiscard]] constexpr const_iterator cbegin() const noexcept RELOCO_LIFETIMEBOUND { return view_.cbegin(); }
+  [[nodiscard]] constexpr const_iterator cend() const noexcept RELOCO_LIFETIMEBOUND { return view_.cend(); }
+  [[nodiscard]] constexpr const_reverse_iterator rbegin() const noexcept RELOCO_LIFETIMEBOUND {
     return view_.rbegin();
   }
-  [[nodiscard]] constexpr const_reverse_iterator rend() const noexcept MICROFMT_LIFETIMEBOUND { return view_.rend(); }
-  [[nodiscard]] constexpr const_reverse_iterator crbegin() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_reverse_iterator rend() const noexcept RELOCO_LIFETIMEBOUND { return view_.rend(); }
+  [[nodiscard]] constexpr const_reverse_iterator crbegin() const noexcept RELOCO_LIFETIMEBOUND {
     return view_.crbegin();
   }
-  [[nodiscard]] constexpr const_reverse_iterator crend() const noexcept MICROFMT_LIFETIMEBOUND { return view_.crend(); }
+  [[nodiscard]] constexpr const_reverse_iterator crend() const noexcept RELOCO_LIFETIMEBOUND { return view_.crend(); }
 
   friend constexpr bool operator==(basic_string_view lhs, basic_string_view rhs) noexcept {
     return lhs.view_ == rhs.view_;
@@ -258,7 +258,7 @@ private:
 using string_view = basic_string_view<char>;
 using wstring_view = basic_string_view<wchar_t>;
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 } // namespace microfmt
 

@@ -33,7 +33,7 @@ TEST(GdbClientProtocol, EncodesAndDecodesMemoryRead) {
 }
 
 TEST(GdbClientProtocol, RoundTripsHexAndBinaryWrites) {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   const uint8_t hex_data[]{0x00, 0x23, 0x7d};
   microfmt::gdb::client_request_view hex_request;
@@ -76,7 +76,7 @@ TEST(GdbClientProtocol, RoundTripsHexAndBinaryWrites) {
     EXPECT_EQ(binary_decoded.data[i], binary_data[i]);
   }
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 TEST(GdbClientProtocol, DecodesSearchRegisterAndThreadRequests) {

@@ -12,10 +12,10 @@ int main() {
   const auto present = microfmt::format<32>("result={}", std::optional<int>{42});
   const auto absent = microfmt::format<32>("result={}", std::optional<int>{});
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::printf("%.*s\n%.*s\n", static_cast<int>(present.size()), present.view().data(), static_cast<int>(absent.size()),
               absent.view().data());
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }

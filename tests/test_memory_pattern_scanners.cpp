@@ -37,9 +37,9 @@ struct record {
 
 bool matches_record(const void *bytes, void *opaque) noexcept {
   record candidate{};
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   std::memcpy(&candidate, bytes, sizeof(candidate));
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
   const auto expected = *static_cast<const uint32_t *>(opaque);
   return candidate.magic == expected && candidate.state < 8 &&
          candidate.priority < 32;

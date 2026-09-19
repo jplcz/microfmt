@@ -50,7 +50,7 @@ template <> struct formatter<remote_memory_diff_view> {
   constexpr void parse(format_parse_context &ctx) noexcept { (void)ctx; }
 
   void format(const remote_memory_diff_view &diff, const sink &out) const noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     // Scratch buffer must be at least large enough to hold two rows (old and new chunks)
     const size_t row_size = (diff.bytes_per_row > 0) ? diff.bytes_per_row : 16;
@@ -123,7 +123,7 @@ template <> struct formatter<remote_memory_diff_view> {
       flush_streak(out, identical_rows_streak);
     }
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
 private:

@@ -22,7 +22,7 @@ namespace microfmt {
  * read-only. The referenced object must outlive the wrapper. Use
  * @ref value_ptr when the borrow may be null.
  */
-template <typename T> class MICROFMT_POINTER value_ref {
+template <typename T> class RELOCO_POINTER value_ref {
 public:
   /**
    * @brief Constructs a reference wrapper from a persistent lvalue reference.
@@ -32,8 +32,8 @@ public:
             typename =
                 std::enable_if_t<std::is_convertible_v<U *, T *>>>
   constexpr explicit value_ref(
-      U &val MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      U &val RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_ptr(std::addressof(val)) {}
 
   /**
@@ -44,24 +44,24 @@ public:
   constexpr value_ref(U &&) = delete;
 
   [[nodiscard]] constexpr T *
-  get() const noexcept MICROFMT_LIFETIMEBOUND {
+  get() const noexcept RELOCO_LIFETIMEBOUND {
     return m_ptr.get();
   }
 
   [[nodiscard]] constexpr T &
-  operator*() const noexcept MICROFMT_LIFETIMEBOUND {
+  operator*() const noexcept RELOCO_LIFETIMEBOUND {
     // Bypass value_ptr's checked null-guard: a value_ref is only ever
     // constructed from a valid lvalue and never becomes null afterward, so
     // the check is provably redundant here and would be pure overhead. This
     // is exactly the verified use MICROFMT_BEGIN/END_UNSAFE_BUFFER_USAGE
     // exists for.
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
     return m_ptr.unsafe_deref();
-    MICROFMT_END_UNSAFE_BUFFER_USAGE
+    RELOCO_END_UNSAFE_BUFFER_USAGE
   }
 
   [[nodiscard]] constexpr T *
-  operator->() const noexcept MICROFMT_LIFETIMEBOUND {
+  operator->() const noexcept RELOCO_LIFETIMEBOUND {
     return m_ptr.get();
   }
 

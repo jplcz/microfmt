@@ -23,7 +23,7 @@ namespace microfmt {
  * @tparam AbiTraits Architecture-specific ABI traits.
  */
 template <typename AbiTraits>
-class MICROFMT_POINTER register_context_view {
+class RELOCO_POINTER register_context_view {
 public:
   constexpr explicit register_context_view(
       register_context_ref reg_ctx) noexcept

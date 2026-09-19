@@ -67,9 +67,9 @@ template <typename T> struct formatter<vec3_view<T>> {
     for (size_t i = 0; i < 3; ++i) {
       if (i > 0)
         out.write(", ");
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       elem_fmt.format(v.values[i], out);
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
     }
     out.put('>');
   }

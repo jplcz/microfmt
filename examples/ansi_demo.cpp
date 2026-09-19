@@ -9,11 +9,11 @@
 #include <string_view>
 
 static void terminal_write(void * /*ctx*/, microfmt::string_view sv) noexcept {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::fwrite(sv.data(), 1, sv.size(), stdout);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 int main() {

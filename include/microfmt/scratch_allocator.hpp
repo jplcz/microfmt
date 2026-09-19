@@ -13,7 +13,7 @@
 
 // Alignment and bump allocation require audited pointer arithmetic inside this
 // checked allocation boundary.
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 namespace microfmt {
 
@@ -24,21 +24,21 @@ namespace microfmt {
  * manual destructor tracking in low-stack, bare-metal environments. Supports
  * partitioning remaining capacity to pass downstream.
  */
-class MICROFMT_POINTER scratch_allocator {
+class RELOCO_POINTER scratch_allocator {
 public:
   /**
    * @brief Constructs a scratch allocator over a provided byte span.
    * @param buffer Caller-owned backing memory storage.
    */
   explicit constexpr scratch_allocator(
-      span<std::byte> buffer MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      span<std::byte> buffer RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_buf(buffer) {}
 
   /**
    * @brief Constructs a scratch allocator over a provided character span.
    * @param buffer Caller-owned backing memory storage.
    */
-  explicit scratch_allocator(span<char> buffer MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+  explicit scratch_allocator(span<char> buffer RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_buf(reinterpret_cast<std::byte *>(buffer.data()), buffer.size()) {}
 
   /**
@@ -48,7 +48,7 @@ public:
    * @return Pointer to the aligned storage, or `nullptr` if it does not fit.
    */
   template <typename T>
-  [[nodiscard]] MICROFMT_ASSUME_ALIGNED(alignof(T)) T *allocate(size_t count = 1) noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_ASSUME_ALIGNED(alignof(T)) T *allocate(size_t count = 1) noexcept RELOCO_LIFETIMEBOUND {
     if (count == 0 || count > available() / sizeof(T)) {
       return nullptr;
     }
@@ -78,7 +78,7 @@ public:
    * @return Pointer to the newly constructed object, or `nullptr` if out of space.
    */
   template <typename T, typename... Args>
-  [[nodiscard]] MICROFMT_ASSUME_ALIGNED(alignof(T)) T *create(Args &&...args) noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_ASSUME_ALIGNED(alignof(T)) T *create(Args &&...args) noexcept RELOCO_LIFETIMEBOUND {
     static_assert(std::is_trivially_destructible_v<T>, "scratch_allocator only permits trivially destructible types");
 
     T *storage = allocate<T>();
@@ -95,14 +95,14 @@ public:
    *
    * @return A child scratch_allocator wrapping the remaining memory.
    */
-  [[nodiscard]] constexpr scratch_allocator rest() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr scratch_allocator rest() const noexcept RELOCO_LIFETIMEBOUND {
     return scratch_allocator{remaining_span()};
   }
 
   /**
    * @brief Returns a span over the remaining unallocated space.
    */
-  [[nodiscard]] constexpr span<std::byte> remaining_span() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr span<std::byte> remaining_span() const noexcept RELOCO_LIFETIMEBOUND {
     if (m_pos >= m_buf.size()) {
       return {};
     }
@@ -127,4 +127,4 @@ private:
 
 } // namespace microfmt
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

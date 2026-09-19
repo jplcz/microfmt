@@ -178,17 +178,17 @@ visible in review.
 Every `unsafe_*` method across the library (`array`, `span`, `string_view`,
 `value_ptr`, `checked_value`, and the core `vformat_to` formatting loop's
 internal buffer accesses) is additionally marked
-`MICROFMT_UNSAFE_BUFFER_USAGE` (see `microfmt/lifetime.hpp`). Under Clang's
+`RELOCO_UNSAFE_BUFFER_USAGE` (see `microfmt/lifetime.hpp`). Under Clang's
 `-Wunsafe-buffer-usage`, any unwrapped call site is a compiler diagnostic —
 callers must wrap the call in
-`MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE` to
+`RELOCO_BEGIN_UNSAFE_BUFFER_USAGE`/`RELOCO_END_UNSAFE_BUFFER_USAGE` to
 make the opt-out explicit and greppable, not just documented in a comment:
 
 ```cpp
 if (!field.empty()) {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   const char first = field.unsafe_front();
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
   consume(first);
 }
 ```

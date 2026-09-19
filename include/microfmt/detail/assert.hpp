@@ -32,11 +32,11 @@ inline void default_assert_handler(const char *expr, const char *file, int line,
   (void)line;
   (void)msg;
 #else
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   std::fprintf(stderr,
                "[MICROFMT ASSERT] Failure: %s\nAt: %s:%d\nMessage: %s\n", expr,
                file, line, msg);
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 #endif
 }
 

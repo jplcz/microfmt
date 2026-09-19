@@ -39,7 +39,7 @@ namespace microfmt {
  * See [Lifetime safety](../../docs/lifetime-safety.md) for the underlying
  * annotation conventions this type builds on.
  */
-template <typename T> class MICROFMT_CONSUMABLE(unconsumed) checked_value {
+template <typename T> class RELOCO_CONSUMABLE(unconsumed) checked_value {
   static_assert(std::is_nothrow_move_constructible_v<T>, "T must be nothrow move constructible");
   // CTAD deduces checked_value<std::nullptr_t> from a bare `nullptr` literal
   // (`checked_value v(nullptr);`), silently bypassing the null-checking
@@ -51,7 +51,7 @@ template <typename T> class MICROFMT_CONSUMABLE(unconsumed) checked_value {
 
 public:
   /** @brief Wraps @p value in a fresh, unconsumed `checked_value`. */
-  constexpr explicit checked_value(T value) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+  constexpr explicit checked_value(T value) noexcept RELOCO_RETURN_TYPESTATE(unconsumed)
       : value_(std::move(value)) {}
 
   // Move-only: copies are never implicit. Use clone() to opt into an
@@ -59,10 +59,10 @@ public:
   checked_value(const checked_value &) = delete;
   checked_value &operator=(const checked_value &) = delete;
 
-  constexpr checked_value(checked_value &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+  constexpr checked_value(checked_value &&other) noexcept RELOCO_RETURN_TYPESTATE(unconsumed)
       : value_(take_from(other)) {}
 
-  constexpr checked_value &operator=(checked_value &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed) {
+  constexpr checked_value &operator=(checked_value &&other) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) {
     if (this != &other) {
       value_ = take_from(other);
       moved_from_ = false;
@@ -81,14 +81,14 @@ public:
   [[nodiscard]] constexpr bool is_moved_from() const noexcept { return moved_from_; }
 
   /** @brief Mutable borrow of the held value. Traps if moved from. */
-  [[nodiscard]] constexpr T &get() & noexcept MICROFMT_LIFETIMEBOUND MICROFMT_CALLABLE_WHEN("unconsumed") {
+  [[nodiscard]] constexpr T &get() & noexcept RELOCO_LIFETIMEBOUND RELOCO_CALLABLE_WHEN("unconsumed") {
     MICROFMT_ASSERT(!moved_from_, "checked_value: access after move");
     return value_;
   }
 
   /** @brief Read-only borrow of the held value. Traps if moved from. */
-  [[nodiscard]] constexpr const T &get() const & noexcept MICROFMT_LIFETIMEBOUND
-      MICROFMT_CALLABLE_WHEN("unconsumed") {
+  [[nodiscard]] constexpr const T &get() const & noexcept RELOCO_LIFETIMEBOUND
+      RELOCO_CALLABLE_WHEN("unconsumed") {
     MICROFMT_ASSERT(!moved_from_, "checked_value: access after move");
     return value_;
   }
@@ -107,19 +107,19 @@ public:
    * via `-Wconsumed`, or by construction just above) and repeated `get()`
    * overhead is unacceptable on a hot path.
    *
-   * Marked `MICROFMT_UNSAFE_BUFFER_USAGE`: under Clang's
+   * Marked `RELOCO_UNSAFE_BUFFER_USAGE`: under Clang's
    * `-Wunsafe-buffer-usage`, every call site must be wrapped in
-   * `MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE`,
+   * `RELOCO_BEGIN_UNSAFE_BUFFER_USAGE`/`RELOCO_END_UNSAFE_BUFFER_USAGE`,
    * making the opt-out to the unsafe tier explicit and greppable at each use.
    */
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_get() & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_get() & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!moved_from_, "checked_value: access after move");
     return value_;
   }
 
   /** @brief Read-only counterpart of @ref unsafe_get. */
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_get() const & noexcept
-      MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr const T &unsafe_get() const & noexcept
+      RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!moved_from_, "checked_value: access after move");
     return value_;
   }
@@ -133,24 +133,24 @@ public:
    * Rust-equivalent of moving out of an owned binding: after `take()`, this
    * object is in the `consumed` state and any further access traps.
    */
-  [[nodiscard]] constexpr T take() && noexcept MICROFMT_CALLABLE_WHEN("unconsumed")
-      MICROFMT_SET_TYPESTATE(consumed) {
+  [[nodiscard]] constexpr T take() && noexcept RELOCO_CALLABLE_WHEN("unconsumed")
+      RELOCO_SET_TYPESTATE(consumed) {
     MICROFMT_ASSERT(!moved_from_, "checked_value: take() after move");
     moved_from_ = true;
     return std::move(value_);
   }
 
-  constexpr T *operator->() noexcept MICROFMT_LIFETIMEBOUND MICROFMT_CALLABLE_WHEN("unconsumed") {
+  constexpr T *operator->() noexcept RELOCO_LIFETIMEBOUND RELOCO_CALLABLE_WHEN("unconsumed") {
     return &get();
   }
 
-  constexpr const T *operator->() const noexcept MICROFMT_LIFETIMEBOUND MICROFMT_CALLABLE_WHEN("unconsumed") {
+  constexpr const T *operator->() const noexcept RELOCO_LIFETIMEBOUND RELOCO_CALLABLE_WHEN("unconsumed") {
     return &get();
   }
 
-  constexpr T &operator*() & noexcept MICROFMT_LIFETIMEBOUND MICROFMT_CALLABLE_WHEN("unconsumed") { return get(); }
+  constexpr T &operator*() & noexcept RELOCO_LIFETIMEBOUND RELOCO_CALLABLE_WHEN("unconsumed") { return get(); }
 
-  constexpr const T &operator*() const & noexcept MICROFMT_LIFETIMEBOUND MICROFMT_CALLABLE_WHEN("unconsumed") {
+  constexpr const T &operator*() const & noexcept RELOCO_LIFETIMEBOUND RELOCO_CALLABLE_WHEN("unconsumed") {
     return get();
   }
 
@@ -164,7 +164,7 @@ public:
    */
   template <typename U = T, std::enable_if_t<std::is_copy_constructible_v<U>, int> = 0>
   [[nodiscard]] constexpr checked_value clone() const & noexcept(std::is_nothrow_copy_constructible_v<T>)
-      MICROFMT_CALLABLE_WHEN("unconsumed") {
+      RELOCO_CALLABLE_WHEN("unconsumed") {
     MICROFMT_ASSERT(!moved_from_, "checked_value: clone() after move");
     return checked_value(value_);
   }
@@ -180,8 +180,8 @@ public:
    * only at such boundaries, never to silence a real reuse-after-move
    * warning.
    */
-  checked_value &as_known() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "unknown")
-      MICROFMT_RETURN_TYPESTATE(unconsumed) {
+  checked_value &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown")
+      RELOCO_RETURN_TYPESTATE(unconsumed) {
     MICROFMT_ASSERT(!moved_from_, "checked_value: as_known() after move");
     return *this;
   }
@@ -215,18 +215,18 @@ template <typename T> checked_value(T) -> checked_value<T>;
  * so a bypassed (disabled) assert still fails safely with a null dereference
  * rather than reading stale/dangling memory.
  */
-template <typename T> class MICROFMT_CONSUMABLE(unconsumed) checked_value<T *> {
+template <typename T> class RELOCO_CONSUMABLE(unconsumed) checked_value<T *> {
 public:
   /** @brief Wraps @p value (possibly null) in a fresh, unconsumed wrapper. */
-  constexpr explicit checked_value(T *value) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed) : value_(value) {}
+  constexpr explicit checked_value(T *value) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : value_(value) {}
 
   checked_value(const checked_value &) = delete;
   checked_value &operator=(const checked_value &) = delete;
 
-  constexpr checked_value(checked_value &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+  constexpr checked_value(checked_value &&other) noexcept RELOCO_RETURN_TYPESTATE(unconsumed)
       : value_(take_from(other)) {}
 
-  constexpr checked_value &operator=(checked_value &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed) {
+  constexpr checked_value &operator=(checked_value &&other) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) {
     if (this != &other) {
       value_ = take_from(other);
       moved_from_ = false;
@@ -246,25 +246,25 @@ public:
    * use @ref is_null or `operator bool` to check before dereferencing
    * manually, or prefer `operator*`/`operator->`, which check for you.
    */
-  [[nodiscard]] constexpr T *get() const noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
+  [[nodiscard]] constexpr T *get() const noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     MICROFMT_ASSERT(!moved_from_, "checked_value: access after move");
     return value_;
   }
 
   /** @brief Whether the held pointer is null. Traps if moved from. */
-  [[nodiscard]] constexpr bool is_null() const noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
+  [[nodiscard]] constexpr bool is_null() const noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     MICROFMT_ASSERT(!moved_from_, "checked_value: access after move");
     return value_ == nullptr;
   }
 
-  constexpr explicit operator bool() const noexcept MICROFMT_CALLABLE_WHEN("unconsumed") { return !is_null(); }
+  constexpr explicit operator bool() const noexcept RELOCO_CALLABLE_WHEN("unconsumed") { return !is_null(); }
 
   /**
    * @brief Moves the held pointer out, nulls the source, and poisons this
    * wrapper's typestate.
    */
-  [[nodiscard]] constexpr T *take() && noexcept MICROFMT_CALLABLE_WHEN("unconsumed")
-      MICROFMT_SET_TYPESTATE(consumed) {
+  [[nodiscard]] constexpr T *take() && noexcept RELOCO_CALLABLE_WHEN("unconsumed")
+      RELOCO_SET_TYPESTATE(consumed) {
     MICROFMT_ASSERT(!moved_from_, "checked_value: take() after move");
     moved_from_ = true;
     T *taken = value_;
@@ -273,14 +273,14 @@ public:
   }
 
   /** @brief Dereferences the pointee. Traps if moved from or null. */
-  constexpr T &operator*() const noexcept MICROFMT_LIFETIMEBOUND MICROFMT_CALLABLE_WHEN("unconsumed") {
+  constexpr T &operator*() const noexcept RELOCO_LIFETIMEBOUND RELOCO_CALLABLE_WHEN("unconsumed") {
     MICROFMT_ASSERT(!moved_from_, "checked_value: access after move");
     MICROFMT_ASSERT(value_ != nullptr, "checked_value: dereferencing a null pointer");
     return *value_;
   }
 
   /** @brief Member access on the pointee. Traps if moved from or null. */
-  constexpr T *operator->() const noexcept MICROFMT_LIFETIMEBOUND MICROFMT_CALLABLE_WHEN("unconsumed") {
+  constexpr T *operator->() const noexcept RELOCO_LIFETIMEBOUND RELOCO_CALLABLE_WHEN("unconsumed") {
     MICROFMT_ASSERT(!moved_from_, "checked_value: access after move");
     MICROFMT_ASSERT(value_ != nullptr, "checked_value: dereferencing a null pointer");
     return value_;
@@ -295,12 +295,12 @@ public:
    * not dereference; combine with @ref unsafe_deref, or check `is_null()`
    * manually, once moved-from state has already been ruled out.
    *
-   * Marked `MICROFMT_UNSAFE_BUFFER_USAGE`: under Clang's
+   * Marked `RELOCO_UNSAFE_BUFFER_USAGE`: under Clang's
    * `-Wunsafe-buffer-usage`, every call site must be wrapped in
-   * `MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE`/`MICROFMT_END_UNSAFE_BUFFER_USAGE`,
+   * `RELOCO_BEGIN_UNSAFE_BUFFER_USAGE`/`RELOCO_END_UNSAFE_BUFFER_USAGE`,
    * making the opt-out to the unsafe tier explicit and greppable at each use.
    */
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T *unsafe_get() const noexcept {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T *unsafe_get() const noexcept {
     MICROFMT_DEBUG_ASSERT(!moved_from_, "checked_value: access after move");
     return value_;
   }
@@ -315,17 +315,17 @@ public:
    * non-null (for example via `is_null()`/`operator bool()`) and the
    * checked `operator*`/`operator->` overhead is unacceptable on a hot path.
    *
-   * Marked `MICROFMT_UNSAFE_BUFFER_USAGE`, same call-site requirement as
+   * Marked `RELOCO_UNSAFE_BUFFER_USAGE`, same call-site requirement as
    * @ref unsafe_get.
    */
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_deref() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_deref() const noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!moved_from_, "checked_value: access after move");
     MICROFMT_DEBUG_ASSERT(value_ != nullptr, "checked_value: dereferencing a null pointer");
     return *value_;
   }
 
   /** @brief Explicit, Rust-`Clone`-style copy of the pointer value itself. */
-  [[nodiscard]] constexpr checked_value clone() const noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
+  [[nodiscard]] constexpr checked_value clone() const noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     MICROFMT_ASSERT(!moved_from_, "checked_value: clone() after move");
     return checked_value(value_);
   }
@@ -335,8 +335,8 @@ public:
    * boundary; see the primary template's @ref checked_value::as_known for
    * the full explanation.
    */
-  checked_value &as_known() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "unknown")
-      MICROFMT_RETURN_TYPESTATE(unconsumed) {
+  checked_value &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown")
+      RELOCO_RETURN_TYPESTATE(unconsumed) {
     MICROFMT_ASSERT(!moved_from_, "checked_value: as_known() after move");
     return *this;
   }

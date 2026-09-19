@@ -34,11 +34,11 @@ int main() {
   // Stack buffer
   auto buf = microfmt::format<64>("Device GUID: {}", node_id);
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::fwrite(buf.view().data(), 1, buf.size(), stdout);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   std::putchar('\n');
 

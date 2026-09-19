@@ -7,7 +7,7 @@
 #include <microfmt/microfmt.hpp>
 #include <microfmt/sinks/tee_sink.hpp>
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 int main() {
   microfmt::buffer_sink<32> serial;
@@ -19,4 +19,4 @@ int main() {
               static_cast<int>(trace.size()), trace.view().data());
 }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

@@ -22,7 +22,7 @@ MICROFMT_REMOTE_FIELD(next, microfmt::compat32_ptr<RemoteProcessNode>)
 MICROFMT_REMOTE_STRUCT_END()
 
 // Simple mock address space class
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 class MockAddressSpace {
 public:
@@ -96,4 +96,4 @@ int main() {
   return 0;
 }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

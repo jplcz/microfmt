@@ -19,7 +19,7 @@
 
 // This class is the checked boundary around the raw pointer arithmetic needed
 // to implement a C++17-compatible contiguous view.
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 namespace microfmt {
 
@@ -40,7 +40,7 @@ enum class span_error {
  *
  * @tparam T Element type, optionally const-qualified.
  */
-template <typename T> class MICROFMT_POINTER span {
+template <typename T> class RELOCO_POINTER span {
 public:
   using element_type = T;
   using value_type = typename std::remove_cv<T>::type;
@@ -55,7 +55,7 @@ public:
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-  MICROFMT_BLOCK_RVALUE_ACCESS(T);
+  RELOCO_BLOCK_RVALUE_ACCESS(T);
 
   /**
    * @brief Constructs an empty span with `nullptr` data and `0` size.
@@ -90,8 +90,8 @@ public:
    */
   template <std::size_t N>
   constexpr span(
-      T (&arr MICROFMT_LIFETIMEBOUND
-             MICROFMT_LIFETIME_CAPTURE_BY_THIS)[N]) noexcept
+      T (&arr RELOCO_LIFETIMEBOUND
+             RELOCO_LIFETIME_CAPTURE_BY_THIS)[N]) noexcept
       : m_ptr(arr), m_size(N) {}
 
   /**
@@ -101,8 +101,8 @@ public:
    */
   template <typename U, std::enable_if_t<std::is_convertible_v<U (*)[], T (*)[]>, int> = 0>
   constexpr span(
-      const span<U> &other MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      const span<U> &other RELOCO_LIFETIMEBOUND
+          RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_ptr(other.data()), m_size(other.size()) {}
 
 #if MICROFMT_HAS_STD_SPAN
@@ -137,7 +137,7 @@ public:
    */
   [[nodiscard]] constexpr span<T>
   subspan(std::size_t offset,
-          std::size_t count = static_cast<std::size_t>(-1)) const & noexcept MICROFMT_LIFETIMEBOUND {
+          std::size_t count = static_cast<std::size_t>(-1)) const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(offset <= m_size, "subspan offset exceeds span size");
     const std::size_t rem = m_size - offset;
     const std::size_t actual_count = count == static_cast<std::size_t>(-1) ? rem : count;
@@ -151,7 +151,7 @@ public:
    * @param offset Zero-based index at which the subspan begins.
    */
   template <std::size_t Count>
-  [[nodiscard]] constexpr span<T> subspan(std::size_t offset) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr span<T> subspan(std::size_t offset) const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(offset <= m_size, "subspan offset exceeds span size");
     const std::size_t rem = m_size - offset;
     MICROFMT_ASSERT(Count <= rem, "subspan count exceeds remaining span size");
@@ -166,7 +166,7 @@ public:
    */
   [[nodiscard]] expected<span<T>, span_error>
   try_subspan(std::size_t offset,
-              std::size_t count = static_cast<std::size_t>(-1)) const & noexcept MICROFMT_LIFETIMEBOUND {
+              std::size_t count = static_cast<std::size_t>(-1)) const & noexcept RELOCO_LIFETIMEBOUND {
     if (offset > m_size)
       return unexpected(span_error::out_of_bounds);
     const std::size_t rem = m_size - offset;
@@ -179,9 +179,9 @@ public:
   /**
    * @brief Creates a subspan with debug-only precondition checks.
    */
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr span<T>
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr span<T>
   unsafe_subspan(std::size_t offset,
-                 std::size_t count = static_cast<std::size_t>(-1)) const & noexcept MICROFMT_LIFETIMEBOUND {
+                 std::size_t count = static_cast<std::size_t>(-1)) const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(offset <= m_size, "subspan offset exceeds span size");
     const std::size_t rem = m_size - offset;
     const std::size_t actual_count = count == static_cast<std::size_t>(-1) ? rem : count;
@@ -193,12 +193,12 @@ public:
    * @brief Returns a direct pointer to the beginning of the contiguous buffer.
    * @return Raw pointer to the elements, or `nullptr` if empty.
    */
-  [[nodiscard]] constexpr T *data() const & noexcept MICROFMT_LIFETIMEBOUND { return m_ptr; }
+  [[nodiscard]] constexpr T *data() const & noexcept RELOCO_LIFETIMEBOUND { return m_ptr; }
 
   /**
    * @brief Returns the data pointer when the span is non-empty.
    */
-  [[nodiscard]] expected<T *, span_error> try_data() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] expected<T *, span_error> try_data() const & noexcept RELOCO_LIFETIMEBOUND {
     if (empty())
       return unexpected(span_error::container_empty);
     return m_ptr;
@@ -207,7 +207,7 @@ public:
   /**
    * @brief Returns the data pointer with a debug-only non-empty check.
    */
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T *unsafe_data() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T *unsafe_data() const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!empty(), "span has no data");
     return m_ptr;
   }
@@ -234,7 +234,7 @@ public:
    * @param idx Zero-based index of the element to access.
    * @return Reference to the element at position @p idx.
    */
-  [[nodiscard]] constexpr T &operator[](std::size_t idx) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr T &operator[](std::size_t idx) const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(idx < m_size, "span index out of bounds");
     return m_ptr[idx];
   }
@@ -243,7 +243,7 @@ public:
    * @brief Attempts to access an element without trapping.
    */
   [[nodiscard]] expected<std::reference_wrapper<T>, span_error>
-  try_at(std::size_t idx) const & noexcept MICROFMT_LIFETIMEBOUND {
+  try_at(std::size_t idx) const & noexcept RELOCO_LIFETIMEBOUND {
     if (idx >= m_size)
       return unexpected(span_error::out_of_bounds);
     return std::ref(m_ptr[idx]);
@@ -252,75 +252,75 @@ public:
   /**
    * @brief Accesses an element with a debug-only bounds check.
    */
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_at(std::size_t idx) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_at(std::size_t idx) const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(idx < m_size, "span index out of bounds");
     return m_ptr[idx];
   }
 
-  [[nodiscard]] expected<std::reference_wrapper<T>, span_error> try_front() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] expected<std::reference_wrapper<T>, span_error> try_front() const & noexcept RELOCO_LIFETIMEBOUND {
     if (empty())
       return unexpected(span_error::container_empty);
     return std::ref(*m_ptr);
   }
 
-  [[nodiscard]] expected<std::reference_wrapper<T>, span_error> try_back() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] expected<std::reference_wrapper<T>, span_error> try_back() const & noexcept RELOCO_LIFETIMEBOUND {
     if (empty())
       return unexpected(span_error::container_empty);
     return std::ref(m_ptr[m_size - 1]);
   }
 
-  [[nodiscard]] constexpr T &front() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr T &front() const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!empty(), "front() called on empty span");
     return *m_ptr;
   }
 
-  [[nodiscard]] constexpr T &back() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr T &back() const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(!empty(), "back() called on empty span");
     return m_ptr[m_size - 1];
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_front() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_front() const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!empty(), "front() called on empty span");
     return *m_ptr;
   }
 
   T &unsafe_front() const && = delete;
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr T &unsafe_back() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr T &unsafe_back() const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(!empty(), "back() called on empty span");
     return m_ptr[m_size - 1];
   }
 
   T &unsafe_back() const && = delete;
 
-  [[nodiscard]] constexpr span<T> first(std::size_t count) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr span<T> first(std::size_t count) const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(count <= m_size, "first count exceeds span size");
     return span<T>(m_ptr, count);
   }
 
-  [[nodiscard]] constexpr span<T> last(std::size_t count) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr span<T> last(std::size_t count) const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_ASSERT(count <= m_size, "last count exceeds span size");
     return span<T>(pointer_at(m_size - count), count);
   }
 
-  [[nodiscard]] expected<span<T>, span_error> try_first(std::size_t count) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] expected<span<T>, span_error> try_first(std::size_t count) const & noexcept RELOCO_LIFETIMEBOUND {
     if (count > m_size)
       return unexpected(span_error::out_of_bounds);
     return span<T>(m_ptr, count);
   }
 
-  [[nodiscard]] expected<span<T>, span_error> try_last(std::size_t count) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] expected<span<T>, span_error> try_last(std::size_t count) const & noexcept RELOCO_LIFETIMEBOUND {
     if (count > m_size)
       return unexpected(span_error::out_of_bounds);
     return span<T>(pointer_at(m_size - count), count);
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr span<T> unsafe_first(std::size_t count) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr span<T> unsafe_first(std::size_t count) const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(count <= m_size, "first count exceeds span size");
     return span<T>(m_ptr, count);
   }
 
-  [[nodiscard]] MICROFMT_UNSAFE_BUFFER_USAGE constexpr span<T> unsafe_last(std::size_t count) const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_UNSAFE_BUFFER_USAGE constexpr span<T> unsafe_last(std::size_t count) const & noexcept RELOCO_LIFETIMEBOUND {
     MICROFMT_DEBUG_ASSERT(count <= m_size, "last count exceeds span size");
     return span<T>(pointer_at(m_size - count), count);
   }
@@ -328,56 +328,56 @@ public:
   /**
    * @brief Returns a read-only byte view of the represented range.
    */
-  [[nodiscard]] span<const std::byte> as_bytes() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] span<const std::byte> as_bytes() const & noexcept RELOCO_LIFETIMEBOUND {
     return span<const std::byte>(reinterpret_cast<const std::byte *>(m_ptr), size_bytes());
   }
 
   /**
    * @brief Returns an iterator to the first element of the span.
    */
-  [[nodiscard]] constexpr iterator begin() & noexcept MICROFMT_LIFETIMEBOUND { return m_ptr; }
-  [[nodiscard]] constexpr iterator begin() const & noexcept MICROFMT_LIFETIMEBOUND { return m_ptr; }
+  [[nodiscard]] constexpr iterator begin() & noexcept RELOCO_LIFETIMEBOUND { return m_ptr; }
+  [[nodiscard]] constexpr iterator begin() const & noexcept RELOCO_LIFETIMEBOUND { return m_ptr; }
 
   /**
    * @brief Returns an iterator to one past the last element of the span.
    */
-  [[nodiscard]] constexpr iterator end() & noexcept MICROFMT_LIFETIMEBOUND { return pointer_at(m_size); }
-  [[nodiscard]] constexpr iterator end() const & noexcept MICROFMT_LIFETIMEBOUND { return pointer_at(m_size); }
+  [[nodiscard]] constexpr iterator end() & noexcept RELOCO_LIFETIMEBOUND { return pointer_at(m_size); }
+  [[nodiscard]] constexpr iterator end() const & noexcept RELOCO_LIFETIMEBOUND { return pointer_at(m_size); }
 
-  [[nodiscard]] constexpr reverse_iterator rbegin() & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr reverse_iterator rbegin() & noexcept RELOCO_LIFETIMEBOUND {
     return reverse_iterator(end());
   }
-  [[nodiscard]] constexpr reverse_iterator rbegin() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr reverse_iterator rbegin() const & noexcept RELOCO_LIFETIMEBOUND {
     return reverse_iterator(end());
   }
 
-  [[nodiscard]] constexpr reverse_iterator rend() & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr reverse_iterator rend() & noexcept RELOCO_LIFETIMEBOUND {
     return reverse_iterator(begin());
   }
-  [[nodiscard]] constexpr reverse_iterator rend() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr reverse_iterator rend() const & noexcept RELOCO_LIFETIMEBOUND {
     return reverse_iterator(begin());
   }
 
   /**
    * @brief Returns a const iterator to the first element of the span.
    */
-  [[nodiscard]] constexpr const_iterator cbegin() const & noexcept MICROFMT_LIFETIMEBOUND { return m_ptr; }
+  [[nodiscard]] constexpr const_iterator cbegin() const & noexcept RELOCO_LIFETIMEBOUND { return m_ptr; }
 
   /**
    * @brief Returns a const iterator to one past the last element of the span.
    */
-  [[nodiscard]] constexpr const_iterator cend() const & noexcept MICROFMT_LIFETIMEBOUND { return pointer_at(m_size); }
+  [[nodiscard]] constexpr const_iterator cend() const & noexcept RELOCO_LIFETIMEBOUND { return pointer_at(m_size); }
 
-  [[nodiscard]] constexpr const_reverse_iterator crbegin() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_reverse_iterator crbegin() const & noexcept RELOCO_LIFETIMEBOUND {
     return const_reverse_iterator(cend());
   }
 
-  [[nodiscard]] constexpr const_reverse_iterator crend() const & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr const_reverse_iterator crend() const & noexcept RELOCO_LIFETIMEBOUND {
     return const_reverse_iterator(cbegin());
   }
 
 private:
-  [[nodiscard]] constexpr T *pointer_at(std::size_t offset) const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr T *pointer_at(std::size_t offset) const noexcept RELOCO_LIFETIMEBOUND {
     return offset == 0 ? m_ptr : m_ptr + offset;
   }
 
@@ -387,4 +387,4 @@ private:
 
 } // namespace microfmt
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

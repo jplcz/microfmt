@@ -43,11 +43,11 @@ public:
       throw std::runtime_error("TX buffer overflow");
     }
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     std::cout << " -> " << std::string_view(framed_packet.data(), framed_packet.size()) << "\n";
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     // Send over TCP
     boost::asio::write(m_socket, boost::asio::buffer(framed_packet.data(), framed_packet.size()));
@@ -94,11 +94,11 @@ public:
         in_packet = false; // Packet complete
 
         microfmt::string_view raw_payload = decoder.payload();
-        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+        RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
         std::cout << " <- $" << std::string_view(raw_payload.data(), raw_payload.size()) << "#XX\n";
 
-        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+        RELOCO_END_UNSAFE_BUFFER_USAGE;
 
         // Parse the response into a structured view
         microfmt::gdb::server_response_view resp_view;
@@ -145,20 +145,20 @@ private:
     case microfmt::gdb::server_response_type::stop_signal:
       std::cout << "Target Stopped. Signal: " << static_cast<int>(view.status_code) << "\n";
       if (!view.stop_reason_extra.empty()) {
-        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+        RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
         std::cout << "              Extra: "
                   << std::string_view(view.stop_reason_extra.data(), view.stop_reason_extra.size()) << "\n";
 
-        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+        RELOCO_END_UNSAFE_BUFFER_USAGE;
       }
       break;
     case microfmt::gdb::server_response_type::raw_string:
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
       std::cout << "Data: " << std::string_view(view.text.data(), view.text.size()) << "\n";
 
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
 
       break;
     default:

@@ -12,7 +12,7 @@
 #include <microfmt/inspector/unwind_hint.hpp>
 #include <microfmt/sinks/stdio.hpp>
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 struct simulated_space_tag {};
 
@@ -247,4 +247,4 @@ int main() {
   return 0;
 }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

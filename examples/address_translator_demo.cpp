@@ -32,11 +32,11 @@ template <> struct microfmt::address_translator_traits<demo_translator_tag> {
                         uintptr_t virtual_address,
                         microfmt::translation_attributes &attributes) noexcept {
     for (size_t i = 0; i < context->mapping_count; ++i) {
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
       const auto &mapping = context->mappings[i];
 
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
 
       if (virtual_address < mapping.virtual_base)
         continue;

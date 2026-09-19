@@ -15,10 +15,12 @@ find_package(jplcz_microfmt CONFIG REQUIRED)
 target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
 ```
 
-The package is header-only and requires C++17 or later. Its core has no
-third-party dependencies. Headers for optional Boost formatters include Boost
-directly, so consumers that use those headers must add the corresponding Boost
-packages themselves.
+The package is header-only and requires C++17 or later. Its core depends on
+[`jplcz_reloco`](https://github.com/jplcz/reloco) for hardened containers and
+lifetime-safety primitives; every integration below fetches or resolves it
+transitively, so consumers do not add it as a separate dependency. Headers for
+optional Boost formatters include Boost directly, so consumers that use those
+headers must add the corresponding Boost packages themselves.
 
 ## Conan 2
 

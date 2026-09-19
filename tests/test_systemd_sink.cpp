@@ -22,7 +22,7 @@ struct journal_record {
 
 journal_record captured_journal;
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 void copy_to_buffer(microfmt::string_view text, char *destination, std::size_t capacity, std::size_t &size) noexcept {
   size = text.size() < capacity ? text.size() : capacity;
@@ -31,7 +31,7 @@ void copy_to_buffer(microfmt::string_view text, char *destination, std::size_t c
   }
 }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 void capture_journal(int priority, microfmt::string_view identifier, microfmt::string_view message) noexcept {
   captured_journal.priority = priority;

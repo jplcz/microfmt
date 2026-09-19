@@ -67,9 +67,9 @@ template <typename Tag> struct remote_binary_tree_dispatch {
       while (current != 0) {
         if (stack_top >= stack_capacity)
           break;
-        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+        RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
         node_stack[stack_top++] = current;
-        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+        RELOCO_END_UNSAFE_BUFFER_USAGE;
 
         uintptr_t left = 0;
         if (!traits_type::get_left_node(context, space, element_scratch,
@@ -80,9 +80,9 @@ template <typename Tag> struct remote_binary_tree_dispatch {
       if (stack_top == 0)
         break;
 
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       current = node_stack[--stack_top];
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
 
       if (print_count >= opts.max_print) {
         if (print_count > 0)

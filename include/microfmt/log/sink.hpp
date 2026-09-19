@@ -20,7 +20,7 @@ namespace microfmt::log {
 // ============================================================================
 
 /** @brief Type-erased destination for structured @ref log_msg records. */
-struct MICROFMT_POINTER log_sink {
+struct RELOCO_POINTER log_sink {
   void *ctx{nullptr};
   void (*log_fn)(void *ctx, const log_msg &msg) noexcept {nullptr};
   void (*flush_fn)(void *ctx) noexcept {nullptr};
@@ -52,7 +52,7 @@ template <size_t LineBufCap = 256> class stdout_color_sink {
 public:
   stdout_color_sink() noexcept = default;
 
-  [[nodiscard]] log_sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return log_sink{this,
                     [](void *ctx, const log_msg &msg) noexcept {
                       static_cast<stdout_color_sink *>(ctx)->log_impl(msg);

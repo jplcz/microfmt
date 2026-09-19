@@ -87,9 +87,9 @@ static_assert((sizeof(packet_metadata_table) / sizeof(packet_metadata_table[0]))
   if (index >= static_cast<size_t>(packet_type::_count)) {
     return packet_metadata_table[static_cast<size_t>(packet_type::unknown)];
   }
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   return packet_metadata_table[index];
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 } // namespace microfmt::gdb

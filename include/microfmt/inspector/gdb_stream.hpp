@@ -13,10 +13,10 @@ namespace microfmt::gdb {
  *
  * Automatically frames output as `$data#checksum` into a caller-provided stack buffer.
  */
-class MICROFMT_POINTER gdb_packet_writer {
+class RELOCO_POINTER gdb_packet_writer {
 public:
   explicit constexpr gdb_packet_writer(
-      span<char> buffer MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      span<char> buffer RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_buf(buffer), m_pos(0), m_checksum(0), m_finalized(false) {
     // Start packet with '$'
     if (m_buf.size() > 0) {
@@ -28,7 +28,7 @@ public:
   /**
    * @brief Creates a type-erased sink adapter for formatting.
    */
-  [[nodiscard]] sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, string_view sv) noexcept {
                   auto *self = static_cast<gdb_packet_writer *>(ctx);
                   if (self->m_finalized)
@@ -47,7 +47,7 @@ public:
    * @brief Finalizes the packet by appending `#XX` checksum.
    * @return A string view over the complete framed packet, or empty on overflow.
    */
-  [[nodiscard]] string_view finalize() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] string_view finalize() noexcept RELOCO_LIFETIMEBOUND {
     if (m_finalized) {
       return string_view(m_buf.data(), m_total_len);
     }
@@ -84,7 +84,7 @@ private:
  * Designed for byte-by-byte ingestion (e.g., from UART RX ring buffers or interrupts)
  * with zero heap allocation and strict stack safety.
  */
-class MICROFMT_POINTER gdb_streaming_decoder {
+class RELOCO_POINTER gdb_streaming_decoder {
 public:
   /**
    * @brief Status returned after feeding a byte into the decoder.
@@ -102,7 +102,7 @@ public:
    * @param payload_scratch Caller-owned memory buffer to unescape and store the decoded payload.
    */
   explicit constexpr gdb_streaming_decoder(
-      span<char> payload_scratch MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      span<char> payload_scratch RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_buf(payload_scratch) {
     reset();
   }
@@ -203,7 +203,7 @@ public:
    * @brief Returns a non-owning string view over the fully unescaped packet payload.
    * Valid only when feed() returns status::ready.
    */
-  [[nodiscard]] constexpr string_view payload() const noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr string_view payload() const noexcept RELOCO_LIFETIMEBOUND {
     return string_view(m_buf.data(), m_pos);
   }
 

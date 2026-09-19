@@ -18,9 +18,9 @@ int main() {
   microfmt::pmr::arena_sink packet(&resource, 16);
   microfmt::format_to(packet.as_sink(), "id={:04x}, status={}", 0x2a, "ready");
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::printf("%s\npacket: %.*s\n", message.c_str(), static_cast<int>(packet.view().size()), packet.view().data());
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }

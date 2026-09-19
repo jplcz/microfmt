@@ -144,10 +144,10 @@ template <> struct formatter<i2c_msg_view> {
         if (i > 0)
           out.put(' ');
         const uint8_t b = msg.payload[i];
-        MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+        RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
         out.put(hex_digits[(b >> 4) & 0x0F]);
         out.put(hex_digits[b & 0x0F]);
-        MICROFMT_END_UNSAFE_BUFFER_USAGE;
+        RELOCO_END_UNSAFE_BUFFER_USAGE;
       }
       out.put(']');
 

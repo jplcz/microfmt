@@ -25,7 +25,7 @@ struct register_state {
   std::size_t write_count{0};
 };
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 bool read_register(const void *opaque_state, microfmt::address_space_ref,
                    uint32_t dwarf_index, void *out_value,
@@ -55,7 +55,7 @@ bool write_register(void *opaque_state, microfmt::address_space_ref,
   return true;
 }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 microfmt::register_context_ref make_context(
     register_state &state, microfmt::span<std::byte> scratch = {}) {

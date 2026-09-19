@@ -28,7 +28,7 @@ public:
     set_tag(tag);
   }
 
-  [[nodiscard]] log_sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return log_sink{this,
                     [](void *ctx, const log_msg &msg) noexcept {
                       static_cast<tizen_dlog_sink *>(ctx)->log_impl(msg);
@@ -84,7 +84,7 @@ private:
       return;
     }
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     char logger_tag[TagCapacity];
     const std::size_t logger_tag_size =
@@ -94,7 +94,7 @@ private:
     }
     logger_tag[logger_tag_size] = '\0';
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     write_fn_(priority_for(msg.lvl), microfmt::string_view(logger_tag, logger_tag_size), msg.payload);
   }

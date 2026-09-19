@@ -96,7 +96,7 @@ inline constexpr parsed_float_spec parse_float_spec(microfmt::string_view spec) 
  * @return Number of bytes written to @p dest, excluding the null terminator.
  */
 template <typename T>
-MICROFMT_UNSAFE_BUFFER_USAGE inline size_t build_printf_float_format(char *dest,
+RELOCO_UNSAFE_BUFFER_USAGE inline size_t build_printf_float_format(char *dest,
                                                                      const parsed_float_spec &spec) noexcept {
   size_t idx = 0;
   dest[idx++] = '%';
@@ -133,7 +133,7 @@ MICROFMT_UNSAFE_BUFFER_USAGE inline size_t build_printf_float_format(char *dest,
  * @param out Destination sink.
  */
 template <typename T>
-MICROFMT_UNSAFE_BUFFER_USAGE inline void format_float_via_printf(T val, const parsed_float_spec &spec,
+RELOCO_UNSAFE_BUFFER_USAGE inline void format_float_via_printf(T val, const parsed_float_spec &spec,
                                                                  const sink &out) noexcept {
   char fmt_buf[16];
   build_printf_float_format<T>(fmt_buf, spec);
@@ -190,11 +190,11 @@ template <> struct formatter<float> {
    */
   void format(float val, const sink &out) const noexcept {
     // Promoted to double for standard %f / %g printf conversions
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     detail::format_float_via_printf<double>(static_cast<double>(val), spec_, out);
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 };
 
@@ -219,11 +219,11 @@ template <> struct formatter<double> {
    * @param out Destination sink.
    */
   void format(double val, const sink &out) const noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     detail::format_float_via_printf<double>(val, spec_, out);
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 };
 
@@ -249,11 +249,11 @@ template <> struct formatter<long double> {
    * @param out Destination sink.
    */
   void format(long double val, const sink &out) const noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     detail::format_float_via_printf<long double>(val, spec_, out);
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 };
 

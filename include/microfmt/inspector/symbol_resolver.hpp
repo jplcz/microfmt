@@ -101,9 +101,9 @@ struct resolved_symbol_info {
 /**
  * @brief Caller-owned temporary storage for one symbol resolution.
  */
-struct MICROFMT_POINTER symbol_resolution_context {
+struct RELOCO_POINTER symbol_resolution_context {
   constexpr explicit symbol_resolution_context(
-      span<char> string_scratch MICROFMT_LIFETIMEBOUND = {}) noexcept
+      span<char> string_scratch RELOCO_LIFETIMEBOUND = {}) noexcept
       : scratch(string_scratch) {}
 
   template <size_t N>
@@ -136,7 +136,7 @@ template <typename Tag> struct symbol_resolver_traits;
  * Resolves addresses to symbols and derives the relative offsets stored in
  * @ref resolved_symbol_info.
  */
-class MICROFMT_POINTER symbol_resolver_ref {
+class RELOCO_POINTER symbol_resolver_ref {
 public:
   /**
    * @brief Virtual table of symbol-resolution operations.
@@ -181,8 +181,8 @@ public:
                         const Context *, const typename Traits::context_type *>,
                 int> = 0>
   constexpr symbol_resolver_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
-               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
+               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context,
@@ -215,7 +215,7 @@ public:
       typename Traits = symbol_resolver_traits<Tag>,
       std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
   [[nodiscard]] static constexpr symbol_resolver_ref
-  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return symbol_resolver_ref(Tag{}, ctx);
   }
 
@@ -317,7 +317,7 @@ template <typename Tag,
               std::is_void_v<typename symbol_resolver_traits<Tag>::context_type>>
 class symbol_resolver;
 
-template <typename Tag> class MICROFMT_OWNER symbol_resolver<Tag, false> {
+template <typename Tag> class RELOCO_OWNER symbol_resolver<Tag, false> {
 public:
   using traits_type = symbol_resolver_traits<Tag>;
   using context_type = typename traits_type::context_type;
@@ -326,17 +326,17 @@ public:
       : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   [[nodiscard]] constexpr symbol_resolver_ref
-  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return symbol_resolver_ref(Tag{}, context_);
   }
 
@@ -362,7 +362,7 @@ public:
 /**
  * @brief Formattable view resolving and rendering a remote code address.
  */
-class MICROFMT_POINTER remote_symbol_view {
+class RELOCO_POINTER remote_symbol_view {
 public:
   /**
    * @brief Constructs an empty (null) view.
@@ -378,7 +378,7 @@ public:
    */
   constexpr remote_symbol_view(uintptr_t addr, symbol_resolver_ref resolver,
                                symbol_resolution_context &context
-                                   MICROFMT_LIFETIMEBOUND,
+                                   RELOCO_LIFETIMEBOUND,
                                bool demangle = true) noexcept
       : addr_(addr), resolver_(resolver), context_(&context),
         demangle_(demangle) {}
@@ -399,7 +399,7 @@ public:
    * @brief Returns caller-owned symbol-resolution temporaries.
    */
   [[nodiscard]] constexpr symbol_resolution_context &
-  context() const noexcept MICROFMT_LIFETIMEBOUND {
+  context() const noexcept RELOCO_LIFETIMEBOUND {
     return *context_;
   }
   /**

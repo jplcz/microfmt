@@ -27,11 +27,11 @@ boost::asio::awaitable<void> server(tcp::acceptor &acceptor) {
   const std::size_t reply_size = co_await boost::asio::async_read(
       socket, boost::asio::buffer(reply), boost::asio::transfer_at_least(1), boost::asio::use_awaitable);
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::printf("server received: %.*s\n", static_cast<int>(reply_size), reply.data());
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 boost::asio::awaitable<void> client(unsigned short port) {
@@ -45,11 +45,11 @@ boost::asio::awaitable<void> client(unsigned short port) {
   const std::size_t bytes_written =
       co_await microfmt::coro::async_format_to<tcp::socket, 128>(socket, "reading={} unit=C", 24);
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::printf("client wrote %zu bytes\n", bytes_written);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 } // namespace

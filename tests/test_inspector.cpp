@@ -26,7 +26,7 @@
 #include <cstring>
 #include <memory>
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 struct stateless_translator_tag {};
 struct stateful_translator_tag {};
@@ -1696,4 +1696,4 @@ TEST(InspectorFrameUnwinder, StepsFrameRecordsAndRejectsInvalidRecords) {
 
 } // namespace
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

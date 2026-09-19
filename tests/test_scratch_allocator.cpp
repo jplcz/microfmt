@@ -33,10 +33,10 @@ TEST(ScratchAllocator, AllocatesAlignedObjectArrays) {
 
 TEST(ScratchAllocator, AlignsWithinUnalignedBuffers) {
   alignas(std::max_align_t) std::byte storage[64]{};
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   microfmt::scratch_allocator allocator(
       microfmt::span<std::byte>(storage + 1, sizeof(storage) - 1));
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   auto *value = allocator.create<aligned_value>(42);
 

@@ -10,7 +10,7 @@
 #include <microfmt/microfmt.hpp>
 #include <string_view>
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 static void terminal_write(void * /*ctx*/, microfmt::string_view sv) noexcept {
   std::fwrite(sv.data(), 1, sv.size(), stdout);
@@ -95,4 +95,4 @@ int main() {
 
   return 0;
 }
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

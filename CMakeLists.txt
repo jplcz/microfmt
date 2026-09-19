@@ -78,6 +78,44 @@ if(JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS OR JPLCZ_MICROFMT_ENABLE_UNSAFE_BUFFER_
     endif()
 endif()
 
+# jplcz_reloco dependency
+#
+# jplcz_reloco provides the hardened container / lifetime-safety primitives
+# that jplcz_microfmt is migrating onto. Callers that already vendor or pin a
+# specific reloco checkout can point JPLCZ_MICROFMT_RELOCO_SOURCE_DIR at it;
+# otherwise it is fetched from its GitHub repository at a pinned commit.
+set(JPLCZ_MICROFMT_RELOCO_SOURCE_DIR "" CACHE PATH
+    "Path to a local jplcz_reloco checkout to use instead of fetching it")
+set(JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY "https://github.com/jplcz/reloco.git" CACHE STRING
+    "Git repository to fetch jplcz_reloco from when JPLCZ_MICROFMT_RELOCO_SOURCE_DIR is unset")
+set(JPLCZ_MICROFMT_RELOCO_GIT_TAG "master" CACHE STRING
+    "Git tag or commit to fetch jplcz_reloco from when JPLCZ_MICROFMT_RELOCO_SOURCE_DIR is unset")
+
+include(FetchContent)
+if(JPLCZ_MICROFMT_RELOCO_SOURCE_DIR)
+    FetchContent_Declare(
+        jplcz_reloco
+        SOURCE_DIR "${JPLCZ_MICROFMT_RELOCO_SOURCE_DIR}"
+    )
+else()
+    FetchContent_Declare(
+        jplcz_reloco
+        GIT_REPOSITORY "${JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY}"
+        GIT_TAG "${JPLCZ_MICROFMT_RELOCO_GIT_TAG}"
+    )
+endif()
+
+# jplcz_reloco is consumed as a header-only build dependency: keep its own
+# development targets (tests, header checks, strict warnings) out of the
+# combined build, and mirror JPLCZ_MICROFMT_INSTALL so an installed
+# jplcz_microfmt package also installs and exports the jplcz_reloco package it
+# depends on.
+set(JPLCZ_RELOCO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(JPLCZ_RELOCO_BUILD_HEADER_CHECKS OFF CACHE BOOL "" FORCE)
+set(JPLCZ_RELOCO_ENABLE_STRICT_WARNINGS OFF CACHE BOOL "" FORCE)
+set(JPLCZ_RELOCO_INSTALL ${JPLCZ_MICROFMT_INSTALL} CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(jplcz_reloco)
+
 # Header-only interface target
 add_library(jplcz_microfmt INTERFACE)
 target_compile_features(jplcz_microfmt INTERFACE cxx_std_17)
@@ -90,6 +128,8 @@ target_include_directories(jplcz_microfmt INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+
+target_link_libraries(jplcz_microfmt INTERFACE jplcz_reloco::reloco)
 
 add_library(jplcz_microfmt::microfmt ALIAS jplcz_microfmt)
 

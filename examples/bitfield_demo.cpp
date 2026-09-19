@@ -10,11 +10,11 @@
 
 // Hardware callback example: streams output directly to stdout/UART
 static void terminal_write(void * /*ctx*/, microfmt::string_view sv) noexcept {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::fwrite(sv.data(), 1, sv.size(), stdout);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 // ============================================================================
@@ -97,11 +97,11 @@ int main() {
   microfmt::format_to(term, "\n=== 3. Format into Fixed Stack Buffer ===\n");
   auto log_entry = microfmt::format<128>("ISR Snapshot: {}", isr_active);
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::fwrite(log_entry.view().data(), 1, log_entry.size(), stdout);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   microfmt::format_to(term, "\n");
 

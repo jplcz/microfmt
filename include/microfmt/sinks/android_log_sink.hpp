@@ -44,14 +44,14 @@ public:
     set_tag(tag);
   }
 
-  [[nodiscard]] log_sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return log_sink{this,
                     [](void *ctx, const log_msg &msg) noexcept { static_cast<android_log_sink *>(ctx)->log_impl(msg); },
                     nullptr, level::trace};
   }
 
   void set_tag(microfmt::string_view tag) noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     tag_size_ = tag.size() < TagCapacity - 1 ? tag.size() : TagCapacity - 1;
     for (std::size_t i = 0; i < tag_size_; ++i) {
@@ -59,7 +59,7 @@ public:
     }
     tag_[tag_size_] = '\0';
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
 private:
@@ -104,7 +104,7 @@ private:
       return;
     }
 
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     char logger_tag[TagCapacity];
     const std::size_t logger_tag_size =
@@ -114,7 +114,7 @@ private:
     }
     logger_tag[logger_tag_size] = '\0';
 
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     write_fn_(priority_for(msg.lvl), microfmt::string_view(logger_tag, logger_tag_size), buffer.view());
   }

@@ -53,11 +53,11 @@ size_t checked_reader(void *ctx, uintptr_t address, uint8_t *destination, size_t
 
   const size_t available = reader.readable - offset;
   const size_t count = requested < available ? requested : available;
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   for (size_t i = 0; i < count; ++i) {
     destination[i] = reader.bytes[offset + i];
   }
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
   return count;
 }
 

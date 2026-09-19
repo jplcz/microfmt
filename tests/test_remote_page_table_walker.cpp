@@ -31,9 +31,9 @@ template <> struct microfmt::address_space_traits<physical_space_tag> {
     const uintptr_t offset = address - context->base;
     if (offset > context->size || size > context->size - offset)
       return false;
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(destination, context->data + offset, size);
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
 
@@ -84,9 +84,9 @@ bool decode_test_entry(
 }
 
 void store_u64(uint8_t *memory, size_t offset, uint64_t value) {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   std::memcpy(memory + offset, &value, sizeof(value));
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 TEST(RemotePageTableWalker, WalksPhysicalTablesAndRecordsTrace) {

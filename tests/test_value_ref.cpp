@@ -151,10 +151,10 @@ TEST(ValuePtr, UnsafeDerefSkipsTheCheckedNullGuard) {
   int value = 5;
   microfmt::value_ptr<int> ptr(&value);
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   EXPECT_EQ(ptr.unsafe_deref(), 5);
   ptr.unsafe_deref() = 6;
-  MICROFMT_END_UNSAFE_BUFFER_USAGE
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 
   EXPECT_EQ(value, 6);
 }

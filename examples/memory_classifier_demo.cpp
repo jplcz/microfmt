@@ -22,7 +22,7 @@ template <> struct microfmt::memory_classifier_traits<demo_classifier_tag> {
       microfmt::value_ref<const context_type> context,
       uintptr_t virtual_address,
                                microfmt::memory_region_info &info) noexcept {
-    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     for (size_t i = 0; i < context->region_count; ++i) {
       if (context->regions[i].contains(virtual_address)) {
@@ -30,7 +30,7 @@ template <> struct microfmt::memory_classifier_traits<demo_classifier_tag> {
         return true;
       }
     }
-    MICROFMT_END_UNSAFE_BUFFER_USAGE;
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
     return false;
   }
 };

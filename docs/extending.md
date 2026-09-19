@@ -147,7 +147,7 @@ public:
   your_sink(const your_sink &) = delete;
   your_sink &operator=(const your_sink &) = delete;
 
-  [[nodiscard]] microfmt::sink as_sink() noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] microfmt::sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return microfmt::sink{
         this, [](void *ctx, microfmt::string_view sv) noexcept {
           static_cast<your_sink *>(ctx)->write(sv);
@@ -282,7 +282,7 @@ rename the placeholders, and add/remove operations as needed.
 
 ```cpp
 #include <microfmt/value_ref.hpp>
-#include <microfmt/lifetime.hpp> // MICROFMT_LIFETIMEBOUND
+#include <microfmt/lifetime.hpp> // RELOCO_LIFETIMEBOUND
 #include <type_traits>
 #include <utility>
 
@@ -334,7 +334,7 @@ public:
             std::enable_if_t<std::is_convertible_v<
                                  Context *, typename Traits::context_type *>,
                              int> = 0>
-  constexpr your_provider_ref(Tag, Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
+  constexpr your_provider_ref(Tag, Context &ctx RELOCO_LIFETIMEBOUND) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   [[nodiscard]] bool read(int key, int &out_value) const noexcept {
@@ -406,7 +406,7 @@ public:
   // Ref-qualified `&`: calling `.ref()` on a temporary owning wrapper is a
   // compile error, since the returned handle would otherwise outlive the
   // `context_` it points into.
-  [[nodiscard]] constexpr your_provider_ref ref() & noexcept MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr your_provider_ref ref() & noexcept RELOCO_LIFETIMEBOUND {
     return your_provider_ref(Tag{}, context_);
   }
 
@@ -521,7 +521,7 @@ public:
                                  std::is_convertible_v<
                                      Context *, typename Traits::context_type *>,
                              int> = 0>
-  constexpr your_provider_ref(Tag, Context &ctx MICROFMT_LIFETIMEBOUND) noexcept
+  constexpr your_provider_ref(Tag, Context &ctx RELOCO_LIFETIMEBOUND) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   [[nodiscard]] bool read(int key, int &out_value) const noexcept {

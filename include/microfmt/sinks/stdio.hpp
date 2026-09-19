@@ -23,9 +23,9 @@ namespace microfmt {
 [[nodiscard]] inline sink file_sink(std::FILE *file) noexcept {
   return sink{file, [](void *ctx, microfmt::string_view sv) noexcept {
                 if (ctx != nullptr && !sv.empty()) {
-                  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+                  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
                   std::fwrite(sv.data(), 1, sv.size(), static_cast<std::FILE *>(ctx));
-                  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+                  RELOCO_END_UNSAFE_BUFFER_USAGE;
                 }
               }};
 }
@@ -42,7 +42,7 @@ namespace microfmt {
 [[nodiscard]] inline sink fd_sink(int fd) noexcept {
   // Store fd inside the pointer context value without allocation
   return sink{reinterpret_cast<void *>(static_cast<intptr_t>(fd)), [](void *ctx, microfmt::string_view sv) noexcept {
-                MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+                RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
                 const int target_fd = static_cast<int>(reinterpret_cast<intptr_t>(ctx));
                 if (target_fd >= 0 && !sv.empty()) {
@@ -58,7 +58,7 @@ namespace microfmt {
                   }
                 }
 
-                MICROFMT_END_UNSAFE_BUFFER_USAGE;
+                RELOCO_END_UNSAFE_BUFFER_USAGE;
               }};
 }
 #endif

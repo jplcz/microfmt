@@ -156,14 +156,14 @@ struct frame_unwinder_traits<arm_exidx_unwinder_tag<AbiTraits>> {
           // CLEAR means this word is instead a PREL31-encoded pointer to an
           // out-of-line entry in `.ARM.extab` (generic model).
           if ((raw_unwind_data & 0x80000000U) != 0U) {
-            MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+            RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
             unwind_applied =
                 arm_exidx_bytecode_decoder::execute_bytecode(
                     context->space, raw_unwind_data, virtual_sp, fault_pc,
                     reg_ctx);
 
-            MICROFMT_END_UNSAFE_BUFFER_USAGE;
+            RELOCO_END_UNSAFE_BUFFER_USAGE;
           } else {
             uintptr_t extab_addr = exidx_table_searcher::decode_prel31(word2_address, raw_unwind_data);
             unwind_applied = extab_stream_executor::execute(

@@ -51,9 +51,9 @@ inline void write_errno_string(const sink &out, int value) noexcept {
     std::strncpy(buf, "Unknown error", sizeof(buf));
   }
 #elif defined(_GNU_SOURCE) || defined(__GLIBC__)
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   const char *err_msg = strerror_r(value, buf, sizeof(buf));
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
   if (err_msg) {
     out.write(err_msg);
     return;

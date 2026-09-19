@@ -16,11 +16,11 @@ int main() {
                                    microfmt::fixed<100, 2>(subzero_temp_cdeg) // "-0.45"
   );
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::fwrite(out.view().data(), 1, out.size(), stdout);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   std::putchar('\n');
 }

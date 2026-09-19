@@ -7,7 +7,7 @@
 #include <microfmt/formatters/math.hpp>
 #include <microfmt/microfmt.hpp>
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 int main() {
   const int transform[] = {1, 0, 0, 1};
@@ -18,4 +18,4 @@ int main() {
               matrix.view().data());
 }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

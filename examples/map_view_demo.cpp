@@ -14,11 +14,11 @@
 namespace {
 
 void stdout_write(void * /*context*/, microfmt::string_view text) noexcept {
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::fwrite(text.data(), 1, text.size(), stdout);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
 
 } // namespace
@@ -31,12 +31,12 @@ int main() {
   microfmt::format_to(output, "registers: {}\n", microfmt::map_view(registers));
   microfmt::format_to(output, "hex registers: {:b04X}\n", microfmt::map_view(registers));
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   microfmt::format_to(output, "rail slice: {}\n",
                       microfmt::map_view(
                           rails.begin() + 1, rails.end(), [](const auto &rail) noexcept { return rail.first; },
                           [](const auto &rail) noexcept { return rail.second; }));
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 }

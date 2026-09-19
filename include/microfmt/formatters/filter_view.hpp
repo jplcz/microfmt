@@ -161,9 +161,9 @@ template <typename T, typename Predicate> struct formatter<filtered_pointer_rang
 
     size_t matched_count = 0;
     for (size_t i = 0; i < fv.count; ++i) {
-      MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       const T &item = fv.data[i];
-      MICROFMT_END_UNSAFE_BUFFER_USAGE;
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
 
       if (fv.predicate(item)) {
         if (matched_count++ > 0) {

@@ -27,7 +27,7 @@ template <typename Tag> struct address_source_traits;
 /**
  * @brief Type-erased abstract source iterator providing addresses to scan.
  */
-class MICROFMT_POINTER address_source_ref {
+class RELOCO_POINTER address_source_ref {
 public:
   constexpr address_source_ref() noexcept = default;
 
@@ -38,8 +38,8 @@ public:
                                  const typename Traits::context_type *>,
                              int> = 0>
   constexpr address_source_ref(
-      Tag, const Context &ctx MICROFMT_LIFETIMEBOUND
-               MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
+               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), next_fn_(&next_entry<Tag>) {}
 
   template <typename Tag, typename Context,
@@ -49,7 +49,7 @@ public:
   template <typename Tag, typename Context,
             typename Traits = address_source_traits<Tag>>
   [[nodiscard]] static constexpr address_source_ref
-  make(const Context &ctx MICROFMT_LIFETIMEBOUND) noexcept {
+  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return address_source_ref(Tag{}, ctx);
   }
 
@@ -80,7 +80,7 @@ private:
   bool (*next_fn_)(const void *ctx, uintptr_t &out_addr) noexcept {nullptr};
 };
 
-template <typename Tag> class MICROFMT_OWNER address_source {
+template <typename Tag> class RELOCO_OWNER address_source {
 public:
   using traits_type = address_source_traits<Tag>;
   using context_type = typename traits_type::context_type;
@@ -89,17 +89,17 @@ public:
       : context_(std::move(context)) {}
 
   [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept MICROFMT_LIFETIMEBOUND {
+  context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
   [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept MICROFMT_LIFETIMEBOUND {
+  context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   [[nodiscard]] constexpr address_source_ref
-  ref() const & noexcept MICROFMT_LIFETIMEBOUND {
+  ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return address_source_ref(Tag{}, context_);
   }
 

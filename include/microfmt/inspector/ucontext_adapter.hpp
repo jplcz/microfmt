@@ -462,11 +462,11 @@ inline bool ucontext_read_register(const void *ctx, address_space_ref, uint32_t 
 
   if (!found)
     return false;
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::memcpy(out_value, &value, value_size);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   return true;
 }
@@ -490,12 +490,12 @@ inline bool ucontext_write_register(void *ctx, address_space_ref, uint32_t dwarf
     return false;
 
   uint64_t value = 0;
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::memcpy(&value, in_value, value_size);
   auto &uc = *static_cast<ucontext_t *>(ctx);
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   bool found = false;
 
@@ -920,8 +920,8 @@ namespace microfmt {
  * @param scratch Reusable scratch buffer forwarded to the returned ref.
  */
 [[nodiscard]] inline register_context_ref
-make_ucontext_register_context_ref(const ucontext_t &uctx MICROFMT_LIFETIMEBOUND, address_space_ref space,
-                                   span<std::byte> scratch MICROFMT_LIFETIMEBOUND) noexcept {
+make_ucontext_register_context_ref(const ucontext_t &uctx RELOCO_LIFETIMEBOUND, address_space_ref space,
+                                   span<std::byte> scratch RELOCO_LIFETIMEBOUND) noexcept {
   return make_read_only_register_context_ref<&detail::ucontext_read_register>(uctx, space, scratch);
 }
 
@@ -942,8 +942,8 @@ make_ucontext_register_context_ref(const ucontext_t &uctx MICROFMT_LIFETIMEBOUND
  * @param scratch Reusable scratch buffer forwarded to the returned ref.
  */
 [[nodiscard]] inline register_context_ref
-make_mutable_ucontext_register_context_ref(ucontext_t &uctx MICROFMT_LIFETIMEBOUND, address_space_ref space,
-                                           span<std::byte> scratch MICROFMT_LIFETIMEBOUND) noexcept {
+make_mutable_ucontext_register_context_ref(ucontext_t &uctx RELOCO_LIFETIMEBOUND, address_space_ref space,
+                                           span<std::byte> scratch RELOCO_LIFETIMEBOUND) noexcept {
   return make_register_context_ref<&detail::ucontext_read_register, &detail::ucontext_write_register>(uctx, space,
                                                                                                       scratch);
 }

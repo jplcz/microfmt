@@ -6,7 +6,7 @@
 #include <microfmt/microfmt.hpp>
 #include <microfmt/sinks/stdio.hpp>
 
-MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
 struct RemoteProcessInfo {
   uint32_t pid;
@@ -104,4 +104,4 @@ int main() {
   return 0;
 }
 
-MICROFMT_END_UNSAFE_BUFFER_USAGE
+RELOCO_END_UNSAFE_BUFFER_USAGE

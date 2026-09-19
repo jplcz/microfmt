@@ -73,11 +73,11 @@ int main() {
 
   auto buf = microfmt::format<512>("{}", microfmt::mem_diff(before_span, after_span));
 
-  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
   std::printf("%.*s\n", static_cast<int>(buf.size()), buf.view().data());
 
-  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   return 0;
 }
