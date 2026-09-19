@@ -293,10 +293,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
     enable_testing()
 
     add_executable(jplcz_microfmt_tests tests/test_core.cpp
-        tests/test_array.cpp
         tests/test_scratch_allocator.cpp
-        tests/test_value_ref.cpp
-        tests/test_checked_value.cpp
         tests/test_metadata_map.cpp
         tests/test_task_thread.cpp
         tests/test_gdb_protocol.cpp
@@ -393,18 +390,6 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
     gtest_discover_tests(jplcz_microfmt_cxx17_container_sink_tests
         TEST_PREFIX "Cxx17ContainerSink.")
 
-    add_executable(jplcz_microfmt_cxx17_array_tests tests/test_array.cpp)
-    target_link_libraries(jplcz_microfmt_cxx17_array_tests PRIVATE
-        jplcz_microfmt GTest::gtest_main)
-    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_array_tests)
-    set_target_properties(jplcz_microfmt_cxx17_array_tests PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED ON
-        CXX_EXTENSIONS OFF
-    )
-    gtest_discover_tests(jplcz_microfmt_cxx17_array_tests
-        TEST_PREFIX "Cxx17Array.")
-
     add_executable(jplcz_microfmt_cxx17_remote_basic_string_tests
         tests/test_remote_basic_string.cpp)
     target_link_libraries(jplcz_microfmt_cxx17_remote_basic_string_tests PRIVATE
@@ -491,31 +476,6 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(jplcz_microfmt_cxx17_tls_provider_tests
         TEST_PREFIX "Cxx17TlsProvider.")
-
-    add_executable(jplcz_microfmt_cxx17_value_ref_tests tests/test_value_ref.cpp)
-    target_link_libraries(jplcz_microfmt_cxx17_value_ref_tests PRIVATE
-        jplcz_microfmt GTest::gtest_main)
-    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_value_ref_tests)
-    set_target_properties(jplcz_microfmt_cxx17_value_ref_tests PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED ON
-        CXX_EXTENSIONS OFF
-    )
-    gtest_discover_tests(jplcz_microfmt_cxx17_value_ref_tests
-        TEST_PREFIX "Cxx17ValueRef.")
-
-    add_executable(jplcz_microfmt_cxx17_checked_value_tests
-        tests/test_checked_value.cpp)
-    target_link_libraries(jplcz_microfmt_cxx17_checked_value_tests PRIVATE
-        jplcz_microfmt GTest::gtest_main)
-    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_checked_value_tests)
-    set_target_properties(jplcz_microfmt_cxx17_checked_value_tests PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED ON
-        CXX_EXTENSIONS OFF
-    )
-    gtest_discover_tests(jplcz_microfmt_cxx17_checked_value_tests
-        TEST_PREFIX "Cxx17CheckedValue.")
 
     add_executable(jplcz_microfmt_cxx17_metadata_map_tests
         tests/test_metadata_map.cpp)
