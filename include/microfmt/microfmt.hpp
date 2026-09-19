@@ -868,14 +868,8 @@ struct int_formatter_specs {
       }
     }
   }
-};
 
-} // namespace detail
-
-template <typename T>
-struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool> && !std::is_same_v<T, char>>>
-    : detail::int_formatter_specs {
-  void format(T val, const sink &out) const noexcept {
+  template <typename T> void format_int_impl(T val, const sink &out) const noexcept {
     MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
     constexpr size_t BUF_SIZE = (sizeof(T) <= 4) ? 12 : 24;
     char buffer[BUF_SIZE];
@@ -910,6 +904,25 @@ struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T,
     const size_t digits_len = static_cast<size_t>(end - start);
     detail::emit_formatted_int(out, start, digits_len, is_negative, prefix, width, flags.zero_pad);
     MICROFMT_END_UNSAFE_BUFFER_USAGE;
+  }
+};
+
+} // namespace detail
+
+template <typename T>
+struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool> && !std::is_same_v<T, char>>>
+    : detail::int_formatter_specs {
+  MICROFMT_ALWAYS_INLINE void format(T val, const sink &out) const noexcept {
+    if constexpr (sizeof(T) <= sizeof(uint64_t)) {
+      if constexpr (std::is_signed_v<T>) {
+        format_int_impl<int64_t>(static_cast<int64_t>(val), out);
+      } else {
+        format_int_impl<uint64_t>(static_cast<uint64_t>(val), out);
+      }
+    } else {
+      // Fallback for wide integers (> 64-bit) if enabled
+      format_int_impl<T>(val, out);
+    }
   }
 };
 
