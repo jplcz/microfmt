@@ -48,11 +48,21 @@ if (ref.find_by_pc(program_counter, info)) {
 `dl_iterate_phdr()` directly. `dl_elf_enumerator_context` is stateless: both
 operations query the dynamic linker directly and require no registration
 step. `image_name` points to storage owned by the dynamic linker and remains
-valid for as long as the corresponding image stays loaded. Because neither
-API exposes ELF section headers, `exidx_start`/`exidx_end` and
-`debug_frame_start`/`debug_frame_end` are always left at `0`; pair this
-backend with a section-header parser if EXIDX/`.debug_frame` bounds are
-needed.
+valid for as long as the corresponding image stays loaded.
+
+Neither API exposes ELF section headers, but both unwind-table fields can
+still be resolved from program headers alone on the platforms that emit
+them: `exidx_start`/`exidx_end` come from the image's `PT_ARM_EXIDX` segment
+(32-bit ARM/AArch32 `.ARM.exidx` tables), and `debug_frame_start`/
+`debug_frame_end` come from decoding the `.eh_frame_hdr` pointed to by the
+image's `PT_GNU_EH_FRAME` segment — the same technique libgcc's
+`_Unwind_Find_FDE` and LLVM libunwind use to locate `.eh_frame` (not the
+debug-only `.debug_frame` section, which has no program-header entry and is
+typically not mapped at runtime at all). `debug_frame_end` is set to
+`UINTPTR_MAX` in that case, since `.eh_frame_hdr` records where `.eh_frame`
+starts but not its size; callers stop at the standard zero-length terminator
+record instead. Both fields stay `0` on platforms or images lacking the
+corresponding segment.
 
 ## Resolve and render symbols
 

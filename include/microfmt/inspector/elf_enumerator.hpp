@@ -51,11 +51,19 @@ struct elf_image_info {
   uintptr_t exidx_end{0};
 
   /**
-   * @brief Start of the DWARF `.debug_frame` section.
+   * @brief Start of the DWARF CFI unwind-record table used by
+   * @ref microfmt::dwarf_decoder for stack unwinding. Depending on the
+   * enumerator backend this may be a true DWARF `.debug_frame` section or
+   * (as with @ref dl_elf_enumerator_tag, via `.eh_frame_hdr`/`PT_GNU_EH_FRAME`)
+   * the loaded `.eh_frame` unwind table; both share the same CIE/FDE record
+   * layout, so either is a valid decoder input.
    */
   uintptr_t debug_frame_start{0};
   /**
-   * @brief End of the DWARF `.debug_frame` section.
+   * @brief End of the DWARF CFI unwind-record table. May be `UINTPTR_MAX`
+   * when the backend can locate the table's start but not its exact size, in
+   * which case decoders must rely on a zero-length terminator record or the
+   * first unreadable address to stop.
    */
   uintptr_t debug_frame_end{0};
 
@@ -75,7 +83,8 @@ struct elf_image_info {
   [[nodiscard]] constexpr bool has_exidx() const noexcept { return exidx_start != 0 && exidx_end > exidx_start; }
 
   /**
-   * @brief Reports whether a usable DWARF `.debug_frame` section is present.
+   * @brief Reports whether a usable DWARF CFI unwind-record table
+   * (`.debug_frame` or `.eh_frame`, depending on backend) is present.
    * @return `true` when the section bounds are valid.
    */
   [[nodiscard]] constexpr bool has_debug_frame() const noexcept {

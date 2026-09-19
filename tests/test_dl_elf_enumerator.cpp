@@ -6,6 +6,7 @@
 
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <microfmt/inspector/dl_elf_enumerator.hpp>
 #include <microfmt/microfmt.hpp>
 
@@ -100,11 +101,61 @@ TEST(DlElfEnumerator, FindByPcAgreesWithEnumerate) {
   for (size_t i = 0; i < count; ++i) {
     if (images[i].load_base == found.load_base) {
       EXPECT_EQ(images[i].image_size, found.image_size);
+      EXPECT_EQ(images[i].exidx_start, found.exidx_start);
+      EXPECT_EQ(images[i].exidx_end, found.exidx_end);
+      EXPECT_EQ(images[i].debug_frame_start, found.debug_frame_start);
+      EXPECT_EQ(images[i].debug_frame_end, found.debug_frame_end);
       matched = true;
       break;
     }
   }
   EXPECT_TRUE(matched);
+}
+
+TEST(DlElfEnumerator, ExidxBoundsAreWellFormedWhenPresent) {
+  // On platforms without .ARM.exidx (e.g. x86_64), has_exidx() stays false
+  // for every image, since PT_ARM_EXIDX segments are never emitted there.
+  // This test only asserts internal consistency (start <= end, both zero
+  // together), so it stays meaningful on every platform this backend
+  // supports.
+  auto ref = enumerator_ref();
+  std::array<microfmt::elf_image_info, 32> images{};
+  size_t count = 0;
+  ASSERT_TRUE(ref.enumerate(microfmt::span<microfmt::elf_image_info>(images.data(), images.size()), count));
+
+  for (size_t i = 0; i < count; ++i) {
+    const auto &image = images[i];
+    if (image.has_exidx()) {
+      EXPECT_GT(image.exidx_end, image.exidx_start);
+    } else {
+      EXPECT_EQ(image.exidx_start, 0u);
+      EXPECT_EQ(image.exidx_end, 0u);
+    }
+  }
+}
+
+// This backend derives debug_frame_start/debug_frame_end from the loaded
+// .eh_frame (via PT_GNU_EH_FRAME/.eh_frame_hdr), not the debug-only
+// .debug_frame section. Regular GCC/Clang Linux builds emit .eh_frame with
+// -fasynchronous-unwind-tables (the default), so this test binary is
+// expected to have one, and .eh_frame's very first record is always a CIE
+// (whose 4-byte CIE_id/CIE_pointer field is 0), letting us sanity-check the
+// decoded bytes actually look like unwind data.
+TEST(DlElfEnumerator, FindByPcPopulatesEhFrameBackedDebugFrame) {
+  auto ref = enumerator_ref();
+  const auto pc = reinterpret_cast<uintptr_t>(&marker_function);
+
+  microfmt::elf_image_info info{};
+  ASSERT_TRUE(ref.find_by_pc(pc, info));
+  ASSERT_TRUE(info.has_debug_frame());
+  EXPECT_EQ(info.debug_frame_end, UINTPTR_MAX);
+
+  uint32_t length = 0;
+  uint32_t cie_id = 0;
+  std::memcpy(&length, reinterpret_cast<const void *>(info.debug_frame_start), sizeof(length));
+  std::memcpy(&cie_id, reinterpret_cast<const void *>(info.debug_frame_start + 4), sizeof(cie_id));
+  EXPECT_GT(length, 0u);
+  EXPECT_EQ(cie_id, 0u); // The first .eh_frame record is always a CIE.
 }
 
 TEST(DlElfEnumerator, EmptyHandleFailsBothOperations) {
