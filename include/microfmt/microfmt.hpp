@@ -631,26 +631,29 @@ inline void format_signed(const sink &out, int64_t val, int min_width = 0) noexc
 // Format Parse Context & Formatter Customization Point
 // ============================================================================
 
-class format_parse_context {
+class MICROFMT_POINTER format_parse_context {
 public:
   using iterator = microfmt::string_view::const_iterator;
   using const_iterator = microfmt::string_view::const_iterator;
   using value_type = char;
   using size_type = std::size_t;
 
-  constexpr explicit format_parse_context(microfmt::string_view spec) noexcept : m_spec(spec) {}
+  constexpr explicit format_parse_context(
+      microfmt::string_view spec MICROFMT_LIFETIMEBOUND
+          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      : m_spec(spec) {}
 
   // --- Core Accessors ---
-  [[nodiscard]] constexpr microfmt::string_view spec() const noexcept { return m_spec; }
+  [[nodiscard]] constexpr microfmt::string_view spec() const noexcept MICROFMT_LIFETIMEBOUND { return m_spec; }
   [[nodiscard]] constexpr bool empty() const noexcept { return m_spec.empty(); }
   [[nodiscard]] constexpr size_type size() const noexcept { return m_spec.size(); }
 
   // --- Iterator Interface (Required for std::format/fmtlib-style custom
   // formatters) ---
-  [[nodiscard]] constexpr const_iterator begin() const noexcept { return m_spec.begin(); }
-  [[nodiscard]] constexpr const_iterator end() const noexcept { return m_spec.end(); }
-  [[nodiscard]] constexpr const_iterator cbegin() const noexcept { return m_spec.cbegin(); }
-  [[nodiscard]] constexpr const_iterator cend() const noexcept { return m_spec.cend(); }
+  [[nodiscard]] constexpr const_iterator begin() const noexcept MICROFMT_LIFETIMEBOUND { return m_spec.begin(); }
+  [[nodiscard]] constexpr const_iterator end() const noexcept MICROFMT_LIFETIMEBOUND { return m_spec.end(); }
+  [[nodiscard]] constexpr const_iterator cbegin() const noexcept MICROFMT_LIFETIMEBOUND { return m_spec.cbegin(); }
+  [[nodiscard]] constexpr const_iterator cend() const noexcept MICROFMT_LIFETIMEBOUND { return m_spec.cend(); }
 
   // --- Element Access ---
   [[nodiscard]] constexpr char front() const noexcept { return m_spec.empty() ? '\0' : m_spec.front(); }
@@ -689,7 +692,8 @@ public:
   [[nodiscard]] constexpr size_type find(char ch, size_type pos = 0) const noexcept { return m_spec.find(ch, pos); }
 
   [[nodiscard]] constexpr microfmt::string_view substr(size_type pos = 0,
-                                                       size_type count = microfmt::string_view::npos) const noexcept {
+                                                       size_type count = microfmt::string_view::npos) const noexcept
+      MICROFMT_LIFETIMEBOUND {
     return m_spec.substr(pos, count);
   }
 
