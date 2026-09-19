@@ -65,13 +65,69 @@ const auto message = microfmt::format<64>(
 `format<N>` stores at most `N` characters in inline storage. Formatting to a
 bounded sink truncates excess output instead of allocating or throwing.
 
-Use `MICROFMT_STRING(...)` for literals. It validates and parses the format
-string during constant evaluation and selects unrolled argument dispatch.
-Runtime `microfmt::string_view` formats remain available for
+`MICROFMT_STRING(...)` validates and parses a literal format string during
+constant evaluation and selects unrolled argument dispatch. It is well suited
+to hot paths, but each distinct format string and argument-type combination
+generates its own unrolled code, so overuse can grow code size; see
+[Choosing `MICROFMT_STRING` carefully](#choosing-microfmt_string-carefully).
+Runtime `microfmt::string_view` formats share one compact core loop and
+remain the default choice for less latency-sensitive call sites and
 configuration-driven text.
 
 The core supports C++17 and later. Features that depend on newer standard
 library APIs are enabled only when available.
+
+## Design rationale: a small, type-erased core
+
+`format_to` and `format<N>` are thin templates: for each call they build a
+`const void *` pointer per argument and a matching compile-time table of
+per-type formatting thunks, then hand both to a single, non-template
+`vformat_to`. That function is the only place that walks the format string,
+matches `{}`/`{N}`/`{N:spec}` fields, and dispatches through the thunk table
+to call each argument's `formatter<T>` (or a user's `formatter<T>`
+specialization) through a type-erased function pointer.
+
+Because `vformat_to` itself is never instantiated per `Args...`, it does not
+get duplicated for every distinct call-site signature the way a fully
+templated recursive formatter would. Template bloat is confined to the small,
+constexpr-friendly glue that builds the pointer/thunk arrays; the loop that
+actually parses the format string and writes to the `microfmt::sink` compiles
+once and is shared by every call in the binary. This keeps code size and
+instruction-cache pressure predictable on embedded targets, where duplicated
+per-signature formatting loops are a common source of bloat.
+
+This is also why the library favors non-owning **views** (`string_view`,
+`span`, `join`, and similar range/value wrappers) over owning containers in
+its argument and formatter APIs. A view only needs to carry a pointer/size and
+a lightweight `formatter<T>` that forwards into the shared core loop; it does
+not pull in container-specific template machinery for the common case where a
+value has no format specifier and is simply written to the sink directly. For
+the usual "print this value with no spec" path, the per-argument thunk is a
+minimal, near-direct call, and only formatters that need to parse a spec
+string do additional work — so straightforward, specifier-free formatting
+stays close to a plain, unrolled write rather than paying for a general
+parsing/templating layer it doesn't use.
+
+### Choosing `MICROFMT_STRING` carefully
+
+`MICROFMT_STRING(...)` trades the small, shared `vformat_to` core for a fully
+compile-time-unrolled call: it parses the format string at compile time and
+generates a dedicated `unrolled_format_impl` instantiation, with zero
+indirect thunks and zero stack-resident argument-pointer array, for every
+distinct `(format string, Args...)` combination. That is faster and avoids
+the type-erased dispatch entirely, but each unique call site pays for its own
+unrolled instantiation instead of sharing the one non-template loop that
+runtime `microfmt::string_view` formats reuse.
+
+Prefer `MICROFMT_STRING` on hot paths, small argument counts, and a modest
+number of distinct format strings, where the unrolled code is a net win.
+Avoid it for large fan-out call sites — many distinct format strings, or the
+same format string instantiated over many different argument-type
+combinations (e.g. via heavily templated call wrappers) — since each variant
+adds its own unrolled code instead of collapsing into the shared core. In
+those cases, prefer runtime `microfmt::string_view` formats, or reserve
+`MICROFMT_STRING` for the specific call sites where its speed benefit clearly
+outweighs the added code size.
 
 ## Sinks and output routing
 

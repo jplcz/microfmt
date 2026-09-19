@@ -33,9 +33,12 @@ microfmt::format_to(output, MICROFMT_STRING("status={:#_}"),
 3. Place formatter-specific flags after `:` in the replacement field.
 
 Use `MICROFMT_STRING(...)` for literal format strings so parsing and argument
-dispatch happen at compile time. See [Using microfmt](usage.md) for core
-format-string syntax and [Writing low-stack renderers](renderer-guide.md) when
-implementing application-specific formatters.
+dispatch happen at compile time. Reserve it for hot paths; each distinct
+format string and argument-type combination generates its own unrolled
+code, so using it indiscriminately grows code size. See [Using
+microfmt](usage.md) for core format-string syntax and [Writing low-stack
+renderers](renderer-guide.md) when implementing application-specific
+formatters.
 
 ## Subsystem guides
 

@@ -286,11 +286,14 @@ documented interoperability requirement or functionality that microfmt does
 not provide. Convert standard views at the boundary rather than carrying
 unchecked access through core implementation code.
 
-Use `MICROFMT_STRING("...")` for literal, header-internal format strings.
-This selects compile-time parsing and unrolled dispatch. Keep
-`microfmt::string_view` paths for caller-provided runtime formats. Logging
-macros are intentionally literal-only: they wrap their format argument
-internally with `MICROFMT_STRING`.
+Use `MICROFMT_STRING("...")` for literal, header-internal format strings on
+hot paths where the unrolled code size is a net win. Because a formatter's
+`format` method may be instantiated for many call sites, prefer
+`microfmt::string_view` when the same literal would otherwise be unrolled
+repeatedly for little benefit. Keep `microfmt::string_view` paths for
+caller-provided runtime formats. Logging macros are intentionally
+literal-only: they wrap their format argument internally with
+`MICROFMT_STRING`.
 
 When adding a new view or formatter, avoid hidden allocation and keep
 temporary buffers explicit, caller-owned, and bounded. Prefer a lightweight

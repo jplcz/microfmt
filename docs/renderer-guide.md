@@ -187,6 +187,9 @@ Before adding a renderer, confirm that:
 3. Temporary storage is explicit, bounded, and owned outside the formatter.
 4. Every read and write respects the supplied scratch span's capacity.
 5. Nested and concurrent use have a documented scratch-buffer strategy.
-6. Literal internal format strings use `MICROFMT_STRING(...)`.
+6. Literal internal format strings use `MICROFMT_STRING(...)` only where the
+   unrolled code size is justified; otherwise prefer runtime
+   `microfmt::string_view` formats, since a renderer template may be
+   instantiated over many types.
 7. Tests cover normal output, constrained scratch capacity, and nested or
    repeated rendering when applicable.

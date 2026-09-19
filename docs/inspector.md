@@ -97,7 +97,10 @@ reader.
   container or symbol views in crash paths.
 * Keep resolver, enumerator, and unwinder contexts alive while their
   type-erased references or views are in use.
-* Use `MICROFMT_STRING(...)` for literal diagnostic formats.
+* Use `MICROFMT_STRING(...)` for literal diagnostic formats on hot paths;
+  prefer runtime `microfmt::string_view` formats where many distinct
+  diagnostic strings or type combinations would otherwise each generate
+  unrolled code.
 
 The `examples/` directory contains complete runnable demonstrations, including
 `address_translator_demo.cpp`, `memory_classifier_demo.cpp`,

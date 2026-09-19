@@ -156,7 +156,7 @@ buffer, and span-backed sinks. Use `ring_buffer_sink<Capacity>` from
 `<microfmt/sinks/ring_buffer_sink.hpp>` when only the most recent diagnostic
 output should be retained; its capacity must be a non-zero power of two.
 
-## Prefer compile-time format strings
+## Compile-time format strings
 
 Wrap string literals in `MICROFMT_STRING(...)` to select the compile-time
 formatting path:
@@ -167,9 +167,14 @@ microfmt::format_to(output.as_sink(),
 ```
 
 This parses the replacement fields during constant evaluation and uses
-unrolled argument dispatch. It is particularly useful for embedded targets
-with strict stack budgets. Runtime format strings remain supported where the
-format text is not known at compile time:
+unrolled argument dispatch, which avoids the stack-resident argument-pointer
+array and indirect thunks that the runtime path uses. It is useful for hot
+paths and embedded targets with strict stack budgets, but each distinct
+format string and argument-type combination generates its own unrolled code,
+so overusing it — many distinct literals, or the same literal instantiated
+over many argument-type combinations — grows code size. Prefer runtime
+format strings for less latency-sensitive call sites. Runtime format strings
+remain supported where the format text is not known at compile time:
 
 ```cpp
 microfmt::string_view format_from_configuration = "id={}";
