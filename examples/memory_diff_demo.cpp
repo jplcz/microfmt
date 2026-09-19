@@ -32,9 +32,9 @@ int main() {
   // ------------------------------------------------------------------------
   std::puts("=== 1. Raw Buffer Diff ===");
 
-  const std::array<uint8_t, 32> before{{0x45, 0x00, 0x00, 0x3c, 0x1c, 0x46, 0x40, 0x00, 0x40, 0x06, 0xb1, 0xe6,
-                                       0xc0, 0xa8, 0x01, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
+  const std::array<uint8_t, 32> before{{0x45, 0x00, 0x00, 0x3c, 0x1c, 0x46, 0x40, 0x00, 0x40, 0x06, 0xb1,
+                                        0xe6, 0xc0, 0xa8, 0x01, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}};
   auto after = before;
   after[16] = 0x01; // Sector's status byte flipped after the update.
   after[17] = 0x02;
@@ -57,12 +57,10 @@ int main() {
   new_config.version = 0x0103;
   new_config.retry_count = 5;
 
-  auto struct_diff =
-      microfmt::mem_diff(microfmt::span<const uint8_t>(reinterpret_cast<const uint8_t *>(&old_config),
-                                                        sizeof(old_config)),
-                         microfmt::span<const uint8_t>(reinterpret_cast<const uint8_t *>(&new_config),
-                                                        sizeof(new_config)),
-                         reinterpret_cast<uintptr_t>(&old_config));
+  auto struct_diff = microfmt::mem_diff(
+      microfmt::span<const uint8_t>(reinterpret_cast<const uint8_t *>(&old_config), sizeof(old_config)),
+      microfmt::span<const uint8_t>(reinterpret_cast<const uint8_t *>(&new_config), sizeof(new_config)),
+      reinterpret_cast<uintptr_t>(&old_config));
   struct_diff.bytes_per_row = 4;
 
   microfmt::format_to(output, "Config @ 0x{:08x}:\n{}\n", reinterpret_cast<uintptr_t>(&old_config), struct_diff);
@@ -74,7 +72,12 @@ int main() {
   std::puts("=== 3. Format to Stack Buffer ===");
 
   auto buf = microfmt::format<512>("{}", microfmt::mem_diff(before_span, after_span));
+
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
   std::printf("%.*s\n", static_cast<int>(buf.size()), buf.view().data());
+
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
 
   return 0;
 }

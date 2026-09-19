@@ -462,7 +462,12 @@ inline bool ucontext_read_register(const void *ctx, address_space_ref, uint32_t 
 
   if (!found)
     return false;
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
   std::memcpy(out_value, &value, value_size);
+
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+
   return true;
 }
 
@@ -485,8 +490,13 @@ inline bool ucontext_write_register(void *ctx, address_space_ref, uint32_t dwarf
     return false;
 
   uint64_t value = 0;
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
   std::memcpy(&value, in_value, value_size);
   auto &uc = *static_cast<ucontext_t *>(ctx);
+
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+
   bool found = false;
 
 #if defined(__linux__)

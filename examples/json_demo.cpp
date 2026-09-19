@@ -25,9 +25,7 @@ int main() {
   }
 
   microfmt::println("{}", output.view());
-  microfmt::println(
-      "event={}",
-      microfmt::json::json_obj([](microfmt::json::object_writer &event) {
-        event.kv("kind", "boot").kv("sequence", 7);
-      }));
+  microfmt::println("event={}", microfmt::json::json_obj([](microfmt::json::object_writer &event) {
+                      event.as_known().kv("kind", "boot").kv("sequence", 7);
+                    }));
 }

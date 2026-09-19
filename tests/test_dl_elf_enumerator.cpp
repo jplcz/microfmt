@@ -152,8 +152,10 @@ TEST(DlElfEnumerator, FindByPcPopulatesEhFrameBackedDebugFrame) {
 
   uint32_t length = 0;
   uint32_t cie_id = 0;
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
   std::memcpy(&length, reinterpret_cast<const void *>(info.debug_frame_start), sizeof(length));
   std::memcpy(&cie_id, reinterpret_cast<const void *>(info.debug_frame_start + 4), sizeof(cie_id));
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
   EXPECT_GT(length, 0u);
   EXPECT_EQ(cie_id, 0u); // The first .eh_frame record is always a CIE.
 }

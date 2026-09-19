@@ -272,9 +272,8 @@ TEST(CoreSink, IgnoresEmptyWritesAndMissingCallbacks) {
   empty_sink.write("ignored");
   empty_sink.put('x');
 
-  microfmt::sink observed_sink{&calls, [](void *ctx, microfmt::string_view) noexcept {
-                                 ++*static_cast<size_t *>(ctx);
-                               }};
+  microfmt::sink observed_sink{&calls,
+                               [](void *ctx, microfmt::string_view) noexcept { ++*static_cast<size_t *>(ctx); }};
   observed_sink.write({});
   EXPECT_EQ(calls, 0U);
   observed_sink.write("x");
@@ -383,7 +382,12 @@ TEST(CoreFormat, ParseContextOperations) {
   EXPECT_EQ(context.find(':'), 3U);
   EXPECT_EQ(context.substr(4), "def");
 
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
   context.advance_to(context.begin() + 2);
+
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
+
   EXPECT_EQ(context.spec(), "c:def");
   EXPECT_EQ(context.consume(), 'c');
   context.remove_prefix(100);
@@ -519,8 +523,7 @@ TEST(CoreFormat, MalformedRuntimeFieldsRemainLiteral) {
 }
 
 TEST(CoreFormat, NumericPositionalArguments) {
-  EXPECT_EQ(microfmt::format<64>("{2} {0} {1:04x} {2}", "first", 0x2A, "last").view(),
-            "last first 002a last");
+  EXPECT_EQ(microfmt::format<64>("{2} {0} {1:04x} {2}", "first", 0x2A, "last").view(), "last first 002a last");
   EXPECT_EQ(microfmt::format<32>("{1} {}", "first", "second").view(), "second first");
   EXPECT_EQ(microfmt::format<32>("{3}", "first", "second").view(), "{MISSING}");
 }
@@ -555,12 +558,11 @@ TEST(CoreFormat, NumericPositionalRuntimeStress) {
 }
 
 TEST(CoreFormat, NumericPositionalCompileTimeStress) {
-  const auto result = microfmt::format<64>(
-      MICROFMT_STRING("{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"
-                      "{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"
-                      "{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"
-                      "{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"),
-      'x');
+  const auto result = microfmt::format<64>(MICROFMT_STRING("{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"
+                                                           "{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"
+                                                           "{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"
+                                                           "{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}{0}"),
+                                           'x');
   EXPECT_EQ(result.view(), "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
 }
 

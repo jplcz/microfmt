@@ -100,7 +100,7 @@ TEST(JsonFormatterTest, ComplexEscapedPayloadRoundTrips) {
 TEST(JsonFormatterTest, EmbedsLambdaGeneratedObjectInFormatString) {
   const auto formatted =
       microfmt::format<128>("event={}", microfmt::json::json_obj([](microfmt::json::object_writer &event) {
-                              event.kv("kind", "boot").kv("sequence", 7);
+                              event.as_known().kv("kind", "boot").kv("sequence", 7);
                             }));
 
   const auto document =

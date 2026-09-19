@@ -46,3 +46,4 @@ cmake-build-*
 build*
 !scripts/build-matrix.sh
 !scripts/build-docs.sh
+.cache

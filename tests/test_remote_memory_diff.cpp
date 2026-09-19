@@ -8,9 +8,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <string>
 #include <microfmt/inspector/remote_memory_diff.hpp>
 #include <microfmt/microfmt.hpp>
+#include <string>
 
 namespace {
 
@@ -30,13 +30,15 @@ template <> struct microfmt::address_space_traits<bounded_space_tag> {
   using context_type = bounded_space_context;
 
   static bool read_bytes(microfmt::value_ref<const context_type> context, uintptr_t addr, void *dest,
-                        size_t size) noexcept {
+                         size_t size) noexcept {
     if (addr < context->base)
       return false;
     const uintptr_t offset = addr - context->base;
     if (offset > context->size || size > context->size - offset)
       return false;
+    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(dest, context->data + offset, size);
+    MICROFMT_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
 
@@ -77,8 +79,8 @@ TEST(RemoteMemoryDiffViewTest, ReportsErrorWhenScratchBufferTooSmall) {
 
 TEST(RemoteMemoryDiffViewTest, CollapsesFullyIdenticalRegionsIntoSummary) {
   const std::array<uint8_t, 32> old_buf{{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
-                                        0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
-                                        0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f}};
+                                         0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
+                                         0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f}};
   const auto &new_buf = old_buf;
 
   std::byte scratch[64];
@@ -108,7 +110,7 @@ TEST(RemoteMemoryDiffViewTest, EmitsRowsForEveryDivergentByte) {
   microfmt::format_to(output.as_sink(), "{}", diff);
 
   const std::string expected = "  0x" + hex_addr(reinterpret_cast<uintptr_t>(new_buf)) +
-                              ": 00 01 02 03 04 05 06 07  -> FF FF FF FF FF FF FF FF \n";
+                               ": 00 01 02 03 04 05 06 07  -> FF FF FF FF FF FF FF FF \n";
   EXPECT_EQ(output.view(), microfmt::string_view(expected));
 }
 
@@ -129,10 +131,10 @@ TEST(RemoteMemoryDiffViewTest, CollapsesLeadingAndTrailingIdenticalRowsAroundDiv
   microfmt::format_to(output.as_sink(), "{}", diff);
 
   const std::string expected = "  [... 1 identical rows hidden ...]\n"
-                              "  0x" +
-                              hex_addr(reinterpret_cast<uintptr_t>(new_buf) + 4) +
-                              ": 00 00 00 00  -> AA 00 00 00 \n"
-                              "  [... 1 identical rows hidden ...]\n";
+                               "  0x" +
+                               hex_addr(reinterpret_cast<uintptr_t>(new_buf) + 4) +
+                               ": 00 00 00 00  -> AA 00 00 00 \n"
+                               "  [... 1 identical rows hidden ...]\n";
   EXPECT_EQ(output.view(), microfmt::string_view(expected));
 }
 
@@ -152,8 +154,8 @@ TEST(RemoteMemoryDiffViewTest, TreatsZeroBytesPerRowAsDefaultRowSize) {
   microfmt::format_to(output.as_sink(), "{}", diff);
 
   const std::string expected = "  0x" + hex_addr(reinterpret_cast<uintptr_t>(new_buf)) +
-                              ": 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  "
-                              "-> 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 \n";
+                               ": 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  "
+                               "-> 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 \n";
   EXPECT_EQ(output.view(), microfmt::string_view(expected));
 }
 
@@ -179,5 +181,5 @@ TEST(RemoteMemoryDiffViewTest, ReportsFaultForUnreadableRemoteRows) {
   // The first row (identical) is collapsed; the second is unreadable in the
   // new space and is reported as a fault instead of a byte comparison.
   EXPECT_EQ(output.view(), "  [... 1 identical rows hidden ...]\n"
-                          "  0x00001004: [REMOTE READ FAULT]\n");
+                           "  0x00001004: [REMOTE READ FAULT]\n");
 }

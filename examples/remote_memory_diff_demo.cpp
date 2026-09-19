@@ -29,13 +29,15 @@ template <> struct microfmt::address_space_traits<guest_space_tag> {
   using context_type = guest_space_context;
 
   static bool read_bytes(microfmt::value_ref<const context_type> context, uintptr_t addr, void *dest,
-                        size_t size) noexcept {
+                         size_t size) noexcept {
     if (addr < context->base)
       return false;
     const uintptr_t offset = addr - context->base;
     if (offset > context->size || size > context->size - offset)
       return false;
+    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
     std::memcpy(dest, context->data + offset, size);
+    MICROFMT_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
 
@@ -55,6 +57,8 @@ int main() {
   // ------------------------------------------------------------------------
   std::puts("=== 1. Local Process Snapshot Diff ===");
 
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
   alignas(16) uint8_t region[32];
   for (size_t i = 0; i < sizeof(region); ++i)
     region[i] = static_cast<uint8_t>(i);
@@ -66,6 +70,8 @@ int main() {
   // Simulate corruption: a stray write flips a few bytes in the middle.
   region[16] = 0xff;
   region[17] = 0xff;
+
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
 
   const auto local_space = microfmt::address_space_ref(microfmt::local_space_tag{});
   std::byte scratch[64]; // >= bytes_per_row * 2 for the default 16-byte rows.
@@ -83,6 +89,8 @@ int main() {
   // ------------------------------------------------------------------------
   std::puts("=== 2. Remote Target Diff With a Faulted Page ===");
 
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
   uint8_t old_image[16];
   for (size_t i = 0; i < sizeof(old_image); ++i)
     old_image[i] = static_cast<uint8_t>(0x10 + i);
@@ -90,6 +98,8 @@ int main() {
   uint8_t new_image[8]; // Only the first row is still mapped in the new image.
   std::memcpy(new_image, old_image, sizeof(new_image));
   new_image[4] = 0xAA; // One byte changed within the still-mapped row.
+
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
 
   guest_space_context old_ctx{old_image, 0x4000, sizeof(old_image)};
   guest_space_context new_ctx{new_image, 0x4000, sizeof(new_image)};

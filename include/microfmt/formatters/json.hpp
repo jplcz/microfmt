@@ -98,8 +98,7 @@ class array_writer;
  */
 class MICROFMT_CONSUMABLE(unconsumed) object_writer {
 public:
-  explicit object_writer(sink out) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
-      : out_(std::move(out)) {
+  explicit object_writer(sink out) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
     out_.put('{');
   }
 
@@ -117,6 +116,13 @@ public:
     other.closed_ = true;
   }
 
+  // Helper for Clang if object state is unknown
+  object_writer &as_known() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "unknown")
+      MICROFMT_RETURN_TYPESTATE(unconsumed) {
+    MICROFMT_ASSERT(!closed_, "Attempt to reuse consumed state");
+    return *this;
+  }
+
   // Key-Value primitives
   object_writer &key(microfmt::string_view k) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     prefix();
@@ -125,8 +131,7 @@ public:
     return *this;
   }
 
-  object_writer &kv(microfmt::string_view k, microfmt::string_view val) noexcept
-      MICROFMT_CALLABLE_WHEN("unconsumed") {
+  object_writer &kv(microfmt::string_view k, microfmt::string_view val) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     key(k);
     write_escaped_string(out_, val);
     return *this;
@@ -204,8 +209,7 @@ private:
  */
 class MICROFMT_CONSUMABLE(unconsumed) array_writer {
 public:
-  explicit array_writer(sink out) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
-      : out_(std::move(out)) {
+  explicit array_writer(sink out) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
     out_.put('[');
   }
 
@@ -221,6 +225,13 @@ public:
   array_writer(array_writer &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
       : out_(std::move(other.out_)), first_(other.first_), closed_(other.closed_) {
     other.closed_ = true;
+  }
+
+  // Helper for Clang if object state is unknown
+  array_writer &as_known() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "unknown")
+      MICROFMT_RETURN_TYPESTATE(unconsumed) {
+    MICROFMT_ASSERT(!closed_, "Attempt to reuse consumed state");
+    return *this;
   }
 
   array_writer &val(microfmt::string_view v) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
@@ -239,8 +250,7 @@ public:
     return *this;
   }
 
-  template <std::size_t N>
-  array_writer &val(const char (&v)[N]) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
+  template <std::size_t N> array_writer &val(const char (&v)[N]) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     return val(microfmt::string_view(v, N - 1));
   }
 

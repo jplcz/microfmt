@@ -86,7 +86,7 @@ TEST(CborWriterTest, EncodesIntegerBoundariesAndNullCString) {
 TEST(CborWriterTest, EmbedsLambdaGeneratedMapInFormatString) {
   microfmt::buffer_sink<128> output;
   microfmt::format_to(output.as_sink(), "{}", microfmt::cbor::cbor_map([](microfmt::cbor::map_writer &event) {
-                        event.kv("kind", "boot").kv("sequence", 7);
+                        event.as_known().kv("kind", "boot").kv("sequence", 7);
                       }));
 
   const auto event = parse_cbor(output.view());

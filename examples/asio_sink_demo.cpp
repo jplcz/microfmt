@@ -21,9 +21,12 @@ int main() {
   microfmt::format_to(buffer_sink.as_sink(), "PING id={:04x} seq={}", 0x2a, 7);
 
   const auto written = buffer_sink.written_buffer();
-  std::printf("mutable_buffer: %.*s (bytes=%zu)\n",
-              static_cast<int>(written.size()),
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
+  std::printf("mutable_buffer: %.*s (bytes=%zu)\n", static_cast<int>(written.size()),
               static_cast<const char *>(written.data()), buffer_sink.size());
+
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
 
   // --- Growable streambuf, useful when the payload size is not known up front ---
   boost::asio::streambuf dynamic_buffer;
@@ -31,6 +34,10 @@ int main() {
   microfmt::format_to(stream_sink.as_sink(), "telemetry: temperature={} C, humidity={}%", 24, 55);
 
   const auto data = dynamic_buffer.data();
-  std::printf("streambuf: %.*s\n", static_cast<int>(data.size()),
-              static_cast<const char *>(data.data()));
+
+  MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
+  std::printf("streambuf: %.*s\n", static_cast<int>(data.size()), static_cast<const char *>(data.data()));
+
+  MICROFMT_END_UNSAFE_BUFFER_USAGE;
 }

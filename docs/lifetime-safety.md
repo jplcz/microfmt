@@ -151,11 +151,193 @@ a destructor is not itself flagged. Unlike `MICROFMT_CONSUMABLE`,
 state identifiers, `MICROFMT_CALLABLE_WHEN` requires its state names as
 quoted string literals.
 
+Clang's consumed analysis cannot see through a reference or pointer parameter:
+an object arriving as `object_writer &` (for example the writer a
+`json_obj`/`cbor_map` callback receives) starts in the `unknown` state rather
+than `unconsumed`, so calling a write method directly on it warns even though
+the object is genuinely fresh. `object_writer`, `array_writer`, `map_writer`,
+and their CBOR counterparts expose an `as_known()` helper for exactly this
+boundary — it is callable from `unconsumed` or `unknown`, asserts
+`!closed_` at runtime, and returns to `unconsumed` so the rest of the chain is
+tracked normally:
+
+```cpp
+microfmt::json::json_obj([](microfmt::json::object_writer &event) {
+  event.as_known().kv("kind", "boot").kv("sequence", 7);
+});
+```
+
+Reach for `as_known()` only at boundaries where the parameter or member truly
+is unconsumed by construction (as callback parameters freshly constructed by
+the caller are); it is a targeted escape hatch for Clang's analysis limits,
+not a way to silence a genuine reuse-after-`end()` warning.
+
+### Adding consumed-state tracking to your own type
+
+Consumed-state analysis is a good fit whenever a type has a genuine one-way
+"finished" transition after which further calls are a bug — a scoped writer,
+a builder with a terminal `build()`/`commit()`, a single-use token, a
+transaction that must be committed or rolled back exactly once, and so on. It
+is a poor fit for types that can be reset, reused, or whose state changes
+depend on runtime data the analysis cannot see (see "When not to use it"
+below).
+
+1. **Pick your states.** Most types only need Clang's two built-in names,
+   `unconsumed` and `consumed`. Only introduce a third custom state name if
+   you truly have more than one live/finished mode to distinguish; Clang
+   accepts arbitrary identifiers here, but `as_known()`-style escape hatches
+   (step 5) only make sense against `unknown`, which is always available.
+
+2. **Mark the class `MICROFMT_CONSUMABLE(unconsumed)`** so every instance
+   starts tracked as fresh by default:
+
+   ```cpp
+   #include <microfmt/lifetime.hpp>
+
+   class MICROFMT_CONSUMABLE(unconsumed) transaction {
+     // ...
+   };
+   ```
+
+3. **Annotate every constructor that must yield a fresh object** —
+   including copy/move constructors if the type is copyable/movable — with
+   `MICROFMT_RETURN_TYPESTATE(unconsumed)`. Skipping this is the most common
+   mistake: without it, Clang treats freshly-constructed objects as already
+   consumed and warns on the very first legitimate call.
+
+   ```cpp
+   explicit transaction(connection &c) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+       : conn_(c) {}
+
+   transaction(transaction &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+       : conn_(other.conn_), committed_(other.committed_) {
+     other.committed_ = true; // the moved-from object is spent too
+   }
+   ```
+
+4. **Mark every method that must not be called after the terminal
+   transition** with `MICROFMT_CALLABLE_WHEN("unconsumed")` (note the quoted
+   string — this macro alone requires it, unlike the others above):
+
+   ```cpp
+   void write(microfmt::string_view row) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
+     conn_->send(row);
+   }
+   ```
+
+5. **Mark the terminal method(s)** with `MICROFMT_SET_TYPESTATE(consumed)`.
+   If the same method may legitimately run more than once (an idempotent
+   `close()`/`end()` called from both user code and a destructor), list every
+   state it may be called from instead of only `"unconsumed"`:
+
+   ```cpp
+   void commit() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "consumed")
+       MICROFMT_SET_TYPESTATE(consumed) {
+     if (!committed_) {
+       conn_->flush();
+       committed_ = true;
+     }
+   }
+
+   ~transaction() noexcept { commit(); } // safe: commit() allows "consumed" too
+   ```
+
+   Keep a runtime guard (`committed_`/`closed_` or similar) behind every
+   state-changing method regardless of the annotations — the attributes are a
+   compile-time diagnostic aid for supporting compilers, not a substitute for
+   the actual runtime check that keeps behavior correct everywhere else,
+   including GCC and older Clang.
+
+6. **Add an `as_known()` escape hatch only if your type is commonly received
+   through a reference or pointer parameter** whose state Clang cannot infer
+   (a callback argument, a member accessed through `this`, a function
+   parameter). Make it callable from both `"unconsumed"` and `"unknown"`,
+   assert the real runtime invariant with `MICROFMT_ASSERT` from
+   `<microfmt/detail/assert.hpp>`, and return to `"unconsumed"`:
+
+   ```cpp
+   transaction &as_known() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "unknown")
+       MICROFMT_RETURN_TYPESTATE(unconsumed) {
+     MICROFMT_ASSERT(!committed_, "transaction already committed");
+     return *this;
+   }
+   ```
+
+   Skip this step if the type is always used as a local variable; it is only
+   needed to unblock Clang at boundaries where the state genuinely cannot be
+   tracked.
+
+7. **Verify with `clang++ -Wconsumed -fsyntax-only`**: write one test that
+   calls a tracked method after the terminal transition and confirm it
+   warns, and one that exercises normal usage (including any `as_known()`
+   boundary) and confirms it stays silent. GCC silently ignores every one of
+   these macros, so this step is the only way to validate the annotations
+   actually do anything.
+
+### Applying consumed-state to a generic container or wrapper
+
+Template containers and RAII wrappers can use the same macros; the attributes
+apply per-instantiation, so no extra plumbing is needed for the template
+parameter itself. The one caveat is annotating out-of-class member-function
+definitions: Clang applies the attributes from the first declaration it sees
+(usually the in-class declaration), so it is enough to annotate that
+declaration once — repeating the same attributes on an out-of-line definition
+is optional but harmless as long as the text matches exactly.
+
+```cpp
+template <typename T>
+class MICROFMT_CONSUMABLE(unconsumed) scoped_handle {
+public:
+  explicit scoped_handle(T resource) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+      : resource_(std::move(resource)) {}
+
+  scoped_handle(scoped_handle &&other) noexcept MICROFMT_RETURN_TYPESTATE(unconsumed)
+      : resource_(std::move(other.resource_)), released_(other.released_) {
+    other.released_ = true;
+  }
+
+  [[nodiscard]] T &get() noexcept MICROFMT_CALLABLE_WHEN("unconsumed") { return resource_; }
+
+  void release() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "consumed")
+      MICROFMT_SET_TYPESTATE(consumed) {
+    if (!released_) {
+      resource_.close();
+      released_ = true;
+    }
+  }
+
+  ~scoped_handle() noexcept { release(); }
+
+private:
+  T resource_;
+  bool released_{false};
+};
+```
+
+For a heterogeneous container that owns many consumable elements (for
+example a pool of `transaction` objects), annotate the element type itself
+rather than the container: Clang's consumed analysis tracks individual
+local variables and data members, not elements reached through a container's
+`operator[]` or iterators, so annotating the container class adds no
+additional coverage.
+
+### When not to use it
+
+- The object can be freely reset or reused (state is not monotonic).
+- The terminal transition depends on data the compiler cannot see (for
+  example, a network response deciding whether the object is still usable) —
+  model that with a runtime check and a normal return value instead.
+- The type is only ever accessed through type-erased function pointers or
+  virtual dispatch that Clang's local, syntactic analysis cannot follow (see
+  `gdb_packet_writer`'s callback-based sink for an example already in this
+  codebase); keep the runtime guard as the sole enforcement there.
+
 Strict Clang builds explicitly enable the supported `-Wdangling`,
-`-Wdangling-gsl`, `-Wdangling-assignment-gsl`, `-Wdangling-field`, and
-`-Wreturn-stack-address` diagnostics. CMake probes each flag before adding it,
-so older Clang and AppleClang releases remain supported. These diagnostics are
-treated as errors when `JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS` is enabled.
+`-Wdangling-gsl`, `-Wdangling-assignment-gsl`, `-Wdangling-field`,
+`-Wreturn-stack-address`, and `-Wconsumed` diagnostics. CMake probes each flag
+before adding it, so older Clang and AppleClang releases remain supported.
+These diagnostics are treated as errors when
+`JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS` is enabled.
 
 Clang's `-Wunsafe-buffer-usage` is a separate bounds-migration analysis. It is
 not part of the default warning set because microfmt deliberately contains

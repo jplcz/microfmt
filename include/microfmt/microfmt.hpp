@@ -253,7 +253,11 @@ public:
    * @return Span containing the written characters.
    */
   [[nodiscard]] constexpr span<const char> as_span() const noexcept MICROFMT_LIFETIMEBOUND {
+    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
     return span<const char>(m_data, m_pos);
+
+    MICROFMT_END_UNSAFE_BUFFER_USAGE;
   }
 
 #if MICROFMT_HAS_STD_SPAN
@@ -264,7 +268,11 @@ public:
    * @return Standard span containing the written characters.
    */
   [[nodiscard]] constexpr std::span<const char> as_std_span() const noexcept MICROFMT_LIFETIMEBOUND {
+    MICROFMT_BEGIN_UNSAFE_BUFFER_USAGE;
+
     return std::span<const char>(m_data, m_pos);
+
+    MICROFMT_END_UNSAFE_BUFFER_USAGE;
   }
 #endif
 
@@ -639,8 +647,7 @@ public:
   using size_type = std::size_t;
 
   constexpr explicit format_parse_context(
-      microfmt::string_view spec MICROFMT_LIFETIMEBOUND
-          MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
+      microfmt::string_view spec MICROFMT_LIFETIMEBOUND MICROFMT_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_spec(spec) {}
 
   // --- Core Accessors ---
@@ -691,9 +698,8 @@ public:
 
   [[nodiscard]] constexpr size_type find(char ch, size_type pos = 0) const noexcept { return m_spec.find(ch, pos); }
 
-  [[nodiscard]] constexpr microfmt::string_view substr(size_type pos = 0,
-                                                       size_type count = microfmt::string_view::npos) const noexcept
-      MICROFMT_LIFETIMEBOUND {
+  [[nodiscard]] constexpr microfmt::string_view
+  substr(size_type pos = 0, size_type count = microfmt::string_view::npos) const noexcept MICROFMT_LIFETIMEBOUND {
     return m_spec.substr(pos, count);
   }
 

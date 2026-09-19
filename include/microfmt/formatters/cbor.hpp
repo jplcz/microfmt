@@ -90,6 +90,13 @@ public:
     other.closed_ = true;
   }
 
+  // Helper for Clang if object state is unknown
+  map_writer &as_known() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "unknown")
+      MICROFMT_RETURN_TYPESTATE(unconsumed) {
+    MICROFMT_ASSERT(!closed_, "Attempt to reuse consumed state");
+    return *this;
+  }
+
   // Key emitters (supports both Text keys and Integer/Tag keys for compact
   // frames)
   map_writer &key(microfmt::string_view k) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
@@ -221,6 +228,13 @@ public:
     other.closed_ = true;
   }
 
+  // Helper for Clang if object state is unknown
+  array_writer &as_known() noexcept MICROFMT_CALLABLE_WHEN("unconsumed", "unknown")
+      MICROFMT_RETURN_TYPESTATE(unconsumed) {
+    MICROFMT_ASSERT(!closed_, "Attempt to reuse consumed state");
+    return *this;
+  }
+
   array_writer &val(microfmt::string_view v) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     detail::encode_header(out_, detail::MT_TEXT, v.size());
     out_.write(v);
@@ -238,8 +252,7 @@ public:
     return *this;
   }
 
-  template <std::size_t N>
-  array_writer &val(const char (&v)[N]) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
+  template <std::size_t N> array_writer &val(const char (&v)[N]) noexcept MICROFMT_CALLABLE_WHEN("unconsumed") {
     return val(microfmt::string_view(v, N - 1));
   }
 
