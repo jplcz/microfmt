@@ -9,7 +9,11 @@ SPDX-License-Identifier: BSD-2-Clause
 microfmt combines type-level borrowing rules with optional compiler
 annotations. The type system provides portable enforcement, while annotations
 give supporting compilers additional information for diagnostics and static
-analysis.
+analysis. The hardened containers (`array`, `span`, `string_view`,
+`expected`, `checked_value`, `value_ptr`, `value_ref`) and the `RELOCO_*`
+annotation macros are provided by
+[`jplcz_reloco`](https://github.com/jplcz/reloco), a dependency of microfmt;
+use the `RELOCO_*` macros directly rather than a microfmt-specific alias.
 
 ## Borrow persistent values with `value_ref`
 

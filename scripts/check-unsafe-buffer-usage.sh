@@ -9,7 +9,14 @@ readonly script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly source_dir="$(cd -- "${script_dir}/.." && pwd)"
 readonly compiler="${MICROFMT_UNSAFE_BUFFER_CXX:-clang++-24}"
 readonly max_warnings="${MICROFMT_UNSAFE_BUFFER_MAX_WARNINGS:-0}"
+readonly reloco_include="${MICROFMT_UNSAFE_BUFFER_RELOCO_INCLUDE:-${source_dir}/../reloco/include}"
 read -r -a standards <<<"${MICROFMT_UNSAFE_BUFFER_STANDARDS:-17 20 23}"
+
+if [[ ! -d "${reloco_include}" ]]; then
+  printf 'error: reloco include directory not found: %s\n' "${reloco_include}" >&2
+  printf 'Set MICROFMT_UNSAFE_BUFFER_RELOCO_INCLUDE to a checkout of https://github.com/jplcz/reloco\n' >&2
+  exit 1
+fi
 
 if ! command -v "${compiler}" >/dev/null 2>&1; then
   printf 'error: Clang 24 compiler not found: %s\n' "${compiler}" >&2
@@ -32,6 +39,7 @@ for standard in "${standards[@]}"; do
       "-std=c++${standard}" \
       "-DMICROFMT_HEADER_CHECK_STANDARD=${standard}" \
       -I"${source_dir}/include" \
+      -I"${reloco_include}" \
       -Wunsafe-buffer-usage \
       -fsyntax-only \
       "${source_dir}/tests/compile_all_headers.cpp" \

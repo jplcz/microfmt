@@ -124,6 +124,11 @@ This is a ratcheted migration check: it accepts the documented current
 baseline but fails if a change introduces additional diagnostics. See
 [Lifetime safety](lifetime-safety.md) for the boundary-annotation policy.
 
+The script expects a `jplcz_reloco` checkout next to `microfmt/` (i.e.
+`../reloco/include`), matching the default source layout. Set
+`MICROFMT_UNSAFE_BUFFER_RELOCO_INCLUDE=/path/to/reloco/include` to point at a
+different checkout.
+
 The CMake options `JPLCZ_MICROFMT_BUILD_TESTS`, `JPLCZ_MICROFMT_BUILD_EXAMPLES`,
 `JPLCZ_MICROFMT_BUILD_BENCHMARKS`, and `JPLCZ_MICROFMT_BUILD_HEADER_CHECKS` can disable
 unneeded targets for a smaller local build.

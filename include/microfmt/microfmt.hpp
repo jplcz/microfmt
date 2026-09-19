@@ -16,7 +16,9 @@
 #include <type_traits>
 
 #include "array.hpp"
+#include "detail/assert.hpp"
 #include "detail/compat.hpp"
+#include "expected.hpp"
 #include "span.hpp"
 #include "string_view.hpp"
 #include "value_ptr.hpp"
