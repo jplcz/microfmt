@@ -61,4 +61,71 @@ constexpr auto as_collection_view(Container &c) noexcept {
   return reloco::collection_view<const element_type>(c);
 }
 
+/**
+ * @brief Formatter for sequence container references (e.g. vector adapter).
+ *
+ * Formats as a JSON-like array: `[val1, val2, ...]`
+ * Format specifiers (e.g. `{:04X}`) cascade down to the elements.
+ */
+template <typename T> struct formatter<reloco::detail::mutable_sequence_container_ref<T>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::detail::mutable_sequence_container_ref<T> &cref, const sink &out) const noexcept {
+    out.put('[');
+    bool is_first = true;
+
+    cref.for_each([&](T &elem) noexcept {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+      underlying_formatter.format(elem, out);
+    });
+
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for associative container references (e.g. flat_set, map adapters).
+ *
+ * Formats as a JSON-like object: `{key1: val1, key2: val2, ...}`
+ * Format specifiers cascade down to the **values**, not the keys, which matches
+ * standard telemetry/structured logging expectations.
+ */
+template <typename T, typename Key> struct formatter<reloco::detail::mutable_associative_container_ref<T, Key>> {
+  using value_type = std::remove_cv_t<T>;
+  using key_type = std::remove_cv_t<Key>;
+
+  formatter<key_type> key_formatter;
+  formatter<value_type> value_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    // Apply parsed specs (like hex formatting) to the values
+    value_formatter.parse(ctx);
+  }
+
+  void format(const reloco::detail::mutable_associative_container_ref<T, Key> &cref, const sink &out) const noexcept {
+    out.put('{');
+    bool is_first = true;
+
+    cref.for_each([&](const Key &key, T &value) noexcept {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+
+      key_formatter.format(key, out);
+      out.write(": ");
+      value_formatter.format(value, out);
+    });
+
+    out.put('}');
+  }
+};
+
 } // namespace microfmt

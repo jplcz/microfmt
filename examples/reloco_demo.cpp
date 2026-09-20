@@ -67,5 +67,15 @@ int main() {
   // Flush the full JSON payload to stdout
   microfmt::println("\n[TX] {}", output.view());
 
+  reloco::vector<int> my_vec;
+  std::ignore = my_vec.try_push_back(10);
+  std::ignore = my_vec.try_push_back(20);
+
+  // Bind the mutable ref dynamically
+  reloco::mutable_container_ref<int> seq_ref(my_vec);
+
+  // Formats as: [0A, 14] (Formatting cascades natively to the underlying elements)
+  microfmt::println("vector contents: {:02X}", seq_ref);
+
   return 0;
 }
