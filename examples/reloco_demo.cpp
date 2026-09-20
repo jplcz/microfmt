@@ -53,12 +53,14 @@ int main() {
       for (const auto t : temps) {
         temp_arr.val(t);
       }
+      temp_arr.end();
 
       // Iterate the reloco::flat_set for the JSON array
       auto fault_arr = diag.nested_array("active_fault_codes");
       for (const auto f : faults) {
         fault_arr.val(f);
       }
+      fault_arr.end();
     }
   }
 
