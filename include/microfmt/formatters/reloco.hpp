@@ -27,19 +27,18 @@ template <typename T> struct formatter<reloco::collection_view<T>> {
   void format(const reloco::collection_view<T> &view, const sink &out) const noexcept {
     out.put('[');
 
-    const auto size = view.size();
+    bool is_first = true;
 
-    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
-    for (std::size_t i = 0; i < size; ++i) {
-      if (i > 0) {
+    // Type-erased visit across the container's elements
+    view.for_each([&](const T &elem) noexcept {
+      if (!is_first) {
         out.write(", ");
       }
+      is_first = false;
 
-      // Read the element through the vtable (bypassing redundant bounds checks)
-      // and delegate formatting to the pre-configured element formatter.
-      underlying_formatter.format(view.unsafe_at(i), out);
-    }
-    RELOCO_END_UNSAFE_BUFFER_USAGE;
+      // Delegate formatting to the pre-configured element formatter
+      underlying_formatter.format(elem, out);
+    });
 
     out.put(']');
   }
