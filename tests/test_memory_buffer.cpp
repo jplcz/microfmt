@@ -68,5 +68,104 @@ TEST(MemoryBufferTest, FormatToIntegration) {
   EXPECT_EQ(buf.view(), "Testing 1 2 3");
 }
 
+TEST(MemoryBufferTest, StlIteratorsAndAlgorithms) {
+  memory_buffer<32> buf;
+
+  // Test push_back (enables back_inserter)
+  std::string_view input = "cba";
+  std::copy(input.begin(), input.end(), std::back_inserter(buf));
+
+  EXPECT_EQ(buf.size(), 3);
+  EXPECT_EQ(buf.view(), "cba");
+
+  // Test iterators with std::sort
+  std::sort(buf.begin(), buf.end());
+
+  EXPECT_EQ(buf.view(), "abc");
+
+  // Test Range-based for loop and element access
+  std::string result;
+  for (char c : buf) {
+    result += c;
+  }
+  EXPECT_EQ(result, "abc");
+
+  EXPECT_EQ(buf.front(), 'a');
+  EXPECT_EQ(buf.back(), 'c');
+}
+
+TEST(MemoryBufferTest, MoveConstructInline) {
+  memory_buffer<32> source;
+  source.as_sink().write("stack data");
+
+  // Move construct
+  memory_buffer<32> dest(std::move(source));
+
+  // Dest should have the data
+  EXPECT_EQ(dest.size(), 10);
+  EXPECT_EQ(dest.view(), "stack data");
+
+  // Dest should point to ITS OWN inline buffer (inside its own memory footprint)
+  EXPECT_GE(dest.data(), reinterpret_cast<const char *>(&dest));
+  EXPECT_LT(dest.data(), reinterpret_cast<const char *>(&dest) + sizeof(dest));
+
+  // Source should be reset
+  EXPECT_EQ(source.size(), 0);
+  EXPECT_GE(source.data(), reinterpret_cast<const char *>(&source));
+  EXPECT_LT(source.data(), reinterpret_cast<const char *>(&source) + sizeof(source));
+}
+
+TEST(MemoryBufferTest, MoveConstructHeap) {
+  memory_buffer<16> source;
+  // Exceed 16 bytes to force heap allocation
+  source.as_sink().write("this is a very long string on the heap");
+  const char *heap_ptr = source.data();
+
+  // Move construct
+  memory_buffer<16> dest(std::move(source));
+
+  EXPECT_EQ(dest.size(), 38);
+  EXPECT_EQ(dest.view(), "this is a very long string on the heap");
+
+  // Dest should have stolen the exact heap pointer
+  EXPECT_EQ(dest.data(), heap_ptr);
+
+  // Source should be reset to its inline buffer (inside its own memory footprint)
+  EXPECT_EQ(source.size(), 0);
+  EXPECT_GE(source.data(), reinterpret_cast<const char *>(&source));
+  EXPECT_LT(source.data(), reinterpret_cast<const char *>(&source) + sizeof(source));
+}
+
+TEST(MemoryBufferTest, MoveAssignHeapToInline) {
+  memory_buffer<16> source;
+  source.as_sink().write("heap data longer than 16 bytes");
+
+  memory_buffer<16> dest;
+  dest.as_sink().write("short"); // currently on stack
+
+  const char *heap_ptr = source.data();
+
+  // Move assign
+  dest = std::move(source);
+
+  // Dest should steal the heap pointer
+  EXPECT_EQ(dest.size(), 30);
+  EXPECT_EQ(dest.view(), "heap data longer than 16 bytes");
+  EXPECT_EQ(dest.data(), heap_ptr);
+
+  // Source should reset to its inline buffer (inside its own memory footprint)
+  EXPECT_EQ(source.size(), 0);
+  EXPECT_GE(source.data(), reinterpret_cast<const char *>(&source));
+  EXPECT_LT(source.data(), reinterpret_cast<const char *>(&source) + sizeof(source));
+}
+
+TEST(MemoryBufferTest, FormatAsCompatibility) {
+  // Because it satisfies contiguous container requirements and has a default constructor,
+  // format_as should seamlessly work with it!
+  auto buf = format_as<memory_buffer<64>>("Hex: {:#x}", 255);
+
+  EXPECT_EQ(buf.view(), "Hex: 0xff");
+}
+
 } // namespace testing
 } // namespace microfmt

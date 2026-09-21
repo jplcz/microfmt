@@ -16,10 +16,22 @@ namespace detail {
  */
 class RELOCO_POINTER memory_buffer_base {
 public:
+  using value_type = char;
+  using size_type = std::size_t;
+  using difference_type = std::ptrdiff_t;
+  using reference = value_type &;
+  using const_reference = const value_type &;
+  using pointer = value_type *;
+  using const_pointer = const value_type *;
+  using iterator = pointer;
+  using const_iterator = const_pointer;
+
   memory_buffer_base(const memory_buffer_base &) = delete;
   memory_buffer_base &operator=(const memory_buffer_base &) = delete;
 
-  ~memory_buffer_base() {
+  RELOCO_BLOCK_RVALUE_ACCESS(memory_buffer_base);
+
+  ~memory_buffer_base() noexcept {
     if (m_data != m_inline_ptr) {
       m_alloc.deallocate(m_data, m_capacity);
     }
@@ -28,18 +40,69 @@ public:
   /**
    * @brief Creates a type-erased @ref sink adapter pointing to this instance.
    */
-  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{
         this, [](void *ctx, microfmt::string_view sv) noexcept { static_cast<memory_buffer_base *>(ctx)->append(sv); }};
   }
 
-  [[nodiscard]] constexpr microfmt::string_view view() const noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr microfmt::string_view view() const & noexcept RELOCO_LIFETIMEBOUND {
     return microfmt::string_view(m_data, m_size);
   }
 
-  [[nodiscard]] constexpr const char *data() const noexcept RELOCO_LIFETIMEBOUND { return m_data; }
-  [[nodiscard]] constexpr std::size_t size() const noexcept { return m_size; }
-  [[nodiscard]] constexpr std::size_t capacity() const noexcept { return m_capacity; }
+  // --- STL Range & Capacity Observers ---
+  [[nodiscard]] constexpr pointer data() & noexcept RELOCO_LIFETIMEBOUND { return m_data; }
+  [[nodiscard]] constexpr const_pointer data() const & noexcept RELOCO_LIFETIMEBOUND { return m_data; }
+
+  [[nodiscard]] constexpr iterator begin() & noexcept RELOCO_LIFETIMEBOUND { return m_data; }
+  [[nodiscard]] constexpr const_iterator begin() const & noexcept RELOCO_LIFETIMEBOUND { return m_data; }
+  [[nodiscard]] constexpr const_iterator cbegin() const & noexcept RELOCO_LIFETIMEBOUND { return m_data; }
+
+  [[nodiscard]] constexpr iterator end() & noexcept RELOCO_LIFETIMEBOUND { return m_data + m_size; }
+  [[nodiscard]] constexpr const_iterator end() const & noexcept RELOCO_LIFETIMEBOUND { return m_data + m_size; }
+  [[nodiscard]] constexpr const_iterator cend() const & noexcept RELOCO_LIFETIMEBOUND { return m_data + m_size; }
+
+  [[nodiscard]] constexpr size_type size() const noexcept { return m_size; }
+  [[nodiscard]] constexpr size_type capacity() const noexcept { return m_capacity; }
+  [[nodiscard]] constexpr bool empty() const noexcept { return m_size == 0; }
+
+  [[nodiscard]] constexpr reference operator[](size_type pos) & noexcept RELOCO_LIFETIMEBOUND {
+    RELOCO_ASSERT(pos < size(), "Index out of bounds");
+    return m_data[pos];
+  }
+  [[nodiscard]] constexpr const_reference operator[](size_type pos) const & noexcept RELOCO_LIFETIMEBOUND {
+    RELOCO_ASSERT(pos < size(), "Index out of bounds");
+    return m_data[pos];
+  }
+
+  [[nodiscard]] constexpr reference front() & noexcept RELOCO_LIFETIMEBOUND {
+    RELOCO_ASSERT(!empty(), "Container is empty");
+    return m_data[0];
+  }
+  [[nodiscard]] constexpr const_reference front() const & noexcept RELOCO_LIFETIMEBOUND {
+    RELOCO_ASSERT(!empty(), "Container is empty");
+    return m_data[0];
+  }
+  [[nodiscard]] constexpr reference back() & noexcept RELOCO_LIFETIMEBOUND {
+    RELOCO_ASSERT(!empty(), "Container is empty");
+    return m_data[m_size - 1];
+  }
+  [[nodiscard]] constexpr const_reference back() const & noexcept RELOCO_LIFETIMEBOUND {
+    RELOCO_ASSERT(!empty(), "Container is empty");
+    return m_data[m_size - 1];
+  }
+
+  RELOCO_REINITIALIZES void clear() & noexcept { m_size = 0; }
+
+  /**
+   * @brief Fast-path single character append (enables std::back_inserter compatibility).
+   */
+  void push_back(char c) & noexcept {
+    if (m_size >= m_capacity) {
+      if (!grow(m_size + 1))
+        return; // Truncate safely on OOM in -fno-exceptions
+    }
+    m_data[m_size++] = c;
+  }
 
 protected:
   /**
@@ -47,6 +110,59 @@ protected:
    */
   constexpr memory_buffer_base(reloco::allocator_ref alloc, char *inline_buf, std::size_t inline_cap) noexcept
       : m_alloc(alloc), m_data(inline_buf), m_inline_ptr(inline_buf), m_size(0), m_capacity(inline_cap) {}
+
+  /**
+   * @brief Move-constructs from another buffer base, resolving inline pointers.
+   */
+  constexpr memory_buffer_base(memory_buffer_base &&other, char *new_inline_ptr, std::size_t inline_cap) noexcept
+      : m_alloc(other.m_alloc), m_data(other.m_data == other.m_inline_ptr ? new_inline_ptr : other.m_data),
+        m_inline_ptr(new_inline_ptr), m_size(other.m_size), m_capacity(other.m_capacity) {
+
+    // If the source was using its inline stack buffer, copy the bytes
+    if (other.m_data == other.m_inline_ptr) {
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
+      std::copy_n(other.m_inline_ptr, other.m_size, new_inline_ptr);
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
+    }
+
+    // Reset source to a safe, empty state pointing to its own stack buffer
+    other.m_data = other.m_inline_ptr;
+    other.m_size = 0;
+    other.m_capacity = inline_cap;
+  }
+
+  /**
+   * @brief Safely move-assigns the buffer, handling heap/stack transitions.
+   */
+  void move_assign(memory_buffer_base &&other, std::size_t inline_cap) noexcept {
+    if (this == &other)
+      return;
+
+    // Free our existing heap memory if we had any
+    if (m_data != m_inline_ptr) {
+      m_alloc.deallocate(m_data, m_capacity);
+    }
+
+    m_alloc = other.m_alloc;
+    m_size = other.m_size;
+    m_capacity = other.m_capacity;
+
+    if (other.m_data == other.m_inline_ptr) {
+      // Source is on stack: copy the bytes into OUR inline buffer
+      m_data = m_inline_ptr;
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
+      std::copy_n(other.m_inline_ptr, other.m_size, m_inline_ptr);
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
+    } else {
+      // Source is on heap: steal the pointer directly
+      m_data = other.m_data;
+    }
+
+    // Reset source to a safe, empty state
+    other.m_data = other.m_inline_ptr;
+    other.m_size = 0;
+    other.m_capacity = inline_cap;
+  }
 
 private:
   reloco::allocator_ref m_alloc;
@@ -134,8 +250,21 @@ public:
 
   constexpr memory_buffer() noexcept : memory_buffer(reloco::default_allocator()) {}
 
+  // Move constructor delegates to base, providing the new inline stack boundary
+  constexpr memory_buffer(memory_buffer &&other) noexcept
+      : detail::memory_buffer_base(std::move(other), m_inline, InlineCapacity) {}
+
+  // Move assignment delegates to base's controlled move_assign method
+  memory_buffer &operator=(memory_buffer &&other) noexcept {
+    this->move_assign(std::move(other), InlineCapacity);
+    return *this;
+  }
+
 private:
   alignas(void *) char m_inline[InlineCapacity];
 };
 
 } // namespace microfmt
+
+template <> struct reloco::is_trivially_relocatable<microfmt::detail::memory_buffer_base> : std::false_type {};
+template <std::size_t N> struct reloco::is_trivially_relocatable<microfmt::memory_buffer<N>> : std::false_type {};
