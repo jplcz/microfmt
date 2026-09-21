@@ -1393,7 +1393,7 @@ template <typename TargetContainer, typename StrProvider, typename... Args>
  * Can be passed cheaply by value into lambdas or non-template functions,
  * avoiding variadic template bloat and deep stack copies.
  */
-struct format_args {
+struct RELOCO_POINTER format_args {
   span<const void *const> ptrs;
   span<const format_fn_t> fns;
 };
@@ -1403,14 +1403,16 @@ namespace detail {
 /**
  * @brief Stack storage for type-erased argument pointers.
  */
-template <typename... Args> struct format_args_store {
+template <typename... Args> struct RELOCO_POINTER format_args_store {
   // Use size 1 for empty packs to avoid zero-length array compiler errors
   const void *const ptrs[sizeof...(Args) == 0 ? 1 : sizeof...(Args)];
 
-  RELOCO_CONSTEXPR20 explicit format_args_store(const Args &...args) noexcept
+  // Captures pointers to `args`; the constructed object (and thus any
+  // temporaries bound to `args`) must outlive its use, hence RELOCO_LIFETIMEBOUND.
+  RELOCO_CONSTEXPR20 explicit format_args_store(const Args &...args RELOCO_LIFETIMEBOUND) noexcept
       : ptrs{static_cast<const void *>(&args)...} {}
 
-  [[nodiscard]] RELOCO_CONSTEXPR20 format_args view() const noexcept {
+  [[nodiscard]] RELOCO_CONSTEXPR20 format_args view() const noexcept RELOCO_LIFETIMEBOUND {
     if constexpr (sizeof...(Args) == 0) {
       return {span<const void *const>{}, span<const format_fn_t>{}};
     } else {
@@ -1419,11 +1421,11 @@ template <typename... Args> struct format_args_store {
   }
 
   // Implicit conversion makes passing to vformat_to seamless
-  RELOCO_CONSTEXPR20 operator format_args() const noexcept { return view(); }
+  RELOCO_CONSTEXPR20 operator format_args() const noexcept RELOCO_LIFETIMEBOUND { return view(); }
 };
 
 // Zero-argument specialization
-template <> struct format_args_store<> {
+template <> struct RELOCO_POINTER format_args_store<> {
   RELOCO_CONSTEXPR20 explicit format_args_store() noexcept = default;
 
   [[nodiscard]] RELOCO_CONSTEXPR20 format_args view() const noexcept {
@@ -1440,7 +1442,8 @@ template <> struct format_args_store<> {
  *
  * The returned object MUST live on the stack for the duration of the formatting operation.
  */
-template <typename... Args> [[nodiscard]] RELOCO_CONSTEXPR20 auto make_format_args(const Args &...args) noexcept {
+template <typename... Args>
+[[nodiscard]] RELOCO_CONSTEXPR20 auto make_format_args(const Args &...args RELOCO_LIFETIMEBOUND) noexcept {
   return detail::format_args_store<Args...>(args...);
 }
 

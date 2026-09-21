@@ -155,6 +155,16 @@ The core also supplies output-iterator, callback, counting, null, fixed
 buffer, and span-backed sinks. Use `ring_buffer_sink<Capacity>` from
 `<microfmt/sinks/ring_buffer_sink.hpp>` when only the most recent diagnostic
 output should be retained; its capacity must be a non-zero power of two.
+`<microfmt/sinks/memory_buffer.hpp>` adds `memory_buffer<InlineCapacity>`, a
+dynamically growing, `std::back_inserter`-compatible buffer that starts on
+the stack and falls back to an allocator (`reloco::allocator_ref`, defaulting
+to `reloco::default_allocator()`) once its inline capacity is exceeded.
+`<microfmt/sinks/c_string_span_sink.hpp>` adds `c_string_span_sink`, which
+writes into a caller-owned `span<char>` (or `std::span<char>`) and always
+keeps the result null-terminated, reserving one byte for the terminator.
+`<microfmt/sinks/sbuf_sink.hpp>` adds `sbuf_sink<SBufT>`, a zero-allocation
+adapter over a FreeBSD-style `struct sbuf *` that appends through
+`sbuf_bcat`; it has no hard dependency on `<sys/sbuf.h>` unless instantiated.
 
 ## Compile-time format strings
 
@@ -196,6 +206,38 @@ fields may coexist; numeric fields do not advance the automatic argument
 index. Literal braces are written as `{{` and `}}`. Named arguments and
 dynamic width or precision are not supported. Individual formatter headers
 may define additional specifiers; the API reference lists them.
+
+## Format into a container
+
+`format_as<TargetContainer>(fmt, args...)` formats into a newly constructed
+container (typically `std::string`) instead of a caller-supplied sink,
+appending through `std::back_inserter`:
+
+```cpp
+std::string message = microfmt::format_as<std::string>(
+    MICROFMT_STRING("sensor={}, value=0x{:04X}"), 7, 0x2a);
+```
+
+It accepts both runtime format strings and `MICROFMT_STRING(...)` literals.
+
+## Type-erased arguments
+
+`make_format_args(args...)` captures pointers to `args` into a small,
+stack-only, type-erased `format_args` view; the object it returns must not
+outlive the full expression that consumes it, since it borrows its arguments
+and, when built from temporaries, itself. Pass it to `vformat_args_to` (or
+`vformat_args_as<TargetContainer>`) to format without instantiating a
+formatting function per argument-type combination — useful for reducing code
+size behind a non-template boundary such as a logging facade:
+
+```cpp
+void log_line(microfmt::string_view fmt, microfmt::format_args args) {
+  microfmt::vformat_args_to(output.as_sink(), fmt, args);
+}
+
+int count = 7;
+log_line("count={}", microfmt::make_format_args(count));
+```
 
 ## Add formatters and views
 

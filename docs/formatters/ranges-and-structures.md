@@ -101,6 +101,36 @@ microfmt::format_to(out, MICROFMT_STRING("{:p04X}"),
 
 See `examples/tuple_demo.cpp`.
 
+## `reloco.hpp`
+
+Formats `jplcz_reloco` container adapters directly, without collecting their
+elements into an intermediate container:
+
+* `formatter<reloco::collection_view<T>>` formats a type-erased,
+  vtable-backed view over any contiguous container (`reloco::vector<T>`,
+  `reloco::span<T>`, `reloco::array<T, N>`, ...) as `[val1, val2, ...]`.
+  `as_collection_view(container)` builds one from a container that satisfies
+  `reloco::collection_view_traits`.
+* `formatter<reloco::detail::mutable_sequence_container_ref<T>>` formats
+  sequence container adapters the same way.
+* `formatter<reloco::detail::mutable_associative_container_ref<T, Key>>`
+  formats associative container adapters (e.g. `flat_set`/map adapters) as
+  `{key1: val1, key2: val2, ...}`; the specifier applies to the values, not
+  the keys.
+
+The replacement-field specifier (e.g. `{:04X}`) cascades down to each
+element (or, for associative adapters, each value).
+
+```cpp
+#include <microfmt/formatters/reloco.hpp>
+
+reloco::vector<int> values = ...;
+microfmt::format_to(out, MICROFMT_STRING("{}"),
+                    microfmt::as_collection_view(values));
+```
+
+See `examples/reloco_demo.cpp`.
+
 ## `grid_view.hpp`
 
 `reg_grid_desc<WordType, N>` describes a titled, named grid of words.

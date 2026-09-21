@@ -86,6 +86,13 @@ endif()
 # otherwise it is fetched from its GitHub repository at a pinned commit.
 set(JPLCZ_MICROFMT_RELOCO_SOURCE_DIR "" CACHE PATH
     "Path to a local jplcz_reloco checkout to use instead of fetching it")
+# Allow the local checkout path to be supplied via an environment variable
+# (e.g. for CI or shell profiles) without having to pass -D on every configure.
+# The explicit CMake cache variable/-D option always takes precedence.
+if(NOT JPLCZ_MICROFMT_RELOCO_SOURCE_DIR AND DEFINED ENV{JPLCZ_MICROFMT_RELOCO_SOURCE_DIR})
+    set(JPLCZ_MICROFMT_RELOCO_SOURCE_DIR "$ENV{JPLCZ_MICROFMT_RELOCO_SOURCE_DIR}" CACHE PATH
+        "Path to a local jplcz_reloco checkout to use instead of fetching it" FORCE)
+endif()
 set(JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY "https://github.com/jplcz/reloco.git" CACHE STRING
     "Git repository to fetch jplcz_reloco from when JPLCZ_MICROFMT_RELOCO_SOURCE_DIR is unset")
 set(JPLCZ_MICROFMT_RELOCO_GIT_TAG "master" CACHE STRING

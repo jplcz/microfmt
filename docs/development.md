@@ -73,6 +73,16 @@ cmake -B build -G Ninja \
   -DJPLCZ_MICROFMT_RELOCO_SOURCE_DIR=/path/to/reloco
 ```
 
+The same path can be supplied via the `JPLCZ_MICROFMT_RELOCO_SOURCE_DIR`
+environment variable instead, which is convenient for CI or shell profiles
+that already export it; the `-D`/cache variable takes precedence when both
+are set:
+
+```bash
+export JPLCZ_MICROFMT_RELOCO_SOURCE_DIR=/path/to/reloco
+cmake -B build -G Ninja
+```
+
 `jplcz_reloco`'s own tests, header checks, and strict warnings are disabled
 for this embedded build regardless of its own defaults.
 `JPLCZ_MICROFMT_INSTALL` also controls `jplcz_reloco`'s install rules, so an
