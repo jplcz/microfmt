@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 #include <microfmt/formatters/bintime.hpp>
+#include <microfmt/formatters/floating.hpp>
 #include <microfmt/microfmt.hpp>
 
 #include <cstdint>
@@ -605,4 +606,77 @@ TEST(FormatAsTest, NoArguments) {
 
   auto compile_result = microfmt::format_as<std::string>(MICROFMT_STRING("Compile text"));
   EXPECT_EQ(compile_result, "Compile text");
+}
+
+// Helper to simulate an ABI boundary or a non-templated logger
+static std::string dispatch_to_logger(microfmt::string_view fmt, microfmt::format_args args) {
+  // Can be passed around cheaply, and formatted locally
+  return microfmt::vformat_args_as<std::string>(fmt, args);
+}
+
+TEST(FormatArgsTest, ZeroArguments) {
+  auto args_store = microfmt::make_format_args();
+  microfmt::format_args view = args_store;
+
+  EXPECT_TRUE(view.ptrs.empty());
+  EXPECT_TRUE(view.fns.empty());
+
+  std::string result = vformat_args_as<std::string>("No arguments here", view);
+  EXPECT_EQ(result, "No arguments here");
+}
+
+TEST(FormatArgsTest, MultipleArguments) {
+  int code = 404;
+  std::string_view msg = "Not Found";
+  auto args_store = microfmt::make_format_args(code, msg);
+
+  microfmt::format_args view = args_store;
+
+  EXPECT_EQ(view.ptrs.size(), 2);
+  EXPECT_EQ(view.fns.size(), 2);
+
+  std::string result = microfmt::vformat_args_as<std::string>("Error {}: {}", view);
+  EXPECT_EQ(result, "Error 404: Not Found");
+}
+
+TEST(FormatArgsTest, TypeErasedLambdaCapture) {
+  int a = 10, b = 20;
+  auto args_store = microfmt::make_format_args(a, b);
+
+  // Implicit conversion to format_args view
+  microfmt::format_args view = args_store;
+
+  auto deferred_formatter = [fmt = "{} + {} = 30", view]() {
+    return microfmt::vformat_args_as<std::string>(fmt, view);
+  };
+
+  EXPECT_EQ(deferred_formatter(), "10 + 20 = 30");
+}
+
+TEST(FormatArgsTest, CustomContainerFormatAs) {
+  // Use inline make_format_args. The temporaries (101010) live until
+  // vformat_args_as completely finishes.
+  auto result =
+      microfmt::vformat_args_as<std::vector<char>>("Data: {} {}", microfmt::make_format_args("binary", 101010));
+
+  std::string_view sv(result.data(), result.size());
+  EXPECT_EQ(sv, "Data: binary 101010");
+}
+
+TEST(FormatArgsTest, VFormatArgsToSpanSink) {
+  char buffer[64];
+  microfmt::span_sink s_sink(buffer);
+
+  // Note: Argument order swapped to match the expected string output
+  microfmt::vformat_args_to(s_sink.as_sink(), "{} is approximately {}", microfmt::make_format_args("Pi", 3.14));
+
+  EXPECT_EQ(s_sink.view(), "Pi is approximately 3.14");
+}
+
+TEST(FormatArgsTest, NonTemplatedBoundary) {
+  // Verifies that a non-templated function can successfully accept
+  // the type-erased args and format them dynamically.
+  std::string log_msg = dispatch_to_logger("System {} is {}", microfmt::make_format_args("Engine", "Online"));
+
+  EXPECT_EQ(log_msg, "System Engine is Online");
 }

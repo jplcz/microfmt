@@ -18,7 +18,4 @@
 
 namespace microfmt {
 
-using reloco::assert_handler_t;
-using reloco::set_assert_handler;
-
 } // namespace microfmt

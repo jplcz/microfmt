@@ -1375,4 +1375,95 @@ template <typename TargetContainer, typename StrProvider, typename... Args>
   return result;
 }
 
+/**
+ * @brief Type-erased, non-owning view of formatting arguments.
+ *
+ * Can be passed cheaply by value into lambdas or non-template functions,
+ * avoiding variadic template bloat and deep stack copies.
+ */
+struct format_args {
+  span<const void *const> ptrs;
+  span<const format_fn_t> fns;
+};
+
+namespace detail {
+
+/**
+ * @brief Stack storage for type-erased argument pointers.
+ */
+template <typename... Args> struct format_args_store {
+  // Use size 1 for empty packs to avoid zero-length array compiler errors
+  const void *const ptrs[sizeof...(Args) == 0 ? 1 : sizeof...(Args)];
+
+  RELOCO_CONSTEXPR20 explicit format_args_store(const Args &...args) noexcept
+      : ptrs{static_cast<const void *>(&args)...} {}
+
+  [[nodiscard]] RELOCO_CONSTEXPR20 format_args view() const noexcept {
+    if constexpr (sizeof...(Args) == 0) {
+      return {span<const void *const>{}, span<const format_fn_t>{}};
+    } else {
+      return {span<const void *const>(ptrs, sizeof...(Args)), detail::format_type_table<Args...>::dynamic_span};
+    }
+  }
+
+  // Implicit conversion makes passing to vformat_to seamless
+  RELOCO_CONSTEXPR20 operator format_args() const noexcept { return view(); }
+};
+
+// Zero-argument specialization
+template <> struct format_args_store<> {
+  RELOCO_CONSTEXPR20 explicit format_args_store() noexcept = default;
+
+  [[nodiscard]] RELOCO_CONSTEXPR20 format_args view() const noexcept {
+    return {span<const void *const>{}, span<const format_fn_t>{}};
+  }
+
+  RELOCO_CONSTEXPR20 operator format_args() const noexcept { return view(); }
+};
+
+} // namespace detail
+
+/**
+ * @brief Captures arguments into a type-erased storage object.
+ *
+ * The returned object MUST live on the stack for the duration of the formatting operation.
+ */
+template <typename... Args> [[nodiscard]] RELOCO_CONSTEXPR20 auto make_format_args(const Args &...args) noexcept {
+  return detail::format_args_store<Args...>(args...);
+}
+
+/**
+ * @brief Type-erased formatting engine entry point.
+ *
+ * Formats a string using a pre-compiled `format_args` block.
+ * This is non-templated to minimize binary bloat and allow deferred formatting.
+ *
+ * @param out  The destination sink.
+ * @param fmt  The format string view.
+ * @param args The type-erased argument view.
+ */
+inline void vformat_args_to(const sink &out, microfmt::string_view fmt, format_args args) noexcept {
+  // Delegate to the internal core implementation that handles the unsafe buffer parsing
+  vformat_to(out, fmt, args.ptrs, args.fns);
+}
+
+/**
+ * @brief Formats type-erased arguments into a newly constructed container (e.g., std::string).
+ *
+ * This is the non-templated (on arguments) counterpart to @ref format_as.
+ *
+ * @tparam TargetContainer The container type to return (like std::string).
+ * @param fmt              Format string view.
+ * @param args             Type-erased formatting argument view.
+ * @return TargetContainer Populated container with the formatted result.
+ */
+template <typename TargetContainer>
+[[nodiscard]] inline TargetContainer vformat_args_as(microfmt::string_view fmt, format_args args) {
+  TargetContainer result;
+  auto it = std::back_inserter(result);
+  iterator_sink<decltype(it)> isink(it);
+  vformat_args_to(isink.as_sink(), fmt, args);
+  return result;
+}
+
 } // namespace microfmt
