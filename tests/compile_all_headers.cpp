@@ -30,6 +30,7 @@
 #include <microfmt/formatters/map_view.hpp>
 #include <microfmt/formatters/math.hpp>
 #include <microfmt/formatters/monad.hpp>
+#include <microfmt/formatters/reloco.hpp>
 #include <microfmt/formatters/net.hpp>
 #include <microfmt/formatters/pointer.hpp>
 #include <microfmt/formatters/posix_time.hpp>

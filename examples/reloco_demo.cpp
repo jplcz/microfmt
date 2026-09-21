@@ -34,9 +34,12 @@ int main() {
   std::ignore = temps.try_push_back(45);
 
   // Standalone Structured Logging
+  // Formatters for concrete reloco container types (`reloco::flat_set<T>`,
+  // `reloco::vector<T>`, ...) work directly -- no `as_collection_view(...)`
+  // adapter call needed.
   // Output: [0A01, 0C20] -> Format specifier {:04X} cascades to the elements natively!
-  microfmt::println("system.faults = {:04X}", microfmt::as_collection_view(faults));
-  microfmt::println("system.temps  = {}", microfmt::as_collection_view(temps));
+  microfmt::println("system.faults = {:04X}", faults);
+  microfmt::println("system.temps  = {}", temps);
 
   // 3. Nested JSON Payload Generation
   microfmt::buffer_sink<512> output;

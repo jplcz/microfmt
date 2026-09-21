@@ -8,6 +8,7 @@
 
 #include <microfmt/formatters/monad.hpp>
 #include <microfmt/microfmt.hpp>
+#include <reloco/optional.hpp>
 
 TEST(MonadTest, FormatsOptionalValuesAndForwardsSpecs) {
   microfmt::buffer_sink<32> buffer;
@@ -18,6 +19,31 @@ TEST(MonadTest, FormatsOptionalValuesAndForwardsSpecs) {
   buffer.reset();
   microfmt::format_to(buffer.as_sink(), "{}", std::optional<int>{});
   EXPECT_EQ(buffer.view(), "None");
+}
+
+TEST(MonadTest, FormatsRelocoOptionalValuesAndForwardsSpecs) {
+  microfmt::buffer_sink<32> buffer;
+
+  microfmt::format_to(buffer.as_sink(), "{:04x}", reloco::optional<int>{42});
+  EXPECT_EQ(buffer.view(), "Some(002a)");
+
+  buffer.reset();
+  microfmt::format_to(buffer.as_sink(), "{}", reloco::optional<int>{});
+  EXPECT_EQ(buffer.view(), "None");
+}
+
+TEST(MonadTest, FormatsCheckedValueAndMovedFrom) {
+  microfmt::buffer_sink<32> buffer;
+
+  microfmt::checked_value<int> value{42};
+  microfmt::format_to(buffer.as_sink(), "{}", value);
+  EXPECT_EQ(buffer.view(), "42");
+
+  const microfmt::checked_value<int> moved = std::move(value);
+  (void)moved;
+  buffer.reset();
+  microfmt::format_to(buffer.as_sink(), "{}", value);
+  EXPECT_EQ(buffer.view(), "<moved-from>");
 }
 
 TEST(MonadTest, FormatsMicrofmtExpectedValueAndError) {

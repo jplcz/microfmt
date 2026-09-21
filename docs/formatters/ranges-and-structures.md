@@ -100,8 +100,50 @@ See `examples/tuple_demo.cpp`.
 
 ## `reloco.hpp`
 
-Formats `jplcz_reloco` container adapters directly, without collecting their
-elements into an intermediate container:
+Formats concrete `jplcz_reloco` container/value types **directly** -- no
+adapter call needed:
+
+* `formatter<reloco::vector<T>>` and `formatter<reloco::inline_vector<T,
+  Capacity>>` format as `[val1, val2, ...]`.
+* `formatter<reloco::flat_set<T, Compare>>` and
+  `formatter<reloco::inline_flat_set<T, Capacity, Compare>>` format their
+  (sorted, unique) elements as `[val1, val2, ...]`.
+* `formatter<reloco::flat_map<Key, Mapped, Compare>>` and
+  `formatter<reloco::inline_flat_map<Key, Mapped, Capacity, Compare>>` format
+  as `{key1: val1, key2: val2, ...}`.
+* `formatter<reloco::basic_string<CharT, TraitsT>>`,
+  `formatter<reloco::basic_inline_string<Capacity, CharT, TraitsT>>`, and
+  `formatter<reloco::basic_sso_string<CharT, TraitsT>>` write the string's
+  characters directly (delegating to `.view()`), the same as
+  `microfmt::string_view`.
+* `formatter<microfmt::value_ptr<T>>`, `formatter<reloco::unique_ptr<T>>`,
+  and `formatter<reloco::shared_ptr<T>>` format the pointee's value directly,
+  or the literal text `(null)` when empty.
+* `formatter<microfmt::value_ref<T>>` always formats the referenced value
+  directly (never null).
+* `formatter<reloco::weak_ptr<T>>` attempts to `lock()` the pointee: formats
+  its value if still alive, or the literal text `(expired)` otherwise.
+
+The replacement-field specifier (e.g. `{:04X}`) cascades down to each
+element/value (for maps, both keys and values receive it).
+
+```cpp
+#include <microfmt/formatters/reloco.hpp>
+
+reloco::vector<int> values = ...;
+microfmt::format_to(out, "{}", values);
+```
+
+`reloco::function_ref<Sig>` intentionally has **no** formatter: there is no
+safe way to introspect or print a bound callable's identity without invoking
+it (which would have side effects).
+
+### Type-erased container adapters (fallback)
+
+The formatters above cover concrete types directly. For containers that only
+satisfy `reloco::collection_view_traits`/`container_ref_traits` (or custom
+container types), a type-erased fallback remains available -- at the cost of
+an explicit adapter call at each use site:
 
 * `formatter<reloco::collection_view<T>>` formats a type-erased,
   vtable-backed view over any contiguous container (`reloco::vector<T>`,
@@ -115,12 +157,7 @@ elements into an intermediate container:
   `{key1: val1, key2: val2, ...}`; the specifier applies to the values, not
   the keys.
 
-The replacement-field specifier (e.g. `{:04X}`) cascades down to each
-element (or, for associative adapters, each value).
-
 ```cpp
-#include <microfmt/formatters/reloco.hpp>
-
 reloco::vector<int> values = ...;
 microfmt::format_to(out, "{}", microfmt::as_collection_view(values));
 ```
@@ -162,14 +199,20 @@ The matrix factory requires a compile-time-sized array with exactly
 
 ## `monad.hpp`
 
-`std::optional<T>` formats as `Some(value)` or `None`. In C++23 builds with
-library support for `<expected>`, `std::expected<T, E>` also receives a direct
-formatter.
+`std::optional<T>` and `reloco::optional<T>` format as `Some(value)` or
+`None`. `microfmt::expected<T, E>` (a `reloco::expected` alias) formats as
+`Ok(value)`/`Ok()` or `Err(error)`. In C++23 builds with library support for
+`<expected>`, `std::expected<T, E>` also receives a direct formatter.
+`microfmt::checked_value<T>` (a `reloco::checked_value` alias) formats the
+held value directly -- no wrapper, since it always holds a `T` once
+constructed -- or the literal text `<moved-from>` once the value has been
+moved out of.
 
 The full specifier is forwarded to the contained value or error:
 
 ```cpp
 microfmt::format_to(out, "{:04X}", std::optional<uint16_t>{0x2a});
+microfmt::format_to(out, "{:04X}", microfmt::expected<uint16_t, int>{0x2a});
 ```
 
 See `examples/monad_demo.cpp`.

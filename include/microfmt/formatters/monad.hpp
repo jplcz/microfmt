@@ -10,6 +10,7 @@
 #include "../reloco.hpp"
 #include "../microfmt.hpp"
 #include <optional>
+#include <reloco/optional.hpp>
 #include <string_view>
 #include <type_traits>
 
@@ -37,6 +38,67 @@ template <typename T> struct formatter<std::optional<T>> {
     } else {
       out.write("None");
     }
+  }
+};
+
+// ============================================================================
+// reloco::optional Formatter (C++17+)
+// ============================================================================
+
+/**
+ * @brief Formatter for `reloco::optional<T>`.
+ *
+ * `reloco::optional` is not aliased into the `microfmt` namespace (unlike
+ * `microfmt::expected`/`microfmt::checked_value`), so it is named explicitly
+ * here. Renders the same way as `std::optional<T>` above: `Some(...)` /
+ * `None`.
+ */
+template <typename T> struct formatter<reloco::optional<T>> {
+  microfmt::string_view forwarded_spec{""};
+
+  constexpr void parse(format_parse_context &ctx) noexcept { forwarded_spec = ctx.spec(); }
+
+  void format(const reloco::optional<T> &opt, const sink &out) const noexcept {
+    if (opt.has_value()) {
+      out.write("Some(");
+      formatter<T> inner_fmt;
+      format_parse_context inner_ctx(forwarded_spec);
+      inner_fmt.parse(inner_ctx);
+      inner_fmt.format(opt.value(), out);
+      out.put(')');
+    } else {
+      out.write("None");
+    }
+  }
+};
+
+// ============================================================================
+// microfmt::checked_value Formatter (C++17+)
+// ============================================================================
+
+/**
+ * @brief Formatter for `reloco::checked_value<T>` (aliased as
+ * `microfmt::checked_value<T>`).
+ *
+ * Renders the held value directly -- no `Some(...)`/`Ok(...)` wrapper, since
+ * a `checked_value` always holds a `T` once constructed, unlike
+ * `optional`/`expected` -- or the literal text `<moved-from>` once the value
+ * has been moved out of.
+ */
+template <typename T> struct formatter<checked_value<T>> {
+  microfmt::string_view forwarded_spec{""};
+
+  constexpr void parse(format_parse_context &ctx) noexcept { forwarded_spec = ctx.spec(); }
+
+  void format(const checked_value<T> &val, const sink &out) const noexcept {
+    if (val.is_moved_from()) {
+      out.write("<moved-from>");
+      return;
+    }
+    formatter<T> inner_fmt;
+    format_parse_context inner_ctx(forwarded_spec);
+    inner_fmt.parse(inner_ctx);
+    inner_fmt.format(val.get(), out);
   }
 };
 
