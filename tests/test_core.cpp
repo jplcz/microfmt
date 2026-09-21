@@ -566,3 +566,43 @@ TEST(CoreCustomType, NestedFormattingInsideCustomFormatter) {
   auto r = microfmt::format<32>("[{}, {}]", 10, 20);
   EXPECT_EQ(r.view(), "[10, 20]");
 }
+
+TEST(FormatAsTest, RuntimeFormatStdString) {
+  auto result = microfmt::format_as<std::string>("Hello {} and {}", "World", 42);
+  EXPECT_EQ(result, "Hello World and 42");
+}
+
+TEST(FormatAsTest, CompileTimeFormatStdString) {
+  auto result = microfmt::format_as<std::string>(MICROFMT_STRING("Value: {}"), 123);
+  EXPECT_EQ(result, "Value: 123");
+}
+
+TEST(FormatAsTest, RuntimeFormatVectorChar) {
+  auto result = microfmt::format_as<std::vector<char>>("Status code: {}", 200);
+
+  std::string_view sv(result.data(), result.size());
+  EXPECT_EQ(sv, "Status code: 200");
+}
+
+TEST(FormatAsTest, CompileTimeFormatVectorChar) {
+  auto result = microfmt::format_as<std::vector<char>>(MICROFMT_STRING("Hex: {:x}"), 255);
+
+  std::string_view sv(result.data(), result.size());
+  EXPECT_EQ(sv, "Hex: ff"); // Assuming standard fmt-like syntax for hex
+}
+
+TEST(FormatAsTest, EmptyFormatString) {
+  auto runtime_result = microfmt::format_as<std::string>("");
+  EXPECT_TRUE(runtime_result.empty());
+
+  auto compile_result = microfmt::format_as<std::string>(MICROFMT_STRING(""));
+  EXPECT_TRUE(compile_result.empty());
+}
+
+TEST(FormatAsTest, NoArguments) {
+  auto result = microfmt::format_as<std::string>("Just text");
+  EXPECT_EQ(result, "Just text");
+
+  auto compile_result = microfmt::format_as<std::string>(MICROFMT_STRING("Compile text"));
+  EXPECT_EQ(compile_result, "Compile text");
+}

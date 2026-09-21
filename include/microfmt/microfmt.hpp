@@ -33,6 +33,15 @@ namespace microfmt {
  * dispatch, or RTTI overhead.
  */
 struct RELOCO_POINTER sink {
+  // --- Container / Back-Inserter Compatibility ---
+  using value_type = char;
+
+  // --- Iterator Traits (for direct usage) ---
+  using iterator_category = std::output_iterator_tag;
+  using difference_type = std::ptrdiff_t;
+  using pointer = void;
+  using reference = void;
+
   /**
    * @brief Function pointer signature for the write callback.
    *
@@ -71,6 +80,23 @@ struct RELOCO_POINTER sink {
    * @param c Character to write.
    */
   void put(char c) const noexcept { write(microfmt::string_view(&c, 1)); }
+
+  /**
+   * @brief Pushes a single character, enabling standard std::back_inserter compatibility.
+   *
+   * @param c Character to write.
+   */
+  void push_back(char c) const noexcept { put(c); }
+
+  [[nodiscard]] constexpr sink &operator*() noexcept { return *this; }
+
+  template <typename T> constexpr sink &operator=(T value) noexcept {
+    put(static_cast<char>(value));
+    return *this;
+  }
+
+  constexpr sink &operator++() noexcept { return *this; }
+  constexpr sink operator++(int) noexcept { return *this; }
 };
 
 // ============================================================================
@@ -1151,7 +1177,7 @@ template <typename StrProvider> struct compiled_string_storage {
 // Formats a single compiled piece with zero runtime indirect thunks
 template <typename StrProvider, size_t PieceIdx, typename... Args>
 RELOCO_ALWAYS_INLINE inline void emit_piece_by_index(const sink &out,
-                                                       const std::tuple<const Args &...> &arg_tuple) noexcept {
+                                                     const std::tuple<const Args &...> &arg_tuple) noexcept {
   constexpr auto &piece = compiled_string_storage<StrProvider>::compiled.pieces[PieceIdx];
 
   if constexpr (!piece.is_arg) {
@@ -1170,7 +1196,7 @@ RELOCO_ALWAYS_INLINE inline void emit_piece_by_index(const sink &out,
 
 template <typename StrProvider, typename... Args, size_t... Is>
 RELOCO_ALWAYS_INLINE inline void unrolled_format_impl(const sink &out, std::index_sequence<Is...>,
-                                                        const Args &...args) noexcept {
+                                                      const Args &...args) noexcept {
   auto arg_tuple = std::forward_as_tuple(args...);
   (void)arg_tuple;
   (emit_piece_by_index<StrProvider, Is>(out, arg_tuple), ...);
@@ -1273,8 +1299,7 @@ RELOCO_CONSTEXPR20 inline OutputIt format_to(OutputIt it, microfmt::string_view 
 }
 
 template <size_t N, typename... Args>
-[[nodiscard]] RELOCO_CONSTEXPR20 inline buffer_sink<N> format(microfmt::string_view fmt,
-                                                                const Args &...args) noexcept {
+[[nodiscard]] RELOCO_CONSTEXPR20 inline buffer_sink<N> format(microfmt::string_view fmt, const Args &...args) noexcept {
   buffer_sink<N> buf;
   format_to(buf.as_sink(), fmt, args...);
   return buf;
@@ -1298,7 +1323,7 @@ template <typename Provider> struct compile_string_holder {
 // Compile-time unrolled overload (Zero stack arg_ptrs, zero indirect thunks)
 template <typename StrProvider, typename... Args>
 RELOCO_CONSTEXPR20 inline void format_to(const sink &out, compile_string_holder<StrProvider>,
-                                           const Args &...args) noexcept {
+                                         const Args &...args) noexcept {
   constexpr size_t num_pieces = detail::compiled_string_storage<StrProvider>::compiled.count;
 
   detail::unrolled_format_impl<StrProvider>(out, std::make_index_sequence<num_pieces>{}, args...);
@@ -1307,7 +1332,7 @@ RELOCO_CONSTEXPR20 inline void format_to(const sink &out, compile_string_holder<
 // Compile-time overload
 template <typename OutputIt, typename StrProvider, typename... Args>
 RELOCO_CONSTEXPR20 inline OutputIt format_to(OutputIt it, compile_string_holder<StrProvider> fmt,
-                                               const Args &...args) noexcept {
+                                             const Args &...args) noexcept {
   iterator_sink<OutputIt> isink(it);
   format_to(isink.as_sink(), fmt, args...);
   return isink.current();
@@ -1316,10 +1341,38 @@ RELOCO_CONSTEXPR20 inline OutputIt format_to(OutputIt it, compile_string_holder<
 // Compile-time overload
 template <size_t N, typename StrProvider, typename... Args>
 [[nodiscard]] RELOCO_CONSTEXPR20 inline buffer_sink<N> format(compile_string_holder<StrProvider> fmt,
-                                                                const Args &...args) noexcept {
+                                                              const Args &...args) noexcept {
   buffer_sink<N> buf;
   format_to(buf.as_sink(), fmt, args...);
   return buf;
+}
+
+/**
+ * @brief Formats arguments into a newly constructed container (e.g., std::string)
+ * using a runtime format string.
+ *
+ * @tparam TargetContainer The container type to return (defaults to std::string).
+ * @tparam Args            Formatting argument types.
+ * @param fmt              Format string view.
+ * @param args             Values to format.
+ * @return TargetContainer Populated container with the formatted result.
+ */
+template <typename TargetContainer, typename... Args>
+[[nodiscard]] inline TargetContainer format_as(string_view fmt, const Args &...args) {
+  TargetContainer result;
+  format_to(std::back_inserter(result), fmt, args...);
+  return result;
+}
+
+/**
+ * @brief Formats arguments into a newly constructed container using a compile-time
+ * checked format string holder.
+ */
+template <typename TargetContainer, typename StrProvider, typename... Args>
+[[nodiscard]] inline TargetContainer format_as(compile_string_holder<StrProvider> fmt, const Args &...args) {
+  TargetContainer result;
+  format_to(std::back_inserter(result), fmt, args...);
+  return result;
 }
 
 } // namespace microfmt
