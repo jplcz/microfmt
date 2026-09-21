@@ -16,8 +16,7 @@ period: `ns`, `us`, `ms`, `s`, `min`, `h`, or `d`. Unknown periods use a
 custom-period marker. Use `c` or `C` to omit the suffix.
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{}"),
-                    std::chrono::milliseconds{42});
+microfmt::format_to(out, "{}", std::chrono::milliseconds{42});
 // 42ms
 ```
 
@@ -71,8 +70,7 @@ See `examples/posix_time_demo.cpp`.
 is the integral frequency convenience wrapper.
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{:.2}"),
-                    microfmt::hertz(50'000'000));
+microfmt::format_to(out, "{:.2}", microfmt::hertz(50'000'000));
 ```
 
 An optional single precision digit after `.` controls fractional output for

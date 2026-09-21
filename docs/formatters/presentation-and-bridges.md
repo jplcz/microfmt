@@ -15,8 +15,7 @@ microfmt through a compatibility API.
 `style` values, semantic presets, and `styled(value, style)` wrappers.
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{}"),
-                    microfmt::ansi::red("failure"));
+microfmt::format_to(out, "{}", microfmt::ansi::red("failure"));
 ```
 
 Styles and styled views accept no custom format specifier. Set
@@ -41,8 +40,7 @@ The formatter syntax is `[fill][align][width][flags]`:
 | `.N` | Set maximum rendered length |
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{:*^12q}"),
-                    microfmt::pad("ready", 12));
+microfmt::format_to(out, "{:*^12q}", microfmt::pad("ready", 12));
 ```
 
 Factory settings provide the defaults; replacement-field flags can override

@@ -17,8 +17,8 @@
   do {                                                                         \
     if ((logger_instance).should_log(lvl)) {                                   \
       (logger_instance)                                                        \
-          .log_loc(::std::source_location::current(), lvl, MICROFMT_STRING(fmt)\
-                       __VA_OPT__(, ) __VA_ARGS__);                            \
+          .log_loc(::std::source_location::current(), lvl,                    \
+                   fmt __VA_OPT__(, ) __VA_ARGS__);                            \
     }                                                                          \
   } while (0)
 

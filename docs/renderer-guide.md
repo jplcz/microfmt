@@ -48,8 +48,7 @@ template <> struct microfmt::formatter<packet> {
   void format(const packet &value, const microfmt::sink &out) const noexcept {
     char decoded[256]; // Avoid: increases the formatter's stack frame.
     const size_t size = decode_packet(value, decoded, sizeof(decoded));
-    microfmt::format_to(out, MICROFMT_STRING("{}"),
-                        microfmt::string_view{decoded, size});
+    microfmt::format_to(out, "{}", microfmt::string_view{decoded, size});
   }
 };
 ```
@@ -80,8 +79,7 @@ public:
         decode_packet(*source_, scratch_.data(), scratch_.size());
     const size_t size =
         decoded < scratch_.size() ? decoded : scratch_.size();
-    microfmt::format_to(out, MICROFMT_STRING("{}"),
-                        microfmt::string_view{scratch_.data(), size});
+    microfmt::format_to(out, "{}", microfmt::string_view{scratch_.data(), size});
   }
 
 private:
@@ -115,7 +113,7 @@ private:
 };
 
 telemetry_renderer renderer; // Storage is not allocated by the formatter.
-microfmt::format_to(output, MICROFMT_STRING("{}"), renderer.view(current));
+microfmt::format_to(output, "{}", renderer.view(current));
 ```
 
 This makes scratch capacity a visible resource decision instead of an implicit
@@ -170,7 +168,7 @@ elements, or a large text representation in the formatter.
 Use a temporary view when it only contains references and spans:
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("packet={}"),
+microfmt::format_to(out, "packet={}",
                     packet_view{microfmt::value_ref<const packet>(packet), scratch});
 ```
 

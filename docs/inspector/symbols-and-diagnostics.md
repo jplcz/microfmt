@@ -85,7 +85,7 @@ auto resolver =
 
 char name_scratch[128];
 microfmt::symbol_resolution_context symbol_context{name_scratch};
-microfmt::format_to(output, MICROFMT_STRING("{:#}"),
+microfmt::format_to(output, "{:#}",
                     microfmt::make_remote_symbol(program_counter, resolver,
                                                  symbol_context));
 // e.g. "my_app!my_namespace::my_function(int)+0x36"
@@ -109,7 +109,7 @@ char name_scratch[128];
 microfmt::symbol_resolution_context symbol_context{name_scratch};
 auto view =
     microfmt::make_remote_symbol(program_counter, resolver, symbol_context);
-microfmt::format_to(output, MICROFMT_STRING("pc={:#}"), view);
+microfmt::format_to(output, "pc={:#}", view);
 ```
 
 The `#` form requests detailed symbol output where supported. If resolution

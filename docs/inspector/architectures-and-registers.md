@@ -290,7 +290,7 @@ system descriptors supplied by the architecture catalog:
 ```cpp
 auto view =
     microfmt::register_context_view<microfmt::aarch64_abi_traits>{context};
-microfmt::format_to(output, MICROFMT_STRING("{}"), view);
+microfmt::format_to(output, "{}", view);
 ```
 
 Only successfully read registers are emitted. Output is grouped by target

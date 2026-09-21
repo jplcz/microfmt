@@ -174,7 +174,7 @@ public:
       }
     }
 
-    microfmt::format_to(out, MICROFMT_STRING(", use_count={}, weak_count={})"),
+    microfmt::format_to(out, ", use_count={}, weak_count={})",
                         static_cast<int64_t>(use_cnt),
                         static_cast<int64_t>(weak_cnt));
     return true;
@@ -264,7 +264,7 @@ public:
       }
     }
 
-    microfmt::format_to(out, MICROFMT_STRING(", ref_count={})"), ref_cnt);
+    microfmt::format_to(out, ", ref_count={})", ref_cnt);
     return true;
   }
 
@@ -438,7 +438,7 @@ template <typename T, typename RP> struct formatter<remote_unique_ptr<T, RP>> {
     if (ptr.is_null()) {
       out.write("nullptr");
     } else {
-      microfmt::format_to(out, MICROFMT_STRING("0x{:x}"), ptr.address());
+      microfmt::format_to(out, "0x{:x}", ptr.address());
     }
   }
 };
@@ -451,7 +451,7 @@ struct formatter<remote_shared_ptr<T, RP, RRC>> {
     if (ptr.is_null()) {
       out.write("shared_ptr(nullptr)");
     } else {
-      microfmt::format_to(out, MICROFMT_STRING("0x{:x}"), ptr.address());
+      microfmt::format_to(out, "0x{:x}", ptr.address());
     }
   }
 };
@@ -464,7 +464,7 @@ struct formatter<remote_intrusive_ptr<T, RO, RP, RRC>> {
     if (ptr.is_null()) {
       out.write("intrusive_ptr(nullptr)");
     } else {
-      microfmt::format_to(out, MICROFMT_STRING("0x{:x}"), ptr.address());
+      microfmt::format_to(out, "0x{:x}", ptr.address());
     }
   }
 };

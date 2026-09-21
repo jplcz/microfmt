@@ -24,18 +24,19 @@ A typical formatter call has three parts:
 #include <microfmt/formatters/binary.hpp>
 #include <microfmt/microfmt.hpp>
 
-microfmt::format_to(output, MICROFMT_STRING("status={:#_}"),
-                    microfmt::bin(status));
+microfmt::format_to(output, "status={:#_}", microfmt::bin(status));
 ```
 
 1. Include the header that defines the formatter or view.
 2. Construct a view when the source type does not have a direct formatter.
 3. Place formatter-specific flags after `:` in the replacement field.
 
-Use `MICROFMT_STRING(...)` for literal format strings so parsing and argument
-dispatch happen at compile time. Reserve it for hot paths; each distinct
-format string and argument-type combination generates its own unrolled
-code, so using it indiscriminately grows code size. See [Using
+Wrapping the format string in `MICROFMT_STRING(...)` is optional; it moves
+parsing and argument dispatch to compile time. Reserve it for genuine hot
+paths, since each distinct format string and argument-type combination
+generates its own unrolled code, so using it indiscriminately grows code
+size. Plain runtime string literals, as above, are the default choice for
+everyday formatting. See [Using
 microfmt](usage.md) for core format-string syntax and [Writing low-stack
 renderers](renderer-guide.md) when implementing application-specific
 formatters.

@@ -94,7 +94,7 @@ private:
 
     buffer_sink<MessageCapacity> buffer;
     const auto out = buffer.as_sink();
-    format_to(out, MICROFMT_STRING("{}"), msg.payload);
+    microfmt::format_to(out, "{}", msg.payload);
 
     // Prefer the originating logger's name as the logcat tag so records from
     // different loggers stay distinguishable in filters; fall back to the

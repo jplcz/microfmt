@@ -54,7 +54,7 @@ template <> struct microfmt::formatter<your_type> {
   void format(const your_type &value, const microfmt::sink &out) const noexcept {
     // Delegate to microfmt::format_to for nested fields; do not build an
     // intermediate std::string.
-    microfmt::format_to(out, MICROFMT_STRING("your_type{{...}}"));
+    microfmt::format_to(out, "your_type{{...}}");
   }
 };
 ```
@@ -99,7 +99,7 @@ template <> struct microfmt::formatter<your_type_view> {
 
 // Usage: caller supplies and owns the scratch buffer.
 char scratch[128];
-microfmt::format_to(out, MICROFMT_STRING("{}"),
+microfmt::format_to(out, "{}",
                     your_type_view{microfmt::value_ref<const your_type>(value),
                                   microfmt::span<char>{scratch}});
 ```
@@ -128,7 +128,7 @@ void your_write_fn(void *ctx, microfmt::string_view sv) noexcept {
 
 your_target_type target{};
 microfmt::sink out{&target, your_write_fn};
-microfmt::format_to(out, MICROFMT_STRING("value={}\n"), 42);
+microfmt::format_to(out, "value={}\n", 42);
 ```
 
 **Class-adapter form** (preferred when the sink owns state, e.g. a buffer,
@@ -165,7 +165,7 @@ private:
 };
 
 your_sink my_sink;
-microfmt::format_to(my_sink.as_sink(), MICROFMT_STRING("id={}\n"), 7);
+microfmt::format_to(my_sink.as_sink(), "id={}\n", 7);
 ```
 
 Rules for any sink implementation:

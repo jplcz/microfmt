@@ -77,7 +77,7 @@ auto view = microfmt::remote_object_view{
     reinterpret_cast<uintptr_t>(&local), space, microfmt::type_tag<registers>{},
     scratch};
 
-microfmt::format_to(output, MICROFMT_STRING("{}"), view);
+microfmt::format_to(output, "{}", view);
 // { status: 18, control: 52 }
 ```
 

@@ -110,7 +110,7 @@ non-owning `microfmt::string_view`, and excess output is safely truncated.
 #include <microfmt/microfmt.hpp>
 
 const auto message = microfmt::format<64>(
-    MICROFMT_STRING("sensor={}, value=0x{:04X}"), 7, 0x2a);
+    "sensor={}, value=0x{:04X}", 7, 0x2a);
 
 microfmt::string_view text = message.view();
 // "sensor=7, value=0x002A"
@@ -122,7 +122,7 @@ Use `span_sink` to write to storage owned by the caller:
 char storage[32];
 microfmt::span_sink output{microfmt::span<char>{storage, sizeof(storage)}};
 
-microfmt::format_to(output.as_sink(), MICROFMT_STRING("state={}"), "ready");
+microfmt::format_to(output.as_sink(), "state={}", "ready");
 // output.view() is "state=ready"
 ```
 
@@ -148,7 +148,7 @@ void uart_write(void *, microfmt::string_view chunk) noexcept {
 }
 
 microfmt::sink uart{nullptr, uart_write};
-microfmt::format_to(uart, MICROFMT_STRING("temperature={} C\n"), 24);
+microfmt::format_to(uart, "temperature={} C\n", 24);
 ```
 
 The core also supplies output-iterator, callback, counting, null, fixed
@@ -168,8 +168,9 @@ adapter over a FreeBSD-style `struct sbuf *` that appends through
 
 ## Compile-time format strings
 
-Wrap string literals in `MICROFMT_STRING(...)` to select the compile-time
-formatting path:
+The runtime format string used throughout this guide is the default choice
+for most call sites. Wrap a string literal in `MICROFMT_STRING(...)` only
+when a specific call site needs the compile-time formatting path:
 
 ```cpp
 microfmt::format_to(output.as_sink(),
@@ -178,13 +179,15 @@ microfmt::format_to(output.as_sink(),
 
 This parses the replacement fields during constant evaluation and uses
 unrolled argument dispatch, which avoids the stack-resident argument-pointer
-array and indirect thunks that the runtime path uses. It is useful for hot
-paths and embedded targets with strict stack budgets, but each distinct
-format string and argument-type combination generates its own unrolled code,
-so overusing it — many distinct literals, or the same literal instantiated
-over many argument-type combinations — grows code size. Prefer runtime
-format strings for less latency-sensitive call sites. Runtime format strings
-remain supported where the format text is not known at compile time:
+array and indirect thunks that the runtime path uses. Reserve it for hot
+paths and embedded targets with strict stack budgets, where the same literal
+and argument types are formatted repeatedly; each distinct format string and
+argument-type combination generates its own unrolled code, so overusing it —
+many distinct literals, or the same literal instantiated over many
+argument-type combinations, as happens inside a template that is itself
+instantiated for many types — grows code size for little benefit. Prefer
+runtime format strings everywhere else, including when the format text is
+not known at compile time:
 
 ```cpp
 microfmt::string_view format_from_configuration = "id={}";
@@ -215,7 +218,7 @@ appending through `std::back_inserter`:
 
 ```cpp
 std::string message = microfmt::format_as<std::string>(
-    MICROFMT_STRING("sensor={}, value=0x{:04X}"), 7, 0x2a);
+    "sensor={}, value=0x{:04X}", 7, 0x2a);
 ```
 
 It accepts both runtime format strings and `MICROFMT_STRING(...)` literals.
@@ -255,7 +258,7 @@ template <> struct microfmt::formatter<point> {
   constexpr void parse(microfmt::format_parse_context &) noexcept {}
 
   void format(const point &value, const microfmt::sink &out) const noexcept {
-    microfmt::format_to(out, MICROFMT_STRING("({}, {})"), value.x, value.y);
+    microfmt::format_to(out, "({}, {})", value.x, value.y);
   }
 };
 ```
@@ -275,21 +278,26 @@ logger. Attach one or more `log_sink` objects that consume `log_msg` records.
 
 microfmt::log::logger logger{"telemetry", my_log_sink};
 logger.set_level(microfmt::log::level::info);
-logger.info(MICROFMT_STRING("sensor={} online"), 7);
+logger.info("sensor={} online", 7);
 ```
 
 `trace`, `debug`, `info`, `warn`, `error`, and `critical` have both runtime
-and `MICROFMT_STRING` overloads. The macros in
-`<microfmt/log/macros.hpp>` accept a string literal directly and always use
-compile-time formatting:
+and `MICROFMT_STRING` overloads. The macros in `<microfmt/log/macros.hpp>`
+accept the format string as-is and use runtime formatting by default, the
+same as the member functions above:
 
 ```cpp
 MICROFMT_LOGGER_INFO(logger, "sensor={} online", 7);
 ```
 
-Macro format arguments must be literals; use the logger member functions or
-free helpers for a runtime `microfmt::string_view` format string. Define
-`MICROFMT_DEFAULT_LOGGER` before including `macros.hpp` to enable
+Wrap the format string in `MICROFMT_STRING(...)` at a call site that
+explicitly needs compile-time formatting:
+
+```cpp
+MICROFMT_LOGGER_INFO(logger, MICROFMT_STRING("sensor={} online"), 7);
+```
+
+Define `MICROFMT_DEFAULT_LOGGER` before including `macros.hpp` to enable
 `MICROFMT_LOG_INFO(...)` and the related default-logger macros.
 
 ## Platform and language support

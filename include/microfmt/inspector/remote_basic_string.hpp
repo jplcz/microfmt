@@ -219,7 +219,7 @@ struct formatter<remote_basic_string_view<Layout>> {
       return;
     }
     if (!view.space()) {
-      microfmt::format_to(out, MICROFMT_STRING("<invalid-space@{:#x}>"),
+      microfmt::format_to(out, "<invalid-space@{:#x}>",
                           view.object_address());
       return;
     }
@@ -227,14 +227,14 @@ struct formatter<remote_basic_string_view<Layout>> {
     uintptr_t data_address = 0;
     size_t size = 0;
     if (!view.resolve(data_address, size)) {
-      microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"),
+      microfmt::format_to(out, "<fault@{:#x}>",
                           view.object_address());
       return;
     }
     if (size == 0)
       return;
     if (data_address == 0) {
-      microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"),
+      microfmt::format_to(out, "<fault@{:#x}>",
                           view.object_address());
       return;
     }
@@ -243,7 +243,7 @@ struct formatter<remote_basic_string_view<Layout>> {
         size < view.max_limit() ? size : view.max_limit();
     const auto scratch = view.scratch();
     if (render_size != 0 && scratch.empty()) {
-      microfmt::format_to(out, MICROFMT_STRING("<invalid-space@{:#x}>"),
+      microfmt::format_to(out, "<invalid-space@{:#x}>",
                           view.object_address());
       return;
     }
@@ -257,7 +257,7 @@ struct formatter<remote_basic_string_view<Layout>> {
           !view.space().read_bytes(data_address + total, scratch.data(),
                                    chunk_size)) {
         if (total == 0) {
-          microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"),
+          microfmt::format_to(out, "<fault@{:#x}>",
                               data_address);
         } else {
           out.write("<fault>");

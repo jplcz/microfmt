@@ -16,7 +16,7 @@ template <> struct formatter<boost::system::error_code> {
 
   void format(const boost::system::error_code &error,
               const sink &out) const noexcept {
-    microfmt::format_to(out, MICROFMT_STRING("{}:{}"), error.category().name(),
+    microfmt::format_to(out, "{}:{}", error.category().name(),
                         error.value());
   }
 };
@@ -26,7 +26,7 @@ template <> struct formatter<boost::system::error_condition> {
 
   void format(const boost::system::error_condition &condition,
               const sink &out) const noexcept {
-    microfmt::format_to(out, MICROFMT_STRING("{}:{}"),
+    microfmt::format_to(out, "{}:{}",
                         condition.category().name(), condition.value());
   }
 };

@@ -52,7 +52,7 @@ template <typename... Ts> struct formatter<boost::variant2::variant<Ts...>> {
   void format(const boost::variant2::variant<Ts...> &value,
               const sink &out) const noexcept {
     if (show_index) {
-      microfmt::format_to(out, MICROFMT_STRING("variant[{}]("), value.index());
+      microfmt::format_to(out, "variant[{}](", value.index());
     }
 
     boost::variant2::visit(

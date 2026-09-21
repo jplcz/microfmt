@@ -17,7 +17,7 @@ and accepts no custom specifier.
 
 ```cpp
 const uint8_t payload[]{'M', 'a', 'n'};
-microfmt::format_to(out, MICROFMT_STRING("{}"), microfmt::base64(payload));
+microfmt::format_to(out, "{}", microfmt::base64(payload));
 // TWFu
 ```
 
@@ -35,8 +35,7 @@ than `bool`.
 | `_` | Group digits into four-bit nibbles |
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{:#_}"),
-                    microfmt::bin<16>(uint16_t{0xa53c}));
+microfmt::format_to(out, "{:#_}", microfmt::bin<16>(uint16_t{0xa53c}));
 ```
 
 See `examples/binary_demo.cpp`.
@@ -56,8 +55,7 @@ constexpr microfmt::bit_field fields[]{
     MICROFMT_BIT_FLAG("enabled", 0),
     MICROFMT_BIT_VALUE_HEX("mode", 0x0e, 1),
 };
-microfmt::format_to(out, MICROFMT_STRING("{}"),
-                    microfmt::bits(status, fields));
+microfmt::format_to(out, "{}", microfmt::bits(status, fields));
 ```
 
 See `examples/bitfield_demo.cpp`.
@@ -70,8 +68,7 @@ non-printable bytes. View construction controls quoting and whether quote
 characters are escaped; there are no format-string flags.
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{}"),
-                    microfmt::escaped("line 1\nline 2"));
+microfmt::format_to(out, "{}", microfmt::escaped("line 1\nline 2"));
 ```
 
 See `examples/escaped_demo.cpp`.
@@ -86,7 +83,7 @@ micro-scaled values: `milli`, `centi`, and `micro`.
 must be integral. The formatter has no custom specifier.
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{} V"), microfmt::milli(3300));
+microfmt::format_to(out, "{} V", microfmt::milli(3300));
 // 3.300 V
 ```
 
@@ -108,7 +105,7 @@ Its syntax follows the supported `printf` floating-point subset:
 | `a`, `A` | Hexadecimal floating-point form |
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{:+.3f}"), voltage);
+microfmt::format_to(out, "{:+.3f}", voltage);
 ```
 
 Formatting uses `snprintf`. It starts with bounded local storage but may use a
@@ -139,8 +136,7 @@ them through their factory arguments.
 The full format specifier is forwarded to the resulting `size_t` value.
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{:016X}"),
-                    microfmt::as_hash(key));
+microfmt::format_to(out, "{:016X}", microfmt::as_hash(key));
 ```
 
 See `examples/hash_demo.cpp`.
@@ -177,8 +173,7 @@ addresses. Inputs with another size render as a zero MAC address.
 | `:`, `-`, `.`, `_` | Select byte separator |
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{:X-}"),
-                    microfmt::mac(address_bytes));
+microfmt::format_to(out, "{:X-}", microfmt::mac(address_bytes));
 ```
 
 ## `pointer.hpp`
@@ -243,8 +238,7 @@ The advanced syntax is `[[fill]align][width][.precision][?]`:
 | `?` | Debug quoting and escaping |
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{:*>12.8?}"),
-                    microfmt::as_string(name));
+microfmt::format_to(out, "{:*>12.8?}", microfmt::as_string(name));
 ```
 
 A null C string renders as `(null)`.

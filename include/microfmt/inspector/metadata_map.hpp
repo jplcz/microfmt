@@ -104,7 +104,7 @@ template <> struct formatter<microfmt::metadata_map> {
       if (idx > 0) {
         out.write(", ");
       }
-      microfmt::format_to(out, MICROFMT_STRING("\"{}\": "), entry.key);
+      microfmt::format_to(out, "\"{}\": ", entry.key);
       entry.format_value(out);
       ++idx;
     }

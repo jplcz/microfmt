@@ -115,7 +115,7 @@ template <typename T> struct formatter<compat32_ptr<T>> {
     if (ptr.is_null()) {
       out.write("(null)");
     } else {
-      microfmt::format_to(out, MICROFMT_STRING("{:#010x}"), ptr.raw_value());
+      microfmt::format_to(out, "{:#010x}", ptr.raw_value());
     }
   }
 };

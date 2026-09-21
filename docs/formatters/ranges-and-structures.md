@@ -34,8 +34,7 @@ the remaining specifier to their elements:
 element.
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{:04X}"),
-                    microfmt::join(values, ", "));
+microfmt::format_to(out, "{:04X}", microfmt::join(values, ", "));
 ```
 
 In C++20 and later, `join_as<Delimiter, ElementSpec>(range)` stores delimiter
@@ -51,7 +50,7 @@ view that visits only matching elements.
 auto even = microfmt::filter(values, [](int value) {
   return value % 2 == 0;
 });
-microfmt::format_to(out, MICROFMT_STRING("{:n}"), even);
+microfmt::format_to(out, "{:n}", even);
 ```
 
 Use `b`, `c`, or `n` for outer delimiters. The remainder of the specifier is
@@ -63,8 +62,8 @@ forwarded to each selected element. See `examples/filter_view_demo.cpp`.
 that formats the same value `count` times, optionally joined by `separator`.
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{}"), microfmt::repeat('*', 5));
-microfmt::format_to(out, MICROFMT_STRING("{:04x}"), microfmt::repeat(0x2A, 3, "|"));
+microfmt::format_to(out, "{}", microfmt::repeat('*', 5));
+microfmt::format_to(out, "{:04x}", microfmt::repeat(0x2A, 3, "|"));
 ```
 
 The complete replacement-field specifier is forwarded to the wrapped value's
@@ -77,8 +76,7 @@ formatter and re-applied on every repetition.
 iterator/sentinel pairs for non-standard layouts.
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{}"),
-                    microfmt::map_view(settings));
+microfmt::format_to(out, "{}", microfmt::map_view(settings));
 ```
 
 Use `b`, `c`, or `n` for delimiters. The remaining specifier is forwarded to
@@ -95,8 +93,7 @@ Use `b`, `c`, `n`, or `p` for delimiters. The remaining specifier is forwarded
 to every tuple element.
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{:p04X}"),
-                    std::tuple{1, 2, 3});
+microfmt::format_to(out, "{:p04X}", std::tuple{1, 2, 3});
 ```
 
 See `examples/tuple_demo.cpp`.
@@ -125,8 +122,7 @@ element (or, for associative adapters, each value).
 #include <microfmt/formatters/reloco.hpp>
 
 reloco::vector<int> values = ...;
-microfmt::format_to(out, MICROFMT_STRING("{}"),
-                    microfmt::as_collection_view(values));
+microfmt::format_to(out, "{}", microfmt::as_collection_view(values));
 ```
 
 See `examples/reloco_demo.cpp`.
@@ -144,8 +140,7 @@ inline constexpr auto registers =
     microfmt::reg_grid_desc<uint32_t, 4>{
         "DMA state", 2, {"CCR", "COUNT", "PERIPH", "MEMORY"}};
 
-microfmt::format_to(out, MICROFMT_STRING("{}"),
-                    microfmt::make_reg_grid(dma, registers));
+microfmt::format_to(out, "{}", microfmt::make_reg_grid(dma, registers));
 ```
 
 The source object must contain at least `N * sizeof(WordType)` bytes. The
@@ -159,8 +154,7 @@ every element.
 
 ```cpp
 const float matrix_data[]{1, 2, 3, 4};
-microfmt::format_to(out, MICROFMT_STRING("{:.2f}"),
-                    microfmt::mat<float, 2, 2>(matrix_data));
+microfmt::format_to(out, "{:.2f}", microfmt::mat<float, 2, 2>(matrix_data));
 ```
 
 The matrix factory requires a compile-time-sized array with exactly
@@ -175,8 +169,7 @@ formatter.
 The full specifier is forwarded to the contained value or error:
 
 ```cpp
-microfmt::format_to(out, MICROFMT_STRING("{:04X}"),
-                    std::optional<uint16_t>{0x2a});
+microfmt::format_to(out, "{:04X}", std::optional<uint16_t>{0x2a});
 ```
 
 See `examples/monad_demo.cpp`.
@@ -194,7 +187,7 @@ The formatters accept no custom specifier.
 
 ```cpp
 BOOST_DESCRIBE_STRUCT(status, (), (code, message))
-microfmt::format_to(out, MICROFMT_STRING("{}"), current_status);
+microfmt::format_to(out, "{}", current_status);
 ```
 
 See `examples/describe_demo.cpp`.

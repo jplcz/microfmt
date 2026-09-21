@@ -173,7 +173,7 @@ public:
         typename AbiTraits::register_type reg_val = 0;
         if (reg_ctx.read_raw(reg_desc.index, &reg_val, sizeof(reg_val)) &&
             reg_val != 0) {
-          microfmt::format_to(out, MICROFMT_STRING("[{}] -> "), reg_desc.name);
+          microfmt::format_to(out, "[{}] -> ", reg_desc.name);
           process_address(space, classifier, index++,
                           static_cast<uintptr_t>(reg_val), context, out);
         }
@@ -216,12 +216,12 @@ private:
         classifier.classify_address(addr, context.region_info);
     const auto &info = context.region_info;
 
-    microfmt::format_to(out, MICROFMT_STRING("  #{:<2} addr={:#018x} | type="),
+    microfmt::format_to(out, "  #{:<2} addr={:#018x} | type=",
                         index, addr);
 
     if (classified) {
       print_region_type(out, info.type);
-      microfmt::format_to(out, MICROFMT_STRING(" [{:#x} - {:#x}]"),
+      microfmt::format_to(out, " [{:#x} - {:#x}]",
                           info.start_address, info.end_address);
     } else {
       out.write("unknown/unmapped");
@@ -237,13 +237,13 @@ private:
         const auto &symbol = context.resolved_symbol;
         out.write(" | symbol=");
         if (context.options.demangle_symbols) {
-          microfmt::format_to(out, MICROFMT_STRING("{}"),
+          microfmt::format_to(out, "{}",
                               as_demangled(symbol.symbol_name));
         } else {
           out.write(symbol.symbol_name);
         }
         if (symbol.offset_from_symbol != 0) {
-          microfmt::format_to(out, MICROFMT_STRING("+{:#x}"),
+          microfmt::format_to(out, "+{:#x}",
                               symbol.offset_from_symbol);
         }
       }

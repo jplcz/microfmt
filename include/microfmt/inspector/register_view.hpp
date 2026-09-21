@@ -71,7 +71,7 @@ template <> struct formatter<register_context_view<x86_64_abi_traits>> {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
         detail::write_register_separator(out, printed, 2);
-        microfmt::format_to(out, MICROFMT_STRING("{}={:#018x}"), reg.name, val);
+        microfmt::format_to(out, "{}={:#018x}", reg.name, val);
         ++printed;
       }
     };
@@ -104,7 +104,7 @@ template <> struct formatter<register_context_view<x86_abi_traits>> {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
         detail::write_register_separator(out, printed, 3);
-        microfmt::format_to(out, MICROFMT_STRING("{}={:#010x}"), reg.name, val);
+        microfmt::format_to(out, "{}={:#010x}", reg.name, val);
         ++printed;
       }
     };
@@ -144,7 +144,7 @@ template <> struct formatter<register_context_view<aarch64_abi_traits>> {
           display_val = static_cast<uint64_t>(
               aarch64_abi_traits::normalize_pc(static_cast<uintptr_t>(val)));
         }
-        microfmt::format_to(out, MICROFMT_STRING("{}={:#018x}"), reg.name,
+        microfmt::format_to(out, "{}={:#018x}", reg.name,
                             display_val);
         ++printed;
       }
@@ -178,7 +178,7 @@ template <> struct formatter<register_context_view<arm_abi_traits>> {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
         detail::write_register_separator(out, printed, 3);
-        microfmt::format_to(out, MICROFMT_STRING("{}={:#010x}"), reg.name, val);
+        microfmt::format_to(out, "{}={:#010x}", reg.name, val);
         ++printed;
       }
     };
@@ -211,7 +211,7 @@ template <> struct formatter<register_context_view<riscv32_abi_traits>> {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
         detail::write_register_separator(out, printed, 3);
-        microfmt::format_to(out, MICROFMT_STRING("{}={:#010x}"), reg.name, val);
+        microfmt::format_to(out, "{}={:#010x}", reg.name, val);
         ++printed;
       }
     };
@@ -244,7 +244,7 @@ template <> struct formatter<register_context_view<riscv64_abi_traits>> {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
         detail::write_register_separator(out, printed, 2);
-        microfmt::format_to(out, MICROFMT_STRING("{}={:#018x}"), reg.name, val);
+        microfmt::format_to(out, "{}={:#018x}", reg.name, val);
         ++printed;
       }
     };

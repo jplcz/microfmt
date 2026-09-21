@@ -322,14 +322,19 @@ documented interoperability requirement or functionality that microfmt does
 not provide. Convert standard views at the boundary rather than carrying
 unchecked access through core implementation code.
 
-Use `MICROFMT_STRING("...")` for literal, header-internal format strings on
-hot paths where the unrolled code size is a net win. Because a formatter's
+Use `MICROFMT_STRING("...")` only where the unrolled code size is a proven net
+win for literal, header-internal format strings on genuine hot paths; prefer
+a plain `microfmt::string_view` literal by default. Because a formatter's
 `format` method may be instantiated for many call sites, prefer
 `microfmt::string_view` when the same literal would otherwise be unrolled
 repeatedly for little benefit. Keep `microfmt::string_view` paths for
-caller-provided runtime formats. Logging macros are intentionally
-literal-only: they wrap their format argument internally with
-`MICROFMT_STRING`.
+caller-provided runtime formats. This applies to the logging subsystem too:
+the built-in `log_sink` implementations and the `MICROFMT_LOGGER_*`/
+`MICROFMT_LOG_*` macros use runtime formatting by default, since application
+log call sites are numerous and each distinct literal-and-argument-type
+combination would otherwise be unrolled separately. Wrap an individual call
+site's format string in `MICROFMT_STRING(...)` only where that specific site
+is a proven hot path.
 
 When adding a new view or formatter, avoid hidden allocation and keep
 temporary buffers explicit, caller-owned, and bounded. Prefer a lightweight
@@ -349,7 +354,7 @@ template <> struct microfmt::formatter<widget_state> {
 
   void format(const widget_state &value,
               const microfmt::sink &out) const noexcept {
-    microfmt::format_to(out, MICROFMT_STRING("state={}"), value.code);
+    microfmt::format_to(out, "state={}", value.code);
   }
 };
 ```

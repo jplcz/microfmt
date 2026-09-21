@@ -160,7 +160,7 @@ char storage[128]{};
 microfmt::span_sink adapter(storage);
 microfmt::sink out = adapter.as_sink();
 
-microfmt::format_to(out, MICROFMT_STRING("{}"), 42);
+microfmt::format_to(out, "{}", 42);
 auto text = adapter.view();
 ```
 

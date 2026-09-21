@@ -37,7 +37,7 @@ metadata.set("supervised", microfmt::value_ref(supervised));
 
 microfmt::concrete_metadata_map::span_iteration_state state;
 auto view = metadata.make_view(state);
-microfmt::format_to(output, MICROFMT_STRING("{}"), view);
+microfmt::format_to(output, "{}", view);
 // {"priority": 5, "supervised": true}
 ```
 
@@ -57,11 +57,11 @@ to reset the state before another traversal:
 
 ```cpp
 auto first = metadata.make_view(state);
-microfmt::format_to(output, MICROFMT_STRING("{}"), first);
+microfmt::format_to(output, "{}", first);
 
 priority = 7;
 auto second = metadata.make_view(state);
-microfmt::format_to(output, MICROFMT_STRING("{}"), second);
+microfmt::format_to(output, "{}", second);
 ```
 
 Do not create a view from a temporary `concrete_metadata_map`; the rvalue

@@ -221,7 +221,7 @@ template <typename... Ts> struct formatter<variant_view<Ts...>> {
       out.write("variant(");
       print_parens = true;
     } else if (spec_mode == 'i' || spec_mode == '#' || view.show_index()) {
-      microfmt::format_to(out, MICROFMT_STRING("variant[{}]"), var.index());
+      microfmt::format_to(out, "variant[{}]", var.index());
       out.write("(");
       print_parens = true;
     } else if (!view.prefix().empty()) {

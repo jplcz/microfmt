@@ -51,7 +51,7 @@ inline void format_remote_fault(const sink &out, uintptr_t addr,
           out.write(info.image_name);
           out.put('!');
         }
-        microfmt::format_to(out, MICROFMT_STRING("{}"),
+        microfmt::format_to(out, "{}",
                             as_demangled(info.symbol_name));
         if (info.offset_from_symbol > 0) {
           out.write("+0x");
@@ -73,7 +73,7 @@ inline void format_remote_fault(const sink &out, uintptr_t addr,
   }
 
   // Fallback raw hex address
-  microfmt::format_to(out, MICROFMT_STRING("<fault:{:#x}>"), addr);
+  microfmt::format_to(out, "<fault:{:#x}>", addr);
 }
 
 // ============================================================================
@@ -173,16 +173,16 @@ template <> struct formatter<remote_fn_ptr> {
     }
 
     if (mode == 'x' || mode == 'p' || !fn.resolver()) {
-      microfmt::format_to(out, MICROFMT_STRING("{:#x}"), fn.address());
+      microfmt::format_to(out, "{:#x}", fn.address());
       return;
     }
 
     auto sym_view =
         remote_symbol_view(fn.address(), fn.resolver(), fn.context(), true);
     if (mode == '#') {
-      microfmt::format_to(out, MICROFMT_STRING("{:#}"), sym_view);
+      microfmt::format_to(out, "{:#}", sym_view);
     } else {
-      microfmt::format_to(out, MICROFMT_STRING("{}"), sym_view);
+      microfmt::format_to(out, "{}", sym_view);
     }
   }
 };

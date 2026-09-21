@@ -60,7 +60,7 @@ identify inline objects rather than stored pointer values.
 auto vector = microfmt::make_remote_vector<uint32_t>(
     remote_vector_address, data_offset, size_offset, capacity_offset);
 auto view = vector.view(space, scratch);
-microfmt::format_to(output, MICROFMT_STRING("values={}"), view);
+microfmt::format_to(output, "values={}", view);
 ```
 
 ## Custom container implementations

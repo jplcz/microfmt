@@ -171,7 +171,7 @@ template <> struct formatter<string_ptr> {
     if (ptr.is_null()) {
       out.write("(null)");
     } else {
-      microfmt::format_to(out, MICROFMT_STRING("0x{:x}"), ptr.address());
+      microfmt::format_to(out, "0x{:x}", ptr.address());
     }
   }
 };
@@ -182,7 +182,7 @@ template <> struct formatter<string32_ptr> {
     if (ptr.is_null()) {
       out.write("(null)");
     } else {
-      microfmt::format_to(out, MICROFMT_STRING("{:#010x}"), ptr.raw_value());
+      microfmt::format_to(out, "{:#010x}", ptr.raw_value());
     }
   }
 };
@@ -269,7 +269,7 @@ template <> struct formatter<remote_object_view> {
 
     auto obj = view.load_raw();
     if (!obj) {
-      microfmt::format_to(out, MICROFMT_STRING("<fault@{:#x}>"), view.address());
+      microfmt::format_to(out, "<fault@{:#x}>", view.address());
       return;
     }
 

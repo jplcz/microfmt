@@ -31,8 +31,7 @@ state explicitly.
 
 ```cpp
 const uint8_t payload[]{0xde, 0xad, 0xbe, 0xef};
-microfmt::format_to(out, MICROFMT_STRING("{:c}"),
-                    microfmt::can_frame(0x123, payload));
+microfmt::format_to(out, "{:c}", microfmt::can_frame(0x123, payload));
 ```
 
 See `examples/can_demo.cpp`.
@@ -45,8 +44,7 @@ seven-bit transactions. `i2c_10bit(...)` represents a ten-bit transaction.
 
 ```cpp
 const uint8_t request[]{0x75};
-microfmt::format_to(out, MICROFMT_STRING("{:c}"),
-                    microfmt::i2c_write(0x68, request));
+microfmt::format_to(out, "{:c}", microfmt::i2c_write(0x68, request));
 ```
 
 See `examples/i2c_demo.cpp`.
@@ -59,8 +57,7 @@ MISO, chip select, mode, and transfer status.
 
 ```cpp
 const uint8_t command[]{0x9f, 0x00, 0x00};
-microfmt::format_to(out, MICROFMT_STRING("{:c}"),
-                    microfmt::spi_write(command, 0));
+microfmt::format_to(out, "{:c}", microfmt::spi_write(command, 0));
 ```
 
 See `examples/spi_demo.cpp`.
@@ -77,7 +74,7 @@ Their RAII lifetime writes opening and closing delimiters, while `kv(...)` and
 auto object = microfmt::json::json_obj([](auto &writer) {
   writer.kv("name", "microfmt").kv("ready", true).kv("count", 3);
 });
-microfmt::format_to(out, MICROFMT_STRING("{}"), object);
+microfmt::format_to(out, "{}", object);
 ```
 
 Strings are escaped as JSON strings. The view formatter has no custom
@@ -95,7 +92,7 @@ destruction or `end()` writes the break marker.
 auto map = microfmt::cbor::cbor_map([](auto &writer) {
   writer.kv("ready", true).kv("count", 3);
 });
-microfmt::format_to(out, MICROFMT_STRING("{}"), map);
+microfmt::format_to(out, "{}", map);
 ```
 
 The view formatter has no custom specifier. See `examples/cbor_demo.cpp`.

@@ -444,7 +444,7 @@ auto layout =
 auto string = microfmt::make_remote_basic_string_view(
     target_string_address, target_space, scratch, layout, 256);
 
-microfmt::format_to(output, MICROFMT_STRING("{}"), string);
+microfmt::format_to(output, "{}", string);
 ```
 
 `pointer_size_layout` supports representations whose data field always points

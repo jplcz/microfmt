@@ -418,15 +418,15 @@ template <> struct formatter<remote_backtrace_view> {
           }
           first = false;
 
-          microfmt::format_to(out, MICROFMT_STRING("  #{:<2} fp={:#x}  pc="),
+          microfmt::format_to(out, "  #{:<2} fp={:#x}  pc=",
                               frame.frame_index, frame.fp);
 
           remote_fn_ptr fn_sym(frame.pc, view.resolver(),
                                view.symbol_context());
           if (mode == '#') {
-            microfmt::format_to(out, MICROFMT_STRING("{:#}"), fn_sym);
+            microfmt::format_to(out, "{:#}", fn_sym);
           } else {
-            microfmt::format_to(out, MICROFMT_STRING("{}"), fn_sym);
+            microfmt::format_to(out, "{}", fn_sym);
           }
           return true;
         },

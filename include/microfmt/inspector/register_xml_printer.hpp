@@ -24,9 +24,9 @@ public:
     out.write("<reg name=\"");
     out.write(reg.name);
     out.write("\" bitsize=\"");
-    format_to(out, MICROFMT_STRING("{}"), reg.bit_size);
+    format_to(out, "{}", reg.bit_size);
     out.write("\" regnum=\"");
-    format_to(out, MICROFMT_STRING("{}"), reg.gdb_index);
+    format_to(out, "{}", reg.gdb_index);
 
     if (!reg.gdb_type.empty()) {
       out.write("\" type=\"");
