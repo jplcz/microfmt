@@ -183,7 +183,7 @@ public:
   /**
    * @brief Resets the write offset back to the beginning of the buffer.
    */
-  constexpr void reset() noexcept { m_pos = 0; }
+  RELOCO_REINITIALIZES constexpr void reset() noexcept { m_pos = 0; }
 
 private:
   span<char> m_buf;
@@ -302,7 +302,7 @@ public:
   /**
    * @brief Resets the write offset back to the beginning of the buffer.
    */
-  constexpr void reset() noexcept { m_pos = 0; }
+  RELOCO_REINITIALIZES constexpr void reset() noexcept { m_pos = 0; }
 
 private:
   char m_storage[N]{};
@@ -335,7 +335,19 @@ public:
   [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<iterator_sink<OutputIt> *>(ctx);
+// Guard against std::terminate in the noexcept callback
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND)
+                  try {
+                    self->m_it = std::copy(sv.begin(), sv.end(), self->m_it);
+                  } catch (...) {
+                    // Swallow the exception to maintain noexcept guarantees.
+                    // The output will simply be truncated from the point of failure.
+                  }
+#else
+                  // In -fno-exceptions environments, standard containers will 
+                  // typically invoke abort() directly on allocation failure.
                   self->m_it = std::copy(sv.begin(), sv.end(), self->m_it);
+#endif
                 }};
   }
 
@@ -387,7 +399,7 @@ public:
   /**
    * @brief Resets the internal counter to zero.
    */
-  constexpr void reset() noexcept { m_count = 0; }
+  RELOCO_REINITIALIZES constexpr void reset() noexcept { m_count = 0; }
 
 private:
   std::size_t m_count{0};
@@ -500,7 +512,7 @@ public:
   /**
    * @brief Resets the sink to an empty, null-terminated state.
    */
-  constexpr void reset() noexcept {
+  RELOCO_REINITIALIZES constexpr void reset() noexcept {
     m_pos = 0;
     m_data[0] = '\0';
   }
