@@ -32,6 +32,7 @@ Start with the guide that matches what you are building:
 | [Extending microfmt](docs/extending.md) | Copy-paste templates for custom formatters, sinks, and inspector providers |
 | [Lifetime safety](docs/lifetime-safety.md) | Borrowed values and pointers, lifetime annotations, and compiler diagnostics |
 | [Bare-metal hardware sinks](docs/bare-metal.md) | PL011 UART and ARM semihosting `microfmt::sink` adapters |
+| [GDB pretty printers](docs/gdb-pretty-printers.md) | Formatting microfmt sinks, buffers, and the logger in GDB: source, auto-load, or embed |
 | [Developing jplcz_microfmt](docs/development.md) | Builds, tests, warning policy, public-header checks, and contribution constraints |
 
 The [`examples/`](examples) directory contains runnable programs for the core
