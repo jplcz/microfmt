@@ -1093,6 +1093,27 @@ template <typename T> using microfmt_remove_cvref_t = std::remove_cvref_t<T>;
 template <typename T> using microfmt_remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 #endif
 
+/**
+ * @brief Collapses argument types to a canonical representative before they
+ * reach format_type_table, so that types differing only in ways that
+ * format_type_thunk doesn't actually care about don't each generate their own
+ * thunk/table instantiation.
+ *
+ * String-literal arguments are the main offender: "hi" and "hello, world!"
+ * deduce to distinct types (char[3], char[14], ...), yet format_type_thunk
+ * always treats a bounded char array as "pointer to its first element" and
+ * never inspects the bound N, so every length is functionally identical.
+ * Collapsing them to a single-element array keeps the array-vs-pointer
+ * distinction (and constness) that format_type_thunk relies on while
+ * eliminating the combinatorial blowup of thunk/table specializations (and
+ * therefore binary size and compile time) across call sites using
+ * differently-sized string literals.
+ */
+template <typename T> struct fix_type { using type = T; };
+template <size_t N> struct fix_type<char[N]> { using type = char[1]; };
+template <size_t N> struct fix_type<const char[N]> { using type = const char[1]; };
+template <typename T> using fix_type_t = typename fix_type<T>::type;
+
 // C++17 string_view prefix helper
 constexpr bool starts_with(microfmt::string_view sv, microfmt::string_view prefix) noexcept {
   return sv.size() >= prefix.size() && sv.compare(0, prefix.size(), prefix) == 0;
@@ -1340,7 +1361,7 @@ RELOCO_CONSTEXPR20 inline void format_to(const sink &out, microfmt::string_view 
     vformat_to(out, fmt, {}, {});
   } else {
     const void *const arg_ptrs[] = {static_cast<const void *>(&args)...};
-    constexpr auto thunks = detail::format_type_table<Args...>::dynamic_span;
+    constexpr auto thunks = detail::format_type_table<detail::fix_type_t<Args>...>::dynamic_span;
 
     vformat_to(out, fmt, span<const void *const>(arg_ptrs, sizeof...(Args)), thunks);
   }
@@ -1459,7 +1480,8 @@ template <typename... Args> struct RELOCO_POINTER format_args_store {
     if constexpr (sizeof...(Args) == 0) {
       return {span<const void *const>{}, span<const format_fn_t>{}};
     } else {
-      return {span<const void *const>(ptrs, sizeof...(Args)), detail::format_type_table<Args...>::dynamic_span};
+      return {span<const void *const>(ptrs, sizeof...(Args)),
+              detail::format_type_table<detail::fix_type_t<Args>...>::dynamic_span};
     }
   }
 
