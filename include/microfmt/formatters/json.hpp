@@ -29,11 +29,11 @@ template <typename T> void write_integer(const sink &out, T value) noexcept {
     if (value < 0) {
       out.put('-');
       const auto magnitude = static_cast<unsigned_type>(0) - static_cast<unsigned_type>(value);
-      microfmt::detail::format_unsigned(out, static_cast<uint64_t>(magnitude), 10, false, 0);
+      microfmt::detail::format_unsigned<microfmt::detail::radix::decimal>(out, static_cast<uint64_t>(magnitude), false, 0);
       return;
     }
   }
-  microfmt::detail::format_unsigned(out, static_cast<uint64_t>(static_cast<unsigned_type>(value)), 10, false, 0);
+  microfmt::detail::format_unsigned<microfmt::detail::radix::decimal>(out, static_cast<uint64_t>(static_cast<unsigned_type>(value)), false, 0);
 }
 
 } // namespace detail

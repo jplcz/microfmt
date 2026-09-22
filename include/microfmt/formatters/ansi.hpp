@@ -156,7 +156,7 @@ inline void emit_style(const style &s, const sink &out) noexcept {
     if (!first)
       out.put(';');
     first = false;
-    detail::format_unsigned(out, code, 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, code, false, 0);
   };
 
   // Attributes

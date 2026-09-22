@@ -48,12 +48,11 @@ inline void format_boost_date(const boost::gregorian::date &date,
     out.write("-infinity");
     return;
   }
-  detail::format_unsigned(out, static_cast<uint64_t>(date.year()), 10, false, 4);
+  detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(date.year()), false, 4);
   out.put('-');
-  detail::format_unsigned(out, static_cast<uint64_t>(date.month()), 10, false,
-                          2);
+  detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(date.month()), false, 2);
   out.put('-');
-  detail::format_unsigned(out, static_cast<uint64_t>(date.day()), 10, false, 2);
+  detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(date.day()), false, 2);
 }
 
 inline void format_boost_time_duration(
@@ -73,27 +72,18 @@ inline void format_boost_time_duration(
   if (duration.is_negative()) {
     out.put('-');
   }
-  detail::format_unsigned(
-      out, static_cast<uint64_t>(duration.hours() < 0 ? -duration.hours()
-                                                       : duration.hours()),
-      10, false, 2);
+  detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(duration.hours() < 0 ? -duration.hours()
+                                                       : duration.hours()), false, 2);
   out.put(':');
-  detail::format_unsigned(
-      out, static_cast<uint64_t>(duration.minutes() < 0 ? -duration.minutes()
-                                                         : duration.minutes()),
-      10, false, 2);
+  detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(duration.minutes() < 0 ? -duration.minutes()
+                                                         : duration.minutes()), false, 2);
   out.put(':');
-  detail::format_unsigned(
-      out, static_cast<uint64_t>(duration.seconds() < 0 ? -duration.seconds()
-                                                         : duration.seconds()),
-      10, false, 2);
+  detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(duration.seconds() < 0 ? -duration.seconds()
+                                                         : duration.seconds()), false, 2);
   const auto fractional = duration.fractional_seconds();
   if (fractional != 0) {
     out.put('.');
-    detail::format_unsigned(
-        out, static_cast<uint64_t>(fractional < 0 ? -fractional : fractional),
-        10, false,
-        static_cast<unsigned>(boost::posix_time::time_duration::num_fractional_digits()));
+    detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(fractional < 0 ? -fractional : fractional), false, static_cast<unsigned>(boost::posix_time::time_duration::num_fractional_digits()));
   }
 }
 

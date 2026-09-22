@@ -120,14 +120,14 @@ template <> struct formatter<memory_diff_view> {
         // If we skipped matching rows prior to this divergence, collapse them into a summary line
         if (identical_rows_streak > 0) {
           out.write(microfmt::string_view("  [... "));
-          detail::format_unsigned(out, identical_rows_streak, 10, false, 0);
+          detail::format_unsigned<detail::radix::decimal>(out, identical_rows_streak, false, 0);
           out.write(microfmt::string_view(" identical rows hidden ...]\n"));
           identical_rows_streak = 0;
         }
 
         // Emit Absolute Address Header: e.g. "  0x20000000: "
         out.write(microfmt::string_view("  0x"));
-        detail::format_unsigned(out, diff.base_address + offset, 16, false, 8);
+        detail::format_unsigned<detail::radix::hex>(out, diff.base_address + offset, false, 8);
         out.write(microfmt::string_view(": "));
 
         // Stream Old Bytes
@@ -145,7 +145,7 @@ template <> struct formatter<memory_diff_view> {
     // Flush any trailing identical row streaks at the end of the dump
     if (identical_rows_streak > 0) {
       out.write(microfmt::string_view("  [... "));
-      detail::format_unsigned(out, identical_rows_streak, 10, false, 0);
+      detail::format_unsigned<detail::radix::decimal>(out, identical_rows_streak, false, 0);
       out.write(microfmt::string_view(" identical rows hidden ...]\n"));
     }
     RELOCO_END_UNSAFE_BUFFER_USAGE;
@@ -154,7 +154,7 @@ template <> struct formatter<memory_diff_view> {
 private:
   static void format_row_bytes(const sink &out, span<const std::byte> chunk) noexcept {
     for (size_t i = 0; i < chunk.size(); ++i) {
-      detail::format_unsigned(out, static_cast<uint64_t>(chunk[i]), 16, true, 2);
+      detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(chunk[i]), true, 2);
       out.write(microfmt::string_view(" ", 1));
     }
   }

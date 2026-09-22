@@ -115,7 +115,7 @@ struct RELOCO_POINTER task_info {
           out.key = "team_id";
           out.val_ptr = &s->task->team_id;
           out.print_fn = [](const void *p, const sink &s_out) noexcept {
-            detail::format_unsigned(s_out, *static_cast<const uint64_t *>(p), 10, false);
+            detail::format_unsigned<detail::radix::decimal>(s_out, *static_cast<const uint64_t *>(p), false);
           };
           return true;
         case 1:
@@ -139,21 +139,21 @@ struct RELOCO_POINTER task_info {
           out.key = "priority";
           out.val_ptr = &s->task->priority;
           out.print_fn = [](const void *p, const sink &s_out) noexcept {
-            detail::format_unsigned(s_out, *static_cast<const uint8_t *>(p), 10, false);
+            detail::format_unsigned<detail::radix::decimal>(s_out, *static_cast<const uint8_t *>(p), false);
           };
           return true;
         case 4:
           out.key = "cpu_ticks";
           out.val_ptr = &s->task->cpu_ticks;
           out.print_fn = [](const void *p, const sink &s_out) noexcept {
-            detail::format_unsigned(s_out, *static_cast<const uint32_t *>(p), 10, false);
+            detail::format_unsigned<detail::radix::decimal>(s_out, *static_cast<const uint32_t *>(p), false);
           };
           return true;
         case 5:
           out.key = "memory_usage";
           out.val_ptr = &s->task->memory_usage;
           out.print_fn = [](const void *p, const sink &s_out) noexcept {
-            detail::format_unsigned(s_out, *static_cast<const uint32_t *>(p), 10, false);
+            detail::format_unsigned<detail::radix::decimal>(s_out, *static_cast<const uint32_t *>(p), false);
           };
           return true;
         default:

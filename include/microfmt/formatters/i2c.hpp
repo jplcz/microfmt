@@ -135,7 +135,7 @@ template <> struct formatter<i2c_msg_view> {
     if (compact) {
       // Compact inline trace: 0x68:W[75] or 0x68:R[00 1A]
       out.write("0x");
-      detail::format_unsigned(out, msg.addr, 16, uppercase_hex, is_10bit ? 3 : 2);
+      detail::format_unsigned<detail::radix::hex>(out, msg.addr, uppercase_hex, is_10bit ? 3 : 2);
       out.put(':');
       out.put(is_read ? 'R' : 'W');
       out.put('[');
@@ -163,7 +163,7 @@ template <> struct formatter<i2c_msg_view> {
     // I2C [0x68] WR (1 B) DATA: 75 -> OK
     // I2C [0x68] RD (2 B) DATA: 04 2A -> OK
     out.write("I2C [0x");
-    detail::format_unsigned(out, msg.addr, 16, uppercase_hex, is_10bit ? 3 : 2);
+    detail::format_unsigned<detail::radix::hex>(out, msg.addr, uppercase_hex, is_10bit ? 3 : 2);
     out.put(']');
 
     if (is_10bit) {
@@ -171,7 +171,7 @@ template <> struct formatter<i2c_msg_view> {
     }
 
     out.write(is_read ? " RD (" : " WR (");
-    detail::format_unsigned(out, msg.payload.size(), 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, msg.payload.size(), false, 0);
     out.write(" B)");
 
     if (!msg.payload.empty()) {

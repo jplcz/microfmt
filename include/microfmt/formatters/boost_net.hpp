@@ -60,14 +60,14 @@ inline void format_boost_address_v6(const boost::asio::ip::address_v6 &address,
     if (index != 0 && index != best_start + best_length) {
       out.put(':');
     }
-    detail::format_unsigned(out, words[index], 16, false, 0);
+    detail::format_unsigned<detail::radix::hex>(out, words[index], false, 0);
     ++index;
   }
   RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   if (address.scope_id() != 0) {
     out.put('%');
-    detail::format_unsigned(out, address.scope_id(), 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, address.scope_id(), false, 0);
   }
 }
 
@@ -119,7 +119,7 @@ struct formatter<boost::asio::ip::basic_endpoint<InternetProtocol>> {
       detail::format_boost_address_v4(address.to_v4(), out);
     }
     out.put(':');
-    detail::format_unsigned(out, endpoint.port(), 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, endpoint.port(), false, 0);
   }
 };
 

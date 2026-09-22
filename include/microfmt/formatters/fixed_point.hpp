@@ -122,12 +122,12 @@ struct formatter<fixed_point_view<Scale, Decimals, IntType>> {
     }
 
     // Output Integer Part
-    detail::format_unsigned(out, integer_part, 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, integer_part, false, 0);
 
     // Output Fractional Part (zero-padded to Decimals width)
     if constexpr (Decimals > 0) {
       out.put('.');
-      detail::format_unsigned(out, frac_part, 10, false, Decimals);
+      detail::format_unsigned<detail::radix::decimal>(out, frac_part, false, Decimals);
     }
   }
 };

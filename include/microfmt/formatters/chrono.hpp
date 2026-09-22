@@ -93,14 +93,12 @@ struct formatter<std::chrono::duration<Rep, Period>> {
     if constexpr (std::is_signed_v<Rep>) {
       if (count < 0) {
         out.put('-');
-        detail::format_unsigned(out, static_cast<uint64_t>(-count), 10, false,
-                                0);
+        detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(-count), false, 0);
       } else {
-        detail::format_unsigned(out, static_cast<uint64_t>(count), 10, false,
-                                0);
+        detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(count), false, 0);
       }
     } else {
-      detail::format_unsigned(out, static_cast<uint64_t>(count), 10, false, 0);
+      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(count), false, 0);
     }
 
     if (!hide_suffix) {
@@ -146,12 +144,11 @@ struct formatter<std::chrono::time_point<std::chrono::system_clock, Duration>> {
 
     if (!time_only) {
       const auto date = detail::civil_from_days(days);
-      detail::format_unsigned(out, static_cast<uint32_t>(date.year), 10, false,
-                              4);
+      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint32_t>(date.year), false, 4);
       out.put('-');
-      detail::format_unsigned(out, date.month, 10, false, 2);
+      detail::format_unsigned<detail::radix::decimal>(out, date.month, false, 2);
       out.put('-');
-      detail::format_unsigned(out, date.day, 10, false, 2);
+      detail::format_unsigned<detail::radix::decimal>(out, date.day, false, 2);
     }
 
     if (!date_only && !time_only) {
@@ -159,15 +156,13 @@ struct formatter<std::chrono::time_point<std::chrono::system_clock, Duration>> {
     }
 
     if (!date_only) {
-      detail::format_unsigned(out, hours, 10, false, 2);
+      detail::format_unsigned<detail::radix::decimal>(out, hours, false, 2);
       out.put(':');
-      detail::format_unsigned(out, mins, 10, false, 2);
+      detail::format_unsigned<detail::radix::decimal>(out, mins, false, 2);
       out.put(':');
-      detail::format_unsigned(out, secs, 10, false, 2);
+      detail::format_unsigned<detail::radix::decimal>(out, secs, false, 2);
       out.put('.');
-      detail::format_unsigned(
-          out, static_cast<uint32_t>(sub_ms < 0 ? -sub_ms : sub_ms), 10, false,
-          3);
+      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint32_t>(sub_ms < 0 ? -sub_ms : sub_ms), false, 3);
       out.put('Z');
     }
   }
@@ -194,13 +189,13 @@ struct formatter<std::chrono::time_point<std::chrono::steady_clock, Duration>> {
     const uint32_t secs = static_cast<uint32_t>(total_secs % 60);
 
     // Format as [HH:MM:SS.mmm] uptime
-    detail::format_unsigned(out, hours, 10, false, 2);
+    detail::format_unsigned<detail::radix::decimal>(out, hours, false, 2);
     out.put(':');
-    detail::format_unsigned(out, mins, 10, false, 2);
+    detail::format_unsigned<detail::radix::decimal>(out, mins, false, 2);
     out.put(':');
-    detail::format_unsigned(out, secs, 10, false, 2);
+    detail::format_unsigned<detail::radix::decimal>(out, secs, false, 2);
     out.put('.');
-    detail::format_unsigned(out, static_cast<uint32_t>(ms), 10, false, 3);
+    detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint32_t>(ms), false, 3);
   }
 };
 

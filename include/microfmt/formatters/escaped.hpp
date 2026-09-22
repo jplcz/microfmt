@@ -129,7 +129,7 @@ template <> struct formatter<escaped_view> {
         } else {
           // Non-printable byte -> \xHH
           out.write("\\x");
-          detail::format_unsigned(out, b, 16, false, 2);
+          detail::format_unsigned<detail::radix::hex>(out, b, false, 2);
         }
         break;
       }

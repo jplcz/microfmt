@@ -88,11 +88,11 @@ template <> struct formatter<semver> {
     }
 
     // Major.Minor.Patch
-    detail::format_unsigned(out, sv.major, 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, sv.major, false, 0);
     out.put('.');
-    detail::format_unsigned(out, sv.minor, 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, sv.minor, false, 0);
     out.put('.');
-    detail::format_unsigned(out, sv.patch, 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, sv.patch, false, 0);
 
     // Prerelease: -rc.1
     if (!hide_prerelease && !sv.prerelease.empty()) {

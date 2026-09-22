@@ -142,7 +142,7 @@ template <> struct formatter<spi_transfer_view> {
     if (compact) {
       // Compact: CS0:TX[9F 00 00]/RX[00 EF 40]
       out.write("CS");
-      detail::format_unsigned(out, tx.cs_pin, 10, false, 0);
+      detail::format_unsigned<detail::radix::decimal>(out, tx.cs_pin, false, 0);
       out.put(':');
 
       if (!tx.mosi.empty()) {
@@ -172,13 +172,13 @@ template <> struct formatter<spi_transfer_view> {
     // Verbose human-readable transfer inspect:
     // SPI [CS0, Mode 0] (3 B) MOSI: 9F 00 00 | MISO: 00 EF 40 -> OK
     out.write("SPI [CS");
-    detail::format_unsigned(out, tx.cs_pin, 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, tx.cs_pin, false, 0);
     out.write(", Mode ");
-    detail::format_unsigned(out, static_cast<uint8_t>(tx.mode), 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint8_t>(tx.mode), false, 0);
     out.write("] (");
 
     const size_t total_len = (tx.mosi.size() >= tx.miso.size()) ? tx.mosi.size() : tx.miso.size();
-    detail::format_unsigned(out, total_len, 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, total_len, false, 0);
     out.write(" B)");
 
     if (!tx.mosi.empty()) {

@@ -72,7 +72,7 @@ template <typename Location> struct formatter<basic_source_loc_view<Location>> {
 
     out.write(file);
     out.put(':');
-    detail::format_unsigned(out, sv.loc.line(), 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, sv.loc.line(), false, 0);
 
     const bool emit_fn = (sv.show_function && parse_fn && !parse_short);
     if (emit_fn) {

@@ -127,18 +127,18 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timespec_v<T>>> {
 
     if (sec < 0) {
       out.put('-');
-      detail::format_unsigned(out, static_cast<uint64_t>(-sec), 10, false, 0);
+      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(-sec), false, 0);
     } else {
-      detail::format_unsigned(out, static_cast<uint64_t>(sec), 10, false, 0);
+      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(sec), false, 0);
     }
 
     out.put('.');
     if (precision == 3) {
-      detail::format_unsigned(out, nsec / 1'000'000, 10, false, 3);
+      detail::format_unsigned<detail::radix::decimal>(out, nsec / 1'000'000, false, 3);
     } else if (precision == 6) {
-      detail::format_unsigned(out, nsec / 1'000, 10, false, 6);
+      detail::format_unsigned<detail::radix::decimal>(out, nsec / 1'000, false, 6);
     } else {
-      detail::format_unsigned(out, nsec, 10, false, 9);
+      detail::format_unsigned<detail::radix::decimal>(out, nsec, false, 9);
     }
 
     if (show_unit) {
@@ -199,16 +199,16 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timeval_v<T>>> {
 
     if (sec < 0) {
       out.put('-');
-      detail::format_unsigned(out, static_cast<uint64_t>(-sec), 10, false, 0);
+      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(-sec), false, 0);
     } else {
-      detail::format_unsigned(out, static_cast<uint64_t>(sec), 10, false, 0);
+      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(sec), false, 0);
     }
 
     out.put('.');
     if (precision == 3) {
-      detail::format_unsigned(out, usec / 1'000, 10, false, 3);
+      detail::format_unsigned<detail::radix::decimal>(out, usec / 1'000, false, 3);
     } else {
-      detail::format_unsigned(out, usec, 10, false, 6);
+      detail::format_unsigned<detail::radix::decimal>(out, usec, false, 6);
     }
 
     if (show_unit) {

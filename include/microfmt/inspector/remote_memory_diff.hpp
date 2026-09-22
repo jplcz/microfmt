@@ -79,7 +79,7 @@ template <> struct formatter<remote_memory_diff_view> {
           identical_rows_streak = 0;
         }
         out.write(string_view("  0x"));
-        detail::format_unsigned(out, diff.new_address + offset, 16, false, 8);
+        detail::format_unsigned<detail::radix::hex>(out, diff.new_address + offset, false, 8);
         out.write(string_view(": [REMOTE READ FAULT]\n"));
         offset += row_size;
         continue;
@@ -107,7 +107,7 @@ template <> struct formatter<remote_memory_diff_view> {
 
         // Print Address Header
         out.write(string_view("  0x"));
-        detail::format_unsigned(out, diff.new_address + offset, 16, false, 8);
+        detail::format_unsigned<detail::radix::hex>(out, diff.new_address + offset, false, 8);
         out.write(string_view(": "));
 
         format_row_bytes(out, old_chunk);
@@ -129,13 +129,13 @@ template <> struct formatter<remote_memory_diff_view> {
 private:
   static void flush_streak(const sink &out, size_t count) noexcept {
     out.write(string_view("  [... "));
-    detail::format_unsigned(out, count, 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, count, false, 0);
     out.write(string_view(" identical rows hidden ...]\n"));
   }
 
   static void format_row_bytes(const sink &out, span<const std::byte> chunk) noexcept {
     for (size_t i = 0; i < chunk.size(); ++i) {
-      detail::format_unsigned(out, static_cast<uint64_t>(chunk[i]), 16, true, 2);
+      detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(chunk[i]), true, 2);
       out.write(string_view(" ", 1));
     }
   }

@@ -45,7 +45,7 @@ template <> struct formatter<bitfield_view> {
   void format(const bitfield_view &bv, const sink &out) const noexcept {
     if (bv.show_raw_hex) {
       out.write("0x");
-      detail::format_unsigned(out, bv.raw_value, 16, false, 8);
+      detail::format_unsigned<detail::radix::hex>(out, bv.raw_value, false, 8);
       out.write(" [");
     } else {
       out.put('[');
@@ -76,9 +76,9 @@ template <> struct formatter<bitfield_view> {
           out.put('=');
           if (f.type == bit_type::value_hex) {
             out.write("0x");
-            detail::format_unsigned(out, extracted, 16, false, 0);
+            detail::format_unsigned<detail::radix::hex>(out, extracted, false, 0);
           } else {
-            detail::format_unsigned(out, extracted, 10, false, 0);
+            detail::format_unsigned<detail::radix::decimal>(out, extracted, false, 0);
           }
         }
       }

@@ -133,7 +133,7 @@ template <typename T> struct formatter<auto_unit_view<T>> {
     }
 
     // Whole part
-    detail::format_unsigned(out, abs_val, 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, abs_val, false, 0);
 
     const uint8_t prec = (parse_precision != 255) ? parse_precision : auv.precision;
 
@@ -145,7 +145,7 @@ template <typename T> struct formatter<auto_unit_view<T>> {
         frac_multiplier *= 10;
 
       uint64_t frac_part = (remainder * frac_multiplier) / current_div;
-      detail::format_unsigned(out, frac_part, 10, false, prec);
+      detail::format_unsigned<detail::radix::decimal>(out, frac_part, false, prec);
     }
 
     out.put(' ');

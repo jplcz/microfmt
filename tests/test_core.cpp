@@ -7,10 +7,15 @@
 #include <microfmt/formatters/floating.hpp>
 #include <microfmt/microfmt.hpp>
 
+#include <cctype>
+#include <charconv>
 #include <cstdint>
 #include <iterator>
+#include <limits>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <typeinfo>
 
 TEST(CoreBintime, FormatsPicosecondPrecisionWithoutWideIntegers) {
   struct binary_time {
@@ -225,16 +230,114 @@ TEST(CoreDetail, IntegerHelpersCoverSignsWidthsAndRadices) {
   EXPECT_EQ(output.view(), "42");
 
   output.reset();
-  microfmt::detail::format_unsigned(output.as_sink(), 0, 2, false);
+  microfmt::detail::format_unsigned<microfmt::detail::radix::binary>(output.as_sink(), 0, false);
   EXPECT_EQ(output.view(), "0");
 
   output.reset();
-  microfmt::detail::format_unsigned(output.as_sink(), 0xAB, 16, true);
+  microfmt::detail::format_unsigned<microfmt::detail::radix::hex>(output.as_sink(), 0xAB, true);
   EXPECT_EQ(output.view(), "AB");
 
   output.reset();
-  microfmt::detail::format_unsigned(output.as_sink(), 0b101101, 2, false, 8);
+  microfmt::detail::format_unsigned<microfmt::detail::radix::binary>(output.as_sink(), 0b101101, false, 8);
   EXPECT_EQ(output.view(), "00101101");
+}
+
+namespace {
+
+// Cross-checks microfmt::detail::format_unsigned's output against
+// std::to_chars (the standard library's own radix-aware integer formatter)
+// for a single value/radix/case combination. Comparing against an
+// independent, standard implementation (rather than hand-rolling an
+// expected string) avoids re-introducing the same casting mistakes the
+// code under test might have.
+template <typename T> void check_format_unsigned(T value, int radix, bool uppercase) {
+  static_assert(std::is_unsigned_v<T>, "check_format_unsigned expects an unsigned type");
+
+  microfmt::buffer_sink<80> output;
+  // format_unsigned's radix is now a compile-time template parameter (see
+  // microfmt::detail::radix), so dispatch the runtime `radix` value under
+  // test to the matching instantiation.
+  switch (radix) {
+  case 2:
+    microfmt::detail::format_unsigned<microfmt::detail::radix::binary>(output.as_sink(), static_cast<uint64_t>(value),
+                                                                        uppercase);
+    break;
+  case 10:
+    microfmt::detail::format_unsigned<microfmt::detail::radix::decimal>(
+        output.as_sink(), static_cast<uint64_t>(value), uppercase);
+    break;
+  case 16:
+    microfmt::detail::format_unsigned<microfmt::detail::radix::hex>(output.as_sink(), static_cast<uint64_t>(value),
+                                                                     uppercase);
+    break;
+  default:
+    FAIL() << "unsupported radix under test: " << radix;
+    return;
+  }
+
+  char ref_buf[80];
+  auto ref_res = std::to_chars(ref_buf, ref_buf + sizeof(ref_buf), value, radix);
+  ASSERT_EQ(ref_res.ec, std::errc());
+  std::string expected(ref_buf, static_cast<size_t>(ref_res.ptr - ref_buf));
+  if (uppercase) {
+    for (char &c : expected)
+      c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+  }
+
+  EXPECT_EQ(output.view(), microfmt::string_view(expected)) << "T=" << typeid(T).name() << " value=" << +value
+                                                             << " radix=" << radix << " uppercase=" << uppercase;
+}
+
+// Same idea for microfmt::detail::format_signed, which only ever formats in
+// base 10 (there is no radix parameter): std::to_chars(..., 10) already
+// produces the same "-123"-style representation for negative values.
+template <typename T> void check_format_signed(T value) {
+  static_assert(std::is_signed_v<T>, "check_format_signed expects a signed type");
+
+  microfmt::buffer_sink<80> output;
+  microfmt::detail::format_signed(output.as_sink(), static_cast<int64_t>(value));
+
+  char ref_buf[80];
+  auto ref_res = std::to_chars(ref_buf, ref_buf + sizeof(ref_buf), value, 10);
+  ASSERT_EQ(ref_res.ec, std::errc());
+  std::string_view expected(ref_buf, static_cast<size_t>(ref_res.ptr - ref_buf));
+
+  EXPECT_EQ(output.view(), microfmt::string_view(expected)) << "T=" << typeid(T).name() << " value=" << +value;
+}
+
+template <typename T> void check_unsigned_type_all_radixes() {
+  const T boundary_values[] = {T(0), T(1), T(2), std::numeric_limits<T>::max(),
+                               static_cast<T>(std::numeric_limits<T>::max() / 2)};
+  for (T value : boundary_values) {
+    for (int radix : {2, 10, 16}) {
+      check_format_unsigned(value, radix, false);
+      check_format_unsigned(value, radix, true);
+    }
+  }
+}
+
+template <typename T> void check_signed_type_all_radixes() {
+  // format_signed only supports base 10 -- there is no radix parameter --
+  // so decimal is the only "supported radix" for the signed core helper.
+  const T boundary_values[] = {std::numeric_limits<T>::min(), T(-1), T(0), T(1), std::numeric_limits<T>::max()};
+  for (T value : boundary_values)
+    check_format_signed(value);
+}
+
+} // namespace
+
+TEST(CoreDetail, FormatUnsignedCoversAllIntegerTypesAndRadixes) {
+  check_unsigned_type_all_radixes<uint8_t>();
+  check_unsigned_type_all_radixes<uint16_t>();
+  check_unsigned_type_all_radixes<uint32_t>();
+  check_unsigned_type_all_radixes<uint64_t>();
+}
+
+TEST(CoreDetail, FormatSignedCoversAllIntegerTypesAndRadixes) {
+  check_signed_type_all_radixes<int8_t>();
+  check_signed_type_all_radixes<int16_t>();
+  check_signed_type_all_radixes<int32_t>();
+  check_signed_type_all_radixes<int64_t>();
 }
 
 TEST(CoreDetail, ParserHelpersHandlePrefixesAndInvalidPositions) {
@@ -535,12 +638,12 @@ template <> struct microfmt::formatter<RegisterDump> {
   void format(const RegisterDump &reg, const sink &out) const noexcept {
     if (fmt_mode == 'b') {
       out.write("0b");
-      detail::format_unsigned(out, reg.val, 2, false, 8);
+      detail::format_binary(out, reg.val, 8);
     } else if (fmt_mode == 'd') {
-      detail::format_unsigned(out, reg.val, 10, false, 0);
+      detail::format_unsigned<detail::radix::decimal>(out, reg.val, false, 0);
     } else {
       out.write("0x");
-      detail::format_unsigned(out, reg.val, 16, false, 8);
+      detail::format_unsigned<detail::radix::hex>(out, reg.val, false, 8);
     }
   }
 };

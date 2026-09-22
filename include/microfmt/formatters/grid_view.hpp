@@ -155,7 +155,7 @@ template <typename WordType, size_t N> struct formatter<reg_grid_view<WordType, 
 
       RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
-      detail::format_unsigned(out, static_cast<uint64_t>(gv.values[i]), 16, true, hex_digits);
+      detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(gv.values[i]), true, hex_digits);
 
       RELOCO_END_UNSAFE_BUFFER_USAGE
 

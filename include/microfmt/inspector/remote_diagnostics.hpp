@@ -55,16 +55,13 @@ inline void format_remote_fault(const sink &out, uintptr_t addr,
                             as_demangled(info.symbol_name));
         if (info.offset_from_symbol > 0) {
           out.write("+0x");
-          detail::format_unsigned(
-              out, static_cast<uint64_t>(info.offset_from_symbol), 16, false,
-              0);
+          detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(info.offset_from_symbol), false, 0);
         }
       } else {
         // Module known, symbol stripped: e.g. "faulty_driver.ko+0x4200"
         out.write(info.image_name);
         out.write("+0x");
-        detail::format_unsigned(
-            out, static_cast<uint64_t>(info.offset_from_image), 16, false, 0);
+        detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(info.offset_from_image), false, 0);
       }
 
       out.write(">");

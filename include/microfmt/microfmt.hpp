@@ -592,22 +592,39 @@ inline constexpr std::array<char, 16> hex_digits_lower = {'0', '1', '2', '3', '4
 inline constexpr std::array<char, 16> hex_digits_upper = {'0', '1', '2', '3', '4', '5', '6', '7',
                                                           '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
-RELOCO_ALWAYS_INLINE
-inline void format_integer_core(const sink &out, uint64_t val, bool is_negative, uint32_t radix, bool uppercase,
-                                int min_width) noexcept {
-  RELOCO_DEBUG_ASSERT(radix == 2 || radix == 10 || radix == 16, "integer radix must be 2, 10, or 16");
-  microfmt::array<char, 24> buf; // Reclaimed immediately upon leaf exit
+/**
+ * @brief Supported numeral bases for low-level integer formatting.
+ *
+ * Passed as a compile-time template argument (rather than a runtime value)
+ * so format_integer_core / format_unsigned can select the optimal
+ * algorithm for each base via `if constexpr`, with dead branches for the
+ * other bases eliminated entirely instead of guarded by runtime branches.
+ */
+enum class radix : uint32_t { binary = 2, decimal = 10, hex = 16 };
+
+template <detail::radix Radix>
+RELOCO_ALWAYS_INLINE inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
+                                                     bool uppercase, int min_width) noexcept {
+  static_assert(Radix == radix::decimal || Radix == radix::hex, "format_integer_core only supports decimal/hex; use format_binary for radix::binary");
+  // Buffer sized exactly for the selected radix instead of the widest
+  // possible base (binary, handled separately by format_binary): 20 digits
+  // is the maximum for a decimal uint64_t (18446744073709551615), plus one
+  // slot for a '-' sign; 16 nibbles cover the maximum hex uint64_t, and hex
+  // output is never negative (format_signed only emits decimal), so no sign
+  // slot is needed there.
+  constexpr size_t buf_size = (Radix == radix::hex) ? 16 : 21;
+  microfmt::array<char, buf_size> buf; // Reclaimed immediately upon leaf exit
   size_t idx = buf.size();
 
   if (val == 0) {
     buf[--idx] = '0';
-  } else if (radix == 16) {
+  } else if constexpr (Radix == radix::hex) {
     const auto &hex_digits = uppercase ? hex_digits_upper : hex_digits_lower;
     while (val > 0) {
       buf[--idx] = hex_digits[val & 0xF];
       val >>= 4;
     }
-  } else if (radix == 10) {
+  } else {
     while (val >= 100) {
       const auto rem = static_cast<uint32_t>(val % 100);
       val /= 100;
@@ -623,21 +640,17 @@ inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
       buf[idx] = digits_lut[rem];
       buf[idx + 1] = digits_lut[rem + 1];
     }
-  } else {
-    const auto &digits = uppercase ? hex_digits_upper : hex_digits_lower;
-    while (val > 0 && idx > 0) {
-      buf[--idx] = digits[val % radix];
-      val /= radix;
-    }
   }
 
   // Prepend negative sign directly in the buffer if space allows without width
   // padding
-  if (is_negative && min_width <= 0) {
-    buf[--idx] = '-';
+  if constexpr (Radix == radix::decimal) {
+    if (is_negative && min_width <= 0) {
+      buf[--idx] = '-';
+    }
   }
 
-  const size_t digits_len = sizeof(buf) - idx;
+  const size_t digits_len = buf.size() - idx;
 
   if (min_width > 0) {
     const size_t total_needed = digits_len + (is_negative ? 1 : 0);
@@ -654,9 +667,39 @@ inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
   out.write(microfmt::string_view(&buf[idx], digits_len));
 }
 
+// Dedicated fast path for base-2 formatting. Unlike format_integer_core, this
+// avoids runtime division/modulo (radix is a compile-time power of two here,
+// so a shift + mask suffices) and needs no intermediate buffer at all: binary
+// digits are the only base representable in constant time in MSB-first
+// (left-to-right) order, so each bit is written straight to the sink as it is
+// computed, without staging assembled/reversed digits in a local array first.
 RELOCO_ALWAYS_INLINE
-inline void format_unsigned(const sink &out, uint64_t val, uint32_t radix, bool uppercase, int min_width = 0) noexcept {
-  format_integer_core(out, val, false, radix, uppercase, min_width);
+inline void format_binary(const sink &out, uint64_t val, int min_width = 0) noexcept {
+  // Number of significant bits (at least 1, so that val == 0 still emits "0").
+  int bits = 1;
+  for (uint64_t v = val; v >>= 1;) {
+    ++bits;
+  }
+
+  for (int i = bits; i < min_width; ++i) {
+    out.put('0');
+  }
+  for (int i = bits - 1; i >= 0; --i) {
+    out.put(static_cast<char>('0' + ((val >> i) & 1U)));
+  }
+}
+
+// Dispatches to the compile-time-selected algorithm for Radix: format_binary
+// for radix::binary (shift/mask, no division), or format_integer_core
+// otherwise (decimal fast-path / hex nibble extraction).
+template <detail::radix Radix>
+RELOCO_ALWAYS_INLINE inline void format_unsigned(const sink &out, uint64_t val, [[maybe_unused]] bool uppercase,
+                                                 int min_width = 0) noexcept {
+  if constexpr (Radix == radix::binary) {
+    format_binary(out, val, min_width);
+  } else {
+    format_integer_core<Radix>(out, val, false, uppercase, min_width);
+  }
 }
 
 RELOCO_ALWAYS_INLINE
@@ -664,9 +707,9 @@ inline void format_signed(const sink &out, int64_t val, int min_width = 0) noexc
   if (val < 0) {
     // Safe conversion for INT64_MIN (-9223372036854775808)
     const uint64_t mag = static_cast<uint64_t>(-(val + 1)) + 1ULL;
-    format_integer_core(out, mag, true, 10, false, min_width);
+    format_integer_core<radix::decimal>(out, mag, true, false, min_width);
   } else {
-    format_integer_core(out, static_cast<uint64_t>(val), false, 10, false, min_width);
+    format_integer_core<radix::decimal>(out, static_cast<uint64_t>(val), false, false, min_width);
   }
 }
 
@@ -1001,7 +1044,7 @@ struct raw_ptr_format {
 
   void do_format(const void *ptr, const sink &out) const noexcept {
     out.write("0x");
-    detail::format_unsigned(out, reinterpret_cast<uintptr_t>(ptr), 16, false, width);
+    detail::format_unsigned<detail::radix::hex>(out, reinterpret_cast<uintptr_t>(ptr), false, width);
   }
 };
 

@@ -114,7 +114,7 @@ template <> struct formatter<can_frame_view> {
 
     if (candump_style) {
       // Candump compact format: [ID]#[DATA] or [ID]##[FLAGS][DATA] for FD
-      detail::format_unsigned(out, f.id, 16, uppercase_hex, is_ext ? 8 : 3);
+      detail::format_unsigned<detail::radix::hex>(out, f.id, uppercase_hex, is_ext ? 8 : 3);
       if (is_fd) {
         out.write("##");
         uint8_t fd_flags = 0;
@@ -130,7 +130,7 @@ template <> struct formatter<can_frame_view> {
       } else if (is_rtr) {
         out.put('#');
         out.put('R');
-        detail::format_unsigned(out, f.payload.size(), 10, false, 0);
+        detail::format_unsigned<detail::radix::decimal>(out, f.payload.size(), false, 0);
         return;
       } else {
         out.put('#');
@@ -153,7 +153,7 @@ template <> struct formatter<can_frame_view> {
       out.write("CAN [0x");
     }
 
-    detail::format_unsigned(out, f.id, 16, uppercase_hex, is_ext ? 8 : 3);
+    detail::format_unsigned<detail::radix::hex>(out, f.id, uppercase_hex, is_ext ? 8 : 3);
     out.put(']');
 
     if (is_ext)
@@ -167,13 +167,13 @@ template <> struct formatter<can_frame_view> {
 
     if (is_rtr) {
       out.write(" RTR (DLC=");
-      detail::format_unsigned(out, f.payload.size(), 10, false, 0);
+      detail::format_unsigned<detail::radix::decimal>(out, f.payload.size(), false, 0);
       out.put(')');
       return;
     }
 
     out.write(" DLC=");
-    detail::format_unsigned(out, f.payload.size(), 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, f.payload.size(), false, 0);
 
     if (!f.payload.empty()) {
       out.write(" DATA: ");

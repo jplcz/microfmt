@@ -198,7 +198,7 @@ template <> struct formatter<raw_ptr_view> {
     const int output_width = width > static_cast<size_t>(std::numeric_limits<int>::max())
                                  ? std::numeric_limits<int>::max()
                                  : static_cast<int>(width);
-    detail::format_unsigned(out, addr, 16, uppercase_hex, output_width);
+    detail::format_unsigned<detail::radix::hex>(out, addr, uppercase_hex, output_width);
   }
 };
 

@@ -110,7 +110,7 @@ struct RELOCO_POINTER thread_info {
           out.key = "thread_id";
           out.val_ptr = &s->thread->thread_id;
           out.print_fn = [](const void *p, const sink &s_out) noexcept {
-            detail::format_unsigned(s_out, *static_cast<const uint64_t *>(p), 10, false);
+            detail::format_unsigned<detail::radix::decimal>(s_out, *static_cast<const uint64_t *>(p), false);
           };
           return true;
         case 1:
@@ -124,7 +124,7 @@ struct RELOCO_POINTER thread_info {
           out.key = "priority";
           out.val_ptr = &s->thread->priority;
           out.print_fn = [](const void *p, const sink &s_out) noexcept {
-            detail::format_unsigned(s_out, *static_cast<const uint8_t *>(p), 10, false);
+            detail::format_unsigned<detail::radix::decimal>(s_out, *static_cast<const uint8_t *>(p), false);
           };
           return true;
         case 3:
@@ -141,22 +141,21 @@ struct RELOCO_POINTER thread_info {
           out.key = "cpu_ticks";
           out.val_ptr = &s->thread->cpu_ticks;
           out.print_fn = [](const void *p, const sink &s_out) noexcept {
-            detail::format_unsigned(s_out, *static_cast<const uint32_t *>(p), 10, false);
+            detail::format_unsigned<detail::radix::decimal>(s_out, *static_cast<const uint32_t *>(p), false);
           };
           return true;
         case 5:
           out.key = "stack_size_bytes";
           out.val_ptr = &s->thread->stack_size;
           out.print_fn = [](const void *p, const sink &s_out) noexcept {
-            detail::format_unsigned(
-                s_out, *static_cast<const uint32_t *>(p), 10, false);
+            detail::format_unsigned<detail::radix::decimal>(s_out, *static_cast<const uint32_t *>(p), false);
           };
           return true;
         case 6:
           out.key = "stack_usage_bytes";
           out.val_ptr = &s->thread->stack_usage;
           out.print_fn = [](const void *p, const sink &s_out) noexcept {
-            detail::format_unsigned(s_out, *static_cast<const uint32_t *>(p), 10, false);
+            detail::format_unsigned<detail::radix::decimal>(s_out, *static_cast<const uint32_t *>(p), false);
           };
           return true;
         default:

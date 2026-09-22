@@ -37,7 +37,7 @@ template <typename T> struct formatter<hex_view<T>> {
     if (h.prefix) {
       out.write(h.uppercase ? "0X" : "0x");
     }
-    detail::format_unsigned(out, static_cast<uint64_t>(h.value), 16, h.uppercase, h.width);
+    detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(h.value), h.uppercase, h.width);
   }
 };
 
@@ -63,7 +63,7 @@ template <typename T> struct formatter<bin_view<T>> {
     if (b.prefix) {
       out.write("0b");
     }
-    detail::format_unsigned(out, static_cast<uint64_t>(b.value), 2, false, b.width);
+    detail::format_binary(out, static_cast<uint64_t>(b.value), b.width);
   }
 };
 
@@ -96,10 +96,10 @@ template <> struct formatter<bytes_view> {
       unit_idx++;
     }
 
-    detail::format_unsigned(out, val, 10, false, 0);
+    detail::format_unsigned<detail::radix::decimal>(out, val, false, 0);
     if (unit_idx > 0 && rem > 0) {
       out.put('.');
-      detail::format_unsigned(out, rem, 10, false, 0);
+      detail::format_unsigned<detail::radix::decimal>(out, rem, false, 0);
     }
     out.put(' ');
     out.write(units[unit_idx]);
@@ -127,13 +127,13 @@ template <> struct formatter<addr_offset_view> {
 
   void format(const addr_offset_view &v, const sink &out) const noexcept {
     out.write("0x");
-    detail::format_unsigned(out, static_cast<uint64_t>(v.base), 16, false);
+    detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(v.base), false);
     if (v.addr >= v.base) {
       out.write("+0x");
-      detail::format_unsigned(out, static_cast<uint64_t>(v.addr - v.base), 16, false);
+      detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(v.addr - v.base), false);
     } else {
       out.write("-0x");
-      detail::format_unsigned(out, static_cast<uint64_t>(v.base - v.addr), 16, false);
+      detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(v.base - v.addr), false);
     }
   }
 };
@@ -155,9 +155,9 @@ template <> struct formatter<memory_range_view> {
 
   void format(const memory_range_view &r, const sink &out) const noexcept {
     out.write("[0x");
-    detail::format_unsigned(out, static_cast<uint64_t>(r.start), 16, false);
+    detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(r.start), false);
     out.write("..0x");
-    detail::format_unsigned(out, static_cast<uint64_t>(r.end), 16, false);
+    detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(r.end), false);
     out.write("] (");
     if (r.end >= r.start) {
       formatter<bytes_view>{}.format(bytes(r.end - r.start), out);

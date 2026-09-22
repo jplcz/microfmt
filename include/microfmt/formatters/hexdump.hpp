@@ -107,9 +107,9 @@ inline void format_hexdump(const hexdump_view &h, span<uint8_t> line_buffer, con
     // Format Address Prefix
     if (h.show_address) {
       if constexpr (sizeof(uintptr_t) == 8) {
-        detail::format_unsigned(out, static_cast<uint64_t>(current_addr), 16, h.uppercase, 16);
+        detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(current_addr), h.uppercase, 16);
       } else {
-        detail::format_unsigned(out, static_cast<uint64_t>(current_addr), 16, h.uppercase, 8);
+        detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(current_addr), h.uppercase, 8);
       }
       out.write(": ");
     }
@@ -117,7 +117,7 @@ inline void format_hexdump(const hexdump_view &h, span<uint8_t> line_buffer, con
     // Format Hex Octets
     for (size_t i = 0; i < bpl; ++i) {
       if (i < bytes_valid) {
-        detail::format_unsigned(out, line_buffer[i], 16, h.uppercase, 2);
+        detail::format_unsigned<detail::radix::hex>(out, line_buffer[i], h.uppercase, 2);
         out.put(' ');
       } else if (i < chunk_len) {
         // Memory probed but unmapped / fault occurred
