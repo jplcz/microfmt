@@ -16,7 +16,7 @@ namespace detail {
  * avoid template bloat. Functions can accept a reference to this base
  * class to operate on buffers of any inline capacity.
  */
-class RELOCO_POINTER memory_buffer_base {
+class MICROFMT_API_CLASS RELOCO_POINTER memory_buffer_base {
 public:
   using value_type = char;
   using size_type = std::size_t;

@@ -16,7 +16,7 @@ namespace microfmt::gdb {
  *
  * Generates payloads for 'g' (read all general registers) and 'p' (read single register) requests.
  */
-class register_array_encoder {
+class MICROFMT_API_CLASS register_array_encoder {
 public:
   /**
    * @brief Encodes the full register layout for a specific architecture ('g' packet response).
@@ -111,7 +111,7 @@ private:
  *
  * Processes payloads for 'G' (write all general registers) and 'P' (write single register) requests.
  */
-class register_array_decoder {
+class MICROFMT_API_CLASS register_array_decoder {
 public:
   /**
    * @brief Decodes the full register layout hex payload ('G' packet payload).

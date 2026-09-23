@@ -4,12 +4,13 @@
 
 #pragma once
 
+#include "../detail/compat.hpp"
 #include "../reloco.hpp"
 #include <cstdint>
 
 namespace microfmt::dwarf {
 
-struct register_descriptor {
+struct MICROFMT_API_CLASS register_descriptor {
   microfmt::string_view name;
   uint32_t index;
 };
@@ -117,7 +118,7 @@ enum : uint32_t {
   dr7 = 127  // Debug Control
 };
 
-struct register_traits {
+struct MICROFMT_API_CLASS register_traits {
   inline static constexpr microfmt::array gpr_registers{
       register_descriptor{"RAX", rax}, register_descriptor{"RCX", rcx},
       register_descriptor{"RDX", rdx}, register_descriptor{"RBX", rbx},
@@ -210,7 +211,7 @@ enum : uint32_t {
   cr4 = 104
 };
 
-struct register_traits {
+struct MICROFMT_API_CLASS register_traits {
   inline static constexpr microfmt::array gpr_registers{
       register_descriptor{"EAX", eax}, register_descriptor{"ECX", ecx},
       register_descriptor{"EDX", edx}, register_descriptor{"EBX", ebx},
@@ -390,7 +391,7 @@ enum : uint32_t {
   cntkctl_el1 = generic_timer::cntkctl
 };
 
-struct register_traits {
+struct MICROFMT_API_CLASS register_traits {
   inline static constexpr microfmt::array gpr_registers{
       register_descriptor{"X0", x0},   register_descriptor{"X1", x1},
       register_descriptor{"X2", x2},   register_descriptor{"X3", x3},
@@ -629,7 +630,7 @@ enum : uint32_t {
   cntkctl = generic_timer::cntkctl
 };
 
-struct register_traits {
+struct MICROFMT_API_CLASS register_traits {
   inline static constexpr microfmt::array gpr_registers{
       register_descriptor{"R0", r0},   register_descriptor{"R1", r1},
       register_descriptor{"R2", r2},   register_descriptor{"R3", r3},
@@ -836,7 +837,7 @@ enum : uint32_t {
   mtvec = 262
 };
 
-struct register_traits {
+struct MICROFMT_API_CLASS register_traits {
   inline static constexpr microfmt::array gpr_registers{
       register_descriptor{"zero", zero}, register_descriptor{"ra", ra},
       register_descriptor{"sp", sp},     register_descriptor{"gp", gp},

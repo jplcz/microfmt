@@ -23,7 +23,7 @@ namespace microfmt::md {
 
 enum class align : uint8_t { left, center, right };
 
-struct column {
+struct MICROFMT_API_CLASS column {
   microfmt::string_view title{};
   size_t min_width{0};
   align alignment{align::left};
@@ -41,7 +41,7 @@ writer &details(writer &w, microfmt::string_view summary, Callable &&body,
 // Markdown Document Writer (Zero Allocation)
 // ============================================================================
 
-class writer {
+class MICROFMT_API_CLASS writer {
 public:
   explicit constexpr writer(const sink &out) noexcept : m_sink(out) {}
 
@@ -312,23 +312,23 @@ private:
 };
 
 // Bold, Italic, Strikethrough, Inline Code, Hyperlink, and Badges
-struct bold_view {
+struct MICROFMT_API_CLASS bold_view {
   microfmt::string_view text;
 };
-struct italic_view {
+struct MICROFMT_API_CLASS italic_view {
   microfmt::string_view text;
 };
-struct strike_view {
+struct MICROFMT_API_CLASS strike_view {
   microfmt::string_view text;
 };
-struct code_view {
+struct MICROFMT_API_CLASS code_view {
   microfmt::string_view text;
 };
-struct link_view {
+struct MICROFMT_API_CLASS link_view {
   microfmt::string_view label;
   microfmt::string_view url;
 };
-struct image_view {
+struct MICROFMT_API_CLASS image_view {
   microfmt::string_view alt;
   microfmt::string_view url;
 };
@@ -426,7 +426,7 @@ namespace microfmt::md {
 // Collapsible Details Guard (RAII)
 // ============================================================================
 
-class details_guard {
+class MICROFMT_API_CLASS details_guard {
 public:
   explicit details_guard(writer &w, microfmt::string_view summary,
                          bool open = false) noexcept;

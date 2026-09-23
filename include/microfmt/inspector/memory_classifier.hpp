@@ -39,7 +39,7 @@ enum class memory_region_type : uint8_t {
 /**
  * @brief Detailed description of a classified memory region or address.
  */
-struct memory_region_info {
+struct MICROFMT_API_CLASS memory_region_info {
   /// Start virtual address of the region.
   uintptr_t start_address{0};
 

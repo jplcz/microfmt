@@ -48,3 +48,4 @@ build*
 !scripts/build-docs.sh
 .cache
 tools/codesize/testbed/codesize-report.md
+.idea/

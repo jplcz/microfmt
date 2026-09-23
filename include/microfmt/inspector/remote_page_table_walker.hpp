@@ -21,7 +21,7 @@ namespace microfmt {
 /**
  * @brief Address-index and entry-width description for one table level.
  */
-struct remote_page_table_level {
+struct MICROFMT_API_CLASS remote_page_table_level {
   uint8_t index_shift{0};
   uint8_t index_bits{0};
   uint8_t entry_size{0};
@@ -39,7 +39,7 @@ enum class remote_page_table_entry_kind : uint8_t {
 /**
  * @brief Architecture callback output for one decoded entry.
  */
-struct remote_page_table_decoded_entry {
+struct MICROFMT_API_CLASS remote_page_table_decoded_entry {
   remote_page_table_entry_kind kind{remote_page_table_entry_kind::invalid};
   uintptr_t output_address{0};
   size_t page_size{0};
@@ -54,7 +54,7 @@ struct remote_page_table_decoded_entry {
 /**
  * @brief Callback table describing an architecture's page-table format.
  */
-struct remote_page_table_callbacks {
+struct MICROFMT_API_CLASS remote_page_table_callbacks {
   size_t level_count{0};
 
   bool (*describe_level)(const void *state, size_t level,
@@ -69,7 +69,7 @@ struct remote_page_table_callbacks {
 /**
  * @brief Borrowed architecture layout used by a remote page-table walker.
  */
-class RELOCO_POINTER remote_page_table_layout_ref {
+class MICROFMT_API_CLASS RELOCO_POINTER remote_page_table_layout_ref {
 public:
   constexpr remote_page_table_layout_ref() noexcept = default;
 
@@ -114,7 +114,7 @@ private:
 /**
  * @brief One recorded level from a remote page-table walk.
  */
-struct remote_page_table_walk_step {
+struct MICROFMT_API_CLASS remote_page_table_walk_step {
   size_t level{0};
   uintptr_t table_address{0};
   uintptr_t entry_address{0};
@@ -125,7 +125,7 @@ struct remote_page_table_walk_step {
 /**
  * @brief Caller-owned bounded storage for page-table walk diagnostics.
  */
-class remote_page_table_walk_trace {
+class MICROFMT_API_CLASS remote_page_table_walk_trace {
 public:
   constexpr explicit remote_page_table_walk_trace(
       span<remote_page_table_walk_step> storage) noexcept
@@ -188,7 +188,7 @@ enum class remote_page_table_walk_error : uint8_t {
 /**
  * @brief Final virtual-to-physical result from a remote page-table walk.
  */
-struct remote_page_table_walk_result {
+struct MICROFMT_API_CLASS remote_page_table_walk_result {
   uintptr_t physical_address{0};
   size_t page_size{0};
   translation_attributes attributes{};
@@ -197,7 +197,7 @@ struct remote_page_table_walk_result {
 /**
  * @brief Bounded remote page-table walker using physical memory access.
  */
-class remote_page_table_walker {
+class MICROFMT_API_CLASS remote_page_table_walker {
 public:
   constexpr remote_page_table_walker(
       address_space_ref physical_space,

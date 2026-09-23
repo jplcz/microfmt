@@ -60,7 +60,7 @@ namespace detail {
 /**
  * @brief Parses incoming GDB client requests (acting as a GDB server).
  */
-class client_request_decoder {
+class MICROFMT_API_CLASS client_request_decoder {
 public:
   /**
    * @brief Decodes a raw payload into a structured request view.
@@ -228,7 +228,7 @@ private:
 /**
  * @brief Parses incoming GDB server responses (acting as a GDB client).
  */
-class server_response_decoder {
+class MICROFMT_API_CLASS server_response_decoder {
 public:
   static server_response_type decode(string_view payload, server_response_view &out_view) noexcept {
     out_view = {};

@@ -29,7 +29,7 @@ namespace microfmt {
  *     followed by @c N additional words each contributing 4 more opcode
  *     bytes (MSB first).
  */
-class extab_byte_stream {
+class MICROFMT_API_CLASS extab_byte_stream {
 public:
   /**
    * @brief Constructs a stream rooted at the first extab word.
@@ -143,7 +143,7 @@ private:
 /**
  * @brief Executes a multi-word `.ARM.extab` bytecode program.
  */
-class extab_stream_executor {
+class MICROFMT_API_CLASS extab_stream_executor {
 public:
   /**
    * @brief Runs the extab bytecode stream, updating SP and writing restored

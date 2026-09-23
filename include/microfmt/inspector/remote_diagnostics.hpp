@@ -83,7 +83,7 @@ inline void format_remote_fault(const sink &out, uintptr_t addr,
  * Renders `(null)`, a raw `0x..` address, or a resolved symbol depending on
  * the format mode and resolver availability.
  */
-class RELOCO_POINTER remote_fn_ptr {
+class MICROFMT_API_CLASS RELOCO_POINTER remote_fn_ptr {
 public:
   /**
    * @brief Constructs an empty (null) view.

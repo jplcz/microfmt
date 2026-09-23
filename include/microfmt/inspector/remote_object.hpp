@@ -31,7 +31,7 @@ using remote_field_format_fn = void (*)(address_space_ref space, const void *fie
 /**
  * @brief Static descriptor for a single field in a remote structure layout.
  */
-struct remote_field_desc {
+struct MICROFMT_API_CLASS remote_field_desc {
   const char *name;
   size_t offset;
   remote_field_format_fn format_fn;
@@ -74,7 +74,7 @@ template <> struct remote_field_traits<string32_ptr> {
  * Stores an absolute address and synthesizes a `foreign_string_view` on demand
  * using caller-supplied scratch buffers.
  */
-class string_ptr {
+class MICROFMT_API_CLASS string_ptr {
 public:
   constexpr string_ptr() noexcept : addr_(0) {}
   constexpr explicit string_ptr(uintptr_t addr) noexcept : addr_(addr) {}
@@ -121,7 +121,7 @@ static_assert(alignof(string_ptr) == sizeof(void *), "string32_ptr must be natur
  * Stores a 32-bit address and synthesizes a `foreign_string_view` on demand
  * using caller-supplied scratch buffers.
  */
-class alignas(uint32_t) string32_ptr {
+class MICROFMT_API_CLASS alignas(uint32_t) string32_ptr {
 public:
   constexpr string32_ptr() noexcept : addr_(0) {}
   constexpr explicit string32_ptr(uint32_t addr) noexcept : addr_(addr) {}

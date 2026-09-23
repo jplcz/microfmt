@@ -46,7 +46,7 @@ enum class can_flags : uint8_t {
 // ============================================================================
 
 /** @brief Non-owning CAN or CAN-FD frame descriptor for formatting. */
-struct can_frame_view {
+struct MICROFMT_API_CLASS can_frame_view {
   uint32_t id{0};
   span<const uint8_t> payload{};
   can_flags flags{can_flags::none};

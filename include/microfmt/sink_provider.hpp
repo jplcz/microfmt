@@ -75,7 +75,7 @@ struct has_stateless_sink_provider_flush<Tag, std::void_t<decltype(sink_provider
  * Converts to @ref microfmt::sink via @ref as_sink so it plugs directly into
  * `format_to`/`vformat_to`.
  */
-class RELOCO_POINTER sink_provider_ref {
+class MICROFMT_API_CLASS RELOCO_POINTER sink_provider_ref {
 public:
   /**
    * @brief Virtual table of sink operations.
@@ -292,7 +292,7 @@ template <> struct sink_provider_traits<null_sink_provider_tag> {
  */
 struct span_sink_provider_tag {};
 
-struct span_sink_provider_context {
+struct MICROFMT_API_CLASS span_sink_provider_context {
   span<char> buffer;
   size_t pos{0};
 };

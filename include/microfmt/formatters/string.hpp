@@ -50,7 +50,7 @@ enum class string_align : uint8_t { none, left, right, center };
 /**
  * @brief Parsed advanced string format specifier state.
  */
-struct parsed_string_spec {
+struct MICROFMT_API_CLASS parsed_string_spec {
   /**
    * @brief Fill character used for padding (default space).
    */
@@ -230,7 +230,7 @@ inline size_t calculate_escaped_len(microfmt::string_view sv) noexcept {
 /**
  * @brief Non-owning string view supporting advanced format specifiers.
  */
-class as_string_view {
+class MICROFMT_API_CLASS as_string_view {
 public:
   /**
    * @brief Constructs the view over a string_view.

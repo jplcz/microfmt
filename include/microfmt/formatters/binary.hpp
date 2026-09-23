@@ -20,7 +20,7 @@ namespace microfmt {
 template <typename T,
           typename = std::enable_if_t<std::is_integral_v<T> &&
                                       !std::is_same_v<T, bool>>>
-struct binary_view {
+struct MICROFMT_API_CLASS binary_view {
   T value;
   uint8_t min_bits{sizeof(T) * 8}; // Default to full bit-width (8, 16, 32, 64)
   bool prefix{false};              // "0b" prefix

@@ -25,7 +25,7 @@ namespace microfmt {
  * @ref span_sink. Tracks remaining capacity and truncates writes that exceed
  * it instead of overflowing.
  */
-class RELOCO_POINTER asio_mutable_buffer_sink {
+class MICROFMT_API_CLASS RELOCO_POINTER asio_mutable_buffer_sink {
 public:
   /**
    * @brief Constructs a sink over a Boost.Asio mutable buffer.
@@ -93,7 +93,7 @@ private:
  * @brief A sink adapter that writes formatted output into a
  * `boost::asio::streambuf` dynamic buffer.
  */
-class RELOCO_POINTER asio_streambuf_sink {
+class MICROFMT_API_CLASS RELOCO_POINTER asio_streambuf_sink {
 public:
   /**
    * @brief Constructs a sink over an externally owned Boost.Asio streambuf.

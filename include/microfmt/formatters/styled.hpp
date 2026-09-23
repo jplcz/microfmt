@@ -43,7 +43,7 @@ enum class quote_style : uint8_t {
  *  Set @ref max_len to zero to disable truncation. When truncation is enabled,
  *  @ref ellipsis appends three dots when @ref max_len is greater than three.
  */
-struct styled_str_view {
+struct MICROFMT_API_CLASS styled_str_view {
   microfmt::string_view text{};
   size_t width{0};
   char fill_char{' '};

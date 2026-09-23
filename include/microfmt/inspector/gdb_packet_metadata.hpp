@@ -14,7 +14,7 @@ namespace microfmt::gdb {
 /**
  * @brief Metadata descriptor for a GDB RSP packet.
  */
-struct packet_metadata {
+struct MICROFMT_API_CLASS packet_metadata {
   packet_type type;
   string_view name;   // Human-readable identifier for logging/diagnostics
   string_view prefix; // The GDB RSP protocol prefix string (e.g., "qSupported", "m", "Z")

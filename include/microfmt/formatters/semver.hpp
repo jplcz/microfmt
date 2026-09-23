@@ -17,7 +17,7 @@ namespace microfmt {
 // Semantic Version Descriptor
 // ============================================================================
 
-struct semver {
+struct MICROFMT_API_CLASS semver {
   uint16_t major{0};
   uint16_t minor{0};
   uint16_t patch{0};

@@ -13,7 +13,7 @@ namespace microfmt::gdb {
  *
  * Automatically frames output as `$data#checksum` into a caller-provided stack buffer.
  */
-class RELOCO_POINTER gdb_packet_writer {
+class MICROFMT_API_CLASS RELOCO_POINTER gdb_packet_writer {
 public:
   explicit constexpr gdb_packet_writer(
       span<char> buffer RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
@@ -84,7 +84,7 @@ private:
  * Designed for byte-by-byte ingestion (e.g., from UART RX ring buffers or interrupts)
  * with zero heap allocation and strict stack safety.
  */
-class RELOCO_POINTER gdb_streaming_decoder {
+class MICROFMT_API_CLASS RELOCO_POINTER gdb_streaming_decoder {
 public:
   /**
    * @brief Status returned after feeding a byte into the decoder.

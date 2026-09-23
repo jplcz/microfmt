@@ -65,7 +65,7 @@ template <typename T> struct is_dereferenceable<T, std::void_t<decltype(*std::de
 } // namespace detail
 
 /** Default key extractor for pair-like and key-bearing values. */
-struct default_key_fn {
+struct MICROFMT_API_CLASS default_key_fn {
   template <typename T> constexpr decltype(auto) operator()(const T &item) const noexcept {
     if constexpr (detail::has_first_member<T>::value) {
       return (item.first);
@@ -78,7 +78,7 @@ struct default_key_fn {
 };
 
 /** Default value extractor for pair-like and value-bearing values. */
-struct default_val_fn {
+struct MICROFMT_API_CLASS default_val_fn {
   template <typename T> constexpr decltype(auto) operator()(const T &item) const noexcept {
     if constexpr (detail::has_second_member<T>::value) {
       return (item.second);

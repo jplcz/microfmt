@@ -32,7 +32,7 @@ namespace microfmt {
  * function to stream formatted characters without dynamic allocations, virtual
  * dispatch, or RTTI overhead.
  */
-struct RELOCO_POINTER sink {
+struct MICROFMT_API_CLASS RELOCO_POINTER sink {
   // --- Container / Back-Inserter Compatibility ---
   using value_type = char;
 
@@ -111,7 +111,7 @@ struct RELOCO_POINTER sink {
  * and exposes a non-owning, zero-allocation @ref sink interface. Writes that
  * exceed the remaining capacity are truncated safely.
  */
-class RELOCO_POINTER span_sink {
+class MICROFMT_API_CLASS RELOCO_POINTER span_sink {
 public:
   /**
    * @brief Constructs a span sink over a @ref microfmt::span of character
@@ -192,7 +192,7 @@ private:
 
 namespace detail {
 
-struct buffer_sink_base {
+struct MICROFMT_API_CLASS buffer_sink_base {
   char *m_data;
   std::size_t m_capacity;
   std::size_t m_pos;
@@ -369,7 +369,7 @@ private:
  * Useful for computing required buffer sizes before performing an allocation or
  * determining truncation lengths without runtime side-effects.
  */
-class counting_sink {
+class MICROFMT_API_CLASS counting_sink {
 public:
   /**
    * @brief Constructs a counting sink with a zero byte count.
@@ -411,7 +411,7 @@ private:
  * Functions as a zero-cost `/dev/null` sink for benchmarking or conditional
  * output.
  */
-class null_sink {
+class MICROFMT_API_CLASS null_sink {
 public:
   /**
    * @brief Returns a shared, stateless type-erased @ref sink instance that
@@ -426,7 +426,7 @@ public:
 
 namespace detail {
 
-struct RELOCO_POINTER c_string_sink_base {
+struct MICROFMT_API_CLASS RELOCO_POINTER c_string_sink_base {
   char *m_data;
   std::size_t m_max_payload; // N - 1
   std::size_t m_pos;
@@ -724,7 +724,7 @@ inline void format_signed(const sink &out, int64_t val, int min_width = 0) noexc
 // Format Parse Context & Formatter Customization Point
 // ============================================================================
 
-class RELOCO_POINTER format_parse_context {
+class MICROFMT_API_CLASS RELOCO_POINTER format_parse_context {
 public:
   using iterator = microfmt::string_view::const_iterator;
   using const_iterator = microfmt::string_view::const_iterator;
@@ -811,7 +811,7 @@ template <> struct formatter<std::string_view> {
 
 namespace detail {
 
-struct const_char_like {
+struct MICROFMT_API_CLASS const_char_like {
   constexpr void parse(format_parse_context &) noexcept {}
   void format(const char *val, const sink &out) const noexcept {
     out.write(val ? microfmt::string_view(val) : microfmt::string_view("(null)", 6));
@@ -913,7 +913,7 @@ inline void emit_formatted_int(const sink &out, const char *digits, size_t digit
 }
 
 // Integers (Signed & Unsigned)
-struct int_formatter_specs {
+struct MICROFMT_API_CLASS int_formatter_specs {
   uint8_t width{0};
 
   // Bitfield backing all boolean state in a single byte
@@ -1038,7 +1038,7 @@ template <> struct formatter<bool> {
 // Raw Pointers
 namespace detail {
 
-struct raw_ptr_format {
+struct MICROFMT_API_CLASS raw_ptr_format {
   int width{0};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
@@ -1175,7 +1175,7 @@ constexpr bool parse_positional_index(microfmt::string_view text, size_t &index)
 }
 
 // Represents a pre-parsed action in the format string
-struct compiled_piece {
+struct MICROFMT_API_CLASS compiled_piece {
   microfmt::string_view literal{}; // Static literal text to emit directly
   microfmt::string_view spec{};    // Format specifier (e.g. ":08x")
   size_t arg_index{0};             // Which argument index to format
@@ -1433,7 +1433,7 @@ template <typename TargetContainer, typename StrProvider, typename... Args>
  * Can be passed cheaply by value into lambdas or non-template functions,
  * avoiding variadic template bloat and deep stack copies.
  */
-struct RELOCO_POINTER format_args {
+struct MICROFMT_API_CLASS RELOCO_POINTER format_args {
   span<const void *const> ptrs;
   span<const format_fn_t> fns;
 };

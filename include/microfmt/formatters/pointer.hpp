@@ -32,7 +32,7 @@ enum class ptr_width_mode : uint8_t {
 };
 
 /** Non-owning raw address representation for formatting. */
-struct raw_ptr_view {
+struct MICROFMT_API_CLASS raw_ptr_view {
   uintptr_t address{0};
   bool is_null{false};
   ptr_width_mode width_mode{ptr_width_mode::native};

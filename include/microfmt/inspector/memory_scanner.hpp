@@ -117,7 +117,7 @@ private:
  * The scanner borrows @ref symbol_scratch for each symbol lookup and never
  * allocates a symbol-name buffer on its stack.
  */
-struct memory_scanner_options {
+struct MICROFMT_API_CLASS memory_scanner_options {
   /// Maximum number of bytes dumped for a readable data address.
   size_t dump_bytes{80};
   /// Resolver used for addresses classified as code or data.
@@ -133,7 +133,7 @@ struct memory_scanner_options {
  * constrained. A context may be reused between scans but must not be shared by
  * concurrent scans.
  */
-struct memory_scanner_context {
+struct MICROFMT_API_CLASS memory_scanner_context {
   memory_scanner_options options{};
   /// Caller-owned scratch storage passed to the symbol resolver.
   span<char> symbol_scratch{};
@@ -149,7 +149,7 @@ struct memory_scanner_context {
  * @brief Utility scanner for inspecting, classifying, and conditionally
  * hex-dumping memory addresses.
  */
-class memory_scanner {
+class MICROFMT_API_CLASS memory_scanner {
 public:
   /**
    * @brief Scans architecture-specific register candidates followed by a

@@ -23,7 +23,7 @@ namespace microfmt {
 /**
  * @brief Raw resolution result as returned by a resolver backend.
  */
-struct raw_resolved_symbol {
+struct MICROFMT_API_CLASS raw_resolved_symbol {
   /**
    * @brief Nearest symbol name (may be empty when stripped).
    */
@@ -50,7 +50,7 @@ struct raw_resolved_symbol {
 /**
  * @brief Derived symbol info with precomputed relative offsets.
  */
-struct resolved_symbol_info {
+struct MICROFMT_API_CLASS resolved_symbol_info {
   /**
    * @brief Nearest symbol name (may be empty when stripped).
    */
@@ -101,7 +101,7 @@ struct resolved_symbol_info {
 /**
  * @brief Caller-owned temporary storage for one symbol resolution.
  */
-struct RELOCO_POINTER symbol_resolution_context {
+struct MICROFMT_API_CLASS RELOCO_POINTER symbol_resolution_context {
   constexpr explicit symbol_resolution_context(
       span<char> string_scratch RELOCO_LIFETIMEBOUND = {}) noexcept
       : scratch(string_scratch) {}
@@ -362,7 +362,7 @@ public:
 /**
  * @brief Formattable view resolving and rendering a remote code address.
  */
-class RELOCO_POINTER remote_symbol_view {
+class MICROFMT_API_CLASS RELOCO_POINTER remote_symbol_view {
 public:
   /**
    * @brief Constructs an empty (null) view.

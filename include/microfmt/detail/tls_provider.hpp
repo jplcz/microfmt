@@ -64,7 +64,7 @@ private:
   static inline thread_local T instance_ = {};
 };
 #elif (MICROFMT_TLS_MODEL == MICROFMT_TLS_MODEL_PTHREAD)
-struct pt_helpers {
+struct MICROFMT_API_CLASS pt_helpers {
   static void create(pthread_key_t &key, void (*deleter)(void *)) noexcept {
     const int rc = pthread_key_create(&key, deleter);
     if (rc != 0) {

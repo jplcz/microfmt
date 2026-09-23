@@ -96,7 +96,7 @@ struct unwind_hint {
 /**
  * @brief Type-erased, two-word handle to an unwind hint registry.
  */
-class RELOCO_POINTER unwind_hint_registry_ref {
+class MICROFMT_API_CLASS RELOCO_POINTER unwind_hint_registry_ref {
 public:
   /**
    * @brief Virtual table of registry operations.

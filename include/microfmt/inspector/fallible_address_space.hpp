@@ -36,7 +36,7 @@ namespace detail {
 /**
  * @brief Context holding the jump buffer and active state for signal-safe memory fault recovery.
  */
-struct fault_recovery_context {
+struct MICROFMT_API_CLASS fault_recovery_context {
   sigjmp_buf env;
   bool active{false};
 };

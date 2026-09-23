@@ -101,7 +101,7 @@ struct elf_image_info {
  *
  * Binds a traits-selected provider context with zero allocation.
  */
-class RELOCO_POINTER elf_image_enumerator_ref {
+class MICROFMT_API_CLASS RELOCO_POINTER elf_image_enumerator_ref {
 public:
   /**
    * @brief Virtual table of image enumeration operations.

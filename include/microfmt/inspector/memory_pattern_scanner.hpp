@@ -27,7 +27,7 @@ namespace microfmt {
 /**
  * @brief Result of a memory pattern scan operation.
  */
-struct memory_scan_result {
+struct MICROFMT_API_CLASS memory_scan_result {
   /** @brief True if the pattern or condition was successfully found. */
   bool found;
   /** @brief The absolute memory address where the match begins (valid only if found is true). */
@@ -206,7 +206,7 @@ public:
 struct linear_memory_scanner_tag {};
 
 /** @brief State retained by the standard linear memory scanner. */
-struct linear_memory_scanner_context {
+struct MICROFMT_API_CLASS linear_memory_scanner_context {
   /** @brief Target memory address space to scan. */
   address_space_ref space;
   /** @brief Caller-provided chunk buffer used for the sliding window. */

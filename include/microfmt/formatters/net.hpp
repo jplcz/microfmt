@@ -30,7 +30,7 @@ struct is_mac_container<
 // MAC Address View Adapter
 // ============================================================================
 
-struct mac_view {
+struct MICROFMT_API_CLASS mac_view {
   span<const uint8_t> bytes{}; // 6 bytes (MAC-48/EUI-48) or 8 bytes (EUI-64)
   char separator{':'};
   bool uppercase{false};

@@ -65,7 +65,7 @@ enum class level : uint8_t { trace = 0, debug, info, warn, err, critical, off };
 // ============================================================================
 
 /** @brief Structured log record forwarded by a logger to each sink. */
-struct log_msg {
+struct MICROFMT_API_CLASS log_msg {
   microfmt::string_view logger_name{};
   level lvl{level::info};
   std::chrono::system_clock::time_point time{std::chrono::system_clock::now()};

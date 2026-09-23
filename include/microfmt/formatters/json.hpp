@@ -96,7 +96,7 @@ class array_writer;
  * transitions the object to `consumed`, after which Clang's `-Wconsumed`
  * flags any further `key`/`kv`/`nested_*` call as a compile-time diagnostic.
  */
-class RELOCO_CONSUMABLE(unconsumed) object_writer {
+class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) object_writer {
 public:
   explicit object_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
     out_.put('{');
@@ -207,7 +207,7 @@ private:
  *
  * Consumed-state tracked: see @ref object_writer for the state contract.
  */
-class RELOCO_CONSUMABLE(unconsumed) array_writer {
+class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) array_writer {
 public:
   explicit array_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
     out_.put('[');

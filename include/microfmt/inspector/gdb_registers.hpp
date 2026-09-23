@@ -12,7 +12,7 @@ namespace microfmt::gdb {
 /**
  * @brief Maps a single register between GDB and DWARF definitions.
  */
-struct register_mapping {
+struct MICROFMT_API_CLASS register_mapping {
   string_view name;
   uint32_t gdb_index;
   uint32_t dwarf_index;

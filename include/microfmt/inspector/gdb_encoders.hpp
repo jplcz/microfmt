@@ -50,7 +50,7 @@ inline void write_thread_id(sink target, uint64_t tid) noexcept {
 /**
  * @brief Zero-allocation parameters for generating a GDB client request.
  */
-struct client_request_view {
+struct MICROFMT_API_CLASS client_request_view {
   uintptr_t addr{0};
   size_t length{0};
   span<const uint8_t> data{};
@@ -70,7 +70,7 @@ struct client_request_view {
 /**
  * @brief Encodes GDB requests (acting as a GDB frontend/client).
  */
-class client_request_encoder {
+class MICROFMT_API_CLASS client_request_encoder {
 public:
   /**
    * @brief Formats a GDB request payload into a sink using compile-time metadata.
@@ -177,7 +177,7 @@ enum class server_response_type : uint8_t {
 /**
  * @brief Zero-allocation parameters for generating a GDB server response.
  */
-struct server_response_view {
+struct MICROFMT_API_CLASS server_response_view {
   uint8_t status_code{0}; // Error code, POSIX signal, or exit code
   uint64_t thread_id{0};  // Context thread ID
 
@@ -191,7 +191,7 @@ struct server_response_view {
 /**
  * @brief Encodes GDB responses (acting as a GDB server/stub).
  */
-class server_response_encoder {
+class MICROFMT_API_CLASS server_response_encoder {
 public:
   /**
    * @brief Formats a GDB response payload into a sink.

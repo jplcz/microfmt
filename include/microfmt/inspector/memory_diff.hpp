@@ -21,7 +21,7 @@ namespace microfmt {
  * Designed for crash diagnostics, memory corruption tracing, and buffer delta inspection
  * without dynamic allocations or temporary string building.
  */
-struct memory_diff_view {
+struct MICROFMT_API_CLASS memory_diff_view {
   span<const std::byte> old_data;
   span<const std::byte> new_data;
   uintptr_t base_address{0};

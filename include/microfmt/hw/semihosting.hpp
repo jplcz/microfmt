@@ -9,7 +9,7 @@ namespace microfmt {
  * Routes formatted diagnostics directly to the host system via the
  * `hlt #0xf000` semihosting trap instruction.
  */
-class semihosting_sink {
+class MICROFMT_API_CLASS semihosting_sink {
 public:
   constexpr semihosting_sink() noexcept = default;
 

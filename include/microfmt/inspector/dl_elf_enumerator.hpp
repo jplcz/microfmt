@@ -210,7 +210,7 @@ inline bool dl_phdr_eh_frame_bounds(const dl_phdr_info &info, uintptr_t &out_sta
 /**
  * @brief Mutable state threaded through @ref dl_enumerate_callback.
  */
-struct dl_enumerate_state {
+struct MICROFMT_API_CLASS dl_enumerate_state {
   span<elf_image_info> buffer;
   size_t count{0};
 };
@@ -263,7 +263,7 @@ inline bool dl_enumerate_images(span<elf_image_info> out_buffer, size_t &out_cou
  * (and, where available, `PT_ARM_EXIDX`/`PT_GNU_EH_FRAME`) bounds of the
  * image whose load base was already resolved via `dladdr`.
  */
-struct dl_find_size_state {
+struct MICROFMT_API_CLASS dl_find_size_state {
   uintptr_t target_base;
   uintptr_t size{0};
   uintptr_t exidx_start{0};

@@ -70,7 +70,7 @@ struct has_stateless_log_sink_flush<Tag, std::void_t<decltype(log_sink_traits<Ta
  * base class, no RTTI, and no allocation of its own. The bound context (for
  * stateful tags) must outlive every `log_sink` built from it.
  */
-class RELOCO_POINTER log_sink {
+class MICROFMT_API_CLASS RELOCO_POINTER log_sink {
 public:
   /**
    * @brief Virtual table of log sink operations.

@@ -29,7 +29,7 @@ enum class frame_kind : uint8_t { standard = 0, trap_transition };
 /**
  * @brief One frame record produced during hybrid unwinding.
  */
-struct hybrid_frame {
+struct MICROFMT_API_CLASS hybrid_frame {
   /**
    * @brief Zero-based frame index (depth).
    */
@@ -60,7 +60,7 @@ struct hybrid_frame {
 /**
  * @brief Type-erased hook detecting exception trampolines during unwinding.
  */
-class RELOCO_POINTER exception_matcher_ref {
+class MICROFMT_API_CLASS RELOCO_POINTER exception_matcher_ref {
 public:
   /**
    * @brief Virtual table of matcher operations.
@@ -199,7 +199,7 @@ private:
  * @brief Forward-only cursor combining frame-pointer stepping with
  * exception/trap transitions.
  */
-class hybrid_stack_unwinder {
+class MICROFMT_API_CLASS hybrid_stack_unwinder {
 public:
   /**
    * @brief Constructs a hybrid unwinder.
@@ -340,7 +340,7 @@ private:
 /**
  * @brief Formattable view rendering a hybrid backtrace.
  */
-class RELOCO_POINTER hybrid_backtrace_view {
+class MICROFMT_API_CLASS RELOCO_POINTER hybrid_backtrace_view {
 public:
   /**
    * @brief Constructs a hybrid backtrace view.

@@ -24,7 +24,7 @@ namespace microfmt {
 /**
  * @brief One frame record produced during stack unwinding.
  */
-struct stack_frame {
+struct MICROFMT_API_CLASS stack_frame {
   /**
    * @brief Zero-based frame index (depth).
    */
@@ -235,7 +235,7 @@ public:
  * @brief Forward-only cursor iterating over a stack walk backed by register
  * context.
  */
-class frame_pointer_iterator {
+class MICROFMT_API_CLASS frame_pointer_iterator {
 public:
   constexpr frame_pointer_iterator() noexcept = default;
 
@@ -324,7 +324,7 @@ private:
 /**
  * @brief Formattable view rendering a remote backtrace.
  */
-class RELOCO_POINTER remote_backtrace_view {
+class MICROFMT_API_CLASS RELOCO_POINTER remote_backtrace_view {
 public:
   /**
    * @brief Constructs a backtrace view.

@@ -17,7 +17,7 @@ namespace microfmt {
 /**
  * @brief Non-owning view representing a byte-level comparison between two remote address spaces.
  */
-struct remote_memory_diff_view {
+struct MICROFMT_API_CLASS remote_memory_diff_view {
   address_space_ref old_space;
   uintptr_t old_address;
 

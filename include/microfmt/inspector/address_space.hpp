@@ -29,7 +29,7 @@ enum class address_space_error {
   write_failed,
 };
 
-struct string_chunk {
+struct MICROFMT_API_CLASS string_chunk {
   size_t length;
   bool null_terminated;
 };
@@ -196,7 +196,7 @@ template <> struct address_space_traits<local_space_tag> {
  * Packs a context pointer and a virtual table into two words, avoiding
  * allocations, RTTI, and virtual dispatch.
  */
-class RELOCO_POINTER address_space_ref {
+class MICROFMT_API_CLASS RELOCO_POINTER address_space_ref {
 public:
   /**
    * @brief Virtual table of address-space operations.
@@ -531,7 +531,7 @@ public:
  * Pulls the string through a reusable scratch buffer in bounded chunks to keep
  * stack usage minimal.
  */
-class RELOCO_POINTER remote_string_view {
+class MICROFMT_API_CLASS RELOCO_POINTER remote_string_view {
 public:
   /**
    * @brief Constructs an empty (null) view.

@@ -48,7 +48,7 @@ enum class RELOCO_FLAG_ENUM i2c_flags : uint8_t {
 // ============================================================================
 
 /** @brief Non-owning I2C transfer descriptor for formatting. */
-struct i2c_msg_view {
+struct MICROFMT_API_CLASS i2c_msg_view {
   uint16_t addr{0}; // 7-bit (0x00..0x7F) or 10-bit (0x000..0x3FF)
   i2c_dir direction{i2c_dir::write};
   span<const uint8_t> payload{};

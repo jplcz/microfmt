@@ -62,7 +62,7 @@ using thread_next_fn_t = bool (*)(void *ctx, thread_info &out) noexcept;
 /**
  * @brief Comprehensive system task (Team) descriptor.
  */
-struct RELOCO_POINTER task_info {
+struct MICROFMT_API_CLASS RELOCO_POINTER task_info {
   // Classic Task Data
   uint64_t team_id{0}; // PID (Team ID)
   string_view name{};

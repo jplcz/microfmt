@@ -24,7 +24,7 @@ namespace microfmt {
 /**
  * @brief Normalized, architecture-independent snapshot of a trap context.
  */
-struct trap_context {
+struct MICROFMT_API_CLASS trap_context {
   /**
    * @brief Nested trap level (`0` = primary/top fault).
    */
@@ -329,7 +329,7 @@ public:
 /**
  * @brief Forward-only cursor iterating over a chain of trap frames.
  */
-class exception_frame_iterator {
+class MICROFMT_API_CLASS exception_frame_iterator {
 public:
   /**
    * @brief Constructs an empty (invalid) iterator.
@@ -454,7 +454,7 @@ private:
 /**
  * @brief Formattable summary view of a trap context.
  */
-class RELOCO_POINTER remote_trap_view {
+class MICROFMT_API_CLASS RELOCO_POINTER remote_trap_view {
 public:
   /**
    * @brief Constructs a trap summary view.

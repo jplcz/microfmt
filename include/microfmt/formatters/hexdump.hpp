@@ -34,7 +34,7 @@ using memory_reader_fn_t = size_t (*)(void *ctx, uintptr_t src_addr, uint8_t *ds
 // Hex Dump Configuration & Descriptor
 // ============================================================================
 
-struct hexdump_view {
+struct MICROFMT_API_CLASS hexdump_view {
   uintptr_t base_addr{0};
   span<const uint8_t> direct_data{};
   void *reader_ctx{nullptr};

@@ -10,7 +10,7 @@ namespace microfmt {
  * Reserves 1 byte for the trailing `\0`. Output is clamped to the buffer's
  * capacity minus 1, and is guaranteed to be null-terminated after every write.
  */
-class RELOCO_POINTER c_string_span_sink : private detail::c_string_sink_base {
+class MICROFMT_API_CLASS RELOCO_POINTER c_string_span_sink : private detail::c_string_sink_base {
 public:
   /**
    * @brief Constructs a null-terminated string sink over a @ref microfmt::span.

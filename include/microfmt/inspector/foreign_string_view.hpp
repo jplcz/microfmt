@@ -26,7 +26,7 @@ namespace microfmt {
  * Pulls a string from a custom source or foreign address space through
  * a reusable scratch buffer in bounded chunks.
  */
-class RELOCO_POINTER foreign_string_view {
+class MICROFMT_API_CLASS RELOCO_POINTER foreign_string_view {
 public:
   /**
    * @brief Constructs an empty (null) foreign string view.

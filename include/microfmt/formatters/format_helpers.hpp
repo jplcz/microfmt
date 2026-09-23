@@ -75,7 +75,7 @@ template <typename T> struct formatter<bin_view<T>> {
  * @brief Automatically formats byte counts into human-readable units (B, KiB,
  * MiB, GiB, TiB).
  */
-struct bytes_view {
+struct MICROFMT_API_CLASS bytes_view {
   uint64_t bytes{0};
 };
 
@@ -113,7 +113,7 @@ template <> struct formatter<bytes_view> {
 /**
  * @brief Formats an address with a base + offset view: `0x7fff0000+0x140`
  */
-struct addr_offset_view {
+struct MICROFMT_API_CLASS addr_offset_view {
   uintptr_t addr{0};
   uintptr_t base{0};
 };
@@ -141,7 +141,7 @@ template <> struct formatter<addr_offset_view> {
 /**
  * @brief Formats an address range: `[0x10000000..0x10004000] (16 KiB)`
  */
-struct memory_range_view {
+struct MICROFMT_API_CLASS memory_range_view {
   uintptr_t start{0};
   uintptr_t end{0};
 };
@@ -174,7 +174,7 @@ template <> struct formatter<memory_range_view> {
 
 enum class align_mode : uint8_t { left, right, center };
 
-struct aligned_text_view {
+struct MICROFMT_API_CLASS aligned_text_view {
   microfmt::string_view text{};
   size_t width{0};
   align_mode mode{align_mode::left};

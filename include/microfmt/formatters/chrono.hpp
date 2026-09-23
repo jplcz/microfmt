@@ -49,7 +49,7 @@ template <> struct duration_suffix<std::ratio<86400>> {
 
 // Days to civil date conversion (Howard Hinnant algorithm, zero-float /
 // integer-only)
-struct civil_date {
+struct MICROFMT_API_CLASS civil_date {
   int32_t year;
   uint8_t month;
   uint8_t day;

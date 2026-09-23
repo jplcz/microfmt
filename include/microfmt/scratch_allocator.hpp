@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "detail/compat.hpp"
 #include "reloco.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -23,7 +24,7 @@ namespace microfmt {
  * manual destructor tracking in low-stack, bare-metal environments. Supports
  * partitioning remaining capacity to pass downstream.
  */
-class RELOCO_POINTER scratch_allocator {
+class MICROFMT_API_CLASS RELOCO_POINTER scratch_allocator {
 public:
   /**
    * @brief Constructs a scratch allocator over a provided byte span.

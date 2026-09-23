@@ -62,7 +62,7 @@ namespace microfmt {
 /**
  * @brief Thread descriptor containing thread-specific attributes and CPU register context access.
  */
-struct RELOCO_POINTER thread_info {
+struct MICROFMT_API_CLASS RELOCO_POINTER thread_info {
   // Thread-Specific Data
   uint64_t thread_id{0};
   string_view name{};

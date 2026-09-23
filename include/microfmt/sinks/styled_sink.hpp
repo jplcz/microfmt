@@ -35,7 +35,7 @@ enum class char_transform : uint8_t {
  *  replaces ASCII control characters except newline, carriage return, and tab
  *  with a period.
  */
-class transform_sink {
+class MICROFMT_API_CLASS transform_sink {
 public:
   /** Create a transform adapter that forwards to @p target. */
   explicit constexpr transform_sink(
@@ -100,7 +100,7 @@ private:
  *  line. This preserves line state when formatting is split across multiple
  *  calls.
  */
-class prefix_sink {
+class MICROFMT_API_CLASS prefix_sink {
 public:
   /** Create a line-prefix adapter that forwards to @p target. */
   explicit constexpr prefix_sink(
@@ -154,7 +154,7 @@ private:
 };
 
 /** A sink adapter that discards output after a fixed number of bytes. */
-class limit_sink {
+class MICROFMT_API_CLASS limit_sink {
 public:
   /** Create an adapter that forwards at most @p max_bytes to @p target. */
   explicit constexpr limit_sink(

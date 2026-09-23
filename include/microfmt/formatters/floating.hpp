@@ -20,7 +20,7 @@ namespace detail {
 /**
  * @brief Parsed floating-point format specifier state.
  */
-struct parsed_float_spec {
+struct MICROFMT_API_CLASS parsed_float_spec {
   /**
    * @brief Optional sign character: `'+'`, `' '` or `'\0'` (none).
    */

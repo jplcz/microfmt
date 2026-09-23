@@ -18,7 +18,7 @@ namespace microfmt {
  * Enforces compile-time lifetime safety via value_ref and requires an explicit
  * stack state struct to generate a read-only metadata_map view.
  */
-class RELOCO_OWNER concrete_metadata_map {
+class MICROFMT_API_CLASS RELOCO_OWNER concrete_metadata_map {
 public:
   /**
    * @brief Constructs a concrete metadata map over an external span buffer.

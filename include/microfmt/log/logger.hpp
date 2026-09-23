@@ -20,7 +20,7 @@ namespace detail {
  * @brief No-op mutex used as `basic_logger`'s default `Mutex` so
  * single-threaded usage pays zero synchronization cost.
  */
-struct null_mutex {
+struct MICROFMT_API_CLASS null_mutex {
   constexpr void lock() noexcept {}
   constexpr void unlock() noexcept {}
   [[nodiscard]] constexpr bool try_lock() noexcept { return true; }

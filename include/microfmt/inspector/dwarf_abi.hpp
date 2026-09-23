@@ -24,7 +24,7 @@ namespace microfmt {
 /**
  * @brief DWARF unwind ABI traits for ARM / Thumb (32-bit EABI).
  */
-struct arm_abi_traits {
+struct MICROFMT_API_CLASS arm_abi_traits {
   /// Register value width.
   using register_type = uint32_t;
   /// Architecture register name/index catalog.
@@ -174,7 +174,7 @@ struct arm_abi_traits {
 /**
  * @brief DWARF unwind ABI traits for AArch64 (64-bit ARM).
  */
-struct aarch64_abi_traits {
+struct MICROFMT_API_CLASS aarch64_abi_traits {
   /// Register value width.
   using register_type = uint64_t;
   /// Architecture register name/index catalog.
@@ -240,7 +240,7 @@ struct aarch64_abi_traits {
 /**
  * @brief DWARF unwind ABI traits for RISC-V 32-bit (RV32).
  */
-struct riscv32_abi_traits {
+struct MICROFMT_API_CLASS riscv32_abi_traits {
   /// Register value width.
   using register_type = uint32_t;
   /// Architecture register name/index catalog.
@@ -295,7 +295,7 @@ struct riscv32_abi_traits {
 /**
  * @brief DWARF unwind ABI traits for RISC-V 64-bit (RV64).
  */
-struct riscv64_abi_traits {
+struct MICROFMT_API_CLASS riscv64_abi_traits {
   /// Register value width.
   using register_type = uint64_t;
   /// Architecture register name/index catalog.
@@ -347,7 +347,7 @@ struct riscv64_abi_traits {
 /**
  * @brief DWARF unwind ABI traits for x86 (32-bit IA-32).
  */
-struct x86_abi_traits {
+struct MICROFMT_API_CLASS x86_abi_traits {
   /// Register value width.
   using register_type = uint32_t;
   /// Architecture register name/index catalog.
@@ -402,7 +402,7 @@ struct x86_abi_traits {
 /**
  * @brief DWARF unwind ABI traits for x86-64 (AMD64 / x86_64).
  */
-struct x86_64_abi_traits {
+struct MICROFMT_API_CLASS x86_64_abi_traits {
   /// Register value width.
   using register_type = uint64_t;
   /// Architecture register name/index catalog.

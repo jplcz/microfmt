@@ -18,7 +18,7 @@ namespace microfmt {
 // Escaped View Configuration & Adapter
 // ============================================================================
 
-struct escaped_view {
+struct MICROFMT_API_CLASS escaped_view {
   span<const char> data{};
   bool quote{true};         // Wrap string in double quotes "..."
   bool escape_quotes{true}; // Escape inner " as \"

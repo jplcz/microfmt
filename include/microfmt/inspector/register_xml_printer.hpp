@@ -11,7 +11,7 @@ namespace microfmt::gdb {
 /**
  * @brief Zero-allocation printer for generating GDB target XML descriptions.
  */
-class register_xml_printer {
+class MICROFMT_API_CLASS register_xml_printer {
 public:
   /**
    * @brief Formats a single register as a GDB XML `<reg>` node.

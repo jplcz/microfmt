@@ -61,7 +61,7 @@ enum class attribute : uint8_t {
 // Style Descriptor
 // ============================================================================
 
-struct style {
+struct MICROFMT_API_CLASS style {
   color fg{color::none};
   color bg{color::none};
   attribute attr{attribute::none};

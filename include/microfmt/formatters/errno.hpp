@@ -76,7 +76,7 @@ inline void write_errno_string(const sink &out, int value) noexcept {
 
 } // namespace detail
 
-struct posix_errno {
+struct MICROFMT_API_CLASS posix_errno {
   int value;
 };
 

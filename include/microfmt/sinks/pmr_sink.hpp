@@ -63,7 +63,7 @@ template <typename... Args>
 // PMR Monotonic Arena Sink (Direct Stream Allocator)
 // ============================================================================
 
-class RELOCO_POINTER arena_sink {
+class MICROFMT_API_CLASS RELOCO_POINTER arena_sink {
 public:
   explicit arena_sink(std::pmr::memory_resource *mr RELOCO_LIFETIMEBOUND, std::size_t initial_chunk_size = 128)
       : mr_(mr) {

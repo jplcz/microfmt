@@ -24,7 +24,7 @@ namespace microfmt {
 /**
  * @brief One `.ARM.exidx` table entry.
  */
-struct arm_exidx_entry {
+struct MICROFMT_API_CLASS arm_exidx_entry {
   /// Relative (PREL31) offset to the function start.
   uint32_t prel31_addr_offset; // Relative offset to function start
   /// Inline bytecode or pointer to `.ARM.extab`.
@@ -39,7 +39,7 @@ struct arm_exidx_entry {
  * @brief Immutable context describing the EXIDX unwinder back to the
  * type-erased handle.
  */
-struct arm_exidx_unwinder_context {
+struct MICROFMT_API_CLASS arm_exidx_unwinder_context {
   /// Address space to unwind in.
   address_space_ref space;
   /// ELF image enumerator used to bind PCs to modules.

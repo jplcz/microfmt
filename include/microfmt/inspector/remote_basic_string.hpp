@@ -147,7 +147,7 @@ template <typename Layout, size_t N>
 /**
  * @brief Factories for common remote C++ string object layouts.
  */
-struct remote_basic_string_traits {
+struct MICROFMT_API_CLASS remote_basic_string_traits {
   /**
    * @brief Creates a layout from explicit size and data-address readers.
    * @param size_reader Callback retained by the size query.

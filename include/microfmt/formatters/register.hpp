@@ -22,7 +22,7 @@ namespace microfmt {
 /**
  * @brief Describes a single bitfield within a register.
  */
-struct reg_field {
+struct MICROFMT_API_CLASS reg_field {
   /**
    * @brief Human-readable field name.
    */

@@ -18,14 +18,14 @@ enum class bit_type : uint8_t {
   value_dec  // Multi-bit field (prints NAME=VAL)
 };
 
-struct bit_field {
+struct MICROFMT_API_CLASS bit_field {
   uint32_t mask;
   uint8_t shift{0};
   microfmt::string_view name{};
   bit_type type{bit_type::flag};
 };
 
-struct bitfield_view {
+struct MICROFMT_API_CLASS bitfield_view {
   uint32_t raw_value{0};
   span<const bit_field> fields{};
   microfmt::string_view separator{" | "};

@@ -15,7 +15,7 @@ namespace microfmt {
 /**
  * @brief Binary search over sorted `.ARM.exidx` unwind tables.
  */
-class exidx_table_searcher {
+class MICROFMT_API_CLASS exidx_table_searcher {
 public:
   /**
    * @brief Decodes a 31-bit program-relative (PREL31) offset.

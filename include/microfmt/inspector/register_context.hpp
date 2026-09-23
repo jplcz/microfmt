@@ -117,7 +117,7 @@ struct mapped_register_context_tag {};
  * @brief Zero-allocation, type-erased handle for inspecting and modifying CPU
  * registers from a frame context.
  */
-class RELOCO_POINTER register_context_ref {
+class MICROFMT_API_CLASS RELOCO_POINTER register_context_ref {
 public:
   constexpr register_context_ref() noexcept = default;
 

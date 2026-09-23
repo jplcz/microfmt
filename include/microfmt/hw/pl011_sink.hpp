@@ -18,7 +18,7 @@ namespace microfmt {
  * Commonly mapped at 0x09000000 on QEMU `virt` and standard ARM development boards.
  * Use `.as_sink()` to obtain a type-erased `microfmt::sink` for formatting pipelines.
  */
-class pl011_sink {
+class MICROFMT_API_CLASS pl011_sink {
 public:
   /**
    * @brief Constructs a PL011 UART controller.

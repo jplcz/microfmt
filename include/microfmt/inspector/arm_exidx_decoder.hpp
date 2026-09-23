@@ -17,7 +17,7 @@ namespace microfmt {
  * @brief Decoder for the inline unwind bytecode packed in an EXIDX word,
  *        writing restored register states directly via register_context_ref.
  */
-class arm_exidx_bytecode_decoder {
+class MICROFMT_API_CLASS arm_exidx_bytecode_decoder {
 public:
   /**
    * @brief Executes up to 3 inline unwind bytes from an exidx/extab word.

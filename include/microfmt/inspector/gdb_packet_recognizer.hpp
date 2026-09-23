@@ -15,7 +15,7 @@ namespace microfmt::gdb {
 /**
  * @brief Zero-allocation packet payload recognizer.
  */
-class packet_recognizer {
+class MICROFMT_API_CLASS packet_recognizer {
 public:
   struct packet_entry {
     microfmt::string_view prefix;

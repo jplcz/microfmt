@@ -22,7 +22,7 @@ class remote_container_view;
 /**
  * @brief Configuration options for formatting container views.
  */
-struct container_options {
+struct MICROFMT_API_CLASS container_options {
   /// Whether key components of entries are rendered.
   bool print_key{true};
   /// Whether value components of entries are rendered.
@@ -171,7 +171,7 @@ make_container_context(IteratorState initial_state,
  * @brief General type-erased view over any remote container or data structure.
  *        Manages its own formatting options directly.
  */
-class RELOCO_POINTER remote_container_view {
+class MICROFMT_API_CLASS RELOCO_POINTER remote_container_view {
 public:
   /**
    * @brief Type-erased function signature used to format a container.

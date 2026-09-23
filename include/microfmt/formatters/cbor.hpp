@@ -74,7 +74,7 @@ class array_writer;
  * transitions the map to `consumed`, after which Clang's `-Wconsumed` flags
  * any further `key`/`kv`/`nested_*` call as a compile-time diagnostic.
  */
-class RELOCO_CONSUMABLE(unconsumed) map_writer {
+class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) map_writer {
 public:
   explicit map_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
     // 0xBF: Indefinite-length map
@@ -212,7 +212,7 @@ private:
  *
  * Consumed-state tracked: see @ref map_writer for the state contract.
  */
-class RELOCO_CONSUMABLE(unconsumed) array_writer {
+class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) array_writer {
 public:
   explicit array_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
     // 0x9F: Indefinite-length array

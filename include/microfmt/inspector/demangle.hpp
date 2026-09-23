@@ -17,7 +17,7 @@ namespace microfmt {
 /**
  * @brief Zero-allocation Itanium (GCC/Clang) name demangler.
  */
-class itanium_demangler {
+class MICROFMT_API_CLASS itanium_demangler {
 public:
   /**
    * @brief Constructs a demangler over an Itanium-mangled symbol.
@@ -509,7 +509,7 @@ private:
 /**
  * @brief Formattable view over a demangled symbol.
  */
-struct demangle_view {
+struct MICROFMT_API_CLASS demangle_view {
   /// Mangled symbol.
   microfmt::string_view symbol;
 };
