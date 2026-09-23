@@ -14,6 +14,11 @@
 
 namespace microfmt::log {
 
+template <std::size_t Capacity> class syslog_sink;
+
+/** @brief Tag selecting `syslog_sink<Capacity>` as a `log_sink` backend. */
+template <std::size_t Capacity> struct syslog_sink_tag {};
+
 /** @brief Adapter that writes structured records to POSIX syslog. */
 template <std::size_t Capacity = 256> class syslog_sink {
   static_assert(Capacity > 0, "Capacity must be at least 1 byte");
@@ -23,10 +28,20 @@ public:
 
   explicit constexpr syslog_sink(write_fn_t write_fn = write_to_syslog) noexcept : write_fn_(write_fn) {}
 
-  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
-    return log_sink{this,
-                    [](void *ctx, const log_msg &msg) noexcept { static_cast<syslog_sink *>(ctx)->log_impl(msg); },
-                    nullptr, level::trace};
+  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND { return log_sink(syslog_sink_tag<Capacity>{}, *this); }
+
+  void log_impl(const log_msg &msg) noexcept {
+    if (msg.lvl == level::off) {
+      return;
+    }
+
+    buffer_sink<Capacity> buffer;
+    const auto out = buffer.as_sink();
+    if (!msg.logger_name.empty()) {
+      microfmt::format_to(out, "[{}] ", msg.logger_name);
+    }
+    microfmt::format_to(out, "{}", msg.payload);
+    write_fn_(priority_for(msg.lvl), buffer.view());
   }
 
 private:
@@ -57,21 +72,13 @@ private:
     return LOG_DEBUG;
   }
 
-  void log_impl(const log_msg &msg) noexcept {
-    if (msg.lvl == level::off) {
-      return;
-    }
-
-    buffer_sink<Capacity> buffer;
-    const auto out = buffer.as_sink();
-    if (!msg.logger_name.empty()) {
-      microfmt::format_to(out, "[{}] ", msg.logger_name);
-    }
-    microfmt::format_to(out, "{}", msg.payload);
-    write_fn_(priority_for(msg.lvl), buffer.view());
-  }
-
   write_fn_t write_fn_;
+};
+
+template <std::size_t Capacity> struct log_sink_traits<syslog_sink_tag<Capacity>> {
+  using context_type = syslog_sink<Capacity>;
+
+  static void log(value_ref<context_type> ctx, const log_msg &msg) noexcept { ctx->log_impl(msg); }
 };
 
 } // namespace microfmt::log

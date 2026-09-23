@@ -82,3 +82,13 @@
 #else
 #define MICROFMT_HAS_ANDROID_LOG 0
 #endif
+
+// dlog availability cannot be reliably inferred from a compiler-predefined
+// macro (unlike MICROFMT_HAS_ANDROID_LOG's __ANDROID__ check); headers
+// assume the real Tizen SDK is available unless the includer opts out via
+// MICROFMT_COMPILE_WITHOUT_TIZEN_DLOG (see CMakeLists.txt).
+#if defined(MICROFMT_COMPILE_WITHOUT_TIZEN_DLOG)
+#define MICROFMT_HAS_DLOG 0
+#else
+#define MICROFMT_HAS_DLOG 1
+#endif

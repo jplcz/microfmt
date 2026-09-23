@@ -14,14 +14,55 @@
 
 namespace microfmt::log {
 
+namespace detail {
+
+/**
+ * @brief No-op mutex used as `basic_logger`'s default `Mutex` so
+ * single-threaded usage pays zero synchronization cost.
+ */
+struct null_mutex {
+  constexpr void lock() noexcept {}
+  constexpr void unlock() noexcept {}
+  [[nodiscard]] constexpr bool try_lock() noexcept { return true; }
+};
+
+} // namespace detail
+
 /**
  * @brief Fixed-capacity logger that formats records before dispatching to sinks.
  *
  * @tparam MaxSinks Maximum number of attached structured log sinks.
  * @tparam MsgBufferCapacity Capacity of each formatted message payload.
+ * @tparam Mutex BasicLockable type (`lock()`/`unlock()`) serializing calls to
+ * `log()`/`flush()`/`add_sink()` across threads. Defaults to a no-op lock, so
+ * concurrent callers may interleave ("slice") sink writes; pass e.g.
+ * `std::mutex` to serialize them instead when a single logger instance is
+ * shared across threads doing normal (non-signal-handler) logging.
+ *
+ * @warning `basic_logger` is intended for normal program operation only, and
+ * must never be reused from a signal/crash handler regardless of `Mutex`
+ * choice: a blocking mutex can deadlock if the signal lands on a thread that
+ * already holds it, and several sink backends (buffered stdio, syslog, the
+ * systemd journal) aren't async-signal-safe to begin with. Crash handlers
+ * must set up their own dedicated, minimal sink chain built directly on an
+ * async-signal-safe primitive such as `fd_sink` (see `crash_handler_demo.cpp`)
+ * instead of routing through an application's `basic_logger`.
  */
-template <size_t MaxSinks = 4, size_t MsgBufferCapacity = 256>
+template <size_t MaxSinks = 4, size_t MsgBufferCapacity = 256,
+          typename Mutex = detail::null_mutex>
 class basic_logger {
+  // Tiny RAII lock guard so this header doesn't need to pull in <mutex>
+  // merely for std::lock_guard; works with any BasicLockable Mutex,
+  // including std::mutex if the caller already includes <mutex>.
+  struct lock_guard {
+    explicit lock_guard(Mutex &m) noexcept : m_(m) { m_.lock(); }
+    ~lock_guard() noexcept { m_.unlock(); }
+    lock_guard(const lock_guard &) = delete;
+    lock_guard &operator=(const lock_guard &) = delete;
+
+    Mutex &m_;
+  };
+
 public:
   explicit constexpr basic_logger(microfmt::string_view name) noexcept
       : name_(name) {}
@@ -33,6 +74,7 @@ public:
       : name_(name), sinks_{sinks...}, sink_count_(sizeof...(Sinks)) {}
 
   bool add_sink(log_sink s) noexcept {
+    lock_guard guard(mutex_);
     if (sink_count_ >= MaxSinks)
       return false;
     sinks_[sink_count_++] = s;
@@ -59,6 +101,7 @@ public:
     if (!should_log(msg.lvl) || sink_count_ == 0) {
       return;
     }
+    lock_guard guard(mutex_);
     for (size_t i = 0; i < sink_count_; ++i) {
       sinks_[i].log(msg);
     }
@@ -142,6 +185,7 @@ public:
   }
 
   void flush() noexcept {
+    lock_guard guard(mutex_);
     for (size_t i = 0; i < sink_count_; ++i) {
       sinks_[i].flush();
     }
@@ -179,6 +223,7 @@ private:
                 .payload = buf.view(),
                 .loc = loc};
 
+    lock_guard guard(mutex_);
     for (size_t i = 0; i < sink_count_; ++i) {
       sinks_[i].log(msg);
     }
@@ -188,6 +233,7 @@ private:
   level level_{level::info};
   microfmt::array<log_sink, MaxSinks> sinks_{};
   size_t sink_count_{0};
+  Mutex mutex_{};
 };
 
 using logger = basic_logger<4, 256>;

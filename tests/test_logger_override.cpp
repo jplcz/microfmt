@@ -20,7 +20,7 @@ struct captured_log {
 
 captured_log captured;
 
-void capture_log(void *, const microfmt::log::log_msg &message) noexcept {
+void capture_log(const microfmt::log::log_msg &message) noexcept {
   captured.level = message.lvl;
   captured.message_size =
       message.payload.size() < captured.message.size() ? message.payload.size()
@@ -31,9 +31,25 @@ void capture_log(void *, const microfmt::log::log_msg &message) noexcept {
   ++captured.count;
 }
 
+// Tag selecting `capture_log` as a stateless `log_sink` backend, following
+// the same tag + `log_sink_traits<Tag>` pattern every built-in backend
+// (stdout_color_sink, syslog_sink, ...) uses.
+struct capture_log_tag {};
+
+} // namespace
+
+namespace microfmt::log {
+template <> struct log_sink_traits<capture_log_tag> {
+  using context_type = void;
+
+  static void log(const log_msg &message) noexcept { capture_log(message); }
+};
+} // namespace microfmt::log
+
+namespace {
+
 microfmt::log::logger application_logger(
-    "application", microfmt::log::log_sink{nullptr, capture_log, nullptr,
-                                             microfmt::log::level::trace});
+    "application", microfmt::log::log_sink(capture_log_tag{}, microfmt::log::level::trace));
 
 } // namespace
 

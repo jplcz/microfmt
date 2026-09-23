@@ -6,6 +6,7 @@
 
 /** @file android_log_sink.hpp @brief Structured Android logcat sink adapter. */
 
+#include "../log/detail/tagged_log_sink_base.hpp"
 #include "../log/sink.hpp"
 #include <cstddef>
 #include <string_view>
@@ -13,7 +14,11 @@
 #if MICROFMT_HAS_ANDROID_LOG
 #include <android/log.h>
 #else
-// Fallback stubs for host-side unit testing / compilation outside NDK
+#include <cstdio>
+
+// Fallback stubs for host-side unit testing / compilation outside the NDK.
+// Rather than being a silent no-op, this prints to stdout so demos and
+// manual testing still produce visible output on non-Android hosts.
 enum android_LogPriority {
   ANDROID_LOG_UNKNOWN = 0,
   ANDROID_LOG_DEFAULT,
@@ -25,41 +30,48 @@ enum android_LogPriority {
   ANDROID_LOG_FATAL,
   ANDROID_LOG_SILENT
 };
-inline int __android_log_write(int /*prio*/, const char * /*tag*/, const char * /*text*/) { return 0; }
+inline int __android_log_write(int prio, const char *tag, const char *text) {
+  std::fprintf(stdout, "[%d] %s: %s\n", prio, tag, text);
+  return 0;
+}
 #endif
 
 namespace microfmt::log {
 
+template <std::size_t MessageCapacity, std::size_t TagCapacity> class android_log_sink;
+
+/** @brief Tag selecting `android_log_sink<MessageCapacity, TagCapacity>` as a `log_sink` backend. */
+template <std::size_t MessageCapacity, std::size_t TagCapacity> struct android_log_sink_tag {};
+
 template <std::size_t MessageCapacity = 512, std::size_t TagCapacity = 64>
 /** @brief Adapter that writes structured records to Android logcat. */
-class android_log_sink {
+class android_log_sink : public detail::tagged_log_sink_base<TagCapacity> {
   static_assert(MessageCapacity > 0, "Message capacity must be at least 1 byte");
-  static_assert(TagCapacity > 0, "Tag capacity must be at least 1 byte");
+
+  using tag_base = detail::tagged_log_sink_base<TagCapacity>;
 
 public:
   using write_fn_t = void (*)(int priority, microfmt::string_view tag, microfmt::string_view message) noexcept;
 
   explicit android_log_sink(microfmt::string_view tag = "microfmt", write_fn_t write_fn = write_to_logcat) noexcept
-      : write_fn_(write_fn) {
-    set_tag(tag);
-  }
+      : tag_base(tag), write_fn_(write_fn) {}
 
   [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
-    return log_sink{this,
-                    [](void *ctx, const log_msg &msg) noexcept { static_cast<android_log_sink *>(ctx)->log_impl(msg); },
-                    nullptr, level::trace};
+    return log_sink(android_log_sink_tag<MessageCapacity, TagCapacity>{}, *this);
   }
 
-  void set_tag(microfmt::string_view tag) noexcept {
-    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
-
-    tag_size_ = tag.size() < TagCapacity - 1 ? tag.size() : TagCapacity - 1;
-    for (std::size_t i = 0; i < tag_size_; ++i) {
-      tag_[i] = tag[i];
+  void log_impl(const log_msg &msg) noexcept {
+    if (msg.lvl == level::off) {
+      return;
     }
-    tag_[tag_size_] = '\0';
 
-    RELOCO_END_UNSAFE_BUFFER_USAGE;
+    buffer_sink<MessageCapacity> buffer;
+    const auto out = buffer.as_sink();
+    microfmt::format_to(out, "{}", msg.payload);
+
+    char scratch[TagCapacity];
+    const auto tag = this->resolve_tag(msg.logger_name, scratch);
+    write_fn_(priority_for(msg.lvl), tag, buffer.view());
   }
 
 private:
@@ -87,41 +99,14 @@ private:
     return ANDROID_LOG_SILENT;
   }
 
-  void log_impl(const log_msg &msg) noexcept {
-    if (msg.lvl == level::off) {
-      return;
-    }
-
-    buffer_sink<MessageCapacity> buffer;
-    const auto out = buffer.as_sink();
-    microfmt::format_to(out, "{}", msg.payload);
-
-    // Prefer the originating logger's name as the logcat tag so records from
-    // different loggers stay distinguishable in filters; fall back to the
-    // sink's configured default tag when the message carries none.
-    if (msg.logger_name.empty()) {
-      write_fn_(priority_for(msg.lvl), microfmt::string_view(tag_, tag_size_), buffer.view());
-      return;
-    }
-
-    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
-
-    char logger_tag[TagCapacity];
-    const std::size_t logger_tag_size =
-        msg.logger_name.size() < TagCapacity - 1 ? msg.logger_name.size() : TagCapacity - 1;
-    for (std::size_t i = 0; i < logger_tag_size; ++i) {
-      logger_tag[i] = msg.logger_name[i];
-    }
-    logger_tag[logger_tag_size] = '\0';
-
-    RELOCO_END_UNSAFE_BUFFER_USAGE;
-
-    write_fn_(priority_for(msg.lvl), microfmt::string_view(logger_tag, logger_tag_size), buffer.view());
-  }
-
   write_fn_t write_fn_;
-  char tag_[TagCapacity]{};
-  std::size_t tag_size_{0};
+};
+
+template <std::size_t MessageCapacity, std::size_t TagCapacity>
+struct log_sink_traits<android_log_sink_tag<MessageCapacity, TagCapacity>> {
+  using context_type = android_log_sink<MessageCapacity, TagCapacity>;
+
+  static void log(value_ref<context_type> ctx, const log_msg &msg) noexcept { ctx->log_impl(msg); }
 };
 
 } // namespace microfmt::log

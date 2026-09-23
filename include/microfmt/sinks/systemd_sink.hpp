@@ -16,6 +16,11 @@
 
 namespace microfmt::log {
 
+template <std::size_t MessageCapacity, std::size_t IdentifierCapacity> class systemd_sink;
+
+/** @brief Tag selecting `systemd_sink<MessageCapacity, IdentifierCapacity>` as a `log_sink` backend. */
+template <std::size_t MessageCapacity, std::size_t IdentifierCapacity> struct systemd_sink_tag {};
+
 template <std::size_t MessageCapacity = 512,
           std::size_t IdentifierCapacity = 64>
 /** @brief Adapter that writes structured records to the systemd journal. */
@@ -34,11 +39,13 @@ public:
       : write_fn_(write_fn) {}
 
   [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
-    return log_sink{this,
-                    [](void *ctx, const log_msg &msg) noexcept {
-                      static_cast<systemd_sink *>(ctx)->log_impl(msg);
-                    },
-                    nullptr, level::trace};
+    return log_sink(systemd_sink_tag<MessageCapacity, IdentifierCapacity>{}, *this);
+  }
+
+  void log_impl(const log_msg &msg) noexcept {
+    if (msg.lvl != level::off) {
+      write_fn_(priority_for(msg.lvl), msg.logger_name, msg.payload);
+    }
   }
 
 private:
@@ -104,13 +111,14 @@ private:
     return LOG_DEBUG;
   }
 
-  void log_impl(const log_msg &msg) noexcept {
-    if (msg.lvl != level::off) {
-      write_fn_(priority_for(msg.lvl), msg.logger_name, msg.payload);
-    }
-  }
-
   write_fn_t write_fn_;
+};
+
+template <std::size_t MessageCapacity, std::size_t IdentifierCapacity>
+struct log_sink_traits<systemd_sink_tag<MessageCapacity, IdentifierCapacity>> {
+  using context_type = systemd_sink<MessageCapacity, IdentifierCapacity>;
+
+  static void log(value_ref<context_type> ctx, const log_msg &msg) noexcept { ctx->log_impl(msg); }
 };
 
 } // namespace microfmt::log

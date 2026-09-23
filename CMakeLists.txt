@@ -254,11 +254,17 @@ if(JPLCZ_MICROFMT_BUILD_HEADER_CHECKS)
                 MICROFMT_COMPILE_WITH_SYSTEMD=1)
         endif()
 
-        if(STANDARD GREATER_EQUAL 20 AND TARGET PkgConfig::JPLCZ_MICROFMT_TIZEN_DLOG)
-            target_link_libraries(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
-                PkgConfig::JPLCZ_MICROFMT_TIZEN_DLOG)
-            target_compile_definitions(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
-                MICROFMT_COMPILE_WITH_TIZEN_DLOG=1)
+        if(STANDARD GREATER_EQUAL 20)
+            if(TARGET PkgConfig::JPLCZ_MICROFMT_TIZEN_DLOG)
+                target_link_libraries(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
+                    PkgConfig::JPLCZ_MICROFMT_TIZEN_DLOG)
+            else()
+                # Real dlog.h isn't available here; opt the header-only
+                # compile check out of it so tizen_dlog_sink.hpp falls back
+                # to its host-side stub instead of failing to find <dlog.h>.
+                target_compile_definitions(jplcz_microfmt_headers_cxx${STANDARD} PRIVATE
+                    MICROFMT_COMPILE_WITHOUT_TIZEN_DLOG=1)
+            endif()
         endif()
     endfunction()
 

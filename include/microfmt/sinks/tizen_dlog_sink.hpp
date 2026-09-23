@@ -6,17 +6,52 @@
 
 /** @file tizen_dlog_sink.hpp @brief Structured Tizen DLOG sink adapter. */
 
+#include "../log/detail/tagged_log_sink_base.hpp"
 #include "../log/sink.hpp"
 #include <cstddef>
 #include <string_view>
 
+#if MICROFMT_HAS_DLOG
 #include <dlog.h>
+#else
+#include <cstdarg>
+#include <cstdio>
+
+// Fallback stubs for host-side unit testing / compilation outside the Tizen
+// SDK. Rather than being a silent no-op, this prints to stdout so demos and
+// manual testing still produce visible output on non-Tizen hosts.
+enum log_priority {
+  DLOG_UNKNOWN = 0,
+  DLOG_DEFAULT,
+  DLOG_VERBOSE,
+  DLOG_DEBUG,
+  DLOG_INFO,
+  DLOG_WARN,
+  DLOG_ERROR,
+  DLOG_FATAL,
+  DLOG_SILENT
+};
+inline int dlog_print(log_priority prio, const char *tag, const char *fmt, ...) {
+  std::fprintf(stdout, "[%d] %s: ", static_cast<int>(prio), tag);
+  va_list args;
+  va_start(args, fmt);
+  const int result = std::vfprintf(stdout, fmt, args);
+  va_end(args);
+  std::fprintf(stdout, "\n");
+  return result;
+}
+#endif
 
 namespace microfmt::log {
 
+template <std::size_t TagCapacity> class tizen_dlog_sink;
+
+/** @brief Tag selecting `tizen_dlog_sink<TagCapacity>` as a `log_sink` backend. */
+template <std::size_t TagCapacity> struct tizen_dlog_sink_tag {};
+
 /** @brief Adapter that writes structured records to Tizen DLOG. */
-template <std::size_t TagCapacity = 64> class tizen_dlog_sink {
-  static_assert(TagCapacity > 0, "Tag capacity must be at least 1 byte");
+template <std::size_t TagCapacity = 64> class tizen_dlog_sink : public detail::tagged_log_sink_base<TagCapacity> {
+  using tag_base = detail::tagged_log_sink_base<TagCapacity>;
 
 public:
   using write_fn_t = void (*)(int priority, microfmt::string_view tag,
@@ -24,24 +59,20 @@ public:
 
   explicit tizen_dlog_sink(microfmt::string_view tag = "microfmt",
                            write_fn_t write_fn = write_to_dlog) noexcept
-      : write_fn_(write_fn) {
-    set_tag(tag);
-  }
+      : tag_base(tag), write_fn_(write_fn) {}
 
   [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
-    return log_sink{this,
-                    [](void *ctx, const log_msg &msg) noexcept {
-                      static_cast<tizen_dlog_sink *>(ctx)->log_impl(msg);
-                    },
-                    nullptr, level::trace};
+    return log_sink(tizen_dlog_sink_tag<TagCapacity>{}, *this);
   }
 
-  void set_tag(microfmt::string_view tag) noexcept {
-    tag_size_ = tag.size() < TagCapacity - 1 ? tag.size() : TagCapacity - 1;
-    for (std::size_t i = 0; i < tag_size_; ++i) {
-      tag_[i] = tag[i];
+  void log_impl(const log_msg &msg) noexcept {
+    if (msg.lvl == level::off) {
+      return;
     }
-    tag_[tag_size_] = '\0';
+
+    char scratch[TagCapacity];
+    const auto tag = this->resolve_tag(msg.logger_name, scratch);
+    write_fn_(priority_for(msg.lvl), tag, msg.payload);
   }
 
 private:
@@ -70,38 +101,14 @@ private:
     return DLOG_SILENT;
   }
 
-  void log_impl(const log_msg &msg) noexcept {
-    if (msg.lvl == level::off) {
-      return;
-    }
-
-    // Prefer the originating logger's name as the DLOG tag so records from
-    // different loggers stay distinguishable in filters; fall back to the
-    // sink's configured default tag when the message carries none.
-    if (msg.logger_name.empty()) {
-      write_fn_(priority_for(msg.lvl), microfmt::string_view(tag_, tag_size_),
-                msg.payload);
-      return;
-    }
-
-    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
-
-    char logger_tag[TagCapacity];
-    const std::size_t logger_tag_size =
-        msg.logger_name.size() < TagCapacity - 1 ? msg.logger_name.size() : TagCapacity - 1;
-    for (std::size_t i = 0; i < logger_tag_size; ++i) {
-      logger_tag[i] = msg.logger_name[i];
-    }
-    logger_tag[logger_tag_size] = '\0';
-
-    RELOCO_END_UNSAFE_BUFFER_USAGE;
-
-    write_fn_(priority_for(msg.lvl), microfmt::string_view(logger_tag, logger_tag_size), msg.payload);
-  }
-
   write_fn_t write_fn_;
-  char tag_[TagCapacity]{};
-  std::size_t tag_size_{0};
+};
+
+template <std::size_t TagCapacity> struct log_sink_traits<tizen_dlog_sink_tag<TagCapacity>> {
+  using context_type = tizen_dlog_sink<TagCapacity>;
+
+  static void log(value_ref<context_type> ctx, const log_msg &msg) noexcept { ctx->log_impl(msg); }
 };
 
 } // namespace microfmt::log
+
