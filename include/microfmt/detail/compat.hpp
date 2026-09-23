@@ -165,6 +165,36 @@
 #define MICROFMT_API_CONSTEXPR MICROFMT_API
 #endif
 
+// MICROFMT_API_CLASS decorates a whole class/struct (as opposed to
+// MICROFMT_API, which decorates individual members/free functions) so its
+// vtable and any members implicitly emitted per-TU (typeinfo, defaulted
+// special members, ...) are deduplicated across a MICROFMT_SHARED_BUILD
+// library's shared-object boundary, exactly like MICROFMT_API does for
+// out-of-line function definitions.
+//
+// A plain `class`/`struct` head cannot be decorated `inline` (unlike a
+// function or variable), so MICROFMT_API_CLASS -- unlike MICROFMT_API --
+// expands to nothing in the default header-only build: there is no
+// separate shared object to deduplicate against, and every member stays
+// implicitly inline the same way it already does today.
+#if !defined(MICROFMT_SHARED)
+#define MICROFMT_API_CLASS
+#elif defined(MICROFMT_SHARED_BUILD)
+#if defined(_MSC_VER)
+#define MICROFMT_API_CLASS __declspec(dllexport)
+#elif RELOCO_HAS_ATTRIBUTE(visibility)
+#define MICROFMT_API_CLASS __attribute__((visibility("default")))
+#else
+#define MICROFMT_API_CLASS
+#endif
+#else
+#if defined(_MSC_VER)
+#define MICROFMT_API_CLASS __declspec(dllimport)
+#else
+#define MICROFMT_API_CLASS
+#endif
+#endif
+
 // dlog availability cannot be reliably inferred from a compiler-predefined
 // macro (unlike MICROFMT_HAS_ANDROID_LOG's __ANDROID__ check); headers
 // assume the real Tizen SDK is available unless the includer opts out via
