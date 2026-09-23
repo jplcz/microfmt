@@ -82,46 +82,60 @@ endif()
 #
 # jplcz_reloco provides the hardened container / lifetime-safety primitives
 # that jplcz_microfmt is migrating onto. Callers that already vendor or pin a
+# jplcz_reloco dependency
+#
+# jplcz_reloco provides the hardened container / lifetime-safety primitives
+# that jplcz_microfmt is migrating onto. Callers that already vendor or pin a
 # specific reloco checkout can point JPLCZ_MICROFMT_RELOCO_SOURCE_DIR at it;
 # otherwise it is fetched from its GitHub repository at a pinned commit.
-set(JPLCZ_MICROFMT_RELOCO_SOURCE_DIR "" CACHE PATH
-    "Path to a local jplcz_reloco checkout to use instead of fetching it")
-# Allow the local checkout path to be supplied via an environment variable
-# (e.g. for CI or shell profiles) without having to pass -D on every configure.
-# The explicit CMake cache variable/-D option always takes precedence.
-if(NOT JPLCZ_MICROFMT_RELOCO_SOURCE_DIR AND DEFINED ENV{JPLCZ_MICROFMT_RELOCO_SOURCE_DIR})
-    set(JPLCZ_MICROFMT_RELOCO_SOURCE_DIR "$ENV{JPLCZ_MICROFMT_RELOCO_SOURCE_DIR}" CACHE PATH
-        "Path to a local jplcz_reloco checkout to use instead of fetching it" FORCE)
-endif()
-set(JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY "https://github.com/jplcz/reloco.git" CACHE STRING
-    "Git repository to fetch jplcz_reloco from when JPLCZ_MICROFMT_RELOCO_SOURCE_DIR is unset")
-set(JPLCZ_MICROFMT_RELOCO_GIT_TAG "master" CACHE STRING
-    "Git tag or commit to fetch jplcz_reloco from when JPLCZ_MICROFMT_RELOCO_SOURCE_DIR is unset")
+#
+# If a parent project already brought in jplcz_reloco itself (e.g. its own
+# `add_subdirectory(path/to/reloco)` before `add_subdirectory(path/to/microfmt)`,
+# or its own earlier FetchContent_MakeAvailable(jplcz_reloco)), the
+# jplcz_reloco::reloco target already exists by the time this file runs:
+# skip fetching/declaring it a second time and reuse the parent's target
+# as-is (including whatever options the parent already configured it
+# with) instead of silently overriding it.
+if(NOT TARGET jplcz_reloco::reloco)
+    set(JPLCZ_MICROFMT_RELOCO_SOURCE_DIR "" CACHE PATH
+        "Path to a local jplcz_reloco checkout to use instead of fetching it")
+    # Allow the local checkout path to be supplied via an environment variable
+    # (e.g. for CI or shell profiles) without having to pass -D on every configure.
+    # The explicit CMake cache variable/-D option always takes precedence.
+    if(NOT JPLCZ_MICROFMT_RELOCO_SOURCE_DIR AND DEFINED ENV{JPLCZ_MICROFMT_RELOCO_SOURCE_DIR})
+        set(JPLCZ_MICROFMT_RELOCO_SOURCE_DIR "$ENV{JPLCZ_MICROFMT_RELOCO_SOURCE_DIR}" CACHE PATH
+            "Path to a local jplcz_reloco checkout to use instead of fetching it" FORCE)
+    endif()
+    set(JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY "https://github.com/jplcz/reloco.git" CACHE STRING
+        "Git repository to fetch jplcz_reloco from when JPLCZ_MICROFMT_RELOCO_SOURCE_DIR is unset")
+    set(JPLCZ_MICROFMT_RELOCO_GIT_TAG "master" CACHE STRING
+        "Git tag or commit to fetch jplcz_reloco from when JPLCZ_MICROFMT_RELOCO_SOURCE_DIR is unset")
 
-include(FetchContent)
-if(JPLCZ_MICROFMT_RELOCO_SOURCE_DIR)
-    FetchContent_Declare(
-        jplcz_reloco
-        SOURCE_DIR "${JPLCZ_MICROFMT_RELOCO_SOURCE_DIR}"
-    )
-else()
-    FetchContent_Declare(
-        jplcz_reloco
-        GIT_REPOSITORY "${JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY}"
-        GIT_TAG "${JPLCZ_MICROFMT_RELOCO_GIT_TAG}"
-    )
-endif()
+    include(FetchContent)
+    if(JPLCZ_MICROFMT_RELOCO_SOURCE_DIR)
+        FetchContent_Declare(
+            jplcz_reloco
+            SOURCE_DIR "${JPLCZ_MICROFMT_RELOCO_SOURCE_DIR}"
+        )
+    else()
+        FetchContent_Declare(
+            jplcz_reloco
+            GIT_REPOSITORY "${JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY}"
+            GIT_TAG "${JPLCZ_MICROFMT_RELOCO_GIT_TAG}"
+        )
+    endif()
 
-# jplcz_reloco is consumed as a header-only build dependency: keep its own
-# development targets (tests, header checks, strict warnings) out of the
-# combined build, and mirror JPLCZ_MICROFMT_INSTALL so an installed
-# jplcz_microfmt package also installs and exports the jplcz_reloco package it
-# depends on.
-set(JPLCZ_RELOCO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(JPLCZ_RELOCO_BUILD_HEADER_CHECKS OFF CACHE BOOL "" FORCE)
-set(JPLCZ_RELOCO_ENABLE_STRICT_WARNINGS OFF CACHE BOOL "" FORCE)
-set(JPLCZ_RELOCO_INSTALL ${JPLCZ_MICROFMT_INSTALL} CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(jplcz_reloco)
+    # jplcz_reloco is consumed as a header-only build dependency: keep its own
+    # development targets (tests, header checks, strict warnings) out of the
+    # combined build, and mirror JPLCZ_MICROFMT_INSTALL so an installed
+    # jplcz_microfmt package also installs and exports the jplcz_reloco package it
+    # depends on.
+    set(JPLCZ_RELOCO_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(JPLCZ_RELOCO_BUILD_HEADER_CHECKS OFF CACHE BOOL "" FORCE)
+    set(JPLCZ_RELOCO_ENABLE_STRICT_WARNINGS OFF CACHE BOOL "" FORCE)
+    set(JPLCZ_RELOCO_INSTALL ${JPLCZ_MICROFMT_INSTALL} CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(jplcz_reloco)
+endif()
 
 # Header-only interface target
 add_library(jplcz_microfmt INTERFACE)

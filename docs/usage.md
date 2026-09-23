@@ -46,6 +46,39 @@ rules to off. They do not modify `CMAKE_CXX_STANDARD`; linking
 On MSVC, the target also propagates `/Zc:preprocessor`, which is required by
 the C++20 logging macros that use `__VA_OPT__`.
 
+### The `jplcz_reloco` dependency, and reusing a parent project's own copy
+
+`jplcz_microfmt` depends on `jplcz_reloco` (see the top-level
+`CMakeLists.txt`). By default it fetches its own copy via `FetchContent`
+(pinned to `JPLCZ_MICROFMT_RELOCO_GIT_TAG`, `master` unless overridden),
+or uses a local checkout if `JPLCZ_MICROFMT_RELOCO_SOURCE_DIR`
+(cache variable or environment variable of the same name) is set.
+
+If a parent project has *already* brought in `jplcz_reloco` itself before
+adding `jplcz_microfmt` — its own `add_subdirectory(path/to/jplcz_reloco)`,
+or its own earlier `FetchContent_MakeAvailable(jplcz_reloco)` — the
+`jplcz_reloco::reloco` target already exists by the time jplcz_microfmt's
+`CMakeLists.txt` runs. jplcz_microfmt detects this (`if(NOT TARGET
+jplcz_reloco::reloco)`) and skips fetching/declaring `jplcz_reloco` a
+second time entirely, reusing the parent's target and whatever options the
+parent already configured it with, instead of silently overriding them or
+declaring a conflicting second `FetchContent` source for the same
+dependency name:
+
+```cmake
+# Parent project's own CMakeLists.txt
+add_subdirectory(third_party/jplcz_reloco)   # jplcz_reloco::reloco now exists
+add_subdirectory(third_party/jplcz_microfmt) # reuses it; does not fetch its own copy
+
+target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
+```
+
+This applies equally to the `FetchContent` form: as long as
+`jplcz_reloco::reloco` exists (by any means) before `jplcz_microfmt`'s
+`CMakeLists.txt` runs, `JPLCZ_MICROFMT_RELOCO_SOURCE_DIR`/
+`JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY`/`JPLCZ_MICROFMT_RELOCO_GIT_TAG` are
+all ignored, since there is nothing left for them to configure.
+
 ### Installable CMake package
 
 Configure a standalone or `ExternalProject` build with

@@ -90,6 +90,21 @@ installed `jplcz_microfmt` package always installs and exports the matching
 `jplcz_reloco` package alongside it, and `find_package(jplcz_microfmt)`
 transitively resolves `jplcz_reloco` through `find_dependency`.
 
+If the `jplcz_reloco::reloco` target already exists by the time
+`jplcz_microfmt`'s `CMakeLists.txt` runs — e.g. a parent project's own
+`add_subdirectory(path/to/jplcz_reloco)` placed *before*
+`add_subdirectory(path/to/jplcz_microfmt)`, or the parent's own earlier
+`FetchContent_MakeAvailable(jplcz_reloco)` — jplcz_microfmt detects it
+(`if(NOT TARGET jplcz_reloco::reloco)`) and skips its own fetch/declare
+step entirely, reusing that existing target (and whatever options/version
+the parent already configured it with) instead of declaring a second,
+conflicting `FetchContent` source for the same dependency name.
+`JPLCZ_MICROFMT_RELOCO_SOURCE_DIR`/`JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY`/
+`JPLCZ_MICROFMT_RELOCO_GIT_TAG` are all ignored in that case, since there is
+nothing left for them to configure. See
+[Using jplcz_microfmt](usage.md#the-jplcz_reloco-dependency-and-reusing-a-parent-projects-own-copy)
+for the consumer-facing version of this.
+
 ## Build the complete compiler and architecture matrix
 
 Run the matrix script to build Debug, Release, RelWithDebInfo, and MinSizeRel

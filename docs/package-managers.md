@@ -130,6 +130,65 @@ SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/jplcz_microfmt"
 No CPM-specific target alias is needed; `CPMAddPackage` delegates to the
 project's normal `add_subdirectory` integration.
 
+### Vendoring `jplcz_reloco` yourself, side by side with `jplcz_microfmt`
+
+A consuming project that wants to pin/vendor `jplcz_reloco` itself — rather
+than letting `jplcz_microfmt` fetch its own pinned copy (see
+[Using jplcz_microfmt](usage.md#the-jplcz_reloco-dependency-and-reusing-a-parent-projects-own-copy))
+— can call `CPMAddPackage` for both, in order, from custom vendored
+sources:
+
+```cmake
+include(cmake/CPM.cmake)
+
+CPMAddPackage(
+    NAME jplcz_reloco
+    SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/jplcz_reloco"
+    OPTIONS
+        "JPLCZ_RELOCO_BUILD_TESTS OFF"
+        "JPLCZ_RELOCO_BUILD_HEADER_CHECKS OFF"
+        "JPLCZ_RELOCO_ENABLE_STRICT_WARNINGS OFF"
+        "JPLCZ_RELOCO_INSTALL OFF"
+)
+
+CPMAddPackage(
+    NAME jplcz_microfmt
+    SOURCE_DIR "${CMAKE_SOURCE_DIR}/third_party/jplcz_microfmt"
+    OPTIONS
+        "JPLCZ_MICROFMT_BUILD_TESTS OFF"
+        "JPLCZ_MICROFMT_BUILD_EXAMPLES OFF"
+        "JPLCZ_MICROFMT_BUILD_BENCHMARKS OFF"
+        "JPLCZ_MICROFMT_BUILD_HEADER_CHECKS OFF"
+        "JPLCZ_MICROFMT_INSTALL OFF"
+)
+
+target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt jplcz_reloco::reloco)
+```
+
+The `jplcz_reloco` package must be added **first** (as above): by the time
+the second `CPMAddPackage` call reaches `jplcz_microfmt`'s
+`CMakeLists.txt`, the `jplcz_reloco::reloco` target it creates already
+exists, and `jplcz_microfmt` detects that (the same `if(NOT TARGET
+jplcz_reloco::reloco)` guard covered in
+[Using jplcz_microfmt](usage.md#the-jplcz_reloco-dependency-and-reusing-a-parent-projects-own-copy))
+and reuses it instead of fetching/declaring its own copy — regardless of
+whether that existing target came from a plain `add_subdirectory`, a raw
+`FetchContent_MakeAvailable`, or, as here, `CPMAddPackage` itself. There is
+nothing CPM-specific about this reuse: `CPMAddPackage` ultimately calls
+`add_subdirectory` under the hood and produces the exact same
+`jplcz_reloco::reloco` alias either way, so the guard cannot tell the
+difference and does not need to.
+
+If the order were reversed (`jplcz_microfmt` added first), `jplcz_microfmt`
+would fetch/declare its own `jplcz_reloco` copy before your own
+`CPMAddPackage(NAME jplcz_reloco ...)` call runs; that second call would
+then hit CPM's own name-based deduplication (`jplcz_reloco` already
+added) and safely reuse the same target instead of erroring, but you would
+also silently get whichever `jplcz_reloco` version `jplcz_microfmt`'s own
+defaults pin, not your vendored copy. Add `jplcz_reloco` before
+`jplcz_microfmt` to make sure your vendored copy is the one that wins.
+
+
 ## Other dependency managers
 
 Other dependency managers that consume CMake projects directly can use the
