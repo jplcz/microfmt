@@ -1,17 +1,29 @@
 #pragma once
 #include <microfmt/microfmt.hpp>
+#include <reloco/binary_heap.hpp>
+#include <reloco/boxed_slice.hpp>
+#include <reloco/checked.hpp>
 #include <reloco/collection_view.hpp>
+#include <reloco/cow.hpp>
 #include <reloco/flat_map.hpp>
 #include <reloco/flat_set.hpp>
 #include <reloco/inline_flat_map.hpp>
 #include <reloco/inline_flat_set.hpp>
 #include <reloco/inline_string.hpp>
 #include <reloco/inline_vector.hpp>
+#include <reloco/non_zero.hpp>
+#include <reloco/ordering.hpp>
+#include <reloco/rc.hpp>
+#include <reloco/saturating.hpp>
 #include <reloco/shared_ptr.hpp>
+#include <reloco/sso_flat_map.hpp>
+#include <reloco/sso_flat_set.hpp>
 #include <reloco/sso_string.hpp>
+#include <reloco/sso_vector.hpp>
 #include <reloco/string.hpp>
 #include <reloco/unique_ptr.hpp>
 #include <reloco/vector.hpp>
+#include <reloco/wrapping.hpp>
 
 namespace microfmt {
 
@@ -374,6 +386,151 @@ struct formatter<reloco::inline_flat_map<Key, Mapped, Capacity, Compare>> {
   }
 };
 
+/**
+ * @brief Formatter for `reloco::boxed_slice<T>`.
+ *
+ * Formats as a JSON-like array: `[val1, val2, ...]`. Format specifiers
+ * cascade down to each element.
+ */
+template <typename T> struct formatter<reloco::boxed_slice<T>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::boxed_slice<T> &slice, const sink &out) const noexcept {
+    out.put('[');
+    bool is_first = true;
+    for (const auto &elem : slice) {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+      underlying_formatter.format(elem, out);
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::binary_heap<T, Compare>`.
+ *
+ * Formats as a JSON-like array: `[val1, val2, ...]`, in the heap's
+ * unspecified internal order (not sorted priority order -- matching
+ * `begin()`/`end()`'s own documented behavior). Format specifiers cascade
+ * down to each element.
+ */
+template <typename T, typename Compare> struct formatter<reloco::binary_heap<T, Compare>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::binary_heap<T, Compare> &heap, const sink &out) const noexcept {
+    out.put('[');
+    bool is_first = true;
+    for (const auto &elem : heap) {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+      underlying_formatter.format(elem, out);
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::sso_vector<T, InlineCapacity>`.
+ *
+ * Formats as a JSON-like array: `[val1, val2, ...]`. Format specifiers
+ * cascade down to each element.
+ */
+template <typename T, std::size_t InlineCapacity> struct formatter<reloco::sso_vector<T, InlineCapacity>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::sso_vector<T, InlineCapacity> &vec, const sink &out) const noexcept {
+    out.put('[');
+    bool is_first = true;
+    for (const auto &elem : vec) {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+      underlying_formatter.format(elem, out);
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::sso_flat_set<T, InlineCapacity, Compare>`.
+ *
+ * Formats as a JSON-like array of its (sorted, unique) elements:
+ * `[val1, val2, ...]`. Format specifiers cascade down to each element.
+ */
+template <typename T, std::size_t InlineCapacity, typename Compare>
+struct formatter<reloco::sso_flat_set<T, InlineCapacity, Compare>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::sso_flat_set<T, InlineCapacity, Compare> &set, const sink &out) const noexcept {
+    out.put('[');
+    bool is_first = true;
+    for (const auto &elem : set) {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+      underlying_formatter.format(elem, out);
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::sso_flat_map<Key, Mapped, InlineCapacity,
+ * Compare>`.
+ *
+ * Formats as a JSON-like object: `{key1: val1, key2: val2, ...}`. Format
+ * specifiers cascade down to both the keys and the values.
+ */
+template <typename Key, typename Mapped, std::size_t InlineCapacity, typename Compare>
+struct formatter<reloco::sso_flat_map<Key, Mapped, InlineCapacity, Compare>> {
+  formatter<std::remove_cv_t<Key>> key_formatter;
+  formatter<std::remove_cv_t<Mapped>> value_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    key_formatter.parse(ctx);
+    value_formatter.parse(ctx);
+  }
+
+  void format(const reloco::sso_flat_map<Key, Mapped, InlineCapacity, Compare> &map, const sink &out) const noexcept {
+    out.put('{');
+    bool is_first = true;
+    for (const auto &entry : map) {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+
+      key_formatter.format(entry.first, out);
+      out.write(": ");
+      value_formatter.format(entry.second, out);
+    }
+    out.put('}');
+  }
+};
+
 // ============================================================================
 // Direct Formatters for reloco Pointer/Borrow Wrappers
 // ============================================================================
@@ -479,6 +636,157 @@ template <typename T> struct formatter<reloco::weak_ptr<T>> {
       return;
     }
     underlying_formatter.format(*locked.value().get(), out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::rc<T>`.
+ *
+ * Structurally identical to `shared_ptr<T>`'s formatter: formats the
+ * pointee's value directly, or the literal text `(null)` when empty.
+ */
+template <typename T> struct formatter<reloco::rc<T>> {
+  formatter<std::remove_cv_t<T>> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::rc<T> &ptr, const sink &out) const noexcept {
+    if (!ptr) {
+      out.write("(null)");
+      return;
+    }
+    underlying_formatter.format(*ptr.get(), out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::weak_rc<T>`.
+ *
+ * Attempts to `lock()` the referenced object: formats its value directly if
+ * still alive, or the literal text `(expired)` once the last owning `rc`
+ * has released it.
+ */
+template <typename T> struct formatter<reloco::weak_rc<T>> {
+  formatter<std::remove_cv_t<T>> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::weak_rc<T> &weak, const sink &out) const noexcept {
+    auto locked = weak.lock();
+    if (!locked.has_value()) {
+      out.write("(expired)");
+      return;
+    }
+    underlying_formatter.format(*locked.value().get(), out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::cow<T>`.
+ *
+ * Formats the current value directly (borrowed or owned, transparently --
+ * see `cow<T>::get()`); no wrapper-specific decoration, since a `cow<T>`
+ * always holds a valid `T` once constructed.
+ */
+template <typename T> struct formatter<reloco::cow<T>> {
+  formatter<std::remove_cv_t<T>> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::cow<T> &value, const sink &out) const noexcept {
+    underlying_formatter.format(value.get(), out);
+  }
+};
+
+// ============================================================================
+// Direct Formatters for reloco Numeric Newtypes
+// ============================================================================
+//
+// `non_zero<T>`/`saturating<T>`/`wrapping<T>`/`checked<T>` all implicitly
+// convert to their wrapped `T`, but formatter lookup is keyed on the exact
+// argument type, so each still needs its own (trivial) specialization
+// forwarding to `formatter<T>`.
+
+/**
+ * @brief Formatter for `reloco::non_zero<T>`. Formats the wrapped value.
+ */
+template <typename T> struct formatter<reloco::non_zero<T>> {
+  formatter<T> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::non_zero<T> &value, const sink &out) const noexcept {
+    underlying_formatter.format(value.get(), out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::saturating<T>`. Formats the wrapped value.
+ */
+template <typename T> struct formatter<reloco::saturating<T>> {
+  formatter<T> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::saturating<T> &value, const sink &out) const noexcept {
+    underlying_formatter.format(value.get(), out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::wrapping<T>`. Formats the wrapped value.
+ */
+template <typename T> struct formatter<reloco::wrapping<T>> {
+  formatter<T> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::wrapping<T> &value, const sink &out) const noexcept {
+    underlying_formatter.format(value.get(), out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::checked<T>`. Formats the wrapped value.
+ *
+ * Distinct from `microfmt::checked_value<T>` (a `reloco::checked_value<T>`
+ * alias, formatted in `formatters/monad.hpp`): `checked<T>` wraps a plain
+ * integral `T` with fallible `try_add`/`try_sub`/... arithmetic, whereas
+ * `checked_value<T>` propagates a sticky first-error state through
+ * unchecked-looking operator overloads.
+ */
+template <typename T> struct formatter<reloco::checked<T>> {
+  formatter<T> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::checked<T> &value, const sink &out) const noexcept {
+    underlying_formatter.format(value.get(), out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::ordering`.
+ *
+ * Writes one of the literal texts `less`, `equal`, `greater`, matching
+ * Rust's `Debug` output for `std::cmp::Ordering`.
+ */
+template <> struct formatter<reloco::ordering> {
+  constexpr void parse(format_parse_context &) noexcept {}
+
+  void format(reloco::ordering value, const sink &out) const noexcept {
+    switch (value) {
+    case reloco::ordering::less:
+      out.write("less");
+      return;
+    case reloco::ordering::equal:
+      out.write("equal");
+      return;
+    case reloco::ordering::greater:
+      out.write("greater");
+      return;
+    }
+    out.write("unknown");
   }
 };
 
