@@ -88,6 +88,7 @@
 #include <microfmt/microfmt_config.hpp>
 #include <microfmt/reloco.hpp>
 #include <microfmt/scratch_allocator.hpp>
+#include <microfmt/sink_provider.hpp>
 #include <microfmt/sinks/container_sink.hpp>
 #include <microfmt/sinks/pmr_sink.hpp>
 #include <microfmt/sinks/ring_buffer_sink.hpp>

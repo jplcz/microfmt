@@ -353,7 +353,8 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_tls_provider.cpp
         tests/test_sbuf_sink.cpp
         tests/test_c_string_span_sink.cpp
-        tests/test_memory_buffer.cpp)
+        tests/test_memory_buffer.cpp
+        tests/test_sink_provider.cpp)
     target_link_libraries(jplcz_microfmt_tests PRIVATE jplcz_microfmt GTest::gtest_main
         nlohmann_json::nlohmann_json)
     target_compile_features(jplcz_microfmt_tests PRIVATE cxx_std_20)
