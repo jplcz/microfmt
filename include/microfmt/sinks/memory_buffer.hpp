@@ -5,6 +5,8 @@
 
 namespace microfmt {
 
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
+
 namespace detail {
 
 /**
@@ -120,9 +122,7 @@ protected:
 
     // If the source was using its inline stack buffer, copy the bytes
     if (other.m_data == other.m_inline_ptr) {
-      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       std::copy_n(other.m_inline_ptr, other.m_size, new_inline_ptr);
-      RELOCO_END_UNSAFE_BUFFER_USAGE;
     }
 
     // Reset source to a safe, empty state pointing to its own stack buffer
@@ -150,9 +150,7 @@ protected:
     if (other.m_data == other.m_inline_ptr) {
       // Source is on stack: copy the bytes into OUR inline buffer
       m_data = m_inline_ptr;
-      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       std::copy_n(other.m_inline_ptr, other.m_size, m_inline_ptr);
-      RELOCO_END_UNSAFE_BUFFER_USAGE;
     } else {
       // Source is on heap: steal the pointer directly
       m_data = other.m_data;
@@ -180,18 +178,14 @@ private:
         // Out of memory: truncate safely.
         const std::size_t avail = m_capacity - m_size;
         if (avail > 0) {
-          RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
           std::copy_n(sv.data(), avail, m_data + m_size);
-          RELOCO_END_UNSAFE_BUFFER_USAGE;
           m_size += avail;
         }
         return;
       }
     }
 
-    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     std::copy_n(sv.data(), sv.size(), m_data + m_size);
-    RELOCO_END_UNSAFE_BUFFER_USAGE;
     m_size += sv.size();
   }
 
@@ -208,9 +202,7 @@ private:
         return false;
 
       char *new_data = static_cast<char *>(new_mem->ptr);
-      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
       std::copy_n(m_inline_ptr, m_size, new_data);
-      RELOCO_END_UNSAFE_BUFFER_USAGE;
 
       m_data = new_data;
       m_capacity = new_capacity;
@@ -234,6 +226,8 @@ private:
 };
 
 } // namespace detail
+
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 /**
  * @brief A dynamically growing buffer with inline stack storage.

@@ -6,9 +6,11 @@
 namespace microfmt {
 namespace testing {
 
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
+
 TEST(CStringSpanSinkTest, BasicWrite) {
   char buffer[16];
-  c_string_span_sink sink(buffer);
+  c_string_span_sink sink{reloco::span<char>(buffer)};
 
   EXPECT_EQ(sink.max_size(), 15);
   EXPECT_EQ(sink.size(), 0);
@@ -119,6 +121,8 @@ TEST(CStringSpanSinkTest, StdSpanConstructor) {
   EXPECT_STREQ(sink.c_str(), "std");
 }
 #endif
+
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 } // namespace testing
 } // namespace microfmt

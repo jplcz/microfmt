@@ -4,6 +4,8 @@
 namespace microfmt {
 namespace testing {
 
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
+
 TEST(MemoryBufferTest, FitsInInlineStorage) {
   memory_buffer<32> buf;
   auto sink = buf.as_sink();
@@ -166,6 +168,8 @@ TEST(MemoryBufferTest, FormatAsCompatibility) {
 
   EXPECT_EQ(buf.view(), "Hex: 0xff");
 }
+
+RELOCO_END_UNSAFE_BUFFER_USAGE
 
 } // namespace testing
 } // namespace microfmt

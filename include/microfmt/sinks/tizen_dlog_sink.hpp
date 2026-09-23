@@ -31,6 +31,7 @@ enum log_priority {
   DLOG_FATAL,
   DLOG_SILENT
 };
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 inline int dlog_print(log_priority prio, const char *tag, const char *fmt, ...) {
   std::fprintf(stdout, "[%d] %s: ", static_cast<int>(prio), tag);
   va_list args;
@@ -40,6 +41,7 @@ inline int dlog_print(log_priority prio, const char *tag, const char *fmt, ...) 
   std::fprintf(stdout, "\n");
   return result;
 }
+RELOCO_END_UNSAFE_BUFFER_USAGE
 #endif
 
 namespace microfmt::log {

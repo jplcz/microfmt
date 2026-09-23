@@ -7,8 +7,8 @@
 /** @file monad.hpp
  * @brief Optional and expected-like value formatting support. */
 
-#include "../reloco.hpp"
 #include "../microfmt.hpp"
+#include "../reloco.hpp"
 #include <optional>
 #include <reloco/optional.hpp>
 #include <string_view>
@@ -23,9 +23,7 @@ namespace microfmt {
 template <typename T> struct formatter<std::optional<T>> {
   microfmt::string_view forwarded_spec{""};
 
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    forwarded_spec = ctx.spec();
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { forwarded_spec = ctx.spec(); }
 
   void format(const std::optional<T> &opt, const sink &out) const noexcept {
     if (opt.has_value()) {
@@ -98,7 +96,7 @@ template <typename T> struct formatter<checked_value<T>> {
     formatter<T> inner_fmt;
     format_parse_context inner_ctx(forwarded_spec);
     inner_fmt.parse(inner_ctx);
-    inner_fmt.format(val.get(), out);
+    inner_fmt.format(val.as_known().get(), out);
   }
 };
 
@@ -109,9 +107,7 @@ template <typename T> struct formatter<checked_value<T>> {
 template <typename T, typename E> struct formatter<expected<T, E>> {
   microfmt::string_view forwarded_spec{""};
 
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    forwarded_spec = ctx.spec();
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { forwarded_spec = ctx.spec(); }
 
   void format(const expected<T, E> &exp, const sink &out) const noexcept {
     if (exp.has_value()) {
@@ -143,9 +139,7 @@ template <typename T, typename E> struct formatter<expected<T, E>> {
 template <typename T, typename E> struct formatter<std::expected<T, E>> {
   microfmt::string_view forwarded_spec{""};
 
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    forwarded_spec = ctx.spec();
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { forwarded_spec = ctx.spec(); }
 
   void format(const std::expected<T, E> &exp, const sink &out) const noexcept {
     if (exp.has_value()) {

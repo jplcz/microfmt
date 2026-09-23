@@ -17,6 +17,8 @@
 #include <type_traits>
 #include <typeinfo>
 
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
+
 TEST(CoreBintime, FormatsPicosecondPrecisionWithoutWideIntegers) {
   struct binary_time {
     int64_t sec;
@@ -200,11 +202,7 @@ TEST(CoreFormat, ParseContextOperations) {
   EXPECT_EQ(context.find(':'), 3U);
   EXPECT_EQ(context.substr(4), "def");
 
-  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
-
   context.advance_to(context.begin() + 2);
-
-  RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   EXPECT_EQ(context.spec(), "c:def");
   EXPECT_EQ(context.consume(), 'c');
@@ -260,15 +258,15 @@ template <typename T> void check_format_unsigned(T value, int radix, bool upperc
   switch (radix) {
   case 2:
     microfmt::detail::format_unsigned<microfmt::detail::radix::binary>(output.as_sink(), static_cast<uint64_t>(value),
-                                                                        uppercase);
+                                                                       uppercase);
     break;
   case 10:
-    microfmt::detail::format_unsigned<microfmt::detail::radix::decimal>(
-        output.as_sink(), static_cast<uint64_t>(value), uppercase);
+    microfmt::detail::format_unsigned<microfmt::detail::radix::decimal>(output.as_sink(), static_cast<uint64_t>(value),
+                                                                        uppercase);
     break;
   case 16:
     microfmt::detail::format_unsigned<microfmt::detail::radix::hex>(output.as_sink(), static_cast<uint64_t>(value),
-                                                                     uppercase);
+                                                                    uppercase);
     break;
   default:
     FAIL() << "unsupported radix under test: " << radix;
@@ -284,8 +282,8 @@ template <typename T> void check_format_unsigned(T value, int radix, bool upperc
       c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
   }
 
-  EXPECT_EQ(output.view(), microfmt::string_view(expected)) << "T=" << typeid(T).name() << " value=" << +value
-                                                             << " radix=" << radix << " uppercase=" << uppercase;
+  EXPECT_EQ(output.view(), microfmt::string_view(expected))
+      << "T=" << typeid(T).name() << " value=" << +value << " radix=" << radix << " uppercase=" << uppercase;
 }
 
 // Same idea for microfmt::detail::format_signed, which only ever formats in
@@ -783,3 +781,5 @@ TEST(FormatArgsTest, NonTemplatedBoundary) {
 
   EXPECT_EQ(log_msg, "System Engine is Online");
 }
+
+RELOCO_END_UNSAFE_BUFFER_USAGE

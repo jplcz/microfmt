@@ -426,10 +426,14 @@ public:
 
 namespace detail {
 
-struct c_string_sink_base {
+struct RELOCO_POINTER c_string_sink_base {
   char *m_data;
   std::size_t m_max_payload; // N - 1
   std::size_t m_pos;
+
+  constexpr c_string_sink_base(char *ptr RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS, size_t max,
+                               size_t pos) noexcept
+      : m_data(ptr), m_max_payload(max), m_pos(pos) {}
 
   RELOCO_CONSTEXPR20 static void write_thunk(void *ctx, microfmt::string_view sv) noexcept {
     auto *self = static_cast<c_string_sink_base *>(ctx);
@@ -603,9 +607,10 @@ inline constexpr std::array<char, 16> hex_digits_upper = {'0', '1', '2', '3', '4
 enum class radix : uint32_t { binary = 2, decimal = 10, hex = 16 };
 
 template <detail::radix Radix>
-RELOCO_ALWAYS_INLINE inline void format_integer_core(const sink &out, uint64_t val, bool is_negative,
-                                                     bool uppercase, int min_width) noexcept {
-  static_assert(Radix == radix::decimal || Radix == radix::hex, "format_integer_core only supports decimal/hex; use format_binary for radix::binary");
+RELOCO_ALWAYS_INLINE inline void format_integer_core(const sink &out, uint64_t val, bool is_negative, bool uppercase,
+                                                     int min_width) noexcept {
+  static_assert(Radix == radix::decimal || Radix == radix::hex,
+                "format_integer_core only supports decimal/hex; use format_binary for radix::binary");
   // Buffer sized exactly for the selected radix instead of the widest
   // possible base (binary, handled separately by format_binary): 20 digits
   // is the maximum for a decimal uint64_t (18446744073709551615), plus one
@@ -1114,9 +1119,15 @@ template <typename T> using microfmt_remove_cvref_t = std::remove_cv_t<std::remo
  * therefore binary size and compile time) across call sites using
  * differently-sized string literals.
  */
-template <typename T> struct fix_type { using type = T; };
-template <size_t N> struct fix_type<char[N]> { using type = char[1]; };
-template <size_t N> struct fix_type<const char[N]> { using type = const char[1]; };
+template <typename T> struct fix_type {
+  using type = T;
+};
+template <size_t N> struct fix_type<char[N]> {
+  using type = char[1];
+};
+template <size_t N> struct fix_type<const char[N]> {
+  using type = const char[1];
+};
 template <typename T> using fix_type_t = typename fix_type<T>::type;
 
 // C++17 string_view prefix helper

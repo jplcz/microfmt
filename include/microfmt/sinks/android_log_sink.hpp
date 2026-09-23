@@ -9,11 +9,13 @@
 #include "../log/detail/tagged_log_sink_base.hpp"
 #include "../log/sink.hpp"
 #include <cstddef>
+#include <cstring>
 #include <string_view>
 
 #if MICROFMT_HAS_ANDROID_LOG
 #include <android/log.h>
 #else
+#include <cstdarg>
 #include <cstdio>
 
 // Fallback stubs for host-side unit testing / compilation outside the NDK.
@@ -30,10 +32,18 @@ enum android_LogPriority {
   ANDROID_LOG_FATAL,
   ANDROID_LOG_SILENT
 };
-inline int __android_log_write(int prio, const char *tag, const char *text) {
-  std::fprintf(stdout, "[%d] %s: %s\n", prio, tag, text);
+
+RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
+inline int __android_log_print(int prio, const char *tag, const char *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  std::fprintf(stdout, "[%d] %s: ", prio, tag);
+  std::vfprintf(stdout, fmt, args);
+  std::fprintf(stdout, "\n");
+  va_end(args);
   return 0;
 }
+RELOCO_END_UNSAFE_BUFFER_USAGE
 #endif
 
 namespace microfmt::log {
@@ -76,7 +86,14 @@ public:
 
 private:
   static void write_to_logcat(int priority, microfmt::string_view tag, microfmt::string_view message) noexcept {
-    ::__android_log_write(priority, tag.data(), message.data());
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
+    char tag_buf[64];
+    size_t tag_len = std::min(tag.size(), sizeof(tag_buf) - 1);
+    std::memcpy(tag_buf, tag.data(), tag_len);
+    tag_buf[tag_len] = '\0';
+
+    ::__android_log_print(priority, tag_buf, "%.*s", static_cast<int>(message.size()), message.data());
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
   static int priority_for(level lvl) noexcept {

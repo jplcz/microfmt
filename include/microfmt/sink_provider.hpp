@@ -54,9 +54,9 @@ namespace detail {
 template <typename Tag, typename = void> struct has_sink_provider_flush : std::false_type {};
 
 template <typename Tag>
-struct has_sink_provider_flush<
-    Tag, std::void_t<decltype(sink_provider_traits<Tag>::flush(
-             std::declval<value_ref<typename sink_provider_traits<Tag>::context_type>>()))>> : std::true_type {};
+struct has_sink_provider_flush<Tag, std::void_t<decltype(sink_provider_traits<Tag>::flush(
+                                        std::declval<value_ref<typename sink_provider_traits<Tag>::context_type>>()))>>
+    : std::true_type {};
 
 template <typename Tag, typename = void> struct has_stateless_sink_provider_flush : std::false_type {};
 
@@ -220,9 +220,8 @@ template <typename Tag> class sink_provider {
 public:
   using traits_type = sink_provider_traits<Tag>;
   using context_type = typename traits_type::context_type;
-  static_assert(!std::is_void_v<context_type>,
-               "sink_provider<Tag> requires a stateful backend; construct "
-               "sink_provider_ref{Tag{}} directly for stateless backends");
+  static_assert(!std::is_void_v<context_type>, "sink_provider<Tag> requires a stateful backend; construct "
+                                               "sink_provider_ref{Tag{}} directly for stateless backends");
 
   /**
    * @brief Constructs the owning wrapper from an already-built context.
@@ -243,7 +242,20 @@ public:
   /**
    * @brief Convenience shorthand for `ref().as_sink()`.
    */
-  [[nodiscard]] constexpr sink as_sink() & noexcept RELOCO_LIFETIMEBOUND { return ref().as_sink(); }
+  [[nodiscard]] constexpr sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
+    // Clang can't detect that ref() just forwards our context reference to context_
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-stack-address"
+#pragma clang diagnostic ignored "-Wdangling-gsl"
+#endif
+
+    return ref().as_sink();
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+  }
 
 private:
   context_type context_;
