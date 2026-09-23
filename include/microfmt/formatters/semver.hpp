@@ -8,6 +8,7 @@
 
 #include "../microfmt.hpp"
 #include <cstdint>
+#include <reloco/type_id.hpp>
 #include <string_view>
 
 namespace microfmt {
@@ -109,3 +110,7 @@ template <> struct formatter<semver> {
 };
 
 } // namespace microfmt
+
+// See <reloco/type_id.hpp> for the full RELOCO_TYPE_ID_NAME rationale;
+// defined here, alongside semver's own definition.
+RELOCO_TYPE_ID_NAME(microfmt::semver, "microfmt::semver");

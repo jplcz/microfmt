@@ -9,6 +9,7 @@
 #include "../reloco.hpp"
 #include "../markdown.hpp"
 #include "../microfmt.hpp"
+#include <reloco/type_id.hpp>
 
 namespace microfmt {
 
@@ -145,3 +146,7 @@ inline void write_metadata_table(writer &w, metadata_map map, span<char> scratch
 }
 
 } // namespace microfmt::md
+
+// See <reloco/type_id.hpp> for the full RELOCO_TYPE_ID_NAME rationale;
+// defined here, alongside property_entry's own definition.
+RELOCO_TYPE_ID_NAME(microfmt::property_entry, "microfmt::property_entry");

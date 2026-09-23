@@ -9,6 +9,7 @@
 #include "../microfmt.hpp"
 #include <chrono>
 #include <cstdint>
+#include <reloco/type_id.hpp>
 #include <source_location>
 #include <string_view>
 
@@ -73,3 +74,8 @@ struct log_msg {
 };
 
 } // namespace microfmt::log
+
+// See <reloco/type_id.hpp> for the full RELOCO_TYPE_ID_NAME rationale;
+// defined here, alongside log_msg's/level's own definitions.
+RELOCO_TYPE_ID_NAME(microfmt::log::log_msg, "microfmt::log::log_msg");
+RELOCO_TYPE_ID_NAME(microfmt::log::level, "microfmt::log::level");

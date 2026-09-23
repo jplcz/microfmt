@@ -9,6 +9,7 @@
 #include "../microfmt.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <reloco/type_id.hpp>
 #include <string_view>
 #include <type_traits>
 
@@ -144,3 +145,7 @@ template <> struct formatter<boost::uuids::uuid> {
 #endif
 
 } // namespace microfmt
+
+// See <reloco/type_id.hpp> for the full RELOCO_TYPE_ID_NAME rationale;
+// defined here, alongside uuid_view's own definition.
+RELOCO_TYPE_ID_NAME(microfmt::uuid_view, "microfmt::uuid_view");

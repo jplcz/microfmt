@@ -21,6 +21,7 @@
 #include <reloco/sso_string.hpp>
 #include <reloco/sso_vector.hpp>
 #include <reloco/string.hpp>
+#include <reloco/type_id.hpp>
 #include <reloco/unique_ptr.hpp>
 #include <reloco/vector.hpp>
 #include <reloco/wrapping.hpp>
@@ -787,6 +788,35 @@ template <> struct formatter<reloco::ordering> {
       return;
     }
     out.write("unknown");
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::type_id`, the RTTI-free process-wide type
+ * identity from `<reloco/type_id.hpp>`.
+ *
+ * Writes the debug name registered for the type via `RELOCO_TYPE_ID_NAME`
+ * (or the `RELOCO_IMPLICIT_TYPEID` `typeid(T).name()` fallback, if the
+ * consumer opted into it), falling back to `<unnamed type>` when no name
+ * is available, and to `<no type>` for the default-constructed ("no
+ * type") sentinel. The identity itself (`type_id`'s underlying tag
+ * pointer) is never printed: it is an opaque, process-local value with no
+ * meaningful textual representation across runs.
+ */
+template <> struct formatter<reloco::type_id> {
+  constexpr void parse(format_parse_context &) noexcept {}
+
+  void format(reloco::type_id value, const sink &out) const noexcept {
+    if (!value) {
+      out.write("<no type>");
+      return;
+    }
+    const char *name = value.name();
+    if (name == nullptr) {
+      out.write("<unnamed type>");
+      return;
+    }
+    out.write(name);
   }
 };
 

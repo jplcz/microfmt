@@ -26,6 +26,7 @@
 #include <reloco/sso_string.hpp>
 #include <reloco/sso_vector.hpp>
 #include <reloco/string.hpp>
+#include <reloco/type_id.hpp>
 #include <reloco/unique_ptr.hpp>
 #include <reloco/vector.hpp>
 #include <reloco/wrapping.hpp>
@@ -342,4 +343,21 @@ TEST(RelocoFormattersTest, FormatsOrdering) {
   buffer.reset();
   microfmt::format_to(buffer.as_sink(), "{}", reloco::ordering::greater);
   EXPECT_EQ(buffer.view(), "greater");
+}
+
+TEST(RelocoFormattersTest, FormatsTypeId) {
+  microfmt::buffer_sink<32> buffer;
+
+  // int has a built-in RELOCO_TYPE_ID_NAME registration.
+  microfmt::format_to(buffer.as_sink(), "{}", reloco::type_id::of<int>());
+  EXPECT_EQ(buffer.view(), "int");
+
+  buffer.reset();
+  microfmt::format_to(buffer.as_sink(), "{}", reloco::type_id{});
+  EXPECT_EQ(buffer.view(), "<no type>");
+
+  buffer.reset();
+  struct unnamed_test_type {};
+  microfmt::format_to(buffer.as_sink(), "{}", reloco::type_id::of<unnamed_test_type>());
+  EXPECT_EQ(buffer.view(), "<unnamed type>");
 }

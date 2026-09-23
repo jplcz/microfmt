@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <reloco/type_id.hpp>
 #include <string_view>
 #include <utility>
 
@@ -500,3 +501,9 @@ private:
 };
 
 } // namespace microfmt::md
+
+// See <reloco/type_id.hpp> for the full RELOCO_TYPE_ID_NAME rationale;
+// defined here, alongside column's/align's/admonition's own definitions.
+RELOCO_TYPE_ID_NAME(microfmt::md::column, "microfmt::md::column");
+RELOCO_TYPE_ID_NAME(microfmt::md::align, "microfmt::md::align");
+RELOCO_TYPE_ID_NAME(microfmt::md::admonition, "microfmt::md::admonition");
