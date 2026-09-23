@@ -63,10 +63,16 @@
 #include "microfmt.hpp"
 
 #if defined(MICROFMT_SHARED_BUILD)
+// MICROFMT_API (see detail/compat.hpp) is the export attribute here --
+// MICROFMT_SHARED_BUILD is defined, so it expands to `__declspec(dllexport)`
+// / default visibility, never plain `inline` -- marking these explicit
+// instantiation *definitions* as publicly visible symbols so that the
+// `extern template` declarations below (seen by ordinary MICROFMT_SHARED
+// consumers) can actually bind to them at link time.
 #define MICROFMT_FORMATTER_INSTANCE(...)                                                                             \
-  template struct microfmt::formatter<__VA_ARGS__>;                                                                  \
-  template void microfmt::detail::format_type_thunk<__VA_ARGS__>(const void *, microfmt::string_view,               \
-                                                                  const microfmt::sink &)
+  template struct MICROFMT_API microfmt::formatter<__VA_ARGS__>;                                                     \
+  template MICROFMT_API void microfmt::detail::format_type_thunk<__VA_ARGS__>(const void *, microfmt::string_view,   \
+                                                                               const microfmt::sink &)
 #elif defined(MICROFMT_SHARED)
 #define MICROFMT_FORMATTER_INSTANCE(...)                                                                             \
   extern template struct microfmt::formatter<__VA_ARGS__>;                                                          \
