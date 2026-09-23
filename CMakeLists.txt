@@ -140,6 +140,40 @@ target_link_libraries(jplcz_microfmt INTERFACE jplcz_reloco::reloco)
 
 add_library(jplcz_microfmt::microfmt ALIAS jplcz_microfmt)
 
+# Header-only INTERFACE forwarders for the MICROFMT_SHARED/
+# MICROFMT_SHARED_BUILD compile definitions (see detail/compat.hpp and
+# docs/shared-library.md) -- they do not build or export an actual shared
+# object themselves; a caller that wants a real `.so`/`.dll` remains
+# responsible for its own build target (typically a single translation
+# unit including microfmt_compile.hpp), linked against
+# jplcz_microfmt::microfmt-shared-export, with every ordinary consumer of
+# that library linking against jplcz_microfmt::microfmt-shared instead.
+#
+# jplcz_reloco::reloco-shared (RELOCO_SHARED only, never
+# jplcz_reloco::reloco-shared-export/RELOCO_SHARED_BUILD) is forwarded
+# alongside MICROFMT_SHARED: microfmt embeds reloco as an ordinary header
+# dependency and never builds reloco's own shared library itself, so
+# jplcz_microfmt_shared_export must remain an ordinary RELOCO_SHARED
+# *consumer* of reloco, exactly like every other MICROFMT_SHARED consumer
+# -- linking reloco-shared-export here instead would wrongly make this
+# translation unit emit reloco's own non-template backend definitions
+# (RELOCO_API-guarded bodies in mutex.hpp/heap_allocator.hpp/...) as if it
+# were the one canonical translation unit building reloco's own shared
+# library, which it is not.
+add_library(jplcz_microfmt_shared INTERFACE)
+target_link_libraries(jplcz_microfmt_shared INTERFACE jplcz_microfmt jplcz_reloco::reloco-shared)
+target_compile_definitions(jplcz_microfmt_shared INTERFACE MICROFMT_SHARED)
+set_target_properties(jplcz_microfmt_shared PROPERTIES EXPORT_NAME microfmt-shared)
+
+add_library(jplcz_microfmt::microfmt-shared ALIAS jplcz_microfmt_shared)
+
+add_library(jplcz_microfmt_shared_export INTERFACE)
+target_link_libraries(jplcz_microfmt_shared_export INTERFACE jplcz_microfmt_shared)
+target_compile_definitions(jplcz_microfmt_shared_export INTERFACE MICROFMT_SHARED_BUILD)
+set_target_properties(jplcz_microfmt_shared_export PROPERTIES EXPORT_NAME microfmt-shared-export)
+
+add_library(jplcz_microfmt::microfmt-shared-export ALIAS jplcz_microfmt_shared_export)
+
 add_library(jplcz_microfmt_warnings INTERFACE)
 if(JPLCZ_MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE AND
    NOT JPLCZ_MICROFMT_COMPILER_SUPPORTS_WUNSAFE_BUFFER_USAGE)
@@ -799,7 +833,7 @@ if(JPLCZ_MICROFMT_INSTALL)
     include(CMakePackageConfigHelpers)
 
     install(
-        TARGETS jplcz_microfmt
+        TARGETS jplcz_microfmt jplcz_microfmt_shared jplcz_microfmt_shared_export
         EXPORT jplcz_microfmtTargets
         INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
     )

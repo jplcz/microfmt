@@ -85,17 +85,37 @@ as in a normal header-only build:
 // ...
 ```
 
-CMake sketch:
+CMake sketch, using the `jplcz_microfmt::microfmt-shared`/`jplcz_microfmt::
+microfmt-shared-export` INTERFACE targets microfmt's own `CMakeLists.txt`
+provides (they only forward the `MICROFMT_SHARED`/`MICROFMT_SHARED_BUILD`
+compile definitions above -- microfmt is header-only and does not build or
+export an actual shared object for you; `microfmt_shared` below is *your*
+`SHARED` library target, built from your own `MICROFMT_SHARED_BUILD`
+translation unit):
 
 ```cmake
 add_library(microfmt_shared SHARED microfmt_shared_lib.cpp)
-target_compile_definitions(microfmt_shared PUBLIC MICROFMT_SHARED)
-target_compile_definitions(microfmt_shared PRIVATE MICROFMT_SHARED_BUILD)
-target_link_libraries(microfmt_shared PUBLIC jplcz_microfmt::microfmt)
+target_link_libraries(microfmt_shared PUBLIC jplcz_microfmt::microfmt-shared-export)
 
 add_library(my_plugin SHARED my_plugin.cpp)
-target_link_libraries(my_plugin PRIVATE microfmt_shared)
+target_link_libraries(my_plugin PRIVATE microfmt_shared jplcz_microfmt::microfmt-shared)
 ```
+
+`jplcz_microfmt::microfmt-shared-export` forwards `jplcz_reloco::
+reloco-shared` (plain `RELOCO_SHARED`, an ordinary consumer) alongside
+`MICROFMT_SHARED_BUILD` -- **never** `jplcz_reloco::reloco-shared-export`
+(`RELOCO_SHARED_BUILD`). microfmt embeds reloco as an ordinary header
+dependency and never builds reloco's own shared library itself, so your
+`microfmt_shared` translation unit must remain an ordinary `RELOCO_SHARED`
+*consumer* of reloco, exactly like every other `MICROFMT_SHARED` consumer.
+Linking `reloco-shared-export` here instead would wrongly make this
+translation unit emit reloco's own non-template backend definitions
+(`mutex.hpp`/`heap_allocator.hpp`/... bodies) as if it were the one
+canonical translation unit building reloco's own shared library, which it
+is not -- see [reloco's own shared-library guide](https://github.com/jplcz/reloco/blob/main/docs/shared-library.md)
+if you additionally want to build and link against an actual
+`libreloco_shared.so`.
+
 
 `microfmt_compile.hpp`'s doc comment lists every entity currently migrated
 this way (as of this writing: `vformat_to`,
@@ -265,6 +285,11 @@ Beyond the two mechanisms above, a few broader points from
   -- the umbrella header for the `MICROFMT_SHARED_BUILD` translation unit.
 - [`microfmt/microfmt_extern.hpp`](../include/microfmt/microfmt_extern.hpp)
   -- `MICROFMT_FORMATTER_INSTANCE`'s full doc comment and implementation.
+- [`CMakeLists.txt`](../CMakeLists.txt) -- the `jplcz_microfmt::
+  microfmt-shared`/`jplcz_microfmt::microfmt-shared-export` INTERFACE
+  targets (`MICROFMT_SHARED`/`MICROFMT_SHARED_BUILD` forwarders,
+  respectively -- the latter also forwarding `jplcz_reloco::reloco-shared`,
+  never `reloco-shared-export`) used in Part 1's CMake sketch above.
 - [`tools/codesize/testbed/README.md`](../tools/codesize/testbed/README.md)
   -- the measurement testbed this guide's numbers and structural-fix
   suggestions are drawn from, including how to run it against your own
