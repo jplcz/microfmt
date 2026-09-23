@@ -28,7 +28,7 @@ enum class i2c_dir : uint8_t { write = 0, read = 1 };
 
 enum class i2c_status : uint8_t { ok = 0, nack_addr, nack_data, arb_lost, timeout };
 
-enum class i2c_flags : uint8_t {
+enum class RELOCO_FLAG_ENUM i2c_flags : uint8_t {
   none = 0,
   ten_bit = 1 << 0, // 10-bit slave address
   nostart = 1 << 1, // Continuation transfer without START condition
