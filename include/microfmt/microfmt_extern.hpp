@@ -74,10 +74,15 @@
   template MICROFMT_API void microfmt::detail::format_type_thunk<__VA_ARGS__>(const void *, microfmt::string_view,   \
                                                                                const microfmt::sink &)
 #elif defined(MICROFMT_SHARED)
+// MICROFMT_API here expands to `__declspec(dllimport)` on MSVC (and to
+// nothing elsewhere) -- MSVC requires the `extern template` declaration
+// importing a dllexport-instantiated template to itself be decorated
+// dllimport, or it silently re-instantiates its own local copy instead of
+// binding to the shared library's definition above.
 #define MICROFMT_FORMATTER_INSTANCE(...)                                                                             \
-  extern template struct microfmt::formatter<__VA_ARGS__>;                                                          \
-  extern template void microfmt::detail::format_type_thunk<__VA_ARGS__>(const void *, microfmt::string_view,        \
-                                                                         const microfmt::sink &)
+  extern template struct MICROFMT_API microfmt::formatter<__VA_ARGS__>;                                              \
+  extern template MICROFMT_API void microfmt::detail::format_type_thunk<__VA_ARGS__>(                                \
+      const void *, microfmt::string_view, const microfmt::sink &)
 #else
 #define MICROFMT_FORMATTER_INSTANCE(...)
 #endif
