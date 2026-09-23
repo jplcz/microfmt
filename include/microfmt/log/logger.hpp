@@ -97,7 +97,7 @@ public:
    * level threshold. Useful for advanced usage such as forwarding records
    * from another logging system or replaying a previously formatted payload.
    */
-  void log(const log_msg &msg) noexcept {
+  void log(const log_msg &msg) const noexcept {
     if (!should_log(msg.lvl) || sink_count_ == 0) {
       return;
     }
@@ -108,83 +108,83 @@ public:
   }
 
   template <typename... Args>
-  void log(level lvl, microfmt::string_view fmt_str, const Args &...args) noexcept {
+  void log(level lvl, microfmt::string_view fmt_str, const Args &...args) const noexcept {
     log_impl(std::source_location::current(), lvl, fmt_str, args...);
   }
 
   template <typename StrProvider, typename... Args>
   void log(level lvl, compile_string_holder<StrProvider> fmt_str,
-           const Args &...args) noexcept {
+           const Args &...args) const noexcept {
     log_impl(std::source_location::current(), lvl, fmt_str, args...);
   }
 
   template <typename... Args>
-  void trace(microfmt::string_view fmt, const Args &...args) noexcept {
+  void trace(microfmt::string_view fmt, const Args &...args) const noexcept {
     log(level::trace, fmt, args...);
   }
 
   template <typename StrProvider, typename... Args>
   void trace(compile_string_holder<StrProvider> fmt,
-             const Args &...args) noexcept {
+             const Args &...args) const noexcept {
     log(level::trace, fmt, args...);
   }
 
   template <typename... Args>
-  void debug(microfmt::string_view fmt, const Args &...args) noexcept {
+  void debug(microfmt::string_view fmt, const Args &...args) const noexcept {
     log(level::debug, fmt, args...);
   }
 
   template <typename StrProvider, typename... Args>
   void debug(compile_string_holder<StrProvider> fmt,
-             const Args &...args) noexcept {
+             const Args &...args) const noexcept {
     log(level::debug, fmt, args...);
   }
 
   template <typename... Args>
-  void info(microfmt::string_view fmt, const Args &...args) noexcept {
+  void info(microfmt::string_view fmt, const Args &...args) const noexcept {
     log(level::info, fmt, args...);
   }
 
   template <typename StrProvider, typename... Args>
   void info(compile_string_holder<StrProvider> fmt,
-            const Args &...args) noexcept {
+            const Args &...args) const noexcept {
     log(level::info, fmt, args...);
   }
 
   template <typename... Args>
-  void warn(microfmt::string_view fmt, const Args &...args) noexcept {
+  void warn(microfmt::string_view fmt, const Args &...args) const noexcept {
     log(level::warn, fmt, args...);
   }
 
   template <typename StrProvider, typename... Args>
   void warn(compile_string_holder<StrProvider> fmt,
-            const Args &...args) noexcept {
+            const Args &...args) const noexcept {
     log(level::warn, fmt, args...);
   }
 
   template <typename... Args>
-  void error(microfmt::string_view fmt, const Args &...args) noexcept {
+  void error(microfmt::string_view fmt, const Args &...args) const noexcept {
     log(level::err, fmt, args...);
   }
 
   template <typename StrProvider, typename... Args>
   void error(compile_string_holder<StrProvider> fmt,
-             const Args &...args) noexcept {
+             const Args &...args) const noexcept {
     log(level::err, fmt, args...);
   }
 
   template <typename... Args>
-  void critical(microfmt::string_view fmt, const Args &...args) noexcept {
+  void critical(microfmt::string_view fmt, const Args &...args) const noexcept {
     log(level::critical, fmt, args...);
   }
 
   template <typename StrProvider, typename... Args>
   void critical(compile_string_holder<StrProvider> fmt,
-                const Args &...args) noexcept {
+                const Args &...args) const noexcept {
     log(level::critical, fmt, args...);
   }
 
-  void flush() noexcept {
+  void flush() const noexcept {
     lock_guard guard(mutex_);
     for (size_t i = 0; i < sink_count_; ++i) {
       sinks_[i].flush();
@@ -193,21 +193,21 @@ public:
 
   template <typename... Args>
   void log_loc(std::source_location loc, level lvl, microfmt::string_view fmt_str,
-               const Args &...args) noexcept {
+               const Args &...args) const noexcept {
     log_impl(loc, lvl, fmt_str, args...);
   }
 
   template <typename StrProvider, typename... Args>
   void log_loc(std::source_location loc, level lvl,
                compile_string_holder<StrProvider> fmt_str,
-               const Args &...args) noexcept {
+               const Args &...args) const noexcept {
     log_impl(loc, lvl, fmt_str, args...);
   }
 
 private:
   template <typename Format, typename... Args>
   void log_impl(std::source_location loc, level lvl, Format fmt_str,
-                const Args &...args) noexcept {
+                const Args &...args) const noexcept {
     if (!should_log(lvl) || sink_count_ == 0) {
       return;
     }
@@ -231,9 +231,9 @@ private:
 
   microfmt::string_view name_{};
   level level_{level::info};
-  microfmt::array<log_sink, MaxSinks> sinks_{};
+  mutable microfmt::array<log_sink, MaxSinks> sinks_{};
   size_t sink_count_{0};
-  Mutex mutex_{};
+  mutable Mutex mutex_{};
 };
 
 using logger = basic_logger<4, 256>;

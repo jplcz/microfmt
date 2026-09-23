@@ -42,55 +42,12 @@ bits(uint32_t raw_val, span<const bit_field> fields, bool show_raw_hex = true,
 template <> struct formatter<bitfield_view> {
   constexpr void parse(format_parse_context &ctx) noexcept { (void)ctx; }
 
-  void format(const bitfield_view &bv, const sink &out) const noexcept {
-    if (bv.show_raw_hex) {
-      out.write("0x");
-      detail::format_unsigned<detail::radix::hex>(out, bv.raw_value, false, 8);
-      out.write(" [");
-    } else {
-      out.put('[');
-    }
-
-    bool first = true;
-    for (const auto &f : bv.fields) {
-      if (f.mask == 0)
-        continue;
-
-      const uint32_t extracted = (bv.raw_value & f.mask) >> f.shift;
-
-      if (f.type == bit_type::flag) {
-        if ((bv.raw_value & f.mask) == f.mask) {
-          if (!first)
-            out.write(bv.separator);
-          first = false;
-          out.write(f.name);
-        }
-      } else {
-        // Multi-bit value field: only format if non-zero
-        if (extracted != 0) {
-          if (!first)
-            out.write(bv.separator);
-          first = false;
-
-          out.write(f.name);
-          out.put('=');
-          if (f.type == bit_type::value_hex) {
-            out.write("0x");
-            detail::format_unsigned<detail::radix::hex>(out, extracted, false, 0);
-          } else {
-            detail::format_unsigned<detail::radix::decimal>(out, extracted, false, 0);
-          }
-        }
-      }
-    }
-
-    if (first) {
-      out.write("NONE");
-    }
-
-    out.put(']');
-  }
+  MICROFMT_API void format(const bitfield_view &bv, const sink &out) const noexcept;
 };
+
+#if MICROFMT_SHARED_PROVIDE_DEFINITIONS
+#include "bitfield.ipp"
+#endif
 
 // ============================================================================
 // Single Field Descriptor Helpers

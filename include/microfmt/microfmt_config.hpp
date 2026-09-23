@@ -68,6 +68,30 @@
 //     Enable the process-wide built-in default logger, and/or name the
 //     logger expression used by the MICROFMT_LOG_* free-function macros.
 //
+// MICROFMT_SHARED / MICROFMT_SHARED_BUILD
+//     Opt in to building/consuming a subset of microfmt's "heavy"
+//     definitions (see e.g. microfmt.ipp and formatters/{hexdump,error,
+//     semver,styled,pointer,escaped,bitfield,uuid}.ipp) as a real
+//     shared library instead of duplicating them into every translation
+//     unit/shared object that includes microfmt's headers. MICROFMT_SHARED
+//     must be defined consistently by every translation unit in the
+//     program; exactly one of them -- the one building the actual shared
+//     library -- must additionally define MICROFMT_SHARED_BUILD, and
+//     should simply `#include <microfmt/microfmt_compile.hpp>` (an
+//     umbrella header pulling in every migrated entity's out-of-line
+//     definitions) instead of hand-picking headers. See
+//     microfmt/detail/compat.hpp (MICROFMT_API, MICROFMT_API_CONSTEXPR)
+//     for the full contract, and tools/codesize/testbed/README.md for the
+//     cross-.so duplication problem this addresses.
+//
+//     microfmt's own formatter<T> specializations that are themselves
+//     templated over a consumer-supplied T (formatter<std::optional<T>>,
+//     formatter<reloco::vector<T>>, ...) cannot be migrated this way --
+//     microfmt doesn't know which T a given application will instantiate.
+//     For those, see microfmt/microfmt_extern.hpp's opt-in
+//     MICROFMT_FORMATTER_INSTANCE(Type), which lets the *application*
+//     explicitly instantiate/extern-declare the specific Types it uses.
+//
 // MICROFMT_UNWIND_HINT_POINTER_SIZE
 //     Pointer size (4 or 8) used by the assembler-only helpers in
 //     microfmt/inspector/unwind_hint_asm.h when __SIZEOF_POINTER__ is

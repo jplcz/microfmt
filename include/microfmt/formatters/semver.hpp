@@ -83,31 +83,12 @@ template <> struct formatter<semver> {
     }
   }
 
-  void format(const semver &sv, const sink &out) const noexcept {
-    if (sv.show_v_prefix || force_v_prefix) {
-      out.put('v');
-    }
-
-    // Major.Minor.Patch
-    detail::format_unsigned<detail::radix::decimal>(out, sv.major, false, 0);
-    out.put('.');
-    detail::format_unsigned<detail::radix::decimal>(out, sv.minor, false, 0);
-    out.put('.');
-    detail::format_unsigned<detail::radix::decimal>(out, sv.patch, false, 0);
-
-    // Prerelease: -rc.1
-    if (!hide_prerelease && !sv.prerelease.empty()) {
-      out.put('-');
-      out.write(sv.prerelease);
-    }
-
-    // Build metadata: +build.42
-    if (!hide_build && !sv.build.empty()) {
-      out.put('+');
-      out.write(sv.build);
-    }
-  }
+  MICROFMT_API void format(const semver &sv, const sink &out) const noexcept;
 };
+
+#if MICROFMT_SHARED_PROVIDE_DEFINITIONS
+#include "semver.ipp"
+#endif
 
 } // namespace microfmt
 

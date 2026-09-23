@@ -920,43 +920,42 @@ struct int_formatter_specs {
     uint8_t uppercase : 1;
   } flags{}; // Zero-initializes all bit-field members to 0
 
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    microfmt::string_view spec = ctx.spec();
-    if (spec.empty())
-      return;
+  // Out-of-line (see microfmt.ipp). MICROFMT_API_CONSTEXPR (see
+  // detail/compat.hpp) keeps this `constexpr` in the default header-only
+  // build, exactly as before, but drops `constexpr` under MICROFMT_SHARED:
+  // neither call site (format_type_thunk<T>, detail::emit_piece_by_index)
+  // ever invokes it in a constant-expression context -- both build a
+  // runtime format_parse_context and call this normally -- so dropping
+  // `constexpr` there costs nothing while letting a `constexpr` (thus
+  // implicitly `inline`) function force every MICROFMT_SHARED consumer to
+  // still carry its own definition, defeating the build/consume split.
+  MICROFMT_API_CONSTEXPR void parse(format_parse_context &ctx) noexcept;
 
-    size_t i = 0;
+#if defined(MICROFMT_SHARED)
+  // Declared only here; MICROFMT_API (see detail/compat.hpp) makes this a
+  // plain declaration in a MICROFMT_SHARED consumer -- no body, so there is
+  // nothing left for the compiler to inline -- and an exported, out-of-line
+  // definition (in microfmt.ipp, MICROFMT_SHARED_BUILD only) in the library
+  // build. `extern template` on the generic template below was tried first
+  // but does not work: it only suppresses *implicit out-of-line
+  // instantiation*, not inlining, and since format() (below) is always
+  // forced inline, the compiler still had the template's in-header body
+  // available and simply inlined format_int_impl's full body into every
+  // call site, duplicating the code without ever emitting a callable
+  // "format_int_impl" symbol to extern in the first place. Ordinary
+  // (non-template) overloads have no such loophole: overload resolution
+  // picks these exact-match overloads over the generic template below for
+  // int64_t/uint64_t (the only widths formatter<T>::format ever generates
+  // for integers up to 64 bits), and since they are declaration-only here,
+  // there is no body to inline.
+  MICROFMT_API void format_int_impl(int64_t val, const sink &out) const noexcept;
+  MICROFMT_API void format_int_impl(uint64_t val, const sink &out) const noexcept;
+#endif
 
-    // Parse '#' (alternate form)
-    if (i < spec.size() && spec[i] == '#') {
-      flags.alt_form = 1;
-      ++i;
-    }
-
-    // Parse '0' (zero padding flag)
-    if (i < spec.size() && spec[i] == '0') {
-      flags.zero_pad = 1;
-      ++i;
-    }
-
-    // Parse width
-    while (i < spec.size() && spec[i] >= '0' && spec[i] <= '9') {
-      width = static_cast<uint8_t>(width * 10 + (spec[i] - '0'));
-      ++i;
-    }
-
-    // Parse type specifier
-    if (i < spec.size()) {
-      if (spec[i] == 'x') {
-        flags.is_hex = 1;
-        flags.uppercase = 0;
-      } else if (spec[i] == 'X') {
-        flags.is_hex = 1;
-        flags.uppercase = 1;
-      }
-    }
-  }
-
+  // Generic fallback, used directly for the MICROFMT_SHARED case above (via
+  // overload resolution) and also for any other T -- e.g. a >64-bit integer
+  // via the wide-integer fallback branch below -- which keeps instantiating
+  // normally from this in-header definition exactly as before.
   template <typename T> void format_int_impl(T val, const sink &out) const noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     constexpr size_t BUF_SIZE = (sizeof(T) <= 4) ? 12 : 24;
@@ -1002,14 +1001,20 @@ struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T,
     : detail::int_formatter_specs {
   RELOCO_ALWAYS_INLINE void format(T val, const sink &out) const noexcept {
     if constexpr (sizeof(T) <= sizeof(uint64_t)) {
+      // No explicit <int64_t>/<uint64_t> template argument: letting plain
+      // overload resolution pick the exact-match overload lets the
+      // MICROFMT_SHARED, declaration-only, non-template overloads above win
+      // over the generic template below (a non-template exact match beats a
+      // template exact match) without changing anything in the
+      // non-MICROFMT_SHARED build, where only the template exists.
       if constexpr (std::is_signed_v<T>) {
-        format_int_impl<int64_t>(static_cast<int64_t>(val), out);
+        format_int_impl(static_cast<int64_t>(val), out);
       } else {
-        format_int_impl<uint64_t>(static_cast<uint64_t>(val), out);
+        format_int_impl(static_cast<uint64_t>(val), out);
       }
     } else {
       // Fallback for wide integers (> 64-bit) if enabled
-      format_int_impl<T>(val, out);
+      format_int_impl(val, out);
     }
   }
 };
@@ -1284,72 +1289,15 @@ RELOCO_ALWAYS_INLINE inline void unrolled_format_impl(const sink &out, std::inde
 // Core Execution Loop
 // ============================================================================
 
-inline void vformat_to(const sink &out, const microfmt::string_view fmt, const span<const void *const> arg_ptrs,
-                       const span<const format_fn_t> arg_fns) noexcept {
-  size_t arg_idx = 0;
-  size_t i = 0;
+// Declared here (decorated with MICROFMT_API, see detail/compat.hpp) so
+// every microfmt header sees a consistent signature regardless of build
+// mode; the body itself lives in microfmt.ipp, included below.
+MICROFMT_API void vformat_to(const sink &out, const microfmt::string_view fmt, const span<const void *const> arg_ptrs,
+                             const span<const format_fn_t> arg_fns) noexcept;
 
-  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
-  while (i < fmt.size()) {
-    const char *unsafe_fmt = fmt.unsafe_data();
-    // UNSAFE: Bounds check in while loop
-    const char c = unsafe_fmt[i];
-
-    if (c == '{') {
-      // UNSAFE: Bounds check inside this if
-      if (i + 1 < fmt.size() && unsafe_fmt[i + 1] == '{') {
-        out.put('{');
-        i += 2;
-        continue;
-      }
-
-      size_t close_pos = i + 1;
-
-      // UNSAFE: Bounds check inside while loop
-      while (close_pos < fmt.size() && unsafe_fmt[close_pos] != '}') {
-        ++close_pos;
-      }
-
-      // UNSAFE: Bounds check inside this if
-      if (close_pos < fmt.size() && unsafe_fmt[close_pos] == '}') {
-        const microfmt::string_view replacement = fmt.substr(i + 1, close_pos - (i + 1));
-        const size_t colon_pos = replacement.find(':');
-        const microfmt::string_view index =
-            colon_pos == microfmt::string_view::npos ? replacement : replacement.substr(0, colon_pos);
-        const microfmt::string_view spec =
-            colon_pos == microfmt::string_view::npos ? microfmt::string_view{} : replacement.substr(colon_pos + 1);
-
-        size_t selected_arg = arg_idx;
-        if (!detail::parse_positional_index(index, selected_arg)) {
-          ++arg_idx;
-        }
-
-        if (selected_arg < arg_ptrs.size() && selected_arg < arg_fns.size()) {
-          // UNSAFE: Explicit validation in if above
-          const void *ptr = arg_ptrs.unsafe_at(selected_arg);
-          // UNSAFE: Explicit validation in if above
-          const format_fn_t fn = arg_fns.unsafe_at(selected_arg);
-          if (fn && ptr) {
-            fn(ptr, spec, out);
-          }
-        } else {
-          out.write("{MISSING}");
-        }
-        i = close_pos + 1;
-        continue;
-      }
-      // UNSAFE: Bounds check inside this if
-    } else if (c == '}' && i + 1 < fmt.size() && unsafe_fmt[i + 1] == '}') {
-      out.put('}');
-      i += 2;
-      continue;
-    }
-
-    out.put(c);
-    ++i;
-  }
-  RELOCO_END_UNSAFE_BUFFER_USAGE;
-}
+#if MICROFMT_SHARED_PROVIDE_DEFINITIONS
+#include "microfmt.ipp"
+#endif
 
 // ============================================================================
 // Public Entry Points
@@ -1397,12 +1345,29 @@ template <typename Provider> struct compile_string_holder {
   }())
 
 // Compile-time unrolled overload (Zero stack arg_ptrs, zero indirect thunks)
+//
+// Only unrolls per-call-site in the default header-only build. Under
+// MICROFMT_SHARED this degrades to the ordinary runtime-format-string
+// overload above instead: the per-call-site unrolled expansion is exactly
+// the kind of cost that keeps duplicating across every .so shard that
+// #includes microfmt (unlike vformat_to/format_int_impl, it is inherently
+// one instantiation per unique call site, not per Args pack, so it cannot
+// be shared the same way even within a single .so -- see
+// tools/codesize/testbed/README.md), while the runtime overload shares one
+// MICROFMT_SHARED vformat_to definition across every consumer. The
+// trade-off: an out-of-range `{N}` argument reference is a hard compile
+// error via `std::get` in the unrolled path, but only the usual
+// runtime "{MISSING}" fallback once degraded.
 template <typename StrProvider, typename... Args>
 RELOCO_CONSTEXPR20 inline void format_to(const sink &out, compile_string_holder<StrProvider>,
                                          const Args &...args) noexcept {
+#if defined(MICROFMT_SHARED)
+  format_to(out, StrProvider::get(), args...);
+#else
   constexpr size_t num_pieces = detail::compiled_string_storage<StrProvider>::compiled.count;
 
   detail::unrolled_format_impl<StrProvider>(out, std::make_index_sequence<num_pieces>{}, args...);
+#endif
 }
 
 // Compile-time overload

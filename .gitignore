@@ -47,3 +47,4 @@ build*
 !scripts/build-matrix.sh
 !scripts/build-docs.sh
 .cache
+tools/codesize/testbed/codesize-report.md
