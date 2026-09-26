@@ -10,24 +10,31 @@
 #include <reloco/boxed_slice.hpp>
 #include <reloco/checked.hpp>
 #include <reloco/cow.hpp>
+#include <reloco/flat_hash_map.hpp>
+#include <reloco/flat_hash_set.hpp>
 #include <reloco/flat_map.hpp>
 #include <reloco/flat_set.hpp>
 #include <reloco/inline_flat_map.hpp>
 #include <reloco/inline_flat_set.hpp>
 #include <reloco/inline_string.hpp>
+#include <reloco/inline_vec_deque.hpp>
 #include <reloco/inline_vector.hpp>
 #include <reloco/non_zero.hpp>
 #include <reloco/ordering.hpp>
+#include <reloco/outline_vec_deque.hpp>
+#include <reloco/outline_vector.hpp>
 #include <reloco/rc.hpp>
 #include <reloco/saturating.hpp>
 #include <reloco/shared_ptr.hpp>
 #include <reloco/sso_flat_map.hpp>
 #include <reloco/sso_flat_set.hpp>
 #include <reloco/sso_string.hpp>
+#include <reloco/sso_vec_deque.hpp>
 #include <reloco/sso_vector.hpp>
 #include <reloco/string.hpp>
 #include <reloco/type_id.hpp>
 #include <reloco/unique_ptr.hpp>
+#include <reloco/vec_deque.hpp>
 #include <reloco/vector.hpp>
 #include <reloco/wrapping.hpp>
 
@@ -253,6 +260,101 @@ TEST(RelocoFormattersTest, FormatsSsoFlatMap) {
   microfmt::buffer_sink<32> buffer;
   microfmt::format_to(buffer.as_sink(), "{}", map);
   EXPECT_EQ(buffer.view(), "{1: 10, 2: 20}");
+}
+
+TEST(RelocoFormattersTest, FormatsOutlineVector) {
+  alignas(alignof(int)) std::byte storage[3 * sizeof(int)];
+  reloco::outline_vector<int> vec(reloco::span<std::byte>(storage, sizeof(storage)));
+  ASSERT_TRUE(vec.try_push_back(1));
+  ASSERT_TRUE(vec.try_push_back(2));
+  ASSERT_TRUE(vec.try_push_back(3));
+
+  microfmt::buffer_sink<32> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", vec);
+  EXPECT_EQ(buffer.view(), "[1, 2, 3]");
+}
+
+TEST(RelocoFormattersTest, FormatsVecDeque) {
+  auto created = reloco::vec_deque<int>::try_create();
+  ASSERT_TRUE(created.has_value());
+  reloco::vec_deque<int> deque = std::move(created.value());
+  ASSERT_TRUE(deque.try_push_back(1).has_value());
+  ASSERT_TRUE(deque.try_push_front(0).has_value());
+  ASSERT_TRUE(deque.try_push_back(2).has_value());
+
+  microfmt::buffer_sink<32> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", deque);
+  EXPECT_EQ(buffer.view(), "[0, 1, 2]");
+}
+
+TEST(RelocoFormattersTest, FormatsSsoVecDeque) {
+  reloco::sso_vec_deque<int, 4> deque;
+  ASSERT_TRUE(deque.try_push_back(1).has_value());
+  ASSERT_TRUE(deque.try_push_front(0).has_value());
+  ASSERT_TRUE(deque.try_push_back(2).has_value());
+
+  microfmt::buffer_sink<32> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", deque);
+  EXPECT_EQ(buffer.view(), "[0, 1, 2]");
+}
+
+TEST(RelocoFormattersTest, FormatsInlineVecDeque) {
+  reloco::inline_vec_deque<int, 4> deque;
+  ASSERT_TRUE(deque.try_push_back(1).has_value());
+  ASSERT_TRUE(deque.try_push_front(0).has_value());
+  ASSERT_TRUE(deque.try_push_back(2).has_value());
+
+  microfmt::buffer_sink<32> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", deque);
+  EXPECT_EQ(buffer.view(), "[0, 1, 2]");
+}
+
+TEST(RelocoFormattersTest, FormatsOutlineVecDeque) {
+  alignas(alignof(int)) std::byte storage[3 * sizeof(int)];
+  reloco::outline_vec_deque<int> deque(reloco::span<std::byte>(storage, sizeof(storage)));
+  ASSERT_TRUE(deque.try_push_back(1).has_value());
+  ASSERT_TRUE(deque.try_push_front(0).has_value());
+  ASSERT_TRUE(deque.try_push_back(2).has_value());
+
+  microfmt::buffer_sink<32> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", deque);
+  EXPECT_EQ(buffer.view(), "[0, 1, 2]");
+}
+
+TEST(RelocoFormattersTest, FormatsFlatHashSet) {
+  reloco::flat_hash_set<int> set;
+  ASSERT_TRUE(set.try_insert(1).has_value());
+  ASSERT_TRUE(set.try_insert(2).has_value());
+  ASSERT_TRUE(set.try_insert(3).has_value());
+
+  // Bucket order is unspecified, so just check that every element made it
+  // into the output rather than asserting an exact string.
+  microfmt::buffer_sink<64> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", set);
+  const auto view = buffer.view();
+  EXPECT_FALSE(view.empty());
+  EXPECT_EQ(view.front(), '[');
+  EXPECT_EQ(view.back(), ']');
+  EXPECT_NE(view.find("1"), reloco::basic_string_view<char>::npos);
+  EXPECT_NE(view.find("2"), reloco::basic_string_view<char>::npos);
+  EXPECT_NE(view.find("3"), reloco::basic_string_view<char>::npos);
+}
+
+TEST(RelocoFormattersTest, FormatsFlatHashMap) {
+  reloco::flat_hash_map<int, int> map;
+  ASSERT_TRUE(map.try_insert(1, 10).has_value());
+  ASSERT_TRUE(map.try_insert(2, 20).has_value());
+
+  // Bucket order is unspecified, so just check that every entry made it
+  // into the output rather than asserting an exact string.
+  microfmt::buffer_sink<64> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", map);
+  const auto view = buffer.view();
+  EXPECT_FALSE(view.empty());
+  EXPECT_EQ(view.front(), '{');
+  EXPECT_EQ(view.back(), '}');
+  EXPECT_NE(view.find("1: 10"), reloco::basic_string_view<char>::npos);
+  EXPECT_NE(view.find("2: 20"), reloco::basic_string_view<char>::npos);
 }
 
 TEST(RelocoFormattersTest, FormatsRcAndWeakRc) {

@@ -5,24 +5,31 @@
 #include <reloco/checked.hpp>
 #include <reloco/collection_view.hpp>
 #include <reloco/cow.hpp>
+#include <reloco/flat_hash_map.hpp>
+#include <reloco/flat_hash_set.hpp>
 #include <reloco/flat_map.hpp>
 #include <reloco/flat_set.hpp>
 #include <reloco/inline_flat_map.hpp>
 #include <reloco/inline_flat_set.hpp>
 #include <reloco/inline_string.hpp>
+#include <reloco/inline_vec_deque.hpp>
 #include <reloco/inline_vector.hpp>
 #include <reloco/non_zero.hpp>
 #include <reloco/ordering.hpp>
+#include <reloco/outline_vec_deque.hpp>
+#include <reloco/outline_vector.hpp>
 #include <reloco/rc.hpp>
 #include <reloco/saturating.hpp>
 #include <reloco/shared_ptr.hpp>
 #include <reloco/sso_flat_map.hpp>
 #include <reloco/sso_flat_set.hpp>
 #include <reloco/sso_string.hpp>
+#include <reloco/sso_vec_deque.hpp>
 #include <reloco/sso_vector.hpp>
 #include <reloco/string.hpp>
 #include <reloco/type_id.hpp>
 #include <reloco/unique_ptr.hpp>
+#include <reloco/vec_deque.hpp>
 #include <reloco/vector.hpp>
 #include <reloco/wrapping.hpp>
 
@@ -516,6 +523,208 @@ struct formatter<reloco::sso_flat_map<Key, Mapped, InlineCapacity, Compare>> {
   }
 
   void format(const reloco::sso_flat_map<Key, Mapped, InlineCapacity, Compare> &map, const sink &out) const noexcept {
+    out.put('{');
+    bool is_first = true;
+    for (const auto &entry : map) {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+
+      key_formatter.format(entry.first, out);
+      out.write(": ");
+      value_formatter.format(entry.second, out);
+    }
+    out.put('}');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::outline_vector<T>`.
+ *
+ * Formats as a JSON-like array: `[val1, val2, ...]`. Format specifiers
+ * cascade down to each element.
+ */
+template <typename T> struct formatter<reloco::outline_vector<T>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::outline_vector<T> &vec, const sink &out) const noexcept {
+    out.put('[');
+    bool is_first = true;
+    for (const auto &elem : vec) {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+      underlying_formatter.format(elem, out);
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::vec_deque<T>`.
+ *
+ * Formats as a JSON-like array: `[val1, val2, ...]`, front to back. Format
+ * specifiers cascade down to each element. Iterates by index
+ * (`operator[]`/`size()`) rather than `begin()`/`end()`: the deque's
+ * physically-wrapping ring-buffer storage means it has no contiguous
+ * iterator to offer (see `collection_view_traits<vec_deque<T>>::has_data`).
+ */
+template <typename T> struct formatter<reloco::vec_deque<T>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::vec_deque<T> &deque, const sink &out) const noexcept {
+    out.put('[');
+    const std::size_t n = deque.size();
+    for (std::size_t i = 0; i < n; ++i) {
+      if (i != 0) {
+        out.write(", ");
+      }
+      underlying_formatter.format(deque[i], out);
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::sso_vec_deque<T, InlineCapacity>`.
+ *
+ * Formats as a JSON-like array: `[val1, val2, ...]`, front to back. Format
+ * specifiers cascade down to each element. Iterates by index, same
+ * rationale as the `vec_deque<T>` formatter above.
+ */
+template <typename T, std::size_t InlineCapacity> struct formatter<reloco::sso_vec_deque<T, InlineCapacity>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::sso_vec_deque<T, InlineCapacity> &deque, const sink &out) const noexcept {
+    out.put('[');
+    const std::size_t n = deque.size();
+    for (std::size_t i = 0; i < n; ++i) {
+      if (i != 0) {
+        out.write(", ");
+      }
+      underlying_formatter.format(deque[i], out);
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::inline_vec_deque<T, Capacity>`.
+ *
+ * Formats as a JSON-like array: `[val1, val2, ...]`, front to back. Format
+ * specifiers cascade down to each element. Iterates by index, same
+ * rationale as the `vec_deque<T>` formatter above.
+ */
+template <typename T, std::size_t Capacity> struct formatter<reloco::inline_vec_deque<T, Capacity>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::inline_vec_deque<T, Capacity> &deque, const sink &out) const noexcept {
+    out.put('[');
+    const std::size_t n = deque.size();
+    for (std::size_t i = 0; i < n; ++i) {
+      if (i != 0) {
+        out.write(", ");
+      }
+      underlying_formatter.format(deque[i], out);
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::outline_vec_deque<T>`.
+ *
+ * Formats as a JSON-like array: `[val1, val2, ...]`, front to back. Format
+ * specifiers cascade down to each element. Iterates by index, same
+ * rationale as the `vec_deque<T>` formatter above.
+ */
+template <typename T> struct formatter<reloco::outline_vec_deque<T>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::outline_vec_deque<T> &deque, const sink &out) const noexcept {
+    out.put('[');
+    const std::size_t n = deque.size();
+    for (std::size_t i = 0; i < n; ++i) {
+      if (i != 0) {
+        out.write(", ");
+      }
+      underlying_formatter.format(deque[i], out);
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::flat_hash_set<T, Hash, KeyEqual>`.
+ *
+ * Formats as a JSON-like array of its (unique) elements: `[val1, val2,
+ * ...]`, in the hash table's unspecified internal bucket order (not
+ * insertion or sorted order -- matching `begin()`/`end()`'s own documented
+ * behavior, the same caveat `binary_heap`'s formatter documents). Format
+ * specifiers cascade down to each element.
+ */
+template <typename T, typename Hash, typename KeyEqual> struct formatter<reloco::flat_hash_set<T, Hash, KeyEqual>> {
+  using value_type = std::remove_cv_t<T>;
+
+  formatter<value_type> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::flat_hash_set<T, Hash, KeyEqual> &set, const sink &out) const noexcept {
+    out.put('[');
+    bool is_first = true;
+    for (const auto &elem : set) {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+      underlying_formatter.format(elem, out);
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::flat_hash_map<Key, Mapped, Hash, KeyEqual>`.
+ *
+ * Formats as a JSON-like object: `{key1: val1, key2: val2, ...}`, in the
+ * hash table's unspecified internal bucket order (see the `flat_hash_set`
+ * formatter's own doc comment). Format specifiers cascade down to both the
+ * keys and the values.
+ */
+template <typename Key, typename Mapped, typename Hash, typename KeyEqual>
+struct formatter<reloco::flat_hash_map<Key, Mapped, Hash, KeyEqual>> {
+  formatter<std::remove_cv_t<Key>> key_formatter;
+  formatter<std::remove_cv_t<Mapped>> value_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    key_formatter.parse(ctx);
+    value_formatter.parse(ctx);
+  }
+
+  void format(const reloco::flat_hash_map<Key, Mapped, Hash, KeyEqual> &map, const sink &out) const noexcept {
     out.put('{');
     bool is_first = true;
     for (const auto &entry : map) {
