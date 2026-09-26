@@ -19,6 +19,8 @@
 #include "detail/compat.hpp"
 #include "reloco.hpp"
 
+#include <reloco/fmt.hpp>
+
 namespace microfmt {
 
 // ============================================================================
@@ -31,73 +33,17 @@ namespace microfmt {
  * Encapsulates a user-provided context pointer and a stateless write callback
  * function to stream formatted characters without dynamic allocations, virtual
  * dispatch, or RTTI overhead.
+ *
+ * An alias for @ref reloco::sink rather than a distinct type: the two were
+ * already identical in layout and interface (same `ctx`/`write_fn` shape over
+ * the same `reloco::string_view`), and aliasing lets `Display<T>`/`Debug<T>`
+ * (see fmt.hpp) be driven directly from a `microfmt::sink` with no
+ * adapting/copying. reloco is a header-only dependency embedded directly
+ * into microfmt's own translation units (never built/consumed as its own
+ * separate shared object here), so `reloco::sink`'s `RELOCO_EXPORT`
+ * visibility decoration behaves the same as `MICROFMT_API_CLASS` did.
  */
-struct MICROFMT_API_CLASS RELOCO_POINTER sink {
-  // --- Container / Back-Inserter Compatibility ---
-  using value_type = char;
-
-  // --- Iterator Traits (for direct usage) ---
-  using iterator_category = std::output_iterator_tag;
-  using difference_type = std::ptrdiff_t;
-  using pointer = void;
-  using reference = void;
-
-  /**
-   * @brief Function pointer signature for the write callback.
-   *
-   * @param ctx Opaque user context pointer passed through from the sink.
-   * @param sv  Non-owning view of the character slice to write.
-   */
-  using write_fn_t = void (*)(void *ctx, microfmt::string_view sv) noexcept;
-
-  /**
-   * @brief Opaque pointer to caller-defined state/context.
-   */
-  void *ctx{nullptr};
-
-  /**
-   * @brief Callback function invoked when output is written.
-   */
-  write_fn_t write_fn{nullptr};
-
-  /**
-   * @brief Emits a sequence of characters to the underlying output sink.
-   *
-   * If @p sv is empty or @ref write_fn is @c nullptr, this operation is a
-   * no-op.
-   *
-   * @param sv String view containing characters to write.
-   */
-  void write(microfmt::string_view sv) const noexcept {
-    if (write_fn && !sv.empty()) {
-      write_fn(ctx, sv);
-    }
-  }
-
-  /**
-   * @brief Emits a single character to the underlying output sink.
-   *
-   * @param c Character to write.
-   */
-  void put(char c) const noexcept { write(microfmt::string_view(&c, 1)); }
-
-  /**
-   * @brief Pushes a single character, enabling standard std::back_inserter compatibility.
-   *
-   * @param c Character to write.
-   */
-  void push_back(char c) const noexcept { put(c); }
-
-  [[nodiscard]] constexpr sink &operator*() noexcept { return *this; }
-
-  template <typename T> constexpr sink &operator=(T value) noexcept {
-    put(static_cast<char>(value));
-    return *this;
-  }
-
-  constexpr sink &operator++() noexcept { return *this; }
-  constexpr sink operator++(int) noexcept { return *this; }
-};
+using sink = reloco::sink;
 
 // ============================================================================
 // Concrete Sinks
@@ -718,6 +664,82 @@ inline void format_signed(const sink &out, int64_t val, int min_width = 0) noexc
   }
 }
 
+// ============================================================================
+// Shared Debug-Escaping Helper (Rust `{:?}` Debug Flag / `escaped_view`)
+// ============================================================================
+//
+// Writes one character the way Rust's `Debug` impl for `str`/`char` escapes
+// it: recognized control characters as their backslash form, `quote_char`
+// itself escaped only when `escape_quote` is set (so a caller quoting with
+// `'"'` does not also escape an embedded `'\''`, and vice versa), any other
+// non-printable byte as `\xHH`, everything else written verbatim. Shared by
+// `formatter<microfmt::string_view>`/`formatter<char>`'s own `{:?}` support
+// below and `formatters/escaped.hpp`'s fuller, explicitly-invoked
+// `escaped()` adapter, so both stay byte-for-byte consistent.
+RELOCO_ALWAYS_INLINE inline void write_escaped_char(const sink &out, char ch, char quote_char,
+                                                    bool escape_quote) noexcept {
+  const uint8_t b = static_cast<uint8_t>(ch);
+  switch (b) {
+  case '\0':
+    out.write("\\0");
+    return;
+  case '\a':
+    out.write("\\a");
+    return;
+  case '\b':
+    out.write("\\b");
+    return;
+  case '\t':
+    out.write("\\t");
+    return;
+  case '\n':
+    out.write("\\n");
+    return;
+  case '\v':
+    out.write("\\v");
+    return;
+  case '\f':
+    out.write("\\f");
+    return;
+  case '\r':
+    out.write("\\r");
+    return;
+  case '\\':
+    out.write("\\\\");
+    return;
+  default:
+    break;
+  }
+
+  if (ch == quote_char) {
+    if (escape_quote) {
+      out.put('\\');
+    }
+    out.put(quote_char);
+    return;
+  }
+
+  if (b >= 32 && b <= 126) {
+    out.put(static_cast<char>(b));
+    return;
+  }
+
+  out.write("\\x");
+  format_unsigned<radix::hex>(out, b, false, 2);
+}
+
+// Writes @p data as a `quote_char`-delimited, escaped literal (`write_escaped_char`
+// per byte, always escaping an embedded `quote_char`) -- the `{:?}` Debug
+// representation of `microfmt::string_view`/`const char *`.
+RELOCO_ALWAYS_INLINE inline void write_debug_quoted(const sink &out, microfmt::string_view data,
+                                                    char quote_char) noexcept {
+  out.put(quote_char);
+  for (char ch : data) {
+    write_escaped_char(out, ch, quote_char, true);
+  }
+  out.put(quote_char);
+}
+
 } // namespace detail
 
 // ============================================================================
@@ -788,6 +810,27 @@ public:
     return m_spec.substr(pos, count);
   }
 
+  /**
+   * @brief Detects and consumes a leading `?` -- Rust's `{:?}` `Debug`
+   * flag, as opposed to `{}`'s `Display` -- returning `true` (and
+   * removing it from the remaining spec) if present, `false` otherwise.
+   *
+   * A shared convention, not a hardcoded type list: any `formatter<T>`
+   * that has a meaningfully different "debug" representation (e.g.
+   * `microfmt::string_view`/`char`, quoting and escaping their content)
+   * calls this from `parse()` and remembers the result. Types whose
+   * `Debug` and `Display` forms coincide (integers, floats, `bool`, ...,
+   * matching Rust's own derived `Debug` for these) need not call it at
+   * all -- an unconsumed `?` is simply never recognized by their own
+   * flag/width parsing, which is indistinguishable from `Display`.
+   */
+  constexpr bool consume_debug_flag() noexcept {
+    if (!starts_with('?'))
+      return false;
+    remove_prefix(1);
+    return true;
+  }
+
 private:
   microfmt::string_view m_spec;
 };
@@ -800,21 +843,47 @@ template <typename T, typename Enable = void> struct formatter;
 
 // Strings (const char*, string_view)
 template <> struct formatter<microfmt::string_view> {
-  constexpr void parse(format_parse_context &) noexcept {}
-  void format(microfmt::string_view val, const sink &out) const noexcept { out.write(val); }
+  bool debug{false};
+
+  constexpr void parse(format_parse_context &ctx) noexcept { debug = ctx.consume_debug_flag(); }
+
+  void format(microfmt::string_view val, const sink &out) const noexcept {
+    if (debug) {
+      detail::write_debug_quoted(out, val, '"');
+    } else {
+      out.write(val);
+    }
+  }
 };
 
 template <> struct formatter<std::string_view> {
-  constexpr void parse(format_parse_context &) noexcept {}
-  void format(std::string_view val, const sink &out) const noexcept { out.write(microfmt::string_view(val)); }
+  bool debug{false};
+
+  constexpr void parse(format_parse_context &ctx) noexcept { debug = ctx.consume_debug_flag(); }
+
+  void format(std::string_view val, const sink &out) const noexcept {
+    if (debug) {
+      detail::write_debug_quoted(out, microfmt::string_view(val), '"');
+    } else {
+      out.write(microfmt::string_view(val));
+    }
+  }
 };
 
 namespace detail {
 
 struct MICROFMT_API_CLASS const_char_like {
-  constexpr void parse(format_parse_context &) noexcept {}
+  bool debug{false};
+
+  constexpr void parse(format_parse_context &ctx) noexcept { debug = ctx.consume_debug_flag(); }
+
   void format(const char *val, const sink &out) const noexcept {
-    out.write(val ? microfmt::string_view(val) : microfmt::string_view("(null)", 6));
+    microfmt::string_view sv = val ? microfmt::string_view(val) : microfmt::string_view("(null)", 6);
+    if (debug) {
+      detail::write_debug_quoted(out, sv, '"');
+    } else {
+      out.write(sv);
+    }
   }
 };
 
@@ -1026,8 +1095,19 @@ struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T,
 
 // Characters & Booleans
 template <> struct formatter<char> {
-  constexpr void parse(format_parse_context &) noexcept {}
-  void format(char val, const sink &out) const noexcept { out.put(val); }
+  bool debug{false};
+
+  constexpr void parse(format_parse_context &ctx) noexcept { debug = ctx.consume_debug_flag(); }
+
+  void format(char val, const sink &out) const noexcept {
+    if (debug) {
+      out.put('\'');
+      detail::write_escaped_char(out, val, '\'', true);
+      out.put('\'');
+    } else {
+      out.put(val);
+    }
+  }
 };
 
 template <> struct formatter<bool> {
@@ -1079,23 +1159,114 @@ using format_fn_t = void (*)(const void *val_ptr, microfmt::string_view spec, co
 
 namespace detail {
 
+/**
+ * @brief Detects whether `formatter<T>` has been given a definition (as
+ * opposed to just matching the `template <typename T, typename Enable =
+ * void> struct formatter;` forward declaration), using the standard
+ * `decltype(sizeof(T))` completeness-detection idiom: `sizeof` of an
+ * incomplete type in the immediate context of a partial specialization's
+ * template argument substitution is a SFINAE failure, not a hard error.
+ */
+template <typename T, typename = void> struct has_formatter : std::false_type {};
+
+template <typename T> struct has_formatter<T, std::void_t<decltype(sizeof(formatter<T>))>> : std::true_type {};
+
+template <typename T> inline constexpr bool has_formatter_v = has_formatter<T>::value;
+
 template <typename T>
 inline void format_type_thunk(const void *val_ptr, microfmt::string_view spec, const sink &out) noexcept {
   // std::decay_t converts char[N] -> const char*, float[] -> float*, etc.
   using DecayedT = std::decay_t<T>;
 
-  formatter<DecayedT> f;
-  format_parse_context ctx(spec);
-  f.parse(ctx);
+  // Resolves the erased `val_ptr` back to the value/pointer `handle`
+  // expects, exactly as before: for a bounded array argument, that's the
+  // decayed pointer to its first element; for anything else, the
+  // dereferenced `DecayedT` object itself.
+  auto with_value = [&](auto &&handle) {
+    if constexpr (std::is_array_v<std::remove_reference_t<T>>) {
+      const auto *decayed_val = static_cast<const std::remove_all_extents_t<std::remove_reference_t<T>> *>(val_ptr);
+      handle(decayed_val);
+    } else {
+      handle(*static_cast<const DecayedT *>(val_ptr));
+    }
+  };
 
-  if constexpr (std::is_array_v<std::remove_reference_t<T>>) {
-    // Arrays are passed by address (const char* pointing to buffer)
-    const auto *decayed_val = static_cast<const std::remove_all_extents_t<std::remove_reference_t<T>> *>(val_ptr);
-    f.format(decayed_val, out);
+  // Priority for a plain `{}`/`{:spec}` placeholder: an explicit
+  // `formatter<T>` specialization always wins (unchanged from before,
+  // including whatever it does with `spec`); only a `T` with no
+  // `formatter<T>` at all falls through to reloco's `Display<T>`/`Debug<T>`
+  // customization points, in that order -- both take no spec at all,
+  // matching Rust's `Display`/`Debug` (see reloco/fmt.hpp), so `spec` is
+  // simply never consulted on those two paths.
+  if constexpr (has_formatter_v<DecayedT>) {
+    formatter<DecayedT> f;
+    format_parse_context ctx(spec);
+    f.parse(ctx);
+    with_value([&](const auto &value) { f.format(value, out); });
+  } else if constexpr (reloco::has_display_v<DecayedT>) {
+    with_value([&](const auto &value) { reloco::Display<DecayedT>::format(value, out); });
+  } else if constexpr (reloco::has_debug_v<DecayedT>) {
+    with_value([&](const auto &value) { reloco::Debug<DecayedT>::format(value, out); });
   } else {
-    f.format(*static_cast<const DecayedT *>(val_ptr), out);
+    // No formatter<T>, Display<T>, or Debug<T> found for T: instantiate
+    // formatter<DecayedT> anyway so the caller gets the same
+    // "incomplete type" compile error as before this change, naming
+    // formatter<T> as the customization point to add.
+    formatter<DecayedT> f;
+    format_parse_context ctx(spec);
+    f.parse(ctx);
+    with_value([&](const auto &value) { f.format(value, out); });
   }
 }
+
+/**
+ * @brief Drop-in replacement for a `formatter<T> underlying_formatter;`
+ * member used by container/wrapper formatters (`reloco.hpp`, `tuple.hpp`,
+ * `map_view.hpp`, `filter_view.hpp`, `ranges.hpp`, `variant.hpp`, ...) to
+ * format their elements/keys/values.
+ *
+ * Exposes the same `parse(format_parse_context&)` / `format(const T&, const
+ * sink&) const` interface as `formatter<T>` itself, but implements the same
+ * `formatter<T>` -> `reloco::Display<T>` -> `reloco::Debug<T>` priority
+ * chain as `format_type_thunk` above, instead of requiring a `formatter<T>`
+ * specialization unconditionally. This lets element types that only have a
+ * `reloco::Display<T>`/`reloco::Debug<T>` (and no `formatter<T>`) be nested
+ * inside containers/wrappers.
+ *
+ * `Display<T>`/`Debug<T>` take no format spec (mirroring Rust), so `parse`
+ * simply discards the spec on those two paths, exactly as `format_type_thunk`
+ * does for a top-level `{}` placeholder.
+ */
+template <typename T> struct element_formatter {
+  using DecayedT = std::decay_t<T>;
+
+  // `formatter<DecayedT>` must stay unconditionally complete as a data
+  // member, so fall back to this stateless stub whenever `DecayedT` has no
+  // `formatter<T>` at all (Display<T>/Debug<T>-only case).
+  struct no_formatter_stub {
+    constexpr void parse(format_parse_context &) noexcept {}
+  };
+
+  std::conditional_t<has_formatter_v<DecayedT>, formatter<DecayedT>, no_formatter_stub> underlying{};
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying.parse(ctx); }
+
+  void format(const T &value, const sink &out) const noexcept {
+    if constexpr (has_formatter_v<DecayedT>) {
+      underlying.format(value, out);
+    } else if constexpr (reloco::has_display_v<DecayedT>) {
+      reloco::Display<DecayedT>::format(value, out);
+    } else if constexpr (reloco::has_debug_v<DecayedT>) {
+      reloco::Debug<DecayedT>::format(value, out);
+    } else {
+      // No formatter<T>, Display<T>, or Debug<T> found for T: same
+      // "incomplete type" compile error as instantiating formatter<T>
+      // directly would have produced before element_formatter existed.
+      formatter<DecayedT> f;
+      f.format(value, out);
+    }
+  }
+};
 
 #if RELOCO_CXX20
 template <typename T> using microfmt_remove_cvref_t = std::remove_cvref_t<T>;
@@ -1295,6 +1466,85 @@ RELOCO_ALWAYS_INLINE inline void unrolled_format_impl(const sink &out, std::inde
 }
 
 } // namespace detail
+
+// ============================================================================
+// as_debug(): Forced Debug-Priority Formatting
+// ============================================================================
+
+namespace detail {
+
+/**
+ * @brief Non-owning wrapper produced by @ref as_debug, carrying no state of
+ * its own beyond a reference to the wrapped value; all the priority logic
+ * lives in `formatter<debug_view<T>>::format` below.
+ */
+template <typename T> struct debug_view {
+  const T &value;
+};
+
+} // namespace detail
+
+/**
+ * @brief Wraps @p value so it always renders through reloco's `Debug<T>`
+ * customization point when one exists, matching Rust's `{:?}`.
+ *
+ * Priority (opposite of a plain `{}`/`{:spec}` placeholder, see
+ * `format_type_thunk` above): `Debug<T>` first, then `formatter<T>` (with
+ * its normal `spec`-driven parsing -- e.g. `microfmt::string_view`/`char`'s
+ * own `?`-flag debug quoting, see `format_parse_context::consume_debug_flag`),
+ * and finally `Display<T>` as the last resort. `Debug<T>`/`Display<T>`
+ * ignore `spec` entirely, exactly like a plain placeholder.
+ *
+ * @tparam T Type of the wrapped value.
+ * @param value Value to format in debug mode; borrowed, not copied -- must
+ * outlive the resulting wrapper (rvalues are rejected below).
+ * @return A `debug_view<T>` usable directly as a `format`/`format_to` argument.
+ */
+template <typename T>
+[[nodiscard]] constexpr auto as_debug(const T &value RELOCO_LIFETIMEBOUND) noexcept {
+  return detail::debug_view<T>{value};
+}
+
+// Rejects rvalue/temporary bindings (a plain `template <typename T> auto
+// as_debug(T &&)` would also match lvalues -- T deducing to `T &` there --
+// making it ambiguous with the overload above instead of rvalue-exclusive;
+// same `enable_if_t<!is_lvalue_reference_v<T>>` guard as
+// reloco::value_ref's own rvalue-rejecting constructor).
+template <typename T, std::enable_if_t<!std::is_lvalue_reference_v<T>, int> = 0>
+[[nodiscard]] constexpr auto as_debug(T &&) noexcept = delete;
+
+template <typename T> struct formatter<detail::debug_view<T>> {
+  using DecayedT = std::decay_t<T>;
+
+  // Only ever meaningfully used (parsed/formatted) when neither `Debug<T>`
+  // nor `Display<T>` exists, so `formatter<DecayedT>` falls back to a
+  // stateless stub -- which must still be a complete type, since it is an
+  // unconditional data member -- rather than requiring `formatter<DecayedT>`
+  // itself to be complete/instantiable in the `Debug<T>`/`Display<T>` cases.
+  struct no_formatter_stub {
+    constexpr void parse(format_parse_context &) noexcept {}
+  };
+
+  std::conditional_t<!reloco::has_debug_v<DecayedT> && detail::has_formatter_v<DecayedT>, formatter<DecayedT>,
+                     no_formatter_stub>
+      underlying{};
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying.parse(ctx); }
+
+  void format(const detail::debug_view<T> &view, const sink &out) const noexcept {
+    if constexpr (reloco::has_debug_v<DecayedT>) {
+      reloco::Debug<DecayedT>::format(view.value, out);
+    } else if constexpr (detail::has_formatter_v<DecayedT>) {
+      underlying.format(view.value, out);
+    } else if constexpr (reloco::has_display_v<DecayedT>) {
+      reloco::Display<DecayedT>::format(view.value, out);
+    } else {
+      static_assert(reloco::has_debug_v<DecayedT> || detail::has_formatter_v<DecayedT> ||
+                        reloco::has_display_v<DecayedT>,
+                    "microfmt::as_debug(value): no Debug<T>, formatter<T>, or Display<T> found for T");
+    }
+  }
+};
 
 // ============================================================================
 // Core Execution Loop

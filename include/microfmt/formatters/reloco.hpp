@@ -49,7 +49,7 @@ template <typename T> struct formatter<reloco::collection_view<T>> {
   using value_type = std::remove_cv_t<T>;
 
   // Holds the parsed state (e.g., width, hex flags) for the underlying elements
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     // Delegate parsing of the format specifier to the element formatter.
@@ -103,7 +103,7 @@ constexpr auto as_collection_view(Container &c) noexcept {
 template <typename T> struct formatter<reloco::detail::mutable_sequence_container_ref<T>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -134,8 +134,8 @@ template <typename T, typename Key> struct formatter<reloco::detail::mutable_ass
   using value_type = std::remove_cv_t<T>;
   using key_type = std::remove_cv_t<Key>;
 
-  formatter<key_type> key_formatter;
-  formatter<value_type> value_formatter;
+  detail::element_formatter<key_type> key_formatter;
+  detail::element_formatter<value_type> value_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     // Apply parsed specs (like hex formatting) to the values
@@ -181,7 +181,7 @@ template <typename T, typename Key> struct formatter<reloco::detail::mutable_ass
 template <typename T> struct formatter<reloco::vector<T>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -208,7 +208,7 @@ template <typename T> struct formatter<reloco::vector<T>> {
 template <typename T, typename Compare> struct formatter<reloco::flat_set<T, Compare>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -284,7 +284,7 @@ template <typename CharT, typename TraitsT> struct formatter<reloco::basic_sso_s
 template <typename T, std::size_t Capacity> struct formatter<reloco::inline_vector<T, Capacity>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -312,7 +312,7 @@ template <typename T, std::size_t Capacity, typename Compare>
 struct formatter<reloco::inline_flat_set<T, Capacity, Compare>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -337,8 +337,8 @@ struct formatter<reloco::inline_flat_set<T, Capacity, Compare>> {
  * specifiers cascade down to both the keys and the values.
  */
 template <typename Key, typename Mapped, typename Compare> struct formatter<reloco::flat_map<Key, Mapped, Compare>> {
-  formatter<std::remove_cv_t<Key>> key_formatter;
-  formatter<std::remove_cv_t<Mapped>> value_formatter;
+  detail::element_formatter<std::remove_cv_t<Key>> key_formatter;
+  detail::element_formatter<std::remove_cv_t<Mapped>> value_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     key_formatter.parse(ctx);
@@ -371,8 +371,8 @@ template <typename Key, typename Mapped, typename Compare> struct formatter<relo
  */
 template <typename Key, typename Mapped, std::size_t Capacity, typename Compare>
 struct formatter<reloco::inline_flat_map<Key, Mapped, Capacity, Compare>> {
-  formatter<std::remove_cv_t<Key>> key_formatter;
-  formatter<std::remove_cv_t<Mapped>> value_formatter;
+  detail::element_formatter<std::remove_cv_t<Key>> key_formatter;
+  detail::element_formatter<std::remove_cv_t<Mapped>> value_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     key_formatter.parse(ctx);
@@ -405,7 +405,7 @@ struct formatter<reloco::inline_flat_map<Key, Mapped, Capacity, Compare>> {
 template <typename T> struct formatter<reloco::boxed_slice<T>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -434,7 +434,7 @@ template <typename T> struct formatter<reloco::boxed_slice<T>> {
 template <typename T, typename Compare> struct formatter<reloco::binary_heap<T, Compare>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -461,7 +461,7 @@ template <typename T, typename Compare> struct formatter<reloco::binary_heap<T, 
 template <typename T, std::size_t InlineCapacity> struct formatter<reloco::sso_vector<T, InlineCapacity>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -489,7 +489,7 @@ template <typename T, std::size_t InlineCapacity, typename Compare>
 struct formatter<reloco::sso_flat_set<T, InlineCapacity, Compare>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -516,8 +516,8 @@ struct formatter<reloco::sso_flat_set<T, InlineCapacity, Compare>> {
  */
 template <typename Key, typename Mapped, std::size_t InlineCapacity, typename Compare>
 struct formatter<reloco::sso_flat_map<Key, Mapped, InlineCapacity, Compare>> {
-  formatter<std::remove_cv_t<Key>> key_formatter;
-  formatter<std::remove_cv_t<Mapped>> value_formatter;
+  detail::element_formatter<std::remove_cv_t<Key>> key_formatter;
+  detail::element_formatter<std::remove_cv_t<Mapped>> value_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     key_formatter.parse(ctx);
@@ -550,7 +550,7 @@ struct formatter<reloco::sso_flat_map<Key, Mapped, InlineCapacity, Compare>> {
 template <typename T> struct formatter<reloco::outline_vector<T>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -580,7 +580,7 @@ template <typename T> struct formatter<reloco::outline_vector<T>> {
 template <typename T> struct formatter<reloco::vec_deque<T>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -607,7 +607,7 @@ template <typename T> struct formatter<reloco::vec_deque<T>> {
 template <typename T, std::size_t InlineCapacity> struct formatter<reloco::sso_vec_deque<T, InlineCapacity>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -634,7 +634,7 @@ template <typename T, std::size_t InlineCapacity> struct formatter<reloco::sso_v
 template <typename T, std::size_t Capacity> struct formatter<reloco::inline_vec_deque<T, Capacity>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -661,7 +661,7 @@ template <typename T, std::size_t Capacity> struct formatter<reloco::inline_vec_
 template <typename T> struct formatter<reloco::outline_vec_deque<T>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -690,7 +690,7 @@ template <typename T> struct formatter<reloco::outline_vec_deque<T>> {
 template <typename T, typename Hash, typename KeyEqual> struct formatter<reloco::flat_hash_set<T, Hash, KeyEqual>> {
   using value_type = std::remove_cv_t<T>;
 
-  formatter<value_type> underlying_formatter;
+  detail::element_formatter<value_type> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -718,8 +718,8 @@ template <typename T, typename Hash, typename KeyEqual> struct formatter<reloco:
  */
 template <typename Key, typename Mapped, typename Hash, typename KeyEqual>
 struct formatter<reloco::flat_hash_map<Key, Mapped, Hash, KeyEqual>> {
-  formatter<std::remove_cv_t<Key>> key_formatter;
-  formatter<std::remove_cv_t<Mapped>> value_formatter;
+  detail::element_formatter<std::remove_cv_t<Key>> key_formatter;
+  detail::element_formatter<std::remove_cv_t<Mapped>> value_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     key_formatter.parse(ctx);
@@ -761,7 +761,7 @@ struct formatter<reloco::flat_hash_map<Key, Mapped, Hash, KeyEqual>> {
  * empty.
  */
 template <typename T> struct formatter<value_ptr<T>> {
-  formatter<std::remove_cv_t<T>> underlying_formatter;
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -782,7 +782,7 @@ template <typename T> struct formatter<value_ptr<T>> {
  * directly with no null case.
  */
 template <typename T> struct formatter<value_ref<T>> {
-  formatter<std::remove_cv_t<T>> underlying_formatter;
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -796,7 +796,7 @@ template <typename T> struct formatter<value_ref<T>> {
  * empty.
  */
 template <typename T> struct formatter<reloco::unique_ptr<T>> {
-  formatter<std::remove_cv_t<T>> underlying_formatter;
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -816,7 +816,7 @@ template <typename T> struct formatter<reloco::unique_ptr<T>> {
  * empty.
  */
 template <typename T> struct formatter<reloco::shared_ptr<T>> {
-  formatter<std::remove_cv_t<T>> underlying_formatter;
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -837,7 +837,7 @@ template <typename T> struct formatter<reloco::shared_ptr<T>> {
  * `shared_ptr` has released it.
  */
 template <typename T> struct formatter<reloco::weak_ptr<T>> {
-  formatter<std::remove_cv_t<T>> underlying_formatter;
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -858,7 +858,7 @@ template <typename T> struct formatter<reloco::weak_ptr<T>> {
  * pointee's value directly, or the literal text `(null)` when empty.
  */
 template <typename T> struct formatter<reloco::rc<T>> {
-  formatter<std::remove_cv_t<T>> underlying_formatter;
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -879,7 +879,7 @@ template <typename T> struct formatter<reloco::rc<T>> {
  * has released it.
  */
 template <typename T> struct formatter<reloco::weak_rc<T>> {
-  formatter<std::remove_cv_t<T>> underlying_formatter;
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -901,7 +901,7 @@ template <typename T> struct formatter<reloco::weak_rc<T>> {
  * always holds a valid `T` once constructed.
  */
 template <typename T> struct formatter<reloco::cow<T>> {
-  formatter<std::remove_cv_t<T>> underlying_formatter;
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -923,7 +923,7 @@ template <typename T> struct formatter<reloco::cow<T>> {
  * @brief Formatter for `reloco::non_zero<T>`. Formats the wrapped value.
  */
 template <typename T> struct formatter<reloco::non_zero<T>> {
-  formatter<T> underlying_formatter;
+  detail::element_formatter<T> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -936,7 +936,7 @@ template <typename T> struct formatter<reloco::non_zero<T>> {
  * @brief Formatter for `reloco::saturating<T>`. Formats the wrapped value.
  */
 template <typename T> struct formatter<reloco::saturating<T>> {
-  formatter<T> underlying_formatter;
+  detail::element_formatter<T> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -949,7 +949,7 @@ template <typename T> struct formatter<reloco::saturating<T>> {
  * @brief Formatter for `reloco::wrapping<T>`. Formats the wrapped value.
  */
 template <typename T> struct formatter<reloco::wrapping<T>> {
-  formatter<T> underlying_formatter;
+  detail::element_formatter<T> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 
@@ -968,7 +968,7 @@ template <typename T> struct formatter<reloco::wrapping<T>> {
  * unchecked-looking operator overloads.
  */
 template <typename T> struct formatter<reloco::checked<T>> {
-  formatter<T> underlying_formatter;
+  detail::element_formatter<T> underlying_formatter;
 
   constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
 

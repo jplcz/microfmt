@@ -493,3 +493,45 @@ TEST(RelocoFormattersTest, FormatsInstant) {
   microfmt::format_to(buffer.as_sink(), "{}", later);
   EXPECT_EQ(buffer.view(), "01:01:01.250");
 }
+
+namespace {
+
+// Deliberately has no microfmt::formatter<T> specialization: only
+// reloco::Display<T>/reloco::Debug<T>, to prove container/wrapper
+// formatters (reloco::vector<T>, reloco::unique_ptr<T>, ...) can still
+// format elements/pointees that only opt into reloco's customization
+// points, via microfmt::detail::element_formatter<T>.
+struct display_only_point {
+  int x;
+  int y;
+};
+
+} // namespace
+
+namespace reloco {
+template <> struct Display<display_only_point> {
+  static void format(const display_only_point &p, const microfmt::sink &out) noexcept {
+    microfmt::format_to(out, "({}, {})", p.x, p.y);
+  }
+};
+} // namespace reloco
+
+TEST(RelocoFormattersTest, FormatsVectorOfDisplayOnlyElements) {
+  reloco::vector<display_only_point> points;
+  ASSERT_TRUE(points.try_push_back({1, 2}));
+  ASSERT_TRUE(points.try_push_back({3, 4}));
+
+  microfmt::buffer_sink<64> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", points);
+  EXPECT_EQ(buffer.view(), "[(1, 2), (3, 4)]");
+}
+
+TEST(RelocoFormattersTest, FormatsUniquePtrOfDisplayOnlyElement) {
+  auto created = reloco::unique_ptr<display_only_point>::try_create(display_only_point{5, 6});
+  ASSERT_TRUE(created.has_value());
+  reloco::unique_ptr<display_only_point> ptr = std::move(created.value());
+
+  microfmt::buffer_sink<32> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", ptr);
+  EXPECT_EQ(buffer.view(), "(5, 6)");
+}

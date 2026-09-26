@@ -174,8 +174,8 @@ struct formatter<map_range_view<KeyExtractor, ValExtractor, Iterator, Sentinel>>
       using KeyType = detail::remove_cvref_map_t<decltype(k)>;
       using ValType = detail::remove_cvref_map_t<decltype(v)>;
 
-      formatter<KeyType> key_fmt;
-      formatter<ValType> val_fmt;
+      detail::element_formatter<KeyType> key_fmt;
+      detail::element_formatter<ValType> val_fmt;
 
       format_parse_context kctx(forwarded_spec);
       key_fmt.parse(kctx);

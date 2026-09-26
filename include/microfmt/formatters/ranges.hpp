@@ -127,7 +127,7 @@ template <typename It, typename Sentinel> struct formatter<join_view<It, Sentine
   void format(const join_view<It, Sentinel> &jv, const sink &out) const noexcept {
     using ValueType = std::remove_cv_t<std::remove_reference_t<decltype(*std::declval<It>())>>;
 
-    formatter<ValueType> element_fmt;
+    detail::element_formatter<ValueType> element_fmt;
     format_parse_context elem_ctx(elem_spec);
     element_fmt.parse(elem_ctx);
 
@@ -162,7 +162,7 @@ struct formatter<join_as_view<It, Sentinel, Delim, ElemSpec>> {
     constexpr microfmt::string_view ct_elem_spec = ElemSpec.view();
     const microfmt::string_view effective_spec = !ct_elem_spec.empty() ? ct_elem_spec : runtime_spec;
 
-    formatter<ValueType> element_fmt;
+    detail::element_formatter<ValueType> element_fmt;
     format_parse_context elem_ctx(effective_spec);
     element_fmt.parse(elem_ctx);
 

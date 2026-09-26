@@ -58,7 +58,7 @@ void format_tuple_impl(const Tuple &t, const sink &out, microfmt::string_view se
       out.write(sep);
     }
     using ElemType = remove_cvref_t<decltype(elem)>;
-    formatter<ElemType> f;
+    element_formatter<ElemType> f;
     format_parse_context ctx(spec);
     f.parse(ctx);
     f.format(elem, out);

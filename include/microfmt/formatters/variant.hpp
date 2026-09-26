@@ -231,7 +231,7 @@ template <typename... Ts> struct formatter<variant_view<Ts...>> {
     std::visit(
         [this, &out](const auto &val) {
           using ValueType = std::decay_t<decltype(val)>;
-          formatter<ValueType> element_fmt;
+          detail::element_formatter<ValueType> element_fmt;
           format_parse_context elem_ctx(elem_spec);
           element_fmt.parse(elem_ctx);
           element_fmt.format(val, out);

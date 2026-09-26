@@ -245,7 +245,7 @@ template <typename T> struct formatter<joined_span_view<T>> {
 
   void format(const joined_span_view<T> &j, const sink &out) const noexcept {
     bool first = true;
-    formatter<T> elem_fmt;
+    detail::element_formatter<T> elem_fmt;
     format_parse_context dummy_ctx("");
     elem_fmt.parse(dummy_ctx);
 

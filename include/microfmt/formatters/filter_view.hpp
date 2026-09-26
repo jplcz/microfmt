@@ -98,7 +98,7 @@ template <typename Range, typename Predicate> struct formatter<filtered_range_vi
 
     using ElementReference = decltype(*std::begin(fv.range));
     using ElemType = typename std::remove_cv<typename std::remove_reference<ElementReference>::type>::type;
-    formatter<ElemType> elem_fmt;
+    detail::element_formatter<ElemType> elem_fmt;
     format_parse_context elem_ctx(forwarded_spec);
     elem_fmt.parse(elem_ctx);
 
@@ -155,7 +155,7 @@ template <typename T, typename Predicate> struct formatter<filtered_pointer_rang
       out.put(open_c);
     }
 
-    formatter<T> elem_fmt;
+    detail::element_formatter<T> elem_fmt;
     format_parse_context elem_ctx(forwarded_spec);
     elem_fmt.parse(elem_ctx);
 
