@@ -29,7 +29,6 @@ instead of, or together with, `microfmt_user_config.hpp`.
 // microfmt_user_config.hpp, in a directory added to the include path ahead
 // of microfmt's own include/ directory.
 #pragma once
-#define RELOCO_TLS_MODEL RELOCO_TLS_MODEL_PTHREAD
 #define MICROFMT_ENABLE_DEFAULT_LOGGER
 ```
 
@@ -88,55 +87,6 @@ must appear before any microfmt header because the compatibility header uses
 
 `RELOCO_TRAP()` must not return. The default implementation uses the
 compiler debug trap when available and falls back to `std::abort()`.
-
-## Thread-local storage (TLS) provider
-
-microfmt no longer ships its own TLS provider; freestanding-friendly features
-such as the fallible address space's signal-safe recovery context use
-`reloco::tls_provider<T, Tag>` (`<reloco/tls_provider.hpp>`) directly, a
-tag-differentiated per-thread (or per-task) storage cell. Storage is uniquely
-keyed by both the stored type `T` and a unique `Tag` type, so unrelated
-features never collide even if they happen to store the same `T`:
-
-```cpp
-struct my_feature_tls_tag {};
-using my_tls = reloco::tls_provider<int, my_feature_tls_tag>;
-
-my_tls::set(42);
-auto value = my_tls::get(); // result<reference_wrapper<int>>, ->get() == 42
-```
-
-Unlike microfmt's old provider, every `get()`/`set()` is fallible
-(`reloco::result<...>`) and accepts a `reloco::allocator_ref` (default
-`reloco::default_allocator()`) used by models that may need to heap-allocate
-the slot; `get()` returns `result<std::reference_wrapper<T>>` for every model
-with genuine addressable per-thread storage, or `result<T>` by value for
-`RELOCO_TLS_MODEL_PTHREAD`'s bit-packed-pointer/small-trivial
-specializations, which have none. See `reloco/tls_provider.hpp`'s file-level
-docs for the full contract.
-
-### Selecting a storage model
-
-The active implementation is selected at compile time with the
-`RELOCO_TLS_MODEL` macro (owned by reloco; see `reloco/tls_provider.hpp`),
-which must be defined (if at all) before the first inclusion of
-`tls_provider.hpp`:
-
-| Macro value                        | Model                                                          |
-| ----------------------------------- | --------------------------------------------------------------- |
-| `RELOCO_TLS_MODEL_THREAD_LOCAL` (default) | Standard C++ `thread_local` storage.                     |
-| `RELOCO_TLS_MODEL_PTHREAD`        | POSIX `pthread_key_t`-based storage with lazy heap allocation and automatic cleanup on thread exit. |
-| `RELOCO_TLS_MODEL_SINGLE`         | Single global instance shared by every caller; suitable for single-threaded or bare-metal targets without per-task storage. |
-| `RELOCO_TLS_MODEL_OS`             | `#include`s a fixed `detail/porting/tls_provider.hpp` path (see `mutex.hpp`'s own custom-backend mechanism) instead of a built-in model; the platform must supply that header, defining `tls_provider<T, Tag>` against the target RTOS's task-local storage facilities. |
-
-```cpp
-#define RELOCO_TLS_MODEL RELOCO_TLS_MODEL_PTHREAD
-#include <reloco/tls_provider.hpp>
-```
-
-Win32 Fiber-Local-Storage support (microfmt's old `MICROFMT_TLS_MODEL_WIN32`)
-is not ported to reloco's provider; a Win32 target can supply its own model
-via `RELOCO_TLS_MODEL_OS`.
 
 See [Bare-metal hardware sinks](bare-metal.md) for the PL011 UART and ARM
 semihosting `microfmt::sink` adapters shipped under `microfmt/hw/`.
