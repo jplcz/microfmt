@@ -7,7 +7,7 @@
 /** @file sink.hpp @brief Type-erased structured logging sinks and console output. */
 
 #include "../formatters/ansi.hpp"
-#include "../formatters/chrono.hpp"
+#include "../formatters/reloco.hpp"
 #include "../sinks/stdio.hpp"
 #include "log_msg.hpp"
 #include <cstddef>
@@ -214,7 +214,7 @@ public:
     auto out = buf.as_sink();
 
     // Timestamp: [HH:MM:SS.mmm]
-    microfmt::format_to(out, "[{:t}] ", msg.time);
+    microfmt::format_to(out, "[{}] ", msg.time);
 
     // Logger Tag
     if (!msg.logger_name.empty()) {

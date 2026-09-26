@@ -10,6 +10,7 @@
 #include <reloco/boxed_slice.hpp>
 #include <reloco/checked.hpp>
 #include <reloco/cow.hpp>
+#include <reloco/duration.hpp>
 #include <reloco/flat_hash_map.hpp>
 #include <reloco/flat_hash_set.hpp>
 #include <reloco/flat_map.hpp>
@@ -19,6 +20,7 @@
 #include <reloco/inline_string.hpp>
 #include <reloco/inline_vec_deque.hpp>
 #include <reloco/inline_vector.hpp>
+#include <reloco/instant.hpp>
 #include <reloco/non_zero.hpp>
 #include <reloco/ordering.hpp>
 #include <reloco/outline_vec_deque.hpp>
@@ -462,4 +464,32 @@ TEST(RelocoFormattersTest, FormatsTypeId) {
   struct unnamed_test_type {};
   microfmt::format_to(buffer.as_sink(), "{}", reloco::type_id::of<unnamed_test_type>());
   EXPECT_EQ(buffer.view(), "<unnamed type>");
+}
+
+TEST(RelocoFormattersTest, FormatsDuration) {
+  microfmt::buffer_sink<32> buffer;
+
+  microfmt::format_to(buffer.as_sink(), "{}", reloco::duration::from_nanos(1'234'567'890ULL));
+  EXPECT_EQ(buffer.view(), "1.234567890s");
+
+  buffer.reset();
+  microfmt::format_to(buffer.as_sink(), "{:m}", reloco::duration::from_millis(1'500ULL));
+  EXPECT_EQ(buffer.view(), "1.500s");
+
+  buffer.reset();
+  microfmt::format_to(buffer.as_sink(), "{:u}", reloco::duration::from_micros(2'000'250ULL));
+  EXPECT_EQ(buffer.view(), "2.000250s");
+
+  buffer.reset();
+  microfmt::format_to(buffer.as_sink(), "{:r}", reloco::duration::from_secs(5));
+  EXPECT_EQ(buffer.view(), "5.000000000");
+}
+
+TEST(RelocoFormattersTest, FormatsInstant) {
+  microfmt::buffer_sink<32> buffer;
+
+  auto zero = reloco::instant();
+  auto later = zero + reloco::duration::from_millis(3'661'250ULL); // 1h 1m 1.25s
+  microfmt::format_to(buffer.as_sink(), "{}", later);
+  EXPECT_EQ(buffer.view(), "01:01:01.250");
 }

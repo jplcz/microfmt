@@ -16,7 +16,9 @@
 
 #include <reloco/array.hpp>
 #include <reloco/checked_value.hpp>
+#include <reloco/duration.hpp>
 #include <reloco/expected.hpp>
+#include <reloco/instant.hpp>
 #include <reloco/lifetime.hpp>
 #include <reloco/rvalue_safety.hpp>
 #include <reloco/span.hpp>
@@ -52,5 +54,11 @@ using reloco::span;
 
 using reloco::value_ptr;
 using reloco::value_ref;
+
+using reloco::duration;
+using reloco::duration_cast;
+using reloco::duration_converter;
+
+using reloco::instant;
 
 } // namespace microfmt

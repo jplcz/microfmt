@@ -219,7 +219,7 @@ private:
 
     log_msg msg{.logger_name = name_,
                 .lvl = lvl,
-                .time = std::chrono::system_clock::now(),
+                .time = microfmt::instant::now(),
                 .payload = buf.view(),
                 .loc = loc};
 

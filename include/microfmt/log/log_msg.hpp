@@ -7,7 +7,6 @@
 /** @file log_msg.hpp @brief Structured log-record types and severity levels. */
 
 #include "../microfmt.hpp"
-#include <chrono>
 #include <cstdint>
 #include <reloco/type_id.hpp>
 #include <source_location>
@@ -68,7 +67,7 @@ enum class level : uint8_t { trace = 0, debug, info, warn, err, critical, off };
 struct MICROFMT_API_CLASS log_msg {
   microfmt::string_view logger_name{};
   level lvl{level::info};
-  std::chrono::system_clock::time_point time{std::chrono::system_clock::now()};
+  microfmt::instant time{microfmt::instant::now()};
   microfmt::string_view payload{};
   std::source_location loc{std::source_location::current()};
 };

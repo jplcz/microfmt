@@ -123,6 +123,17 @@ adapter call needed:
   directly (never null).
 * `formatter<reloco::weak_ptr<T>>` attempts to `lock()` the pointee: formats
   its value if still alive, or the literal text `(expired)` otherwise.
+* `formatter<reloco::duration>` formats as `sec.frac` with a trailing `s`
+  unit, mirroring `formatters/posix_time.hpp`'s `timespec`/`timeval`
+  formatters (which `reloco::duration` shares its `(seconds,
+  subsec_nanoseconds)` representation with). Accepts the same `m`/`3`,
+  `u`/`6`, `n`/`9` fractional-precision suffixes (default `9`, nanoseconds)
+  and the `r`/`R` flag to suppress the trailing `s` unit.
+* `formatter<reloco::instant>` formats as `HH:MM:SS.mmm`: the value's own
+  elapsed time since the default-constructed ("zero") `instant`, the
+  closest analog to `std::chrono::steady_clock`'s own opaque epoch --
+  `instant` itself carries no defined epoch (see `<reloco/instant.hpp>`),
+  so it cannot be rendered as a calendar timestamp.
 
 The replacement-field specifier (e.g. `{:04X}`) cascades down to each
 element/value (for maps, both keys and values receive it).

@@ -5,6 +5,7 @@
 #include <reloco/checked.hpp>
 #include <reloco/collection_view.hpp>
 #include <reloco/cow.hpp>
+#include <reloco/duration.hpp>
 #include <reloco/flat_hash_map.hpp>
 #include <reloco/flat_hash_set.hpp>
 #include <reloco/flat_map.hpp>
@@ -14,6 +15,7 @@
 #include <reloco/inline_string.hpp>
 #include <reloco/inline_vec_deque.hpp>
 #include <reloco/inline_vector.hpp>
+#include <reloco/instant.hpp>
 #include <reloco/non_zero.hpp>
 #include <reloco/ordering.hpp>
 #include <reloco/outline_vec_deque.hpp>
@@ -972,6 +974,89 @@ template <typename T> struct formatter<reloco::checked<T>> {
 
   void format(const reloco::checked<T> &value, const sink &out) const noexcept {
     underlying_formatter.format(value.get(), out);
+  }
+};
+
+// ============================================================================
+// Direct Formatters for reloco Time Types (duration.hpp / instant.hpp)
+// ============================================================================
+
+/**
+ * @brief Formatter for `reloco::duration`.
+ *
+ * Renders `sec.frac` with a trailing `s` unit, mirroring
+ * `formatters/posix_time.hpp`'s `timespec`/`timeval` formatters (which
+ * `reloco::duration` shares its `(seconds, subsec_nanoseconds)`
+ * representation with). Accepts the same `m`/`3`, `u`/`6`, `n`/`9`
+ * fractional-precision suffixes and the `r`/`R` flag to suppress the
+ * trailing `s` unit.
+ */
+template <> struct formatter<reloco::duration> {
+  /** @brief Fractional-digit precision (default 9 = nanoseconds). */
+  uint8_t precision{9};
+  /** @brief Set to `false` (via `r`/`R`) for raw seconds without `s` suffix. */
+  bool show_unit{true};
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    for (char c : ctx.spec()) {
+      if (c == 'm' || c == '3')
+        precision = 3;
+      else if (c == 'u' || c == '6')
+        precision = 6;
+      else if (c == 'n' || c == '9')
+        precision = 9;
+      else if (c == 'r' || c == 'R')
+        show_unit = false;
+    }
+  }
+
+  void format(const reloco::duration &value, const sink &out) const noexcept {
+    detail::format_unsigned<detail::radix::decimal>(out, value.as_secs(), false, 0);
+    out.put('.');
+    if (precision == 3) {
+      detail::format_unsigned<detail::radix::decimal>(out, value.subsec_millis(), false, 3);
+    } else if (precision == 6) {
+      detail::format_unsigned<detail::radix::decimal>(out, value.subsec_micros(), false, 6);
+    } else {
+      detail::format_unsigned<detail::radix::decimal>(out, value.subsec_nanos(), false, 9);
+    }
+
+    if (show_unit) {
+      out.put('s');
+    }
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::instant`.
+ *
+ * `instant` carries no defined epoch (see `<reloco/instant.hpp>`'s
+ * file-level documentation), so it cannot be rendered as a calendar
+ * timestamp the way `formatters/chrono.hpp`'s `system_clock` time-point
+ * formatter renders `std::chrono::system_clock::time_point`. Instead this
+ * mirrors that same header's `steady_clock` time-point formatter: the
+ * value's own elapsed time since the default-constructed ("zero")
+ * `instant` -- the closest analog to `steady_clock`'s own opaque,
+ * monotonic epoch -- is rendered as `[HH:MM:SS.mmm]` uptime.
+ */
+template <> struct formatter<reloco::instant> {
+  constexpr void parse(format_parse_context &) noexcept {}
+
+  void format(const reloco::instant &value, const sink &out) const noexcept {
+    const reloco::duration since_epoch = value.duration_since(reloco::instant());
+
+    const std::uint64_t total_secs = since_epoch.as_secs();
+    const std::uint32_t hours = static_cast<std::uint32_t>(total_secs / 3600);
+    const std::uint32_t mins = static_cast<std::uint32_t>((total_secs % 3600) / 60);
+    const std::uint32_t secs = static_cast<std::uint32_t>(total_secs % 60);
+
+    detail::format_unsigned<detail::radix::decimal>(out, hours, false, 2);
+    out.put(':');
+    detail::format_unsigned<detail::radix::decimal>(out, mins, false, 2);
+    out.put(':');
+    detail::format_unsigned<detail::radix::decimal>(out, secs, false, 2);
+    out.put('.');
+    detail::format_unsigned<detail::radix::decimal>(out, since_epoch.subsec_millis(), false, 3);
   }
 };
 
