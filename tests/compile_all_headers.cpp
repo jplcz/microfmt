@@ -4,7 +4,6 @@
 
 #include <microfmt/detail/assert.hpp>
 #include <microfmt/detail/compat.hpp>
-#include <microfmt/detail/tls_provider.hpp>
 #include <microfmt/formatters/ansi.hpp>
 #include <microfmt/formatters/base_views.hpp>
 #include <microfmt/formatters/binary.hpp>

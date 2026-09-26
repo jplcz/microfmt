@@ -43,17 +43,12 @@
 //
 // RELOCO_KERNEL, RELOCO_KERNEL_PANIC, RELOCO_TRAP, RELOCO_UNREACHABLE /
 // RELOCO_HAS_UNREACHABLE, RELOCO_DISABLE_ASSERT / RELOCO_DISABLE_ASSERT_STDIO,
-// RELOCO_DEBUG
-//     Owned by reloco (see reloco/reloco_config.hpp); microfmt uses them
-//     directly rather than a MICROFMT_* alias. They may still be overridden
-//     here, since microfmt_user_config.hpp (see MICROFMT_CONFIG above) is
-//     included before any header applies its own default.
-//
-// MICROFMT_TLS_MODEL
-//     Selects the microfmt::detail::tls_provider storage model. One of
-//     MICROFMT_TLS_MODEL_THREAD_LOCAL (default), MICROFMT_TLS_MODEL_PTHREAD,
-//     MICROFMT_TLS_MODEL_SINGLE, MICROFMT_TLS_MODEL_WIN32, or
-//     MICROFMT_TLS_MODEL_OS.
+// RELOCO_DEBUG, RELOCO_TLS_MODEL
+//     Owned by reloco (see reloco/reloco_config.hpp, reloco/tls_provider.hpp);
+//     microfmt uses them directly rather than a MICROFMT_* alias. They may
+//     still be overridden here, since microfmt_user_config.hpp (see
+//     MICROFMT_CONFIG above) is included before any header applies its own
+//     default.
 //
 // MICROFMT_USE_SYSTEM_ERROR
 //     Selects the microfmt::posix_errno message backend: std::error_code /

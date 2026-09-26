@@ -10,13 +10,15 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <setjmp.h>
 #include <signal.h>
+#include <type_traits>
 #include <unistd.h>
 
 // clang-format off
 #include "../microfmt.hpp"
-#include "../detail/tls_provider.hpp"
+#include <reloco/tls_provider.hpp>
 #include "address_space.hpp"
 // clang-format on
 
@@ -47,10 +49,39 @@ struct MICROFMT_API_CLASS fault_recovery_context {
 struct fallible_space_tls_tag {};
 
 // Convenience alias for the tag-differentiated TLS state
-using fallible_tls = tls_provider<fault_recovery_context *, fallible_space_tls_tag > ;
+using fallible_tls = reloco::tls_provider<fault_recovery_context *, fallible_space_tls_tag>;
+
+/**
+ * @brief Unwraps `fallible_tls::get()`'s result to a plain pointer.
+ *
+ * `reloco::tls_provider<T *, Tag>::get()` returns
+ * `result<std::reference_wrapper<T *>>` for every model with genuine
+ * addressable per-thread storage, or `result<T *>` by value for
+ * `RELOCO_TLS_MODEL_PTHREAD`'s bit-packed-pointer specialization (see
+ * `tls_provider.hpp`'s file-level docs); this unwraps either shape to a
+ * plain pointer, and treats an outright `tls_provider::get()` failure the
+ * same as "no fallible operation active/nested" (nullptr), matching this
+ * slot's un-set default.
+ */
+[[nodiscard]] inline fault_recovery_context *fallible_tls_get() noexcept {
+  auto result = fallible_tls::get();
+  if (!result)
+    return nullptr;
+  using value_type = std::decay_t<decltype(*result)>;
+  if constexpr (std::is_same_v<value_type, std::reference_wrapper<fault_recovery_context *>>) {
+    return result->get();
+  } else {
+    return *result;
+  }
+}
+
+/** @brief Sets the calling thread's recovery-context slot; returns `false`
+ * if the underlying `tls_provider::set()` itself failed (surfaced to
+ * callers the same way a fault during the guarded copy is). */
+inline bool fallible_tls_set(fault_recovery_context *ctx) noexcept { return fallible_tls::set(ctx).has_value(); }
 
 inline void fallible_signal_handler(int sig, siginfo_t *, void *) noexcept {
-  auto *ctx = fallible_tls::get();
+  auto *ctx = fallible_tls_get();
   if (ctx && ctx->active) {
     siglongjmp(ctx->env, sig);
   }
@@ -96,11 +127,12 @@ template <> struct address_space_traits<fallible_local_space_tag> {
     fault_ctx.active = true;
 
     // Nesting-safe context management via the tag-differentiated TLS state
-    auto *old_ctx = detail::fallible_tls::get();
-    detail::fallible_tls::set(&fault_ctx);
+    auto *old_ctx = detail::fallible_tls_get();
+    if (!detail::fallible_tls_set(&fault_ctx))
+      return false;
 
     if (sigsetjmp(fault_ctx.env, 1) != 0) {
-      detail::fallible_tls::set(old_ctx);
+      detail::fallible_tls_set(old_ctx);
       return false;
     }
 
@@ -108,7 +140,7 @@ template <> struct address_space_traits<fallible_local_space_tag> {
     std::memcpy(dest, reinterpret_cast<const void *>(addr), size);
     RELOCO_END_UNSAFE_BUFFER_USAGE;
 
-    detail::fallible_tls::set(old_ctx);
+    detail::fallible_tls_set(old_ctx);
     return true;
   }
 
@@ -123,11 +155,12 @@ template <> struct address_space_traits<fallible_local_space_tag> {
     detail::fault_recovery_context fault_ctx{};
     fault_ctx.active = true;
 
-    auto *old_ctx = detail::fallible_tls::get();
-    detail::fallible_tls::set(&fault_ctx);
+    auto *old_ctx = detail::fallible_tls_get();
+    if (!detail::fallible_tls_set(&fault_ctx))
+      return false;
 
     if (sigsetjmp(fault_ctx.env, 1) != 0) {
-      detail::fallible_tls::set(old_ctx);
+      detail::fallible_tls_set(old_ctx);
       return false;
     }
 
@@ -135,7 +168,7 @@ template <> struct address_space_traits<fallible_local_space_tag> {
     std::memcpy(reinterpret_cast<void *>(addr), src, size);
     RELOCO_END_UNSAFE_BUFFER_USAGE;
 
-    detail::fallible_tls::set(old_ctx);
+    detail::fallible_tls_set(old_ctx);
     return true;
   }
 
@@ -148,11 +181,12 @@ template <> struct address_space_traits<fallible_local_space_tag> {
     detail::fault_recovery_context fault_ctx{};
     fault_ctx.active = true;
 
-    auto *old_ctx = detail::fallible_tls::get();
-    detail::fallible_tls::set(&fault_ctx);
+    auto *old_ctx = detail::fallible_tls_get();
+    if (!detail::fallible_tls_set(&fault_ctx))
+      return false;
 
     if (sigsetjmp(fault_ctx.env, 1) != 0) {
-      detail::fallible_tls::set(old_ctx);
+      detail::fallible_tls_set(old_ctx);
       return false;
     }
 
@@ -164,14 +198,14 @@ template <> struct address_space_traits<fallible_local_space_tag> {
       if (dest[i] == '\0') {
         out_len = i;
         null_term = true;
-        detail::fallible_tls::set(old_ctx);
+        detail::fallible_tls_set(old_ctx);
         return true;
       }
       ++i;
     }
     RELOCO_END_UNSAFE_BUFFER_USAGE;
 
-    detail::fallible_tls::set(old_ctx);
+    detail::fallible_tls_set(old_ctx);
     out_len = max_len;
     null_term = false;
     return true;

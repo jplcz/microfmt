@@ -404,7 +404,6 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_platform_log_sinks.cpp
         tests/test_pointer.cpp
         tests/test_logger_override.cpp
-        tests/test_tls_provider.cpp
         tests/test_sbuf_sink.cpp
         tests/test_c_string_span_sink.cpp
         tests/test_memory_buffer.cpp
@@ -529,19 +528,6 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
     )
     gtest_discover_tests(jplcz_microfmt_cxx17_scratch_allocator_tests
         TEST_PREFIX "Cxx17ScratchAllocator.")
-
-    add_executable(jplcz_microfmt_cxx17_tls_provider_tests
-        tests/test_tls_provider.cpp)
-    target_link_libraries(jplcz_microfmt_cxx17_tls_provider_tests PRIVATE
-        jplcz_microfmt GTest::gtest_main)
-    jplcz_microfmt_enable_warnings(jplcz_microfmt_cxx17_tls_provider_tests)
-    set_target_properties(jplcz_microfmt_cxx17_tls_provider_tests PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED ON
-        CXX_EXTENSIONS OFF
-    )
-    gtest_discover_tests(jplcz_microfmt_cxx17_tls_provider_tests
-        TEST_PREFIX "Cxx17TlsProvider.")
 
     add_executable(jplcz_microfmt_cxx17_metadata_map_tests
         tests/test_metadata_map.cpp)
