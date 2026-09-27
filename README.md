@@ -345,6 +345,23 @@ ExternalProject_Add(
 Set `CMAKE_PREFIX_PATH` or `jplcz_microfmt_DIR` to the installed package
 directory when configuring a separate consuming project.
 
+Custom build trees (e.g. an RTOS DDK/SDK with its own directory layout) can
+override where each piece is installed, independent of
+`CMAKE_INSTALL_PREFIX`, via:
+
+- `JPLCZ_MICROFMT_INSTALL_INCLUDEDIR` (default: `CMAKE_INSTALL_INCLUDEDIR`)
+- `JPLCZ_MICROFMT_INSTALL_DOCDIR` (default: `CMAKE_INSTALL_DOCDIR`)
+- `JPLCZ_MICROFMT_INSTALL_CMAKEDIR` (default:
+  `${CMAKE_INSTALL_DATADIR}/cmake/jplcz_microfmt`)
+- `JPLCZ_MICROFMT_INSTALL_MANDIR` (default: `CMAKE_INSTALL_MANDIR`, only used
+  when `JPLCZ_MICROFMT_BUILD_MANPAGES=ON`)
+
+Each accepts a path relative to `CMAKE_INSTALL_PREFIX`, and must be set at
+configure time (not `cmake --install`). `jplcz_reloco`'s own
+`JPLCZ_RELOCO_INSTALL_*DIR` variables (see its README) can be overridden the
+same way when it is pulled in as a dependency of a standalone
+jplcz_microfmt build.
+
 Alternatively, add `include/` to the compiler include path:
 
 ```cpp

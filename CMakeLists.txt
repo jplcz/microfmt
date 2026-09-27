@@ -35,14 +35,62 @@ option(JPLCZ_MICROFMT_BUILD_MANPAGES
     "Generate man(7) pages from the Markdown docs using pandoc, when available"
     OFF)
 
+# Included unconditionally (not only under JPLCZ_MICROFMT_INSTALL), and
+# harmlessly idempotent if a parent build already included it, purely to
+# make GNUInstallDirs' CMAKE_INSTALL_* cache variables available as
+# defaults for the JPLCZ_MICROFMT_INSTALL_* overrides immediately below --
+# these are consulted by every install() destination further down,
+# regardless of JPLCZ_MICROFMT_INSTALL's own value at this point in the
+# file (option() processing order). Mirrors reloco's own
+# JPLCZ_RELOCO_INSTALL_*DIR block (reloco/CMakeLists.txt).
+include(GNUInstallDirs)
+
+# Each defaults to the plain GNUInstallDirs value, but can be overridden
+# independently of CMAKE_INSTALL_PREFIX/CMAKE_INSTALL_*, e.g. by a custom
+# RTOS/DDK/SDK build tree that already repurposes the standard
+# CMAKE_INSTALL_INCLUDEDIR/CMAKE_INSTALL_DATADIR/CMAKE_INSTALL_MANDIR
+# cache variables for its own unrelated headers/CMake packages/man pages
+# and needs microfmt installed under a distinct path instead (a vendored
+# third_party/ subtree, a board-support-package-specific include root,
+# ...).
+#
+# Cache type STRING, not PATH, deliberately: these are destination
+# specifiers meant to stay *relative* to CMAKE_INSTALL_PREFIX (exactly
+# like GNUInstallDirs' own CMAKE_INSTALL_INCLUDEDIR/CMAKE_INSTALL_DOCDIR),
+# not literal filesystem paths to browse to. A PATH-typed cache entry
+# whose value was first supplied as a plain `-DVAR=value` (no `:TYPE=`)
+# on the CMake command line gets silently collapsed to an *absolute*
+# path relative to the current working directory the moment a `set(...
+# CACHE PATH ...)` call establishes its type -- turning e.g. "include"
+# into "<cwd>/include" and breaking the relative $<INSTALL_INTERFACE:...>
+# usage below. GNUInstallDirs sidesteps this same trap for its own
+# CMAKE_INSTALL_* variables via a hand-written cache-type-conversion
+# helper (see _GNUInstallDirs_cache_convert_to_path in
+# GNUInstallDirs.cmake); STRING type avoids the whole class of problem
+# here without needing that machinery.
+set(JPLCZ_MICROFMT_INSTALL_INCLUDEDIR "${CMAKE_INSTALL_INCLUDEDIR}" CACHE STRING
+    "Install destination for microfmt's public headers (relative to \
+CMAKE_INSTALL_PREFIX unless absolute)")
+set(JPLCZ_MICROFMT_INSTALL_DOCDIR "${CMAKE_INSTALL_DOCDIR}" CACHE STRING
+    "Install destination for microfmt's README/LICENSE/docs/ (relative \
+to CMAKE_INSTALL_PREFIX unless absolute)")
+set(JPLCZ_MICROFMT_INSTALL_CMAKEDIR "${CMAKE_INSTALL_DATADIR}/cmake/jplcz_microfmt" CACHE STRING
+    "Install destination for jplcz_microfmt's CMake package config/\
+targets/version files (relative to CMAKE_INSTALL_PREFIX unless \
+absolute)")
+set(JPLCZ_MICROFMT_INSTALL_MANDIR "${CMAKE_INSTALL_MANDIR}" CACHE STRING
+    "Install destination for JPLCZ_MICROFMT_BUILD_MANPAGES' generated \
+man(7) pages (relative to CMAKE_INSTALL_PREFIX unless absolute)")
+
 set(JPLCZ_MICROFMT_PORTING_HEADERS "" CACHE PATH
     "Directory containing target-specific override headers (currently \
 default_log_sink.hpp) copied into include/microfmt/detail/porting/ and \
 installed alongside microfmt's own headers, plus the matching \
-MICROFMT_*_BACKEND_CUSTOM macro defined automatically for consumers of \
-the jplcz_microfmt target. See include/microfmt/detail/porting/\
-*.template.hpp and include/microfmt/detail/porting/README.md for the \
-exact shape each file must have.")
+MICROFMT_*_BACKEND_CUSTOM macro baked into a generated \
+detail/porting/generated_config.hpp for every consumer. See \
+include/microfmt/detail/porting/*.template.hpp and \
+include/microfmt/detail/porting/README.md for the exact shape each file \
+must have.")
 
 if(JPLCZ_MICROFMT_BUILD_TESTS OR JPLCZ_MICROFMT_BUILD_EXAMPLES OR
    JPLCZ_MICROFMT_BUILD_HEADER_CHECKS)
@@ -156,7 +204,7 @@ set_target_properties(jplcz_microfmt PROPERTIES EXPORT_NAME microfmt)
 
 target_include_directories(jplcz_microfmt INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:${JPLCZ_MICROFMT_INSTALL_INCLUDEDIR}>
 )
 
 target_link_libraries(jplcz_microfmt INTERFACE jplcz_reloco::reloco)
@@ -958,18 +1006,22 @@ if(JPLCZ_MICROFMT_BUILD_BENCHMARKS)
 endif()
 
 if(JPLCZ_MICROFMT_INSTALL)
+    # GNUInstallDirs was already include()d unconditionally near the
+    # JPLCZ_MICROFMT_INSTALL_*DIR option() block above; this second
+    # include() is harmless (idempotent) and kept so this block remains
+    # self-contained if ever reordered.
     include(GNUInstallDirs)
     include(CMakePackageConfigHelpers)
 
     install(
         TARGETS jplcz_microfmt jplcz_microfmt_shared jplcz_microfmt_shared_export
         EXPORT jplcz_microfmtTargets
-        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+        INCLUDES DESTINATION "${JPLCZ_MICROFMT_INSTALL_INCLUDEDIR}"
     )
 
     install(
         DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+        DESTINATION "${JPLCZ_MICROFMT_INSTALL_INCLUDEDIR}"
         COMPONENT Development
     )
 
@@ -981,7 +1033,7 @@ if(JPLCZ_MICROFMT_INSTALL)
     if(JPLCZ_MICROFMT_PORTING_HEADERS)
         install(
             DIRECTORY "${JPLCZ_MICROFMT_PORTING_DEST_DIR}/"
-            DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/microfmt/detail/porting"
+            DESTINATION "${JPLCZ_MICROFMT_INSTALL_INCLUDEDIR}/microfmt/detail/porting"
             COMPONENT Development
         )
     endif()
@@ -994,13 +1046,13 @@ if(JPLCZ_MICROFMT_INSTALL)
         FILES
             "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
             "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
-        DESTINATION "${CMAKE_INSTALL_DOCDIR}"
+        DESTINATION "${JPLCZ_MICROFMT_INSTALL_DOCDIR}"
         COMPONENT Documentation
     )
 
     install(
         DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs/"
-        DESTINATION "${CMAKE_INSTALL_DOCDIR}/docs"
+        DESTINATION "${JPLCZ_MICROFMT_INSTALL_DOCDIR}/docs"
         COMPONENT Documentation
         PATTERN "*.css" EXCLUDE
     )
@@ -1008,7 +1060,7 @@ if(JPLCZ_MICROFMT_INSTALL)
     configure_package_config_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/jplcz_microfmtConfig.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfig.cmake"
-        INSTALL_DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/jplcz_microfmt"
+        INSTALL_DESTINATION "${JPLCZ_MICROFMT_INSTALL_CMAKEDIR}"
         NO_SET_AND_CHECK_MACRO
         NO_CHECK_REQUIRED_COMPONENTS_MACRO
     )
@@ -1027,7 +1079,7 @@ if(JPLCZ_MICROFMT_INSTALL)
         EXPORT jplcz_microfmtTargets
         FILE jplcz_microfmtTargets.cmake
         NAMESPACE jplcz_microfmt::
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/jplcz_microfmt"
+        DESTINATION "${JPLCZ_MICROFMT_INSTALL_CMAKEDIR}"
         COMPONENT Development
     )
 
@@ -1035,7 +1087,7 @@ if(JPLCZ_MICROFMT_INSTALL)
         FILES
             "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfig.cmake"
             "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfigVersion.cmake"
-        DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/jplcz_microfmt"
+        DESTINATION "${JPLCZ_MICROFMT_INSTALL_CMAKEDIR}"
         COMPONENT Development
     )
 endif()
@@ -1104,7 +1156,7 @@ if(JPLCZ_MICROFMT_BUILD_MANPAGES)
     if(JPLCZ_MICROFMT_INSTALL)
         install(
             FILES ${JPLCZ_MICROFMT_MAN_OUTPUTS}
-            DESTINATION "${CMAKE_INSTALL_MANDIR}/man${JPLCZ_MICROFMT_MAN_SECTION}"
+            DESTINATION "${JPLCZ_MICROFMT_INSTALL_MANDIR}/man${JPLCZ_MICROFMT_MAN_SECTION}"
             COMPONENT Documentation
         )
     endif()
