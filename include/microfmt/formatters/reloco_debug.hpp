@@ -46,10 +46,48 @@
  * of re-implementing (or bypassing) it, by formatting through the
  * already-registered `formatter<reloco::type_id>` in
  * `formatters/reloco.hpp`.
+ *
+ * `reloco::error` also genuinely needs new code: it has no
+ * `formatter<reloco::error>` at all today (nor anywhere else in
+ * `jplcz_microfmt`) -- there was previously no way to print a bare
+ * `reloco::error` value, only its containing `result<T>`'s success value
+ * (once that has one too, see below). `Debug<error>` prints the enum
+ * member's own name (e.g. `out_of_range`), via a hand-written name table
+ * kept in sync with `error.hpp`'s member list -- `reloco::error` has no
+ * reflection/name-lookup helper of its own to delegate to.
+ *
+ * `reloco::result<T>` (`= reloco::expected<T, reloco::error>`) also gets
+ * a `Debug<T>`, formatting Rust's `Result` debug convention: `Ok(value)`
+ * or `Err(error)`, recursing into the held value/error via
+ * `microfmt::as_debug` (matching the "`Debug` always recurses via
+ * `Debug`" rule `reflect_annotate.hpp`'s generated structs also follow).
+ * The `expected<void, E>` partial specialization is covered separately,
+ * since its `value()` returns `void` (nothing to recurse into on the
+ * `Ok` side).
+ *
+ * `reloco::rc<T>`/`reloco::weak_rc<T>` get a `Debug<T>` too, even though
+ * `formatters/reloco.hpp` already has a `formatter<T>` for both: unlike
+ * every other smart-pointer wrapper covered by that fallback reasoning
+ * above, `rc`/`weak_rc` expose a genuinely debug-only diagnostic --
+ * `use_count()`, the live strong-reference count -- that their `{}`
+ * Display output intentionally omits (it only prints the pointee's
+ * value, matching every other smart pointer's Display convention). The
+ * pointee itself is still rendered via `microfmt::as_debug`, so a pointee
+ * with its own `Debug<T>` still recurses correctly.
+ *
+ * `reloco::flat_hash_set<T, ...>`/`reloco::flat_hash_map<Key, Mapped,
+ * ...>` get a `Debug<T>` for the same reason: `size()`/`capacity()`/
+ * `load_factor_permille()` (see `detail/flat_hash_base.hpp`) are
+ * debug-only diagnostics about the table's internal state that its `{}`
+ * Display output (just the element/entry list) intentionally omits.
  */
 
 #include <microfmt/microfmt.hpp>
 #include <reloco/any.hpp>
+#include <reloco/error.hpp>
+#include <reloco/flat_hash_map.hpp>
+#include <reloco/flat_hash_set.hpp>
+#include <reloco/rc.hpp>
 
 #include "reloco.hpp" // formatter<reloco::type_id>, reused by Debug<any> below
 
@@ -73,6 +111,233 @@ template <> struct Debug<any> {
     out.write("any(");
     microfmt::format_to(out, "{}", val.type_id());
     out.put(')');
+  }
+};
+
+/**
+ * @brief `Debug<reloco::error>`: the enum member's own name (e.g.
+ * `out_of_range`), via a hand-written name table -- kept in sync with
+ * `error.hpp`'s member list by hand, since the enum has no
+ * reflection/name-lookup helper of its own.
+ */
+template <> struct Debug<error> {
+  static void format(const error &val, const sink &out) noexcept {
+    switch (val) {
+    case error::allocation_failed:
+      out.write("allocation_failed");
+      return;
+    case error::in_place_growth_failed:
+      out.write("in_place_growth_failed");
+      return;
+    case error::unsupported_operation:
+      out.write("unsupported_operation");
+      return;
+    case error::out_of_range:
+      out.write("out_of_range");
+      return;
+    case error::invalid_argument:
+      out.write("invalid_argument");
+      return;
+    case error::already_exists:
+      out.write("already_exists");
+      return;
+    case error::empty_pointer:
+      out.write("empty_pointer");
+      return;
+    case error::pointer_expired:
+      out.write("pointer_expired");
+      return;
+    case error::no_owner:
+      out.write("no_owner");
+      return;
+    case error::out_of_bounds:
+      out.write("out_of_bounds");
+      return;
+    case error::deadlock:
+      out.write("deadlock");
+      return;
+    case error::invalid_owner:
+      out.write("invalid_owner");
+      return;
+    case error::still_locked:
+      out.write("still_locked");
+      return;
+    case error::not_locked:
+      out.write("not_locked");
+      return;
+    case error::timed_out:
+      out.write("timed_out");
+      return;
+    case error::try_again:
+      out.write("try_again");
+      return;
+    case error::not_initialized:
+      out.write("not_initialized");
+      return;
+    case error::container_empty:
+      out.write("container_empty");
+      return;
+    case error::not_found:
+      out.write("not_found");
+      return;
+    case error::integer_overflow:
+      out.write("integer_overflow");
+      return;
+    case error::division_by_zero:
+      out.write("division_by_zero");
+      return;
+    case error::capacity_exceeded:
+      out.write("capacity_exceeded");
+      return;
+    case error::invalid_state:
+      out.write("invalid_state");
+      return;
+    case error::permission_denied:
+      out.write("permission_denied");
+      return;
+    case error::interrupted:
+      out.write("interrupted");
+      return;
+    case error::resource_exhausted:
+      out.write("resource_exhausted");
+      return;
+    case error::busy:
+      out.write("busy");
+      return;
+    case error::io_error:
+      out.write("io_error");
+      return;
+    case error::operation_canceled:
+      out.write("operation_canceled");
+      return;
+    }
+    // Unreachable for any currently-defined `reloco::error` member; kept as a
+    // defensive fallback in case a future member is added here without a
+    // matching `case` above (e.g. a forgotten update to this table).
+    microfmt::format_to(out, "error({})", static_cast<int>(val));
+  }
+};
+
+/**
+ * @brief `Debug<reloco::result<T>>` (`= Debug<reloco::expected<T,
+ * reloco::error>>`): Rust's `Result` debug convention, `Ok(value)` or
+ * `Err(error)`, recursing into the held value/error via
+ * `microfmt::as_debug` so each side always prefers its own `Debug<T>`
+ * over `formatter<T>`/`Display<T>` (matching the "`Debug` always
+ * recurses via `Debug`" rule generated struct dumps also follow, see
+ * `reflect_annotate.hpp`).
+ */
+template <typename T, typename E> struct Debug<expected<T, E>> {
+  static void format(const expected<T, E> &val, const sink &out) noexcept {
+    if (val.has_value()) {
+      microfmt::format_to(out, "Ok({})", microfmt::as_debug(val.value()));
+    } else {
+      microfmt::format_to(out, "Err({})", microfmt::as_debug(val.error()));
+    }
+  }
+};
+
+/**
+ * @brief `Debug<reloco::expected<void, E>>`: like the primary
+ * `Debug<expected<T, E>>` template above, but the `Ok` case has no value
+ * to recurse into (`expected<void, E>::value()` returns `void`), so it is
+ * printed as a bare `Ok` -- matching Rust's `Result<(), E>` `Debug`
+ * output, `Ok(())`... except reloco has no unit/`()` type to print, so
+ * this omits the parentheses' contents entirely rather than inventing one.
+ */
+template <typename E> struct Debug<expected<void, E>> {
+  static void format(const expected<void, E> &val, const sink &out) noexcept {
+    if (val.has_value()) {
+      out.write("Ok()");
+    } else {
+      microfmt::format_to(out, "Err({})", microfmt::as_debug(val.error()));
+    }
+  }
+};
+
+/**
+ * @brief `Debug<reloco::rc<T>>`: `rc(use_count: N) { value }`, or `rc(use_count:
+ * 0) { (null) }` for an empty pointer -- unlike the `{}` Display output
+ * (which just prints the pointee's value, matching every other smart
+ * pointer), this reports the live strong-reference count, a genuinely
+ * debug-only diagnostic. The pointee is rendered via `microfmt::as_debug`,
+ * so a pointee with its own `Debug<T>` (e.g. a reflect-dump-generated
+ * struct) still recurses correctly.
+ */
+template <typename T> struct Debug<rc<T>> {
+  static void format(const rc<T> &val, const sink &out) noexcept {
+    microfmt::format_to(out, "rc(use_count: {}) {{ ", val.use_count());
+    if (!val) {
+      out.write("(null)");
+    } else {
+      microfmt::format_to(out, "{}", microfmt::as_debug(*val.get()));
+    }
+    out.write(" }");
+  }
+};
+
+/**
+ * @brief `Debug<reloco::weak_rc<T>>`: like `Debug<rc<T>>` above, but
+ * attempts `lock()` to read the pointee (the same fallback
+ * `formatter<weak_rc<T>>` already uses): `rc(use_count: N) { value }` if
+ * still alive, or `rc(use_count: 0) { (expired) }` once the last owning
+ * `rc` has released it.
+ */
+template <typename T> struct Debug<weak_rc<T>> {
+  static void format(const weak_rc<T> &val, const sink &out) noexcept {
+    microfmt::format_to(out, "rc(use_count: {}) {{ ", val.use_count());
+    auto locked = val.lock();
+    if (!locked.has_value()) {
+      out.write("(expired)");
+    } else {
+      microfmt::format_to(out, "{}", microfmt::as_debug(*locked.value().get()));
+    }
+    out.write(" }");
+  }
+};
+
+/**
+ * @brief `Debug<reloco::flat_hash_set<T, ...>>`: `flat_hash_set(size: N,
+ * capacity: N, load_factor_permille: N) [val1, val2, ...]` -- the same
+ * element list `{}` Display output already shows, prefixed with the
+ * table's internal-state diagnostics (see `detail/flat_hash_base.hpp`'s
+ * `load_factor_permille()`, an integer parts-per-thousand value; reloco
+ * never uses floating point for diagnostics like this).
+ */
+template <typename T, typename Hash, typename KeyEqual> struct Debug<flat_hash_set<T, Hash, KeyEqual>> {
+  static void format(const flat_hash_set<T, Hash, KeyEqual> &val, const sink &out) noexcept {
+    microfmt::format_to(out, "flat_hash_set(size: {}, capacity: {}, load_factor_permille: {}) [", val.size(),
+                         val.capacity(), val.load_factor_permille());
+    bool is_first = true;
+    for (const auto &elem : val) {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+      microfmt::format_to(out, "{}", microfmt::as_debug(elem));
+    }
+    out.put(']');
+  }
+};
+
+/**
+ * @brief `Debug<reloco::flat_hash_map<Key, Mapped, ...>>`: like
+ * `Debug<flat_hash_set<T, ...>>` above, but for `{key: val, ...}` entries.
+ */
+template <typename Key, typename Mapped, typename Hash, typename KeyEqual>
+struct Debug<flat_hash_map<Key, Mapped, Hash, KeyEqual>> {
+  static void format(const flat_hash_map<Key, Mapped, Hash, KeyEqual> &val, const sink &out) noexcept {
+    microfmt::format_to(out, "flat_hash_map(size: {}, capacity: {}, load_factor_permille: {}) {{", val.size(),
+                         val.capacity(), val.load_factor_permille());
+    bool is_first = true;
+    for (const auto &entry : val) {
+      if (!is_first) {
+        out.write(", ");
+      }
+      is_first = false;
+      microfmt::format_to(out, "{}: {}", microfmt::as_debug(entry.first), microfmt::as_debug(entry.second));
+    }
+    out.put('}');
   }
 };
 
