@@ -429,6 +429,12 @@ struct MICROFMT_API_CLASS RELOCO_POINTER c_string_sink_base {
                                size_t pos) noexcept
       : m_data(ptr), m_max_payload(max), m_pos(pos) {}
 
+  // Derived classes **MUST** provide proper overrides
+  c_string_sink_base(const c_string_sink_base &) = delete;
+  c_string_sink_base &operator=(const c_string_sink_base &) = delete;
+  c_string_sink_base(c_string_sink_base &&) = delete;
+  c_string_sink_base &operator=(c_string_sink_base &&) = delete;
+
   RELOCO_CONSTEXPR20 static void write_thunk(void *ctx, microfmt::string_view sv) noexcept {
     auto *self = static_cast<c_string_sink_base *>(ctx);
     const std::size_t avail = (self->m_pos < self->m_max_payload) ? (self->m_max_payload - self->m_pos) : 0;
@@ -463,6 +469,47 @@ public:
    * @brief Constructs an empty, null-terminated string sink.
    */
   constexpr c_string_sink() noexcept : detail::c_string_sink_base{m_storage, N - 1, 0} { m_storage[0] = '\0'; }
+
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
+  constexpr c_string_sink(const c_string_sink &other) noexcept : detail::c_string_sink_base{m_storage, N, other.m_pos} {
+    // Physically copy the written bytes
+    for (std::size_t i = 0; i < other.m_pos; ++i) {
+      m_storage[i] = other.m_storage[i];
+    }
+    m_storage[other.m_pos] = '\0';
+  }
+
+  constexpr c_string_sink(c_string_sink &&other) noexcept : detail::c_string_sink_base{m_storage, N, other.m_pos} {
+    for (std::size_t i = 0; i < other.m_pos; ++i) {
+      m_storage[i] = other.m_storage[i];
+    }
+    m_storage[other.m_pos] = '\0';
+    other.reset(); // Leave moved-from object safely empty
+  }
+
+  constexpr c_string_sink &operator=(const c_string_sink &other) noexcept {
+    if (this != &other) {
+      this->m_pos = other.m_pos;
+      for (std::size_t i = 0; i < other.m_pos; ++i) {
+        m_storage[i] = other.m_storage[i];
+      }
+      m_storage[other.m_pos] = '\0';
+    }
+    return *this;
+  }
+
+  constexpr c_string_sink &operator=(c_string_sink &&other) noexcept {
+    if (this != &other) {
+      this->m_pos = other.m_pos;
+      for (std::size_t i = 0; i < other.m_pos; ++i) {
+        m_storage[i] = other.m_storage[i];
+      }
+      m_storage[other.m_pos] = '\0';
+      other.reset();
+    }
+    return *this;
+  }
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 
   /**
    * @brief Creates a type-erased @ref sink adapter pointing to this instance.
@@ -505,7 +552,7 @@ public:
    *
    * @return Maximum payload capacity (@p N - 1).
    */
-  [[nodiscard]] constexpr std::size_t max_size() const noexcept { return N - 1; }
+  [[nodiscard]] static constexpr std::size_t max_size() noexcept { return N - 1; }
 
   /**
    * @brief Resets the sink to an empty, null-terminated state.
