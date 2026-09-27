@@ -175,6 +175,43 @@ microfmt::format_to(out, "{}", microfmt::as_collection_view(values));
 
 See `examples/reloco_demo.cpp`.
 
+## `reloco_debug.hpp`
+
+Kept deliberately separate from `reloco.hpp`: that header owns every
+`microfmt::formatter<T>` (`{}`/Display-style) specialization for
+`jplcz_reloco` types and stays that way; this header only ever adds
+`reloco::Debug<T>` (`{:?}`/`as_debug()`-priority) specializations, so
+each customization point's specializations live in their own respective
+place.
+
+Most `jplcz_reloco` container/pointer types deliberately do **not** get a
+`Debug<T>` specialization here, because they do not need one:
+`reloco.hpp`'s existing `formatter<T>` specializations for them are built
+on `microfmt::detail::element_formatter<T>`, which already tries
+`formatter<T>`, then `Display<T>`, then `Debug<T>` for whatever
+element/pointee type it is given. A `rc<T>`/`unique_ptr<T>`/
+`shared_ptr<T>`/`cow<T>` wrapping a `T` that only has `Debug<T>` (e.g. a
+`MICROFMT_REFLECT_FORMAT`-annotated struct, see `docs/reflection.md`)
+already renders that inner `Debug<T>` correctly with no changes needed.
+
+`reloco::any` is the one common `jplcz_reloco` type this covers, because
+it is the one case `reloco.hpp` structurally cannot: being type-erased,
+no `formatter<reloco::any>` can exist that knows how to format whatever
+value is actually held -- only *what type* is held can be reported, and
+that comes from `reloco::type_id` (reloco's own non-RTTI type identity,
+see `<reloco/type_id.hpp>`), never from `typeid(T)`/compiler RTTI
+(`reloco::type_id_tag<T>::name()` only falls back to `typeid(T).name()`
+as an opt-in, secondary source when the consumer both enables RTTI and
+defines `RELOCO_IMPLICIT_TYPEID`; an explicit `RELOCO_TYPE_ID_NAME`
+registration always wins regardless):
+
+```cpp
+#include <microfmt/formatters/reloco_debug.hpp>
+
+reloco::any value = ...;
+microfmt::format_to(out, "{}", microfmt::as_debug(value)); // "any(int)", "any(<unnamed type>)", or "any(<no type>)"
+```
+
 ## `grid_view.hpp`
 
 `reg_grid_desc<WordType, N>` describes a titled, named grid of words.

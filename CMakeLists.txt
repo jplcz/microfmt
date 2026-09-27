@@ -394,6 +394,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_map_view.cpp
         tests/test_monad.cpp
         tests/test_reloco_formatters.cpp
+        tests/test_reloco_debug.cpp
         tests/test_fmt_priority.cpp
         tests/test_source_location.cpp
         tests/test_styled.cpp
