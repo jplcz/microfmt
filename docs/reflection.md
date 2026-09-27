@@ -188,6 +188,13 @@ wired into the main build: the generated file is a frozen snapshot with no
 way to detect that an annotated type's fields changed since it was last
 produced.
 
+`tools/reflect_dump/CMakeLists.txt` + `cmake/ReflectDump.cmake` wrap the
+generator into an optional, standalone CMake target (including a one-click
+`tools/reflect_dump/run_demo.sh` script), correctly handling
+cross-compilation by always building/running the generator on the host
+regardless of the project's own (possibly cross) toolchain -- see
+[`tools/reflect_dump/README.md`](../tools/reflect_dump/README.md#cmake-integration).
+
 ## Current limitations
 
 - Not wired into `microfmt`'s CI or the `compile_all_headers.cpp` header
