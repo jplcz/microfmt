@@ -823,6 +823,17 @@ public:
    * matching Rust's own derived `Debug` for these) need not call it at
    * all -- an unconsumed `?` is simply never recognized by their own
    * flag/width parsing, which is indistinguishable from `Display`.
+   *
+   * Defining `MICROFMT_DISABLE_DEBUG_FLAG` removes every call site of this
+   * function from `microfmt::formatter<char>`/`formatter<microfmt::string_view>`/
+   * `formatter<std::string_view>`/`detail::const_char_like` at the
+   * preprocessor level (see docs/porting.md), so a literal `{:?}` in a
+   * format string simply behaves like `{}` for those types too, in
+   * exchange for dropping the escaping/quoting code paths from the binary
+   * on targets that never need textual `{:?}` support. `reloco::Debug<T>`/
+   * `microfmt::as_debug()` are entirely unaffected either way: they never
+   * go through `spec`/this function at all (see `as_debug()`'s own doc
+   * comment below).
    */
   constexpr bool consume_debug_flag() noexcept {
     if (!starts_with('?'))
@@ -843,47 +854,65 @@ template <typename T, typename Enable = void> struct formatter;
 
 // Strings (const char*, string_view)
 template <> struct formatter<microfmt::string_view> {
+#ifndef MICROFMT_DISABLE_DEBUG_FLAG
   bool debug{false};
 
   constexpr void parse(format_parse_context &ctx) noexcept { debug = ctx.consume_debug_flag(); }
+#else
+  constexpr void parse(format_parse_context &) noexcept {}
+#endif
 
   void format(microfmt::string_view val, const sink &out) const noexcept {
+#ifndef MICROFMT_DISABLE_DEBUG_FLAG
     if (debug) {
       detail::write_debug_quoted(out, val, '"');
-    } else {
-      out.write(val);
+      return;
     }
+#endif
+    out.write(val);
   }
 };
 
 template <> struct formatter<std::string_view> {
+#ifndef MICROFMT_DISABLE_DEBUG_FLAG
   bool debug{false};
 
   constexpr void parse(format_parse_context &ctx) noexcept { debug = ctx.consume_debug_flag(); }
+#else
+  constexpr void parse(format_parse_context &) noexcept {}
+#endif
 
   void format(std::string_view val, const sink &out) const noexcept {
+#ifndef MICROFMT_DISABLE_DEBUG_FLAG
     if (debug) {
       detail::write_debug_quoted(out, microfmt::string_view(val), '"');
-    } else {
-      out.write(microfmt::string_view(val));
+      return;
     }
+#endif
+    out.write(microfmt::string_view(val));
   }
 };
 
 namespace detail {
 
 struct MICROFMT_API_CLASS const_char_like {
+#ifndef MICROFMT_DISABLE_DEBUG_FLAG
   bool debug{false};
 
   constexpr void parse(format_parse_context &ctx) noexcept { debug = ctx.consume_debug_flag(); }
+#else
+  constexpr void parse(format_parse_context &) noexcept {}
+#endif
 
   void format(const char *val, const sink &out) const noexcept {
     microfmt::string_view sv = val ? microfmt::string_view(val) : microfmt::string_view("(null)", 6);
+#ifndef MICROFMT_DISABLE_DEBUG_FLAG
     if (debug) {
       detail::write_debug_quoted(out, sv, '"');
-    } else {
-      out.write(sv);
+      return;
     }
+#endif
+    out.write(sv);
   }
 };
 
@@ -1095,18 +1124,24 @@ struct formatter<T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T,
 
 // Characters & Booleans
 template <> struct formatter<char> {
+#ifndef MICROFMT_DISABLE_DEBUG_FLAG
   bool debug{false};
 
   constexpr void parse(format_parse_context &ctx) noexcept { debug = ctx.consume_debug_flag(); }
+#else
+  constexpr void parse(format_parse_context &) noexcept {}
+#endif
 
   void format(char val, const sink &out) const noexcept {
+#ifndef MICROFMT_DISABLE_DEBUG_FLAG
     if (debug) {
       out.put('\'');
       detail::write_escaped_char(out, val, '\'', true);
       out.put('\'');
-    } else {
-      out.put(val);
+      return;
     }
+#endif
+    out.put(val);
   }
 };
 

@@ -55,6 +55,18 @@
 //     std::system_category() (1) or strerror_s/strerror_r/strerror (0,
 //     default).
 //
+// MICROFMT_DISABLE_DEBUG_FLAG
+//     Strips the runtime `{:?}` (Rust Debug flag) support out of
+//     formatter<char>/formatter<microfmt::string_view>/
+//     formatter<std::string_view>/detail::const_char_like at the
+//     preprocessor level: a literal `{:?}` in a format string then behaves
+//     like `{}` for those types (no quoting/escaping), removing that
+//     dead-otherwise code from the binary on targets that never write
+//     `{:?}` in a format string. Does not affect reloco::Debug<T>/
+//     microfmt::as_debug(), which never depend on this at all -- as_debug()
+//     always prefers a type's Debug<T> when one exists, entirely
+//     independent of this macro. See docs/porting.md.
+//
 // MICROFMT_ENABLE_BOOST_UUID / MICROFMT_ENABLE_BOOST_SOURCE_LOCATION
 //     Enable the optional Boost-dependent formatters/detection. The caller
 //     is responsible for ensuring Boost is available.

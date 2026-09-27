@@ -8,7 +8,8 @@ SPDX-License-Identifier: BSD-2-Clause
 
 `microfmt/microfmt_config.hpp` is the single build-time customization entry
 point for every optional feature macro (`RELOCO_KERNEL`,
-`MICROFMT_USE_SYSTEM_ERROR`, `RELOCO_DISABLE_ASSERT*`,
+`MICROFMT_USE_SYSTEM_ERROR`, `MICROFMT_DISABLE_DEBUG_FLAG`,
+`RELOCO_DISABLE_ASSERT*`,
 the Boost integration switches, the default-logger switches, etc.). It is
 included first, before anything else, by `microfmt/detail/compat.hpp`, so it
 is always processed before any header applies its own default for one of
@@ -90,6 +91,38 @@ compiler debug trap when available and falls back to `std::abort()`.
 
 See [Bare-metal hardware sinks](bare-metal.md) for the PL011 UART and ARM
 semihosting `microfmt::sink` adapters shipped under `microfmt/hw/`.
+
+## Disabling runtime `{:?}` support to reduce code size
+
+`microfmt/microfmt.hpp`'s built-in `formatter<char>`/
+`formatter<microfmt::string_view>`/`formatter<std::string_view>`/
+`detail::const_char_like` (backing `const char *`/`char *`/`char[N]`/
+`const char[N]`) each recognize a leading `?` in their format specifier
+(`format_parse_context::consume_debug_flag()`) as Rust's `{:?}` Debug flag,
+quoting/escaping their content instead of writing it verbatim. This is
+useful, but the quoting/escaping code it pulls in (`detail::write_escaped_char`/
+`detail::write_debug_quoted`) has a real code-size cost that a target which
+never writes `{:?}` in a literal format string doesn't need to pay.
+
+Define `MICROFMT_DISABLE_DEBUG_FLAG` before the first inclusion of
+`microfmt.hpp` to strip that support out at the preprocessor level: a
+literal `{:?}` in a format string then behaves exactly like `{}` for these
+types too (no quoting, no error), and the quoting/escaping branches are
+removed from the binary entirely, regardless of optimization level.
+
+```cpp
+#define MICROFMT_DISABLE_DEBUG_FLAG
+#include <microfmt/microfmt.hpp>
+```
+
+This only affects the *runtime, format-string-driven* `{:?}` flag.
+`reloco::Debug<T>`/`microfmt::as_debug()` (see `docs/reflection.md` and
+`formatters/reloco_debug.hpp`/`formatters/std_debug.hpp`) are completely
+unaffected either way: `as_debug()` always prefers a type's `Debug<T>`
+specialization when one exists, and never consults `spec`/this flag at all
+-- so a target can define `MICROFMT_DISABLE_DEBUG_FLAG` to drop the
+`{:?}`-in-a-format-string machinery while still using `as_debug()`
+everywhere it needs debug-priority output.
 
 ## errno formatting on kernel/bare-metal targets
 

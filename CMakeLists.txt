@@ -755,6 +755,20 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
             TEST_PREFIX "Cxx17DlElfEnumerator.")
     endif()
 
+    # Verifies that MICROFMT_DISABLE_DEBUG_FLAG actually strips the implicit
+    # `{:?}` support (see docs/porting.md) without affecting Debug<T>/
+    # as_debug(); built as its own binary since the macro must be defined
+    # before microfmt.hpp's first inclusion for the whole translation unit.
+    add_executable(jplcz_microfmt_disable_debug_flag_tests
+        tests/test_disable_debug_flag.cpp)
+    target_link_libraries(jplcz_microfmt_disable_debug_flag_tests PRIVATE
+        jplcz_microfmt GTest::gtest_main)
+    target_compile_definitions(jplcz_microfmt_disable_debug_flag_tests PRIVATE
+        MICROFMT_DISABLE_DEBUG_FLAG)
+    jplcz_microfmt_enable_warnings(jplcz_microfmt_disable_debug_flag_tests)
+    gtest_discover_tests(jplcz_microfmt_disable_debug_flag_tests
+        TEST_PREFIX "DisableDebugFlag.")
+
     if(JPLCZ_MICROFMT_COMPILER_SUPPORTS_CXX23)
         add_executable(jplcz_microfmt_cxx23_tests tests/test_monad.cpp)
         target_link_libraries(jplcz_microfmt_cxx23_tests PRIVATE
