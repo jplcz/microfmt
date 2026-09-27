@@ -51,7 +51,9 @@ int main() {
 
     std::size_t extracted_count =
         std::move(extractor)
-            .map([](log::log_record_tx &tx) {
+            .map([](log::log_record_tx &tx_obj) {
+              auto &tx = tx_obj.as_known();
+
               // Formatting into a statically sized inline buffer
               auto json = microfmt::format<512>(MICROFMT_STRING("{{\"lvl\":{}, \"tag\":\"{}\", \"msg\":\"{}\"}}\n"),
                                                 static_cast<int>(tx.get_level()), tx.logger_name(), tx.payload());

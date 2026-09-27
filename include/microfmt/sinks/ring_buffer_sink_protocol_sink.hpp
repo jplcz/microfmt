@@ -118,6 +118,8 @@ public:
     return ring_ != nullptr;
   }
 
+  [[nodiscard]] constexpr bool is_known() const noexcept RELOCO_TEST_TYPESTATE(unconsumed) { return ring_ != nullptr; }
+
   [[nodiscard]] level get_level() const noexcept RELOCO_CALLABLE_WHEN(unconsumed) { return lvl_; }
   [[nodiscard]] split_string_view logger_name() const noexcept RELOCO_CALLABLE_WHEN(unconsumed) { return logger_name_; }
   [[nodiscard]] split_string_view payload() const noexcept RELOCO_CALLABLE_WHEN(unconsumed) { return payload_; }
@@ -136,6 +138,21 @@ public:
    * @brief Aborts the transaction without consuming bytes (also happens implicitly on destruction).
    */
   void rollback() noexcept RELOCO_SET_TYPESTATE(consumed) { ring_ = nullptr; }
+
+  [[nodiscard]] log_record_tx &as_known() & noexcept RELOCO_SET_TYPESTATE(unconsumed) {
+    RELOCO_ASSERT(ring_, "Record consumed");
+    return *this;
+  }
+
+  [[nodiscard]] const log_record_tx &as_known() const & noexcept RELOCO_SET_TYPESTATE(unconsumed) {
+    RELOCO_ASSERT(ring_, "Record consumed");
+    return *this;
+  }
+
+  [[nodiscard]] log_record_tx &&as_known() && noexcept RELOCO_SET_TYPESTATE(unconsumed) {
+    RELOCO_ASSERT(ring_, "Record consumed");
+    return std::move(*this);
+  }
 };
 
 /**
@@ -154,8 +171,8 @@ public:
    * @brief Attempts to extract the next log frame.
    * @return A valid log_record_tx if a frame exists, or an empty/false transaction if empty.
    */
-  [[nodiscard]] log_record_tx try_read() & noexcept {
-    const std::size_t header_elems = sizeof(ring_buffer_log_header);
+  [[nodiscard]] reloco::optional<log_record_tx> try_read() & noexcept {
+    constexpr std::size_t header_elems = sizeof(ring_buffer_log_header);
 
     if (ring_->size() < header_elems) {
       return {};
@@ -205,12 +222,7 @@ public:
   /**
    * @brief The magic hook that fuels the reloco::iterator_adaptor pipeline!
    */
-  [[nodiscard]] reloco::optional<log_record_tx> next_impl() noexcept {
-    if (auto tx = try_read()) {
-      return reloco::optional(std::move(tx));
-    }
-    return reloco::nullopt;
-  }
+  [[nodiscard]] reloco::optional<log_record_tx> next_impl() noexcept { return try_read(); }
 
 private:
   reloco::detail::unowned_ring_base<char> *ring_;
