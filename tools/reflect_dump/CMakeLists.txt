@@ -51,7 +51,35 @@ checkout's include/ directory.")
 if(NOT JPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR)
     message(FATAL_ERROR
         "-DJPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR=<dir> is required, "
-        "pointing at a jplcz_reloco checkout's include/ directory.")
+        "pointing at a jplcz_reloco checkout's include/ directory (the "
+        "directory that directly contains reloco/detail/compat.hpp, i.e. "
+        "<checkout>/include, not the checkout root itself).")
+endif()
+
+# A common mistake is pointing this at the reloco checkout's root instead
+# of its include/ subdirectory (e.g. /path/to/reloco instead of
+# /path/to/reloco/include) -- detect that specific case and correct it
+# with a clear message, rather than failing much later with a cryptic
+# "reloco/detail/compat.hpp: No such file or directory" from deep inside
+# the generator's own compile step.
+if(NOT EXISTS "${JPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR}/reloco/detail/compat.hpp")
+    if(EXISTS "${JPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR}/include/reloco/detail/compat.hpp")
+        message(STATUS
+            "JPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR="
+            "'${JPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR}' looks like a "
+            "reloco checkout root rather than its include/ directory; using "
+            "'${JPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR}/include' instead.")
+        set(JPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR
+            "${JPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR}/include")
+    else()
+        message(FATAL_ERROR
+            "JPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR="
+            "'${JPLCZ_MICROFMT_REFLECT_DUMP_RELOCO_INCLUDE_DIR}' does not "
+            "contain reloco/detail/compat.hpp (checked directly, and under "
+            "an 'include' subdirectory). Point it at the directory that "
+            "directly contains reloco/detail/compat.hpp -- typically "
+            "<reloco checkout>/include.")
+    endif()
 endif()
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/../../cmake/ReflectDump.cmake")
