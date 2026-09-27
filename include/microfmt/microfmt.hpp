@@ -186,20 +186,27 @@ public:
    */
   constexpr buffer_sink() noexcept : detail::buffer_sink_base{m_storage, N, 0} {}
 
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   constexpr buffer_sink(const buffer_sink &other) noexcept : detail::buffer_sink_base{m_storage, N, other.m_pos} {
     // Physically copy the written bytes
-    std::copy_n(other.m_storage, other.m_pos, m_storage);
+    for (std::size_t i = 0; i < other.m_pos; ++i) {
+      m_storage[i] = other.m_storage[i];
+    }
   }
 
   constexpr buffer_sink(buffer_sink &&other) noexcept : detail::buffer_sink_base{m_storage, N, other.m_pos} {
-    std::copy_n(other.m_storage, other.m_pos, m_storage);
+    for (std::size_t i = 0; i < other.m_pos; ++i) {
+      m_storage[i] = other.m_storage[i];
+    }
     other.reset(); // Leave moved-from object safely empty
   }
 
   constexpr buffer_sink &operator=(const buffer_sink &other) noexcept {
     if (this != &other) {
       this->m_pos = other.m_pos;
-      std::copy_n(other.m_storage, other.m_pos, m_storage);
+      for (std::size_t i = 0; i < other.m_pos; ++i) {
+        m_storage[i] = other.m_storage[i];
+      }
     }
     return *this;
   }
@@ -207,11 +214,14 @@ public:
   constexpr buffer_sink &operator=(buffer_sink &&other) noexcept {
     if (this != &other) {
       this->m_pos = other.m_pos;
-      std::copy_n(other.m_storage, other.m_pos, m_storage);
+      for (std::size_t i = 0; i < other.m_pos; ++i) {
+        m_storage[i] = other.m_storage[i];
+      }
       other.reset();
     }
     return *this;
   }
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 
   /**
    * @brief Creates a type-erased @ref sink adapter pointing to this instance.
