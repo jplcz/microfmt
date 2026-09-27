@@ -7,12 +7,9 @@
 /** @file reflection.hpp
  * @brief Native P2996 (`-freflection`) formatters for enums and structs.
  *
- * Experimental, opt-in header requiring a P2996-capable compiler (GCC 16+
- * trunk as of this writing) built with `-std=c++26 -freflection`; including
- * it under any other build is a hard compile error. It provides the same
- * "reflected enum" and "reflected struct" formatting `boost_describe.hpp`
- * offers, without depending on Boost or requiring a per-field description
- * macro:
+ * Experimental header providing the same "reflected enum" and "reflected
+ * struct" formatting `boost_describe.hpp` offers, without depending on
+ * Boost or requiring a per-field description macro:
  *
  * - every enum type gets an automatic `formatter<E>` that renders the
  *   enumerator's declared name (falling back to the underlying integer
@@ -29,39 +26,52 @@
  *   `formatter<T>` (including `boost_describe.hpp`'s) that might also
  *   match the same `T`.
  *
- * See `docs/reflection.md` for the underlying reflection mechanics (shared
- * with `jplcz_reloco`) and `docs/formatters/ranges-and-structures.md` for
+ * This header's own content only exists on a P2996-capable compiler (GCC
+ * 16+ trunk as of this writing) built with `-std=c++26 -freflection`:
+ * under any other build, including it compiles to nothing at all, the
+ * same way `reflect_annotate.hpp` behaves, so a project can include this
+ * header unconditionally without its own `#if RELOCO_HAS_REFLECTION`
+ * guard around the `#include` -- simply do not rely on the formatters it
+ * would have defined when the feature isn't enabled.
+ *
+ * `MICROFMT_REFLECT_FORMAT` and `enable_reflect_format` are declared in
+ * `reflect_annotate.hpp`, not here, and that header alone -- not this one
+ * -- is what a type's own header should include: `reflect_annotate.hpp`
+ * never requires `-freflection` either, so the same annotated type
+ * definition compiles under every toolchain. Only an application that
+ * wants the *live* formatting this header provides needs to include this
+ * header itself (and needs `-freflection` for that formatting to exist).
+ *
+ * A build that cannot use `-freflection` at all is not left out: see
+ * `tools/reflect_dump/` for a code generator that runs the same reflection
+ * this header uses once, offline, on a `-freflection` toolchain, and
+ * writes out an equivalent, plain-C++ `formatter<T>`/`formatter<E>`
+ * specialization per type -- no reflection syntax at all -- for any
+ * ordinary compiler to consume instead.
+ *
+ * See `docs/reflection.md` for the full writeup (shared with
+ * `jplcz_reloco`) and `docs/formatters/ranges-and-structures.md` for
  * usage. */
 
 #include "../microfmt.hpp"
+#include "reflect_annotate.hpp"
 
-#if !RELOCO_HAS_REFLECTION
-#error "microfmt/formatters/reflection.hpp requires a P2996-capable compiler built with -std=c++26 -freflection (see docs/reflection.md); do not include this header otherwise."
-#endif
+#if RELOCO_HAS_REFLECTION
 
 #include <meta>
 #include <string_view>
 #include <type_traits>
 
-namespace microfmt {
-
-/** @brief Opt-in customization point for `formatter<T>` struct reflection.
- *
- * Specialize to `std::true_type` (or use the `MICROFMT_REFLECT_FORMAT`
- * convenience macro below) to enable automatic `{name: value, ...}`
- * formatting of `T`'s public non-static data members via reflection. Left
- * at the default `std::false_type` for every type unless explicitly
- * opted in. */
-template <typename T> struct enable_reflect_format : std::false_type {};
-
-namespace detail {
+namespace microfmt::detail {
 
 template <typename E> inline constexpr bool is_reflect_formattable_enum_v = std::is_enum_v<E>;
 
 template <typename T>
 inline constexpr bool is_reflect_formattable_struct_v = std::is_class_v<T> && enable_reflect_format<T>::value;
 
-} // namespace detail
+} // namespace microfmt::detail
+
+namespace microfmt {
 
 // ============================================================================
 // Formatter for reflected enums (automatic, no opt-in required)
@@ -115,21 +125,4 @@ template <typename T> struct formatter<T, std::enable_if_t<detail::is_reflect_fo
 
 } // namespace microfmt
 
-/** @brief Opts `Type` in to automatic reflection-based struct formatting.
- *
- * Equivalent to, but shorter than, writing the
- * `microfmt::enable_reflect_format<Type>` specialization by hand:
- *
- * ```cpp
- * struct point { int x; int y; };
- * MICROFMT_REFLECT_FORMAT(point);
- *
- * microfmt::format_to(out, "{}", point{3, 4}); // {x: 3, y: 4}
- * ```
- *
- * Unlike `BOOST_DESCRIBE_STRUCT`, no field list is needed -- reflection
- * enumerates `Type`'s public non-static data members itself -- so this
- * macro only ever needs `Type` and never has to be kept in sync with the
- * type's actual members. */
-#define MICROFMT_REFLECT_FORMAT(Type) \
-  template <> struct microfmt::enable_reflect_format<Type> : std::true_type {}
+#endif // RELOCO_HAS_REFLECTION

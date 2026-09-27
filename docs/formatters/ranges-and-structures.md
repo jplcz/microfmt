@@ -230,11 +230,13 @@ See `examples/monad_demo.cpp`.
 
 ## `reflection.hpp`
 
-Experimental, opt-in header for a P2996-capable compiler built with
-`-std=c++26 -freflection` (GCC 16+ trunk as of this writing); including it
-under any other build is a hard `#error`. It provides the same reflected
-enum/struct formatting `boost_describe.hpp` does, without a Boost
-dependency or a per-field description macro:
+Experimental header providing the live formatters for a P2996-capable
+compiler built with `-std=c++26 -freflection` (GCC 16+ trunk as of this
+writing); its content simply does not exist under any other build
+(including it is a silent no-op, not an error), so it never needs its own
+`#if RELOCO_HAS_REFLECTION` guard around the `#include`. It provides the
+same reflected enum/struct formatting `boost_describe.hpp` does, without a
+Boost dependency or a per-field description macro:
 
 * every enum type formats automatically -- declared enumerator name, or
   the underlying numeric value as a fallback for an unmapped value -- with

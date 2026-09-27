@@ -126,11 +126,67 @@ g++-16 -std=c++26 -freflection -I include -I <path-to-reloco>/include \
 compared side by side.
 
 Including `microfmt/formatters/reflection.hpp` under any build that does
-not pass `-freflection` (or does not select `-std=c++26`/`-std=gnu++26`) is
-a hard `#error` at the top of the header, not a silent fallback -- the same
-zero-risk-elsewhere guarantee `reloco`'s own reflection-gated code
-provides, just enforced immediately for a standalone opt-in header instead
-of an internal `#if` branch.
+not pass `-freflection` (or does not select `-std=c++26`/`-std=gnu++26`)
+compiles to nothing at all -- a silent no-op, not an error -- exactly like
+`reflect_annotate.hpp`. There is no need to guard the `#include` itself
+with `#if RELOCO_HAS_REFLECTION`; simply do not rely on the formatters it
+would have defined when the feature isn't enabled for the current build.
+
+## `tools/reflect_dump`: codegen for compilers without `-freflection`
+
+No mainstream, released compiler ships P2996 support yet, so a project
+that cannot pin its whole build to a GCC trunk snapshot could not use
+`formatters/reflection.hpp` at all -- until now. `tools/reflect_dump` runs
+the exact same reflection this header uses, once, offline, on a
+`-freflection` toolchain, and prints an equivalent, **plain C++**
+`formatter<T>`/`formatter<E>` specialization per type: a literal `switch`
+over enumerator names, or literal `out.write("field: ")` /
+`format_to(out, "{}", val.field)` calls per struct member -- no reflection
+syntax anywhere in the output, so any ordinary compiler can consume it.
+
+This only works because `MICROFMT_REFLECT_FORMAT`/`MICROFMT_REFLECT_DUMP_ENUM`
+live in a *separate*, always-safe header,
+`microfmt/formatters/reflect_annotate.hpp` -- like `reflection.hpp` itself
+(now), it never requires `-freflection`, and its macros expand to nothing
+without it:
+
+```cpp
+#include <microfmt/formatters/reflect_annotate.hpp>
+
+enum class link_status { down, connecting, up };
+MICROFMT_REFLECT_DUMP_ENUM(link_status);
+
+struct sensor_reading { std::uint32_t timestamp_ms; std::int32_t value; };
+MICROFMT_REFLECT_FORMAT(sensor_reading);
+```
+
+Under a plain compiler both macro calls above compile to nothing at all.
+Under `-freflection`, `MICROFMT_REFLECT_FORMAT` additionally opts the type
+in to `reflection.hpp`'s live formatter (exactly as before); and, only in
+`tools/reflect_dump`'s own dedicated generator binary (built with
+`-DMICROFMT_REFLECT_DUMP_MODE`), both macros also register the type into a
+registry that `microfmt::detail::render_reflect_dump()` renders as source
+text.
+
+The practical workflow: keep the same, unmodified type header for every
+build configuration. Build `tools/reflect_dump/reflect_dump_main.cpp` once
+with a `-freflection` compiler and `-DMICROFMT_REFLECT_DUMP_MODE`,
+pointing it at that header (see `tools/reflect_dump/README.md` for the
+exact command), and redirect its output to a generated header. Every other
+build -- including every build on a released, non-experimental compiler --
+includes the type header (still a no-op there) followed by the generated
+header, and gets the same `{name: value, ...}`/enumerator-name formatting
+`formatters/reflection.hpp` would have given it live.
+
+The generated header always starts with `#if !RELOCO_HAS_REFLECTION`, so
+it never conflicts with the live formatter even if a shared build
+configuration includes both: a reflection-capable build that also
+includes `reflection.hpp` skips the frozen, potentially-stale generated
+specializations entirely and relies on the always-correct live ones
+instead. This is also why regenerating is a manual step, not something
+wired into the main build: the generated file is a frozen snapshot with no
+way to detect that an annotated type's fields changed since it was last
+produced.
 
 ## Current limitations
 
