@@ -228,6 +228,40 @@ microfmt::format_to(out, "{:04X}", microfmt::expected<uint16_t, int>{0x2a});
 
 See `examples/monad_demo.cpp`.
 
+## `reflection.hpp`
+
+Experimental, opt-in header for a P2996-capable compiler built with
+`-std=c++26 -freflection` (GCC 16+ trunk as of this writing); including it
+under any other build is a hard `#error`. It provides the same reflected
+enum/struct formatting `boost_describe.hpp` does, without a Boost
+dependency or a per-field description macro:
+
+* every enum type formats automatically -- declared enumerator name, or
+  the underlying numeric value as a fallback for an unmapped value -- with
+  no opt-in needed;
+* a struct/class type formats its public non-static data members as
+  `{name: value, ...}`, but only once opted in with
+  `MICROFMT_REFLECT_FORMAT(Type)` (mirroring Rust's `#[derive(Debug)]`,
+  which is likewise per-type opt-in, not a blanket default).
+
+The formatters accept no custom specifier.
+
+```cpp
+struct point { int x; int y; };
+MICROFMT_REFLECT_FORMAT(point);
+
+microfmt::format_to(out, "{}", point{3, 4}); // {x: 3, y: 4}
+```
+
+Unlike `BOOST_DESCRIBE_STRUCT`, no field list is required -- reflection
+enumerates the type's members itself, so there is nothing to keep in sync
+as fields are added or removed. See [Reflection support](../reflection.md)
+for how `microfmt` uses reflection and
+[reloco's own reflection writeup](https://github.com/jplcz/reloco/blob/main/docs/reflection.md)
+for the underlying P2996 mechanics both libraries share (`RELOCO_HAS_REFLECTION`,
+`access_context`, splicing, ...). See `examples/reflection_demo.cpp` for a
+runnable comparison against the `boost_describe.hpp` example above.
+
 ## `boost_describe.hpp`
 
 When Boost.Describe and Boost.MP11 are available, described enums and
