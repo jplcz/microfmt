@@ -6,8 +6,11 @@
 // microfmt/formatters/reflection.hpp -- deliberately built with an
 // *ordinary* compiler (no -freflection, no P2996 support required), to
 // demonstrate that the generated formatters work standalone on a legacy
-// toolchain. Mirrors examples/reflection_demo.cpp's types/output so the
-// two can be compared directly.
+// toolchain. Mirrors examples/reflection_demo.cpp's types, but not its
+// output verbatim: enums still render the same way, but structs go
+// through a generated reloco::Debug<T> (Rust `#[derive(Debug)]`-style
+// "TypeName { field: value, ... }") instead of reflection_demo.cpp's
+// live formatter<T> ("{field: value, ...}", no type name).
 
 #include "../example_manifest.hpp"
 #include "reflect_dump_demo_generated.hpp"

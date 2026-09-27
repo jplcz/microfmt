@@ -138,11 +138,33 @@ No mainstream, released compiler ships P2996 support yet, so a project
 that cannot pin its whole build to a GCC trunk snapshot could not use
 `formatters/reflection.hpp` at all -- until now. `tools/reflect_dump` runs
 the exact same reflection this header uses, once, offline, on a
-`-freflection` toolchain, and prints an equivalent, **plain C++**
-`formatter<T>`/`formatter<E>` specialization per type: a literal `switch`
-over enumerator names, or literal `out.write("field: ")` /
-`format_to(out, "{}", val.field)` calls per struct member -- no reflection
-syntax anywhere in the output, so any ordinary compiler can consume it.
+`-freflection` toolchain, and prints plain C++ text for each annotated
+type -- no reflection syntax anywhere in the output, so any ordinary
+compiler can consume it:
+
+- an enum still gets a `formatter<E>` specialization, a literal `switch`
+  over enumerator names falling back to the underlying integer, same as
+  `reflection.hpp`'s live formatter;
+- a struct gets a **`reloco::Debug<T>`** specialization instead (not a
+  `formatter<T>`): literal `out.write("field: ")` /
+  `microfmt::format_to(out, "{}", microfmt::as_debug(val.field))` calls
+  per public non-static data member, rendering `TypeName { field: value,
+  ... }` -- following Rust's own `#[derive(Debug)]` output convention
+  exactly (the type name and the space padding inside the braces are the
+  `Debug` specialization's own responsibility, not something a generic
+  caller adds), and `TypeName {}` for a fieldless struct. Each field goes
+  through `as_debug` rather than a plain placeholder, so a field that is
+  itself a reflected struct recurses into *its own* `Debug<T>` too,
+  matching Rust's derived `Debug` always recursing via `Debug`.
+
+Because generated struct output goes through `Debug<T>`, not
+`formatter<T>`, it looks slightly different from `reflection.hpp`'s live
+formatter output (compare `examples/reflection_demo.cpp`'s bare
+`{field: value}` against `tools/reflect_dump/demo`'s `TypeName { field:
+value }`): a plain `{}` placeholder still renders it correctly either way
+(`Debug<T>` is used as the fallback for `{}` whenever no `formatter<T>`
+exists for a type, see `microfmt.hpp`'s `format_type_thunk`), but the two
+are no longer expected to produce byte-identical text.
 
 This only works because `MICROFMT_REFLECT_FORMAT`/`MICROFMT_REFLECT_DUMP_ENUM`
 live in a *separate*, always-safe header,
@@ -175,8 +197,10 @@ pointing it at that header (see `tools/reflect_dump/README.md` for the
 exact command), and redirect its output to a generated header. Every other
 build -- including every build on a released, non-experimental compiler --
 includes the type header (still a no-op there) followed by the generated
-header, and gets the same `{name: value, ...}`/enumerator-name formatting
-`formatters/reflection.hpp` would have given it live.
+header, and gets `Debug<T>`-based (structs) or `formatter<E>`-based
+(enums) formatting for it -- similar in spirit to, but not the exact same
+text as, what `formatters/reflection.hpp` would have given it live (see
+above).
 
 The generated header always starts with `#if !RELOCO_HAS_REFLECTION`, so
 it never conflicts with the live formatter even if a shared build

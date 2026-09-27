@@ -108,36 +108,64 @@ template <typename E> std::string generate_reflect_enum_dump(std::string_view ty
   return out;
 }
 
-/** @brief Renders a plain-text `formatter<T>` specialization for struct/
- * class `T` that formats `{name: value, ...}` for every public non-static
- * data member by its literal name -- functionally identical to
- * `reflection.hpp`'s live formatter, but as ordinary source text with no
- * reflection syntax at all, safe for any legacy compiler to compile. */
+/** @brief Renders a plain-text `reloco::Debug<T>` specialization for
+ * struct/class `T` that formats `TypeName { name: value, ... }` for every
+ * public non-static data member by its literal name -- functionally
+ * identical to `reflection.hpp`'s live formatter, but as ordinary source
+ * text with no reflection syntax at all, safe for any legacy compiler to
+ * compile.
+ *
+ * Each field is rendered through `microfmt::as_debug(val.field)` rather
+ * than a plain `{}` placeholder, so a field that is itself a
+ * `MICROFMT_REFLECT_FORMAT`-annotated struct recurses into *its*
+ * `Debug<T>` specialization too -- matching Rust's derived `Debug`, which
+ * always recurses via `Debug`, never `Display`, regardless of how the
+ * outer value itself is being printed.
+ *
+ * The rendered output follows Rust's own `#[derive(Debug)]` convention
+ * exactly: `TypeName { field: value, ... }`, with a space both after `{`
+ * and before `}`, and `TypeName {}` (no inner space) for a fieldless
+ * struct -- printing the type name is the `Debug` specialization's own
+ * responsibility, not something a generic caller/wrapper adds on its
+ * behalf. */
 template <typename T> std::string generate_reflect_struct_dump(std::string_view type_name) {
-  std::string out;
-  out += "template <> struct microfmt::formatter<";
-  out += type_name;
-  out += "> {\n  constexpr void parse(format_parse_context &ctx) noexcept { (void)ctx; }\n";
-  out += "  void format(const ";
-  out += type_name;
-  out += " &val, const sink &out) const noexcept {\n    out.put('{');\n";
+  std::string members_code;
+  bool has_members = false;
 
-  bool first = true;
   template for (constexpr auto member : define_static_array(
                     std::meta::nonstatic_data_members_of(^^T, std::meta::access_context::current()))) {
     constexpr std::string_view name = std::meta::identifier_of(member);
-    if (!first) {
-      out += "    out.write(\", \");\n";
+    if (has_members) {
+      members_code += "    out.write(\", \");\n";
     }
-    first = false;
-    out += "    out.write(\"";
-    out += name;
-    out += ": \");\n    format_to(out, \"{}\", val.";
-    out += name;
-    out += ");\n";
+    has_members = true;
+    members_code += "    out.write(\"";
+    members_code += name;
+    members_code += ": \");\n    microfmt::format_to(out, \"{}\", microfmt::as_debug(val.";
+    members_code += name;
+    members_code += "));\n";
   }
 
-  out += "    out.put('}');\n  }\n};\n";
+  std::string out;
+  out += "template <> struct reloco::Debug<";
+  out += type_name;
+  out += "> {\n  static void format(const ";
+  out += type_name;
+  out += " &val, const reloco::sink &out) noexcept {\n";
+
+  if (!has_members) {
+    out += "    out.write(\"";
+    out += type_name;
+    out += " {}\");\n";
+  } else {
+    out += "    out.write(\"";
+    out += type_name;
+    out += " { \");\n";
+    out += members_code;
+    out += "    out.write(\" }\");\n";
+  }
+
+  out += "  }\n};\n";
   return out;
 }
 

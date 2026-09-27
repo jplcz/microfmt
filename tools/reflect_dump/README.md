@@ -7,9 +7,12 @@ SPDX-License-Identifier: BSD-2-Clause
 # `reflect_dump`: legacy-compiler codegen for `formatters/reflection.hpp`
 
 Runs P2996 reflection once, offline, on a `-freflection` toolchain, and
-prints an equivalent, plain-C++ `formatter<T>`/`formatter<E>` header --
-literal `switch`/`out.write(...)` code, no reflection syntax at all -- for
-any ordinary compiler to consume instead. See
+prints plain C++ header -- literal `switch`/`out.write(...)` code, no
+reflection syntax at all -- for any ordinary compiler to consume instead:
+an enum gets a `formatter<E>` specialization (same as
+`formatters/reflection.hpp`'s live formatter); a struct gets a
+`reloco::Debug<T>` specialization instead, rendering Rust
+`#[derive(Debug)]`-style `TypeName { field: value, ... }` text. See
 [`docs/reflection.md`](../../docs/reflection.md) for the full writeup.
 
 ## Quick start
