@@ -35,14 +35,8 @@ int main() {
     sys_logger.error(MICROFMT_STRING("Failed to load config.json!"));
 
     // Flood the buffer to trigger the auto-eviction policy.
-    int tick = 1;
-    reloco::from_fn([&]() -> reloco::optional<int> {
-      if (tick <= 15)
-        return tick++;
-      return reloco::nullopt;
-    }).for_each([&](int i) {
-      sys_logger.info(MICROFMT_STRING("Tick {:02} complete. CPU: {} ms"), i, 16.0 + (i * 0.1));
-    });
+    reloco::iota(0, 15).for_each(
+        [&](int i) { sys_logger.info(MICROFMT_STRING("Tick {:02} complete. CPU: {} ms"), i, 16.0 + (i * 0.1)); });
 
     println("--- Producer finished. Buffer wrapped and old logs were evicted. ---\n");
   }
