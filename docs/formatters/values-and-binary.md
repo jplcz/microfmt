@@ -112,6 +112,28 @@ Formatting uses `snprintf`. It starts with bounded local storage but may use a
 heap fallback when the generated representation exceeds that capacity, so do
 not use this formatter where allocation is forbidden.
 
+## `debug_float.hpp`
+
+Opt-in `reloco::Debug<T>` (`{:?}`/`as_debug()`) specializations for `float`,
+`double`, and `long double` -- deliberately **not** pulled in by
+`std_debug.hpp` or any other default-included header, matching
+`floating.hpp`'s own opt-in status (reloco/microfmt avoid floating point by
+default). Include this header explicitly alongside `floating.hpp` to also
+get debug-priority formatting for those types.
+
+Renders via `snprintf("%g"/"%Lg")` with no heap allocation, then appends a
+bare `.0` whenever the result has neither a decimal point nor an exponent
+(and isn't `inf`/`nan`) so whole-number values always show a decimal point,
+matching Rust's `f32`/`f64` `Debug` convention (`1.0`, not `1`):
+
+```cpp
+#include <microfmt/formatters/floating.hpp>
+#include <microfmt/formatters/debug_float.hpp>
+
+microfmt::format_to(out, "{}", microfmt::as_debug(1.0)); // "1.0"
+microfmt::format_to(out, "{}", microfmt::as_debug(3.5)); // "3.5"
+```
+
 ## `format_helpers.hpp`
 
 This header collects compact diagnostic adapters:
@@ -222,6 +244,41 @@ build metadata. Construct it with `version(...)`, `from_packed32(...)`, or
 
 The metadata fields are borrowed `microfmt::string_view` values. See
 `examples/semver_demo.cpp`.
+
+## `std_debug.hpp`
+
+`reloco::Debug<T>` specializations for standard library types that have no
+`microfmt::formatter<T>`/`reloco::Display<T>` at all today (so
+`as_debug()`/`{:?}` would otherwise fail to compile for them), all with no
+heap allocation:
+
+* `std::array<T, N>` formats as `[val1, val2, ...]`, recursing into each
+  element via `microfmt::as_debug` (`[]` for `N == 0`). Excluded from
+  `tuple.hpp`'s generic tuple-like formatter because it has `.data()`
+  (reserved there for string/span-like types), and not covered by any
+  range/container formatter either.
+* `std::bitset<N>` formats its bits directly, MSB (index `N - 1`) first --
+  the same order `std::bitset::operator<<` uses -- computed via `test(i)`,
+  never `to_string()` (which would allocate).
+* `std::reference_wrapper<T>` forwards directly to the referenced value's
+  own `as_debug()` output, with no wrapper decoration of its own.
+* `std::byte` formats as a zero-padded lowercase hex byte (e.g. `0x2a`),
+  since it has no `operator<<`/formatter of its own in the standard library
+  either.
+
+Most builtins (`int`/`char`/`bool`/pointers/`std::nullptr_t`) and other
+heap-free standard types (`std::optional`, `std::variant`,
+`std::monostate`, `std::pair`/`std::tuple` via `tuple.hpp`'s generic
+tuple-like formatter) are deliberately **not** covered here: they already
+get correct `{:?}`/`as_debug()` behavior for free through their existing
+`formatter<T>`, which already honors the `?` debug flag itself.
+
+```cpp
+#include <microfmt/formatters/std_debug.hpp>
+
+const std::array<int, 3> values{1, 2, 3};
+microfmt::format_to(out, "{}", microfmt::as_debug(values)); // "[1, 2, 3]"
+```
 
 ## `string.hpp`
 

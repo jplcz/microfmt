@@ -12,6 +12,7 @@
 #include <microfmt/formatters/can.hpp>
 #include <microfmt/formatters/cbor.hpp>
 #include <microfmt/formatters/chrono.hpp>
+#include <microfmt/formatters/debug_float.hpp>
 #include <microfmt/formatters/error.hpp>
 #include <microfmt/formatters/errno.hpp>
 #include <microfmt/formatters/escaped.hpp>
@@ -40,6 +41,7 @@
 #include <microfmt/formatters/semver.hpp>
 #include <microfmt/formatters/source_location.hpp>
 #include <microfmt/formatters/spi.hpp>
+#include <microfmt/formatters/std_debug.hpp>
 #include <microfmt/formatters/string.hpp>
 #include <microfmt/formatters/styled.hpp>
 #include <microfmt/formatters/tuple.hpp>
