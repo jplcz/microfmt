@@ -143,6 +143,15 @@ struct MICROFMT_API_CLASS buffer_sink_base {
   std::size_t m_capacity;
   std::size_t m_pos;
 
+  constexpr buffer_sink_base(char *ptr, std::size_t cap, size_t pos) noexcept
+      : m_data(ptr), m_capacity(cap), m_pos(pos) {}
+
+  // Derived classes **MUST** provide proper overrides
+  buffer_sink_base(const buffer_sink_base &) = delete;
+  buffer_sink_base &operator=(const buffer_sink_base &) = delete;
+  buffer_sink_base(buffer_sink_base &&) = delete;
+  buffer_sink_base &operator=(buffer_sink_base &&) = delete;
+
   RELOCO_CONSTEXPR20 static void write_thunk(void *ctx, microfmt::string_view sv) noexcept {
     auto *self = static_cast<buffer_sink_base *>(ctx);
     const std::size_t avail = (self->m_pos < self->m_capacity) ? (self->m_capacity - self->m_pos) : 0;
@@ -154,6 +163,8 @@ struct MICROFMT_API_CLASS buffer_sink_base {
       self->m_pos += n;
     }
   }
+
+  RELOCO_REINITIALIZES void reset() { m_pos = 0; }
 };
 
 } // namespace detail
@@ -174,6 +185,33 @@ public:
    * @brief Constructs an empty buffer sink.
    */
   constexpr buffer_sink() noexcept : detail::buffer_sink_base{m_storage, N, 0} {}
+
+  constexpr buffer_sink(const buffer_sink &other) noexcept : detail::buffer_sink_base{m_storage, N, other.m_pos} {
+    // Physically copy the written bytes
+    std::copy_n(other.m_storage, other.m_pos, m_storage);
+  }
+
+  constexpr buffer_sink(buffer_sink &&other) noexcept : detail::buffer_sink_base{m_storage, N, other.m_pos} {
+    std::copy_n(other.m_storage, other.m_pos, m_storage);
+    other.reset(); // Leave moved-from object safely empty
+  }
+
+  constexpr buffer_sink &operator=(const buffer_sink &other) noexcept {
+    if (this != &other) {
+      this->m_pos = other.m_pos;
+      std::copy_n(other.m_storage, other.m_pos, m_storage);
+    }
+    return *this;
+  }
+
+  constexpr buffer_sink &operator=(buffer_sink &&other) noexcept {
+    if (this != &other) {
+      this->m_pos = other.m_pos;
+      std::copy_n(other.m_storage, other.m_pos, m_storage);
+      other.reset();
+    }
+    return *this;
+  }
 
   /**
    * @brief Creates a type-erased @ref sink adapter pointing to this instance.
@@ -357,18 +395,18 @@ private:
  * Functions as a zero-cost `/dev/null` sink for benchmarking or conditional
  * output.
  */
-class MICROFMT_API_CLASS null_sink {
-public:
-  /**
-   * @brief Returns a shared, stateless type-erased @ref sink instance that
-   * drops writes.
-   *
-   * @return A @ref sink struct with a no-op write callback.
-   */
-  [[nodiscard]] static constexpr sink as_sink() noexcept {
-    return sink{nullptr, [](void *, microfmt::string_view) noexcept {}};
-  }
-};
+class MICROFMT_API_CLASS null_sink{public :
+                                       /**
+                                        * @brief Returns a shared, stateless type-erased @ref sink instance that
+                                        * drops writes.
+                                        *
+                                        * @return A @ref sink struct with a no-op write callback.
+                                        */
+                                       [[nodiscard]] static constexpr sink as_sink() noexcept {
+                                           return sink{nullptr, [](void *, microfmt::string_view) noexcept {}};
+} // namespace microfmt
+}
+;
 
 namespace detail {
 
@@ -1535,8 +1573,7 @@ template <typename T> struct debug_view {
  * outlive the resulting wrapper (rvalues are rejected below).
  * @return A `debug_view<T>` usable directly as a `format`/`format_to` argument.
  */
-template <typename T>
-[[nodiscard]] constexpr auto as_debug(const T &value RELOCO_LIFETIMEBOUND) noexcept {
+template <typename T> [[nodiscard]] constexpr auto as_debug(const T &value RELOCO_LIFETIMEBOUND) noexcept {
   return detail::debug_view<T>{value};
 }
 

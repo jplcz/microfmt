@@ -13,8 +13,8 @@
 #include <microfmt/formatters/cbor.hpp>
 #include <microfmt/formatters/chrono.hpp>
 #include <microfmt/formatters/debug_float.hpp>
-#include <microfmt/formatters/error.hpp>
 #include <microfmt/formatters/errno.hpp>
+#include <microfmt/formatters/error.hpp>
 #include <microfmt/formatters/escaped.hpp>
 #include <microfmt/formatters/exception.hpp>
 #include <microfmt/formatters/filter_view.hpp>
@@ -30,13 +30,13 @@
 #include <microfmt/formatters/map_view.hpp>
 #include <microfmt/formatters/math.hpp>
 #include <microfmt/formatters/monad.hpp>
-#include <microfmt/formatters/reloco.hpp>
-#include <microfmt/formatters/reloco_debug.hpp>
 #include <microfmt/formatters/net.hpp>
 #include <microfmt/formatters/pointer.hpp>
 #include <microfmt/formatters/posix_time.hpp>
 #include <microfmt/formatters/ranges.hpp>
 #include <microfmt/formatters/register.hpp>
+#include <microfmt/formatters/reloco.hpp>
+#include <microfmt/formatters/reloco_debug.hpp>
 #include <microfmt/formatters/repeated_view.hpp>
 #include <microfmt/formatters/semver.hpp>
 #include <microfmt/formatters/source_location.hpp>
@@ -51,8 +51,7 @@
 #include <microfmt/inspector/address_translator.hpp>
 #include <microfmt/inspector/advanced_scanners.hpp>
 #include <microfmt/inspector/concrete_metadata_map.hpp>
-#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) ||                     \
-    defined(__DragonFly__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 #include <microfmt/inspector/dl_elf_enumerator.hpp>
 #include <microfmt/inspector/dl_symbol_resolver.hpp>
 #endif
@@ -103,6 +102,7 @@
 #include <microfmt/log/macros.hpp>
 #include <microfmt/sinks/android_log_sink.hpp>
 #include <microfmt/sinks/tizen_dlog_sink.hpp>
+#include <microfmt/sinks/ring_buffer_sink_protocol_sink.hpp>
 #if defined(MICROFMT_COMPILE_WITH_SYSLOG)
 #include <microfmt/sinks/syslog_sink.hpp>
 #endif

@@ -86,6 +86,7 @@ add_jplcz_microfmt_example(remote_hash_table_demo remote_hash_table_demo.cpp)
 add_jplcz_microfmt_example(remote_binary_tree_demo remote_binary_tree_demo.cpp)
 add_jplcz_microfmt_example(remote_smart_ptr_demo remote_smart_ptr_demo.cpp)
 add_jplcz_microfmt_example(reloco_demo reloco_demo.cpp)
+add_jplcz_microfmt_example(ring_buffer_sink_demo ring_buffer_sink_demo.cpp)
 
 if(UNIX)
   add_jplcz_microfmt_example(fallible_address_space_demo fallible_address_space_demo.cpp)
