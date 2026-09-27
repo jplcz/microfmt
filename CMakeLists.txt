@@ -35,6 +35,15 @@ option(JPLCZ_MICROFMT_BUILD_MANPAGES
     "Generate man(7) pages from the Markdown docs using pandoc, when available"
     OFF)
 
+set(JPLCZ_MICROFMT_PORTING_HEADERS "" CACHE PATH
+    "Directory containing target-specific override headers (currently \
+default_log_sink.hpp) copied into include/microfmt/detail/porting/ and \
+installed alongside microfmt's own headers, plus the matching \
+MICROFMT_*_BACKEND_CUSTOM macro defined automatically for consumers of \
+the jplcz_microfmt target. See include/microfmt/detail/porting/\
+*.template.hpp and include/microfmt/detail/porting/README.md for the \
+exact shape each file must have.")
+
 if(JPLCZ_MICROFMT_BUILD_TESTS OR JPLCZ_MICROFMT_BUILD_EXAMPLES OR
    JPLCZ_MICROFMT_BUILD_HEADER_CHECKS)
     include(CheckIncludeFileCXX)
@@ -153,6 +162,108 @@ target_include_directories(jplcz_microfmt INTERFACE
 target_link_libraries(jplcz_microfmt INTERFACE jplcz_reloco::reloco)
 
 add_library(jplcz_microfmt::microfmt ALIAS jplcz_microfmt)
+
+# JPLCZ_MICROFMT_PORTING_HEADERS: copy whichever of default_log_sink.hpp
+# (currently the only entry) exist in the given directory into a staging
+# tree (never into microfmt's own source include/ tree, so microfmt's own
+# headers are never touched/replaced), and bake the matching
+# MICROFMT_*_BACKEND_CUSTOM macro into a generated header (see
+# cmake/generated_porting_config.hpp.in) placed in that same staging tree
+# -- rather than an INTERFACE target_compile_definitions, so the override
+# takes effect for every consumer of the plain include/ tree, including
+# one that never links jplcz_microfmt as an actual CMake target (e.g. a
+# hand-copied include directory, or a downstream
+# find_package(jplcz_microfmt) consumer using a different build system
+# than the one that produced the install tree). See
+# include/microfmt/detail/porting/README.md for the full mechanism, and
+# reloco's own JPLCZ_RELOCO_PORTING_HEADERS block (reloco/CMakeLists.txt)
+# for the layout this mirrors.
+#
+# The build-tree staging layout is "porting_include/detail/porting/*.hpp"
+# (no "microfmt/" prefix) plus an empty "porting_include/log/" directory,
+# with "porting_include/log" (not "porting_include" itself) added as the
+# extra -I directory: each microfmt header living one level deeper than
+# reloco's (log/logger.hpp, vs. reloco's own mutex.hpp directly under
+# reloco/) spells its fixed include as #include
+# "../detail/porting/<name>.hpp" (with a leading "../"), a quoted
+# include, so the compiler first tries it relative to that header's own
+# directory, finds nothing there (only the *.template.hpp scaffolds live
+# in the real source tree), then falls back to treating it like #include
+# <log/../detail/porting/<name>.hpp> against every -I directory. That
+# literal "log/../" segment needs an -I directory one level *above*
+# detail/porting/ (i.e. porting_include/log, not porting_include) for the
+# "../" to land back on porting_include/detail/porting/ -- and the
+# intermediate "log" path component must exist as a real directory (even
+# though nothing is ever placed inside it) for the OS to resolve the ".."
+# that follows it. The installed layout is different (see the
+# JPLCZ_MICROFMT_INSTALL block below): there, the same quoted include
+# resolves directly against <prefix>/include/microfmt/detail/porting/
+# (install-tree-relative to logger.hpp itself, one real directory level
+# above it), so the installed copy is placed at that "microfmt/"-prefixed
+# path instead, matching the *.template.hpp scaffolds already installed
+# there.
+if(JPLCZ_MICROFMT_PORTING_HEADERS)
+    set(JPLCZ_MICROFMT_PORTING_STAGING_DIR "${CMAKE_CURRENT_BINARY_DIR}/porting_include")
+    set(JPLCZ_MICROFMT_PORTING_DEST_DIR "${JPLCZ_MICROFMT_PORTING_STAGING_DIR}/detail/porting")
+    file(MAKE_DIRECTORY "${JPLCZ_MICROFMT_PORTING_DEST_DIR}")
+    # See the "../" note above: this directory is never populated, it
+    # only needs to exist so "${JPLCZ_MICROFMT_PORTING_STAGING_DIR}/log/.."
+    # resolves back to "${JPLCZ_MICROFMT_PORTING_STAGING_DIR}".
+    file(MAKE_DIRECTORY "${JPLCZ_MICROFMT_PORTING_STAGING_DIR}/log")
+
+    set(JPLCZ_MICROFMT_PORTING_HEADER_NAMES default_log_sink.hpp)
+    # CMake variable consulted by cmake/generated_porting_config.hpp.in's
+    # matching #cmakedefine, one per header name above, same order.
+    set(JPLCZ_MICROFMT_PORTING_HEADER_VARS
+        MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM
+    )
+
+    list(LENGTH JPLCZ_MICROFMT_PORTING_HEADER_NAMES JPLCZ_MICROFMT_PORTING_HEADER_COUNT)
+    math(EXPR JPLCZ_MICROFMT_PORTING_HEADER_LAST "${JPLCZ_MICROFMT_PORTING_HEADER_COUNT} - 1")
+
+    foreach(JPLCZ_MICROFMT_PORTING_I RANGE ${JPLCZ_MICROFMT_PORTING_HEADER_LAST})
+        list(GET JPLCZ_MICROFMT_PORTING_HEADER_NAMES ${JPLCZ_MICROFMT_PORTING_I} JPLCZ_MICROFMT_PORTING_HEADER_NAME)
+        list(GET JPLCZ_MICROFMT_PORTING_HEADER_VARS ${JPLCZ_MICROFMT_PORTING_I} JPLCZ_MICROFMT_PORTING_HEADER_VAR)
+        set(JPLCZ_MICROFMT_PORTING_SRC "${JPLCZ_MICROFMT_PORTING_HEADERS}/${JPLCZ_MICROFMT_PORTING_HEADER_NAME}")
+        if(EXISTS "${JPLCZ_MICROFMT_PORTING_SRC}")
+            configure_file(
+                "${JPLCZ_MICROFMT_PORTING_SRC}"
+                "${JPLCZ_MICROFMT_PORTING_DEST_DIR}/${JPLCZ_MICROFMT_PORTING_HEADER_NAME}"
+                COPYONLY
+            )
+            set(${JPLCZ_MICROFMT_PORTING_HEADER_VAR} ON)
+            message(STATUS
+                "jplcz_microfmt: using custom porting header '${JPLCZ_MICROFMT_PORTING_HEADER_NAME}' "
+                "from ${JPLCZ_MICROFMT_PORTING_SRC} (defining ${JPLCZ_MICROFMT_PORTING_HEADER_VAR})")
+        endif()
+    endforeach()
+
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/generated_porting_config.hpp.in"
+        "${JPLCZ_MICROFMT_PORTING_DEST_DIR}/generated_config.hpp"
+        @ONLY
+    )
+
+    # microfmt's own source tree never ships a same-named, non-`.template.hpp`
+    # file under detail/porting/ (only *.template.hpp scaffolds do), so
+    # there is no real file to collide with here regardless of search
+    # order -- these include directories only ever add files, never shadow
+    # one already found via the plain source include/ tree above.
+    #
+    # Two -I directories are needed here, not one: microfmt_config.hpp
+    # (directly under include/microfmt/, like reloco_config.hpp is
+    # directly under include/reloco/) spells its own generated_config.hpp
+    # pickup as #include "detail/porting/generated_config.hpp" (no
+    # leading "../"), which needs the staging root itself on the search
+    # path; logger.hpp (one level deeper, at include/microfmt/log/) needs
+    # the "../"-offset "log" subdirectory explained above. Both spellings
+    # must resolve to the same "${JPLCZ_MICROFMT_PORTING_STAGING_DIR}/
+    # detail/porting/" files.
+    target_include_directories(jplcz_microfmt INTERFACE
+        $<BUILD_INTERFACE:${JPLCZ_MICROFMT_PORTING_STAGING_DIR}>
+        $<BUILD_INTERFACE:${JPLCZ_MICROFMT_PORTING_STAGING_DIR}/log>
+    )
+endif()
 
 # Header-only INTERFACE forwarders for the MICROFMT_SHARED/
 # MICROFMT_SHARED_BUILD compile definitions (see detail/compat.hpp and
@@ -861,6 +972,19 @@ if(JPLCZ_MICROFMT_INSTALL)
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
         COMPONENT Development
     )
+
+    # Installed after (never before) the plain include/ tree above so its
+    # contents -- always just the *.template.hpp scaffolds under
+    # detail/porting/ -- exist first; this only ever adds the real,
+    # non-template files a JPLCZ_MICROFMT_PORTING_HEADERS build staged
+    # alongside them, never replaces anything.
+    if(JPLCZ_MICROFMT_PORTING_HEADERS)
+        install(
+            DIRECTORY "${JPLCZ_MICROFMT_PORTING_DEST_DIR}/"
+            DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/microfmt/detail/porting"
+            COMPONENT Development
+        )
+    endif()
 
     # Plain-text/Markdown documentation (no Doxygen/HTML build step
     # required). `docs/` is installed as a subdirectory, matching the

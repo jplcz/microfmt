@@ -245,12 +245,13 @@ inline logger *&configured_default_logger() noexcept {
   return instance;
 }
 
-#if defined(MICROFMT_ENABLE_DEFAULT_LOGGER)
+#if defined(MICROFMT_ENABLE_DEFAULT_LOGGER) && !defined(MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM)
 inline stdout_color_sink<256> &default_console_sink() noexcept {
   static stdout_color_sink<256> sink_instance;
   return sink_instance;
 }
 
+/** @brief Built-in backend: an ANSI-colorized `stdout_color_sink<256>`. */
 inline logger &built_in_default_logger() noexcept {
   static logger instance("app", default_console_sink().as_sink());
   return instance;
@@ -258,6 +259,42 @@ inline logger &built_in_default_logger() noexcept {
 #endif
 
 } // namespace detail
+
+} // namespace microfmt::log
+
+#if defined(MICROFMT_ENABLE_DEFAULT_LOGGER) && defined(MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM)
+// MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM opts out of the stdout backend
+// above entirely, in favor of a platform-appropriate replacement (an OS's
+// native logging facility, an RTOS/bare-metal console, ...) supplying the
+// same `microfmt::log::detail::built_in_default_logger() noexcept ->
+// logger &` entry point via a fixed include path, exactly like reloco's
+// `detail/porting/mutex.hpp` does for `RELOCO_MUTEX_BACKEND_CUSTOM` (see
+// `reloco/mutex.hpp`). Included unconditionally at this exact point --
+// outside every namespace (the enclosing `namespace microfmt::log` is
+// closed just above, and reopened just below), exactly like reloco's own
+// fixed-path includes -- so nothing about where else this header is
+// included from matters, and the included file is free to open/close
+// `namespace microfmt::log`/`detail` itself, completely self-contained
+// (never nested inside an already-open same-named namespace, which would
+// otherwise silently declare a spurious `microfmt::log::microfmt::log`).
+// Supplying the whole function (not merely a sink helper) gives a port
+// full control over the resulting `logger` too -- its name, sink
+// count/capacity, locking policy -- exactly as it would have if it wrote
+// `built_in_default_logger()` itself. This file does not ship in this
+// repository (only `detail/porting/default_log_sink.template.hpp`, an
+// unused documentation-only scaffold, does), so you supply it yourself,
+// most conveniently through the `JPLCZ_MICROFMT_PORTING_HEADERS` CMake
+// variable (see `CMakeLists.txt`), which copies it into that exact path
+// and bakes `MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM` into a generated
+// `detail/porting/generated_config.hpp` that `microfmt_config.hpp` picks
+// up automatically for every consumer of the plain `include/` tree, not
+// merely a consumer linking the `jplcz_microfmt` CMake target -- or by
+// placing it there manually and defining the macro yourself if not using
+// CMake. See `detail/porting/README.md` and `docs/porting.md`.
+#include "../detail/porting/default_log_sink.hpp"
+#endif
+
+namespace microfmt::log {
 
 /** @brief Returns the configured default logger, or @c nullptr when unset. */
 [[nodiscard]] inline logger *default_logger() noexcept {

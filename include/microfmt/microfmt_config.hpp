@@ -37,6 +37,23 @@
 #include "microfmt_user_config.hpp"
 #endif
 
+// Picks up whichever MICROFMT_*_BACKEND_CUSTOM macro(s) the
+// JPLCZ_MICROFMT_PORTING_HEADERS CMake build baked into a generated
+// detail/porting/generated_config.hpp (see CMakeLists.txt and
+// detail/porting/README.md) -- a no-op (file never generated, #include
+// never taken) unless that CMake variable was set. Mirrors reloco's own
+// reloco_config.hpp pickup of detail/porting/generated_config.hpp;
+// unlike that header, microfmt_config.hpp has no ordering constraint
+// against __has_include's availability (microfmt already depends on
+// reloco, whose detail/compat.hpp establishes RELOCO_HAS_INCLUDE well
+// before microfmt_config.hpp is reachable), but a bare __has_include
+// check is used here anyway for exact parity with reloco_config.hpp.
+#if defined(__has_include)
+#if __has_include("detail/porting/generated_config.hpp")
+#include "detail/porting/generated_config.hpp"
+#endif
+#endif
+
 // ============================================================================
 // Available customization points (see docs/porting.md for details)
 // ============================================================================
@@ -74,6 +91,14 @@
 // MICROFMT_ENABLE_DEFAULT_LOGGER / MICROFMT_DEFAULT_LOGGER
 //     Enable the process-wide built-in default logger, and/or name the
 //     logger expression used by the MICROFMT_LOG_* free-function macros.
+//
+// MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM
+//     Replaces MICROFMT_ENABLE_DEFAULT_LOGGER's built-in stdout_color_sink
+//     backend with a fixed-path #include "detail/porting/
+//     default_log_sink.hpp" (not shipped -- see detail/porting/README.md
+//     and detail/porting/default_log_sink.template.hpp), for targets that
+//     need a different default (an OS-native logging facility, an
+//     RTOS/bare-metal console, ...). See docs/porting.md.
 //
 // MICROFMT_SHARED / MICROFMT_SHARED_BUILD
 //     Opt in to building/consuming a subset of microfmt's "heavy"

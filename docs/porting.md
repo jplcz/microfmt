@@ -197,6 +197,33 @@ applies.
 to silently drop assert diagnostics without a kernel panic facility; it has no
 effect when `RELOCO_KERNEL` is defined.
 
+## Replacing the default logger's built-in backend
+
+`MICROFMT_ENABLE_DEFAULT_LOGGER`'s process-wide default logger (see
+`microfmt/log/logger.hpp`) is, by default, an ANSI-colorized
+`stdout_color_sink<256>` — appropriate for a hosted console application,
+but not for e.g. an RTOS/bare-metal target with no stdout at all, or a
+daemon/kernel that should log through an OS-native facility instead (an
+application can already wire one of those in by hand, without this
+customization point, via `set_default_logger()` and e.g.
+`microfmt/sinks/{syslog,systemd,android_log}_sink.hpp`).
+
+Defining `MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM` replaces the built-in
+backend with a fixed-path `#include "detail/porting/
+default_log_sink.hpp"` (not shipped in this repository — only
+`microfmt/detail/porting/default_log_sink.template.hpp`, a
+documentation-only scaffold sketching a FreeBSD kernel `log(9)` port, is)
+supplying the whole `microfmt::log::detail::built_in_default_logger()
+noexcept -> logger &` entry point, giving the replacement full control
+over the resulting `logger` (its name, sink count/capacity, locking
+policy), not merely a sink. See `microfmt/detail/porting/README.md` for
+the complete fixed-path-include contract this follows (shared with every
+other `_CUSTOM` backend in this library and in reloco), and
+`JPLCZ_MICROFMT_PORTING_HEADERS` (`CMakeLists.txt`) for the CMake
+mechanism that stages a finished `default_log_sink.hpp` and bakes the
+matching macro into a generated header for you, instead of setting
+`MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM` and placing the file by hand.
+
 ## Adding a platform or compiler
 
 Keep compiler-specific syntax inside `compat.hpp`. Prefer standard feature-test
