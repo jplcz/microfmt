@@ -13,13 +13,11 @@
  * makes it the earliest point at which configuration can be injected
  * regardless of which microfmt header an application includes first.
  *
- * User overrides must not be made by editing this file. Instead, define
- * `MICROFMT_CONFIG` (via a compiler `-D` flag, e.g.
- * `-DMICROFMT_CONFIG=1`) to opt in to including a header named
- * `microfmt_user_config.hpp`, which must be reachable on the compiler's
- * include search path (e.g. in an application-owned include directory listed
- * before microfmt's own `include/` in the include path). When
- * `MICROFMT_CONFIG` is defined, `microfmt_user_config.hpp` is included here,
+ * User overrides must not be made by editing this file. Instead, supply
+ * `detail/porting/microfmt_user_config.hpp` through
+ * `JPLCZ_MICROFMT_PORTING_HEADERS`, or place it at the same fixed path in a
+ * manually managed include tree. When that header is present, it is included
+ * here,
  * before any library header defines its own default, so every `#define` it
  * contains takes precedence over the library defaults below and over the
  * individual `#ifndef`-guarded defaults each feature header applies on its
@@ -33,24 +31,26 @@
  * See docs/porting.md for the full contract of each option.
  */
 
-#if defined(MICROFMT_CONFIG)
-#include "microfmt_user_config.hpp"
+#if defined(__has_include)
+#if __has_include("detail/porting/microfmt_user_config.hpp")
+#include "detail/porting/microfmt_user_config.hpp"
+#endif
 #endif
 
 // Picks up whichever MICROFMT_*_BACKEND_CUSTOM macro(s) the
 // JPLCZ_MICROFMT_PORTING_HEADERS CMake build baked into a generated
-// detail/porting/generated_config.hpp (see CMakeLists.txt and
+// detail/porting/microfmt_generated_config.hpp (see CMakeLists.txt and
 // detail/porting/README.md) -- a no-op (file never generated, #include
 // never taken) unless that CMake variable was set. Mirrors reloco's own
-// reloco_config.hpp pickup of detail/porting/generated_config.hpp;
+// reloco_config.hpp pickup of detail/porting/reloco_generated_config.hpp;
 // unlike that header, microfmt_config.hpp has no ordering constraint
 // against __has_include's availability (microfmt already depends on
 // reloco, whose detail/compat.hpp establishes RELOCO_HAS_INCLUDE well
 // before microfmt_config.hpp is reachable), but a bare __has_include
 // check is used here anyway for exact parity with reloco_config.hpp.
 #if defined(__has_include)
-#if __has_include("detail/porting/generated_config.hpp")
-#include "detail/porting/generated_config.hpp"
+#if __has_include("detail/porting/microfmt_generated_config.hpp")
+#include "detail/porting/microfmt_generated_config.hpp"
 #endif
 #endif
 
@@ -63,8 +63,8 @@
 // RELOCO_DEBUG, RELOCO_TLS_MODEL
 //     Owned by reloco (see reloco/reloco_config.hpp, reloco/tls_provider.hpp);
 //     microfmt uses them directly rather than a MICROFMT_* alias. They may
-//     still be overridden here, since microfmt_user_config.hpp (see
-//     MICROFMT_CONFIG above) is included before any header applies its own
+//     still be overridden here, since microfmt_user_config.hpp is included
+//     before any header applies its own
 //     default.
 //
 // MICROFMT_USE_SYSTEM_ERROR

@@ -99,7 +99,7 @@
 // `tools/codesize/testbed/README.md` for measured numbers).
 //
 // Define MICROFMT_SHARED (to any value, before including any microfmt
-// header, e.g. via `microfmt_user_config.hpp`/`MICROFMT_CONFIG` or a
+// header, e.g. via `detail/porting/microfmt_user_config.hpp` or a
 // compiler `-D` flag applied consistently to every translation unit in the
 // program) to switch every `*.ipp`-hosted definition to a plain
 // declaration instead: ordinary consumers then link against one shared

@@ -286,7 +286,7 @@ inline logger &built_in_default_logger() noexcept {
 // most conveniently through the `JPLCZ_MICROFMT_PORTING_HEADERS` CMake
 // variable (see `CMakeLists.txt`), which copies it into that exact path
 // and bakes `MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM` into a generated
-// `detail/porting/generated_config.hpp` that `microfmt_config.hpp` picks
+// `detail/porting/microfmt_generated_config.hpp` that `microfmt_config.hpp` picks
 // up automatically for every consumer of the plain `include/` tree, not
 // merely a consumer linking the `jplcz_microfmt` CMake target -- or by
 // placing it there manually and defining the macro yourself if not using

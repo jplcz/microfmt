@@ -15,7 +15,8 @@
 // target at all (e.g. a hand-copied include/ tree, or a build system
 // that doesn't read INTERFACE compile definitions), not merely a
 // consumer that links jplcz_microfmt as a CMake target. See
-// microfmt_config.hpp's own __has_include-guarded pickup of this file,
+// microfmt_config.hpp's own __has_include-guarded pickup of
+// microfmt_generated_config.hpp,
 // and detail/porting/README.md for the full mechanism.
 
 #cmakedefine MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM

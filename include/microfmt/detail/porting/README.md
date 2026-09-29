@@ -32,13 +32,14 @@ means:
   result, regardless of anything else.
 - You do not have to place your files here by hand: set the
   `JPLCZ_MICROFMT_PORTING_HEADERS` CMake variable (see the top-level
-  `CMakeLists.txt`) to a directory containing any of the fixed-include
-  file names above before configuring microfmt (top-level build, or via
+  `CMakeLists.txt`) to a directory containing `microfmt_user_config.hpp`
+  and/or any of the fixed-include file names above before configuring microfmt
+  (top-level build, or via
   `add_subdirectory`/`FetchContent`); the build copies whichever of those
   files exist there into this directory (in the build tree, then
   installed alongside microfmt's own headers) and bakes the matching
   `MICROFMT_*_BACKEND_CUSTOM` macro into a generated
-  `detail/porting/generated_config.hpp` placed right alongside them (see
+  `detail/porting/microfmt_generated_config.hpp` placed right alongside them (see
   `cmake/generated_porting_config.hpp.in`), rather than an INTERFACE
   `target_compile_definitions` on the `jplcz_microfmt` CMake target -- so
   the override takes effect for every consumer of the plain `include/`
@@ -51,11 +52,11 @@ means:
   `JPLCZ_MICROFMT_PORTING_HEADERS` was never set (the file is simply
   never generated). See reloco's own `detail/porting/README.md` for the
   identical mechanism this mirrors.
-- If you are not using CMake (or prefer to manage it yourself), just copy
-  the relevant `*.template.hpp` scaffold to its non-`.template` name in
-  this same directory, fill it in, and define the matching macro
-  yourself (via a compiler `-D` flag or `microfmt_user_config.hpp`, see
-  `microfmt_config.hpp`).
+- If you are not using CMake (or prefer to manage it yourself), place
+  `microfmt_user_config.hpp` and any completed non-`.template` backend
+  scaffolds directly in this directory. The user configuration is included
+  automatically when present; define backend macros directly when no
+  generated configuration header is present.
 
 A file placed here **never replaces** any of microfmt's own headers --
 each real microfmt header (`log/logger.hpp`, ...) always exists and is

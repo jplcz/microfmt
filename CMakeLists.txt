@@ -83,11 +83,12 @@ set(JPLCZ_MICROFMT_INSTALL_MANDIR "${CMAKE_INSTALL_MANDIR}" CACHE STRING
 man(7) pages (relative to CMAKE_INSTALL_PREFIX unless absolute)")
 
 set(JPLCZ_MICROFMT_PORTING_HEADERS "" CACHE PATH
-    "Directory containing target-specific override headers (currently \
-default_log_sink.hpp) copied into include/microfmt/detail/porting/ and \
+    "Directory containing microfmt_user_config.hpp and target-specific \
+override headers (currently default_log_sink.hpp) copied into \
+include/microfmt/detail/porting/ and \
 installed alongside microfmt's own headers, plus the matching \
 MICROFMT_*_BACKEND_CUSTOM macro baked into a generated \
-detail/porting/generated_config.hpp for every consumer. See \
+detail/porting/microfmt_generated_config.hpp for every consumer. See \
 include/microfmt/detail/porting/*.template.hpp and \
 include/microfmt/detail/porting/README.md for the exact shape each file \
 must have.")
@@ -211,9 +212,9 @@ target_link_libraries(jplcz_microfmt INTERFACE jplcz_reloco::reloco)
 
 add_library(jplcz_microfmt::microfmt ALIAS jplcz_microfmt)
 
-# JPLCZ_MICROFMT_PORTING_HEADERS: copy whichever of default_log_sink.hpp
-# (currently the only entry) exist in the given directory into a staging
-# tree (never into microfmt's own source include/ tree, so microfmt's own
+# JPLCZ_MICROFMT_PORTING_HEADERS: copy microfmt_user_config.hpp and
+# default_log_sink.hpp (currently the only backend entry) when present in the
+# given directory into a staging tree (never into microfmt's own source include/ tree, so microfmt's own
 # headers are never touched/replaced), and bake the matching
 # MICROFMT_*_BACKEND_CUSTOM macro into a generated header (see
 # cmake/generated_porting_config.hpp.in) placed in that same staging tree
@@ -259,6 +260,18 @@ if(JPLCZ_MICROFMT_PORTING_HEADERS)
     # resolves back to "${JPLCZ_MICROFMT_PORTING_STAGING_DIR}".
     file(MAKE_DIRECTORY "${JPLCZ_MICROFMT_PORTING_STAGING_DIR}/log")
 
+    set(JPLCZ_MICROFMT_USER_CONFIG_SRC
+        "${JPLCZ_MICROFMT_PORTING_HEADERS}/microfmt_user_config.hpp")
+    if(EXISTS "${JPLCZ_MICROFMT_USER_CONFIG_SRC}")
+        configure_file(
+            "${JPLCZ_MICROFMT_USER_CONFIG_SRC}"
+            "${JPLCZ_MICROFMT_PORTING_DEST_DIR}/microfmt_user_config.hpp"
+            COPYONLY
+        )
+        message(STATUS
+            "jplcz_microfmt: using user configuration from ${JPLCZ_MICROFMT_USER_CONFIG_SRC}")
+    endif()
+
     set(JPLCZ_MICROFMT_PORTING_HEADER_NAMES default_log_sink.hpp)
     # CMake variable consulted by cmake/generated_porting_config.hpp.in's
     # matching #cmakedefine, one per header name above, same order.
@@ -288,7 +301,7 @@ if(JPLCZ_MICROFMT_PORTING_HEADERS)
 
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/generated_porting_config.hpp.in"
-        "${JPLCZ_MICROFMT_PORTING_DEST_DIR}/generated_config.hpp"
+        "${JPLCZ_MICROFMT_PORTING_DEST_DIR}/microfmt_generated_config.hpp"
         @ONLY
     )
 
@@ -300,8 +313,8 @@ if(JPLCZ_MICROFMT_PORTING_HEADERS)
     #
     # Two -I directories are needed here, not one: microfmt_config.hpp
     # (directly under include/microfmt/, like reloco_config.hpp is
-    # directly under include/reloco/) spells its own generated_config.hpp
-    # pickup as #include "detail/porting/generated_config.hpp" (no
+    # directly under include/reloco/) spells its own generated configuration
+    # pickup as #include "detail/porting/microfmt_generated_config.hpp" (no
     # leading "../"), which needs the staging root itself on the search
     # path; logger.hpp (one level deeper, at include/microfmt/log/) needs
     # the "../"-offset "log" subdirectory explained above. Both spellings
