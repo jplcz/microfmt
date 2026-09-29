@@ -36,7 +36,7 @@ public:
   }();
 
   static constexpr auto k_multi_char_table = []() {
-    std::array<packet_entry, k_count_multichar> sub{};
+    reloco::array<packet_entry, k_count_multichar> sub{};
     size_t idx = 0;
 #define __INSPECTOR_GDB_PACKET_TYPE_X(name, str)                                                                       \
   if constexpr (sizeof(str) > 2) {                                                                                     \
@@ -54,7 +54,7 @@ public:
   };
 
   static constexpr auto k_first_byte_table = []() {
-    std::array<packet_type, 128> table{};
+    reloco::array<packet_type, 128> table{};
     for (size_t i = 0; i < 128; ++i) {
       table[i] = packet_type::unknown;
     }

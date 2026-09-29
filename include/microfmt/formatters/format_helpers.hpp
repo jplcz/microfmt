@@ -85,7 +85,7 @@ template <> struct formatter<bytes_view> {
   constexpr void parse(format_parse_context &) noexcept {}
 
   void format(const bytes_view &b, const sink &out) const noexcept {
-    static constexpr std::array<string_view, 6> units = {"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
+    static constexpr reloco::array<string_view, 6> units = {"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
     uint64_t val = b.bytes;
     size_t unit_idx = 0;
     uint64_t rem = 0;

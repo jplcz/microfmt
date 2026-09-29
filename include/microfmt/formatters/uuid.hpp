@@ -60,7 +60,7 @@ struct is_uuid_container<
   return uuid_view{span<const uint8_t>(arr, 16), uppercase, braced};
 }
 
-// From 16-byte std::array or contiguous container
+// From 16-byte reloco::array or contiguous container
 template <typename ArrayT, std::enable_if_t<detail::is_uuid_container<ArrayT>::value, int> = 0>
 [[nodiscard]] constexpr uuid_view uuid(const ArrayT &arr, bool uppercase = false, bool braced = false) noexcept {
   return uuid_view{span<const uint8_t>(arr.data(), arr.size()), uppercase, braced};

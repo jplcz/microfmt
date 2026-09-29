@@ -405,18 +405,18 @@ private:
  * Functions as a zero-cost `/dev/null` sink for benchmarking or conditional
  * output.
  */
-class MICROFMT_API_CLASS null_sink{public :
-                                       /**
-                                        * @brief Returns a shared, stateless type-erased @ref sink instance that
-                                        * drops writes.
-                                        *
-                                        * @return A @ref sink struct with a no-op write callback.
-                                        */
-                                       [[nodiscard]] static constexpr sink as_sink() noexcept {
-                                           return sink{nullptr, [](void *, microfmt::string_view) noexcept {}};
-} // namespace microfmt
-}
-;
+class MICROFMT_API_CLASS null_sink {
+public:
+  /**
+   * @brief Returns a shared, stateless type-erased @ref sink instance that
+   * drops writes.
+   *
+   * @return A @ref sink struct with a no-op write callback.
+   */
+  [[nodiscard]] static constexpr sink as_sink() noexcept {
+    return sink{nullptr, [](void *, microfmt::string_view) noexcept {}};
+  } // namespace microfmt
+};
 
 namespace detail {
 
@@ -631,11 +631,11 @@ inline constexpr auto digits_lut = []() {
   return arr;
 }();
 
-inline constexpr std::array<char, 16> hex_digits_lower = {'0', '1', '2', '3', '4', '5', '6', '7',
-                                                          '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+inline constexpr reloco::array<char, 16> hex_digits_lower = {'0', '1', '2', '3', '4', '5', '6', '7',
+                                                             '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
-inline constexpr std::array<char, 16> hex_digits_upper = {'0', '1', '2', '3', '4', '5', '6', '7',
-                                                          '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+inline constexpr reloco::array<char, 16> hex_digits_upper = {'0', '1', '2', '3', '4', '5', '6', '7',
+                                                             '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
 /**
  * @brief Supported numeral bases for low-level integer formatting.

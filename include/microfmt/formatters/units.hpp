@@ -107,8 +107,8 @@ template <typename T> struct formatter<auto_unit_view<T>> {
   }
 
   void format(const auto_unit_view<T> &auv, const sink &out) const noexcept {
-    static constexpr std::array<string_view, 6> SI_PREFIXES = {"", "k", "M", "G", "T", "P"};
-    static constexpr std::array<string_view, 6> IEC_PREFIXES = {"", "Ki", "Mi", "Gi", "Ti", "Pi"};
+    static constexpr reloco::array<string_view, 6> SI_PREFIXES = {"", "k", "M", "G", "T", "P"};
+    static constexpr reloco::array<string_view, 6> IEC_PREFIXES = {"", "Ki", "Mi", "Gi", "Ti", "Pi"};
 
     const uint32_t base_div = static_cast<uint32_t>(auv.base);
     const auto &prefixes = (auv.base == scale_base::binary) ? IEC_PREFIXES : SI_PREFIXES;

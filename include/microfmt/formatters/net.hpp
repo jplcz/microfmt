@@ -55,7 +55,7 @@ struct MICROFMT_API_CLASS mac_view {
   return mac_view{span<const uint8_t>(arr, 8), separator, uppercase};
 }
 
-// From std::array or container with .data() and .size()
+// From reloco::array or container with .data() and .size()
 template <typename ContainerT, std::enable_if_t<detail::is_mac_container<ContainerT>::value, int> = 0>
 [[nodiscard]] constexpr mac_view mac(const ContainerT &c, char separator = ':', bool uppercase = false) noexcept {
   return mac_view{span<const uint8_t>(c.data(), c.size()), separator, uppercase};
