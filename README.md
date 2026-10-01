@@ -303,6 +303,138 @@ examples, benchmarks, header checks, strict warnings, or install rules by defaul
 also does not change the parent project's global C++ standard. The interface
 target requires C++17.
 
+### Copy-paste: the full 4-step resolution block
+
+The snippet below is exactly the pattern this project's own `CMakeLists.txt`
+uses internally to consume `jplcz_reloco` (and the pattern `jplcz_structo`/
+`microvisor` use for their own dependencies). Drop it into your own
+`CMakeLists.txt`, rename every `MYPROJECT_` prefix to your own project's name,
+and it resolves `jplcz_microfmt` in order: an already-provided target, a
+local checkout, your own Git remote/tag, then the official repository --
+giving downstream users of *your* project the same override knobs this
+project gives its own consumers.
+
+```cmake
+# Resolve jplcz_microfmt: existing target > local checkout > caller's git
+# remote/tag > official repository. Skip entirely if a parent build already
+# provided the jplcz_microfmt::microfmt target.
+if(NOT TARGET jplcz_microfmt::microfmt)
+    set(MYPROJECT_MICROFMT_SOURCE_DIR "" CACHE PATH
+        "Path to a local jplcz_microfmt checkout to use instead of fetching it")
+    # Optional: allow the local checkout path via an environment variable too.
+    if(NOT MYPROJECT_MICROFMT_SOURCE_DIR AND DEFINED ENV{MYPROJECT_MICROFMT_SOURCE_DIR})
+        set(MYPROJECT_MICROFMT_SOURCE_DIR "$ENV{MYPROJECT_MICROFMT_SOURCE_DIR}"
+            CACHE PATH
+            "Path to a local jplcz_microfmt checkout to use instead of fetching it"
+            FORCE)
+    endif()
+    set(MYPROJECT_MICROFMT_GIT_REPOSITORY "https://github.com/jplcz/microfmt.git"
+        CACHE STRING
+        "Git repository to fetch jplcz_microfmt from when MYPROJECT_MICROFMT_SOURCE_DIR is unset")
+    set(MYPROJECT_MICROFMT_GIT_TAG "master" CACHE STRING
+        "Git tag or commit to fetch jplcz_microfmt from when MYPROJECT_MICROFMT_SOURCE_DIR is unset")
+
+    include(FetchContent)
+    if(MYPROJECT_MICROFMT_SOURCE_DIR)
+        FetchContent_Declare(jplcz_microfmt
+            SOURCE_DIR "${MYPROJECT_MICROFMT_SOURCE_DIR}")
+    else()
+        FetchContent_Declare(jplcz_microfmt
+            GIT_REPOSITORY "${MYPROJECT_MICROFMT_GIT_REPOSITORY}"
+            GIT_TAG "${MYPROJECT_MICROFMT_GIT_TAG}")
+    endif()
+
+    # Keep microfmt's own development targets out of the combined build.
+    # CACHE ... FORCE is required: microfmt's own CMakeLists.txt declares
+    # these same variables via an unforced `set(... CACHE BOOL ...)`, which
+    # would silently clear a plain `set()` of the same name (see "Local
+    # checkout and overriding cache variables" above).
+    set(JPLCZ_MICROFMT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(JPLCZ_MICROFMT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(JPLCZ_MICROFMT_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+    set(JPLCZ_MICROFMT_BUILD_HEADER_CHECKS OFF CACHE BOOL "" FORCE)
+    set(JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS OFF CACHE BOOL "" FORCE)
+    set(JPLCZ_MICROFMT_INSTALL OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(jplcz_microfmt)
+endif()
+
+target_link_libraries(my_target PRIVATE jplcz_microfmt::microfmt)
+```
+
+Pulling in `jplcz_reloco` directly (instead of relying on microfmt's own
+transitive fetch) uses the identical block with `reloco`/`RELOCO` names; see
+["Add jplcz_reloco"](https://github.com/jplcz/reloco#copy-paste-the-full-4-step-resolution-block)
+in reloco's own README for that copy-paste block.
+
+### Local checkout and overriding cache variables
+
+`JPLCZ_MICROFMT_RELOCO_SOURCE_DIR` (see [Add jplcz_reloco](#add-jplcz_reloco)
+below) points microfmt's own, transitive `jplcz_reloco` fetch at a local
+checkout instead of GitHub; set `MICROFMT_*_SOURCE_DIR`-style variables the
+same way for microfmt itself when embedding it from a parent project (e.g.
+`FetchContent_Declare(jplcz_microfmt SOURCE_DIR /path/to/local/jplcz_microfmt)`).
+Preset any `JPLCZ_MICROFMT_*` or `JPLCZ_RELOCO_*` cache variable before the
+`FetchContent_Declare`/`add_subdirectory` call that brings microfmt (and,
+transitively, reloco) in:
+
+```cmake
+set(JPLCZ_MICROFMT_PORTING_HEADERS "/path/to/porting" CACHE PATH "" FORCE)
+set(JPLCZ_RELOCO_PORTING_HEADERS "/path/to/porting" CACHE PATH "" FORCE)
+set(JPLCZ_MICROFMT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+
+include(FetchContent)
+FetchContent_Declare(
+    jplcz_microfmt
+    SOURCE_DIR /path/to/local/jplcz_microfmt
+)
+FetchContent_MakeAvailable(jplcz_microfmt)
+```
+
+**Always preset a dependency-owned cache variable with
+`CACHE <type> "" FORCE`, never a plain `set(VAR value)`.** CMake's
+`set(<var> <value> CACHE <type> <docstring>)` (without `FORCE`) silently
+discards any plain/normal variable of the same name already in scope the
+first time it runs -- even though the cache entry did not previously exist --
+so a parent project's unforced `set(JPLCZ_MICROFMT_PORTING_HEADERS ...)` or
+`set(JPLCZ_RELOCO_PORTING_HEADERS ...)` executed *before* microfmt's (or
+reloco's) own `CMakeLists.txt` declares that same variable gets silently
+overwritten with the empty default as soon as that `CMakeLists.txt` runs, with
+no warning or error -- the built-in default just wins silently. This file's
+own forwarded `JPLCZ_RELOCO_*` options below (`JPLCZ_RELOCO_BUILD_TESTS OFF
+CACHE BOOL "" FORCE`, etc.) already follow this rule; apply the same pattern
+in any project that embeds microfmt (see `microvisor`'s `CMakeLists.txt` for
+a real-world example of the bug this avoids).
+
+### How the jplcz_reloco dependency is resolved
+
+`CMakeLists.txt` resolves its own, transitive `jplcz_reloco` dependency in a
+fixed order, each step only taken if the previous one did not already settle
+the question:
+
+1. **Detect an existing target.** `if(NOT TARGET jplcz_reloco::reloco)` guards
+   the whole block: if a parent build already provided the target (its own
+   `add_subdirectory`/`FetchContent_MakeAvailable(jplcz_reloco)` ran first),
+   microfmt reuses it as-is and skips every step below.
+2. **A local checkout, named by variable.** `JPLCZ_MICROFMT_RELOCO_SOURCE_DIR`
+   (a `CACHE PATH`, settable with `-D` or `set(... FORCE)`, or equivalently the
+   `JPLCZ_MICROFMT_RELOCO_SOURCE_DIR` environment variable when the cache
+   variable is left unset) points `FetchContent_Declare`'s `SOURCE_DIR` at a
+   local working copy, bypassing Git entirely.
+3. **A user-selected Git remote.** If no local checkout was named,
+   `JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY`/`JPLCZ_MICROFMT_RELOCO_GIT_TAG`
+   (also `CACHE STRING` variables) let a consumer point `FetchContent_Declare`
+   at their own fork, mirror, or pinned tag/commit instead of upstream.
+4. **The official repository, by default.** If neither of the above was set,
+   `JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY`/`_GIT_TAG` default to
+   `https://github.com/jplcz/reloco.git`/`master`, so a plain
+   `FetchContent_MakeAvailable(jplcz_microfmt)` with no extra configuration
+   still works out of the box.
+
+`structo`'s and `microvisor`'s `CMakeLists.txt` resolve their own dependencies
+(`jplcz_reloco`, and `jplcz_microfmt`/`jplcz_structo` respectively) the same
+way, under the matching `JPLCZ_STRUCTO_RELOCO_*`/`MICROVISOR_MICROFMT_*`/
+`MICROVISOR_STRUCTO_*` variable names.
+
 ### Installed package and `ExternalProject`
 
 Standalone builds enable `JPLCZ_MICROFMT_INSTALL` by default:
