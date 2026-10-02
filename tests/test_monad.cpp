@@ -49,28 +49,22 @@ TEST(MonadTest, FormatsCheckedValueAndMovedFrom) {
 TEST(MonadTest, FormatsMicrofmtExpectedValueAndError) {
   microfmt::buffer_sink<32> buffer;
 
-  microfmt::format_to(buffer.as_sink(), "{:04x}",
-                      microfmt::expected<int, int>{42});
+  microfmt::format_to(buffer.as_sink(), "{:04x}", microfmt::expected<int, int>{42});
   EXPECT_EQ(buffer.view(), "Ok(002a)");
 
   buffer.reset();
-  microfmt::format_to(
-      buffer.as_sink(), "{}",
-      microfmt::expected<int, int>{microfmt::unexpected{7}});
+  microfmt::format_to(buffer.as_sink(), "{}", microfmt::expected<int, int>{microfmt::unexpected{7}});
   EXPECT_EQ(buffer.view(), "Err(7)");
 }
 
 TEST(MonadTest, FormatsVoidMicrofmtExpected) {
   microfmt::buffer_sink<32> buffer;
 
-  microfmt::format_to(buffer.as_sink(), "{}",
-                      microfmt::expected<void, int>{});
+  microfmt::format_to(buffer.as_sink(), "{}", microfmt::expected<void, int>{});
   EXPECT_EQ(buffer.view(), "Ok()");
 
   buffer.reset();
-  microfmt::format_to(
-      buffer.as_sink(), "{}",
-      microfmt::expected<void, int>{microfmt::unexpected{7}});
+  microfmt::format_to(buffer.as_sink(), "{}", microfmt::expected<void, int>{microfmt::unexpected{7}});
   EXPECT_EQ(buffer.view(), "Err(7)");
 }
 
@@ -90,8 +84,7 @@ TEST(MonadTest, FormatsExpectedValueAndError) {
   EXPECT_EQ(buffer.view(), "Ok(002a)");
 
   buffer.reset();
-  microfmt::format_to(buffer.as_sink(), "{}",
-                      std::expected<int, int>{std::unexpect, 7});
+  microfmt::format_to(buffer.as_sink(), "{}", std::expected<int, int>{std::unexpect, 7});
   EXPECT_EQ(buffer.view(), "Err(7)");
 }
 #endif

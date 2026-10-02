@@ -42,9 +42,7 @@ struct MICROFMT_API_CLASS stack_frame {
    * @brief Reports whether the record is an empty sentinel.
    * @return `true` when both @ref fp and @ref pc are zero.
    */
-  [[nodiscard]] constexpr bool is_null() const noexcept {
-    return fp == 0 && pc == 0;
-  }
+  [[nodiscard]] constexpr bool is_null() const noexcept { return fp == 0 && pc == 0; }
 };
 
 // ============================================================================
@@ -76,8 +74,7 @@ public:
     /**
      * @brief Advances one frame using register context.
      */
-    bool (*step)(const void *ctx, register_context_ref reg_ctx,
-                 uintptr_t current_pc, uintptr_t &next_fp,
+    bool (*step)(const void *ctx, register_context_ref reg_ctx, uintptr_t current_pc, uintptr_t &next_fp,
                  uintptr_t &next_pc) noexcept;
   };
 
@@ -89,49 +86,37 @@ public:
   /**
    * @brief Constructs a handle for a stateless unwinder tag.
    */
-  template <
-      typename ArchTag, typename Traits = frame_unwinder_traits<ArchTag>,
-      std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
-  constexpr explicit frame_unwinder_ref(ArchTag) noexcept
-      : ctx_(nullptr), vtbl_(&s_vtbl<ArchTag>) {}
+  template <typename ArchTag, typename Traits = frame_unwinder_traits<ArchTag>,
+            std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
+  constexpr explicit frame_unwinder_ref(ArchTag) noexcept : ctx_(nullptr), vtbl_(&s_vtbl<ArchTag>) {}
 
   /**
    * @brief Constructs a handle for a stateful unwinder tag.
    */
-  template <typename ArchTag, typename Context,
-            typename Traits = frame_unwinder_traits<ArchTag>,
-            std::enable_if_t<
-                !std::is_void_v<typename Traits::context_type> &&
-                    std::is_convertible_v<
-                        const Context *, const typename Traits::context_type *>,
-                int> = 0>
-  constexpr frame_unwinder_ref(
-      ArchTag, const Context &ctx RELOCO_LIFETIMEBOUND
-                   RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  template <typename ArchTag, typename Context, typename Traits = frame_unwinder_traits<ArchTag>,
+            std::enable_if_t<!std::is_void_v<typename Traits::context_type> &&
+                                 std::is_convertible_v<const Context *, const typename Traits::context_type *>,
+                             int> = 0>
+  constexpr frame_unwinder_ref(ArchTag,
+                               const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<ArchTag>) {}
 
-  template <typename ArchTag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename ArchTag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   constexpr frame_unwinder_ref(ArchTag, Context &&) = delete;
 
-  template <
-      typename ArchTag, typename Traits = frame_unwinder_traits<ArchTag>,
-      std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
+  template <typename ArchTag, typename Traits = frame_unwinder_traits<ArchTag>,
+            std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
   [[nodiscard]] static constexpr frame_unwinder_ref make() noexcept {
     return frame_unwinder_ref(ArchTag{});
   }
 
-  template <
-      typename ArchTag, typename Context,
-      typename Traits = frame_unwinder_traits<ArchTag>,
-      std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
-  [[nodiscard]] static constexpr frame_unwinder_ref
-  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
+  template <typename ArchTag, typename Context, typename Traits = frame_unwinder_traits<ArchTag>,
+            std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
+  [[nodiscard]] static constexpr frame_unwinder_ref make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return frame_unwinder_ref(ArchTag{}, ctx);
   }
 
-  template <typename ArchTag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename ArchTag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   static frame_unwinder_ref make(Context &&) = delete;
 
   /**
@@ -147,46 +132,36 @@ public:
    * @param next_fp Receives the caller's frame pointer.
    * @param next_pc Receives the caller's program counter.
    */
-  [[nodiscard]] bool step(register_context_ref reg_ctx, uintptr_t current_pc,
-                          uintptr_t &next_fp,
+  [[nodiscard]] bool step(register_context_ref reg_ctx, uintptr_t current_pc, uintptr_t &next_fp,
                           uintptr_t &next_pc) const noexcept {
     if (!vtbl_)
       return false;
     return vtbl_->step(ctx_.get(), reg_ctx, current_pc, next_fp, next_pc);
   }
 
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return vtbl_ != nullptr;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return vtbl_ != nullptr; }
 
 private:
   template <typename ArchTag>
-  static bool step_entry(const void *context, register_context_ref registers,
-                         uintptr_t current_pc, uintptr_t &next_fp,
+  static bool step_entry(const void *context, register_context_ref registers, uintptr_t current_pc, uintptr_t &next_fp,
                          uintptr_t &next_pc) noexcept {
     using context_type = typename frame_unwinder_traits<ArchTag>::context_type;
     if constexpr (std::is_void_v<context_type>) {
-      return frame_unwinder_traits<ArchTag>::step(registers, current_pc,
-                                                  next_fp, next_pc);
+      return frame_unwinder_traits<ArchTag>::step(registers, current_pc, next_fp, next_pc);
     } else {
-      const auto &typed_context =
-          *static_cast<const context_type *>(context);
-      return frame_unwinder_traits<ArchTag>::step(
-          value_ref<const context_type>(typed_context), registers, current_pc,
-          next_fp, next_pc);
+      const auto &typed_context = *static_cast<const context_type *>(context);
+      return frame_unwinder_traits<ArchTag>::step(value_ref<const context_type>(typed_context), registers, current_pc,
+                                                  next_fp, next_pc);
     }
   }
 
-  template <typename ArchTag>
-  static constexpr vtable s_vtbl{&step_entry<ArchTag>};
+  template <typename ArchTag> static constexpr vtable s_vtbl{&step_entry<ArchTag>};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
 };
 
-template <typename Tag,
-          bool Stateless =
-              std::is_void_v<typename frame_unwinder_traits<Tag>::context_type>>
+template <typename Tag, bool Stateless = std::is_void_v<typename frame_unwinder_traits<Tag>::context_type>>
 class frame_unwinder;
 
 template <typename Tag> class RELOCO_OWNER frame_unwinder<Tag, false> {
@@ -194,21 +169,17 @@ public:
   using traits_type = frame_unwinder_traits<Tag>;
   using context_type = typename traits_type::context_type;
 
-  constexpr explicit frame_unwinder(context_type context) noexcept
-      : context_(std::move(context)) {}
+  constexpr explicit frame_unwinder(context_type context) noexcept : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
-  [[nodiscard]] constexpr frame_unwinder_ref
-  ref() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr frame_unwinder_ref ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return frame_unwinder_ref(Tag{}, context_);
   }
 
@@ -222,9 +193,7 @@ private:
 
 template <typename Tag> class frame_unwinder<Tag, true> {
 public:
-  [[nodiscard]] static constexpr frame_unwinder_ref ref() noexcept {
-    return frame_unwinder_ref(Tag{});
-  }
+  [[nodiscard]] static constexpr frame_unwinder_ref ref() noexcept { return frame_unwinder_ref(Tag{}); }
 };
 
 // ============================================================================
@@ -251,27 +220,16 @@ public:
    * @p reg_ctx only needs to reflect the real register values of the frame
    * being unwound.
    */
-  constexpr frame_pointer_iterator(frame_unwinder_ref unwinder,
-                                   register_context_ref reg_ctx,
-                                   uintptr_t initial_fp,
+  constexpr frame_pointer_iterator(frame_unwinder_ref unwinder, register_context_ref reg_ctx, uintptr_t initial_fp,
                                    uintptr_t initial_pc) noexcept
-      : unwinder_(unwinder), reg_ctx_(reg_ctx),
-        frame_{0, initial_fp, initial_pc},
+      : unwinder_(unwinder), reg_ctx_(reg_ctx), frame_{0, initial_fp, initial_pc},
         is_valid_(initial_fp != 0 && initial_pc != 0) {}
 
-  [[nodiscard]] constexpr const stack_frame &
-  operator*() const noexcept RELOCO_LIFETIMEBOUND {
-    return frame_;
-  }
-  [[nodiscard]] constexpr const stack_frame *
-  operator->() const noexcept RELOCO_LIFETIMEBOUND {
-    return &frame_;
-  }
+  [[nodiscard]] constexpr const stack_frame &operator*() const noexcept RELOCO_LIFETIMEBOUND { return frame_; }
+  [[nodiscard]] constexpr const stack_frame *operator->() const noexcept RELOCO_LIFETIMEBOUND { return &frame_; }
 
   [[nodiscard]] constexpr bool has_value() const noexcept { return is_valid_; }
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return is_valid_;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return is_valid_; }
 
   /**
    * @brief Steps to the next (caller) frame using the unwinder and register
@@ -300,8 +258,7 @@ public:
     return *this;
   }
 
-  template <typename Visitor>
-  void for_each_frame(Visitor &&visitor, uint32_t max_depth = 64) noexcept {
+  template <typename Visitor> void for_each_frame(Visitor &&visitor, uint32_t max_depth = 64) noexcept {
     while (is_valid_ && frame_.frame_index < max_depth) {
       if (!visitor(frame_)) {
         break;
@@ -333,39 +290,29 @@ public:
    * @param symbol_context Caller-owned symbol-resolution scratch and state.
    * @param max_depth Maximum number of frames to render.
    */
-  constexpr remote_backtrace_view(frame_pointer_iterator iter,
-                                  symbol_resolver_ref resolver,
-                                  symbol_resolution_context &symbol_context
-                                      RELOCO_LIFETIMEBOUND,
+  constexpr remote_backtrace_view(frame_pointer_iterator iter, symbol_resolver_ref resolver,
+                                  symbol_resolution_context &symbol_context RELOCO_LIFETIMEBOUND,
                                   uint32_t max_depth = 16) noexcept
-      : iter_(iter), resolver_(resolver), symbol_context_(&symbol_context),
-        max_depth_(max_depth) {}
+      : iter_(iter), resolver_(resolver), symbol_context_(&symbol_context), max_depth_(max_depth) {}
 
   /**
    * @brief Returns the underlying frame cursor.
    * @return A copy of the @ref frame_pointer_iterator.
    */
-  [[nodiscard]] constexpr frame_pointer_iterator iterator() const noexcept {
-    return iter_;
-  }
+  [[nodiscard]] constexpr frame_pointer_iterator iterator() const noexcept { return iter_; }
   /**
    * @brief Returns the symbol resolver handle.
    * @return Bound @ref symbol_resolver_ref.
    */
-  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept {
-    return resolver_;
-  }
-  [[nodiscard]] constexpr symbol_resolution_context &
-  symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept { return resolver_; }
+  [[nodiscard]] constexpr symbol_resolution_context &symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
     return *symbol_context_;
   }
   /**
    * @brief Returns the maximum frame depth.
    * @return Frame render limit.
    */
-  [[nodiscard]] constexpr uint32_t max_depth() const noexcept {
-    return max_depth_;
-  }
+  [[nodiscard]] constexpr uint32_t max_depth() const noexcept { return max_depth_; }
 
 private:
   /// Frame cursor.
@@ -406,8 +353,7 @@ template <> struct formatter<remote_backtrace_view> {
    * @param view The backtrace view to format.
    * @param out Destination sink.
    */
-  void format(const remote_backtrace_view &view,
-              const sink &out) const noexcept {
+  void format(const remote_backtrace_view &view, const sink &out) const noexcept {
     frame_pointer_iterator cursor = view.iterator();
 
     bool first = true;
@@ -418,11 +364,9 @@ template <> struct formatter<remote_backtrace_view> {
           }
           first = false;
 
-          microfmt::format_to(out, "  #{:<2} fp={:#x}  pc=",
-                              frame.frame_index, frame.fp);
+          microfmt::format_to(out, "  #{:<2} fp={:#x}  pc=", frame.frame_index, frame.fp);
 
-          remote_fn_ptr fn_sym(frame.pc, view.resolver(),
-                               view.symbol_context());
+          remote_fn_ptr fn_sym(frame.pc, view.resolver(), view.symbol_context());
           if (mode == '#') {
             microfmt::format_to(out, "{:#}", fn_sym);
           } else {

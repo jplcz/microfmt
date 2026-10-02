@@ -25,8 +25,7 @@ template <typename AbiTraits> struct chained_unwinder_context {
 
 template <typename AbiTraits> struct chained_unwinder_tag {};
 
-template <typename AbiTraits>
-struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
+template <typename AbiTraits> struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
   using context_type = chained_unwinder_context<AbiTraits>;
 
   /**
@@ -39,8 +38,7 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
    * supplied by the caller/iterator; forwarded to every tier so none of them
    * need a register pre-seeded with it.
    */
-  static bool step(value_ref<const context_type> context,
-                   register_context_ref reg_ctx, uintptr_t current_pc,
+  static bool step(value_ref<const context_type> context, register_context_ref reg_ctx, uintptr_t current_pc,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
     if (!reg_ctx)
       return false;
@@ -48,24 +46,19 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
     uintptr_t trial_fp = 0;
     uintptr_t trial_pc = 0;
 
-    if (context->exidx_unwinder &&
-        context->exidx_unwinder.step(reg_ctx, current_pc, trial_fp,
-                                     trial_pc)) {
+    if (context->exidx_unwinder && context->exidx_unwinder.step(reg_ctx, current_pc, trial_fp, trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
     }
 
-    if (context->dwarf_unwinder &&
-        context->dwarf_unwinder.step(reg_ctx, current_pc, trial_fp,
-                                     trial_pc)) {
+    if (context->dwarf_unwinder && context->dwarf_unwinder.step(reg_ctx, current_pc, trial_fp, trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
     }
 
-    if (context->fp_unwinder &&
-        context->fp_unwinder.step(reg_ctx, current_pc, trial_fp, trial_pc)) {
+    if (context->fp_unwinder && context->fp_unwinder.step(reg_ctx, current_pc, trial_fp, trial_pc)) {
       next_fp = trial_fp;
       next_pc = trial_pc;
       return true;
@@ -78,8 +71,7 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
       return false;
 
     unwind_hint hint{};
-    if (!context->hints.find_hint(AbiTraits::normalize_pc(current_pc), hint) ||
-        !hint.routine)
+    if (!context->hints.find_hint(AbiTraits::normalize_pc(current_pc), hint) || !hint.routine)
       return false;
 
     // The hint receives reg_ctx directly. Do not snapshot only FP/PC here:
@@ -103,10 +95,8 @@ struct frame_unwinder_traits<chained_unwinder_tag<AbiTraits>> {
     // next_fp/next_pc, it just can't chain further through this tier).
     const auto fp_value = static_cast<typename AbiTraits::register_type>(next_fp);
     const auto ra_value = static_cast<typename AbiTraits::register_type>(next_pc);
-    std::ignore = reg_ctx.write_raw(resolve_fp_register<AbiTraits>(reg_ctx),
-                                    &fp_value, AbiTraits::pointer_size);
-    std::ignore = reg_ctx.write_raw(AbiTraits::ra_reg, &ra_value,
-                                    AbiTraits::pointer_size);
+    std::ignore = reg_ctx.write_raw(resolve_fp_register<AbiTraits>(reg_ctx), &fp_value, AbiTraits::pointer_size);
+    std::ignore = reg_ctx.write_raw(AbiTraits::ra_reg, &ra_value, AbiTraits::pointer_size);
 
     return true;
   }

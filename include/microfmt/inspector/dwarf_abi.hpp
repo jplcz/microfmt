@@ -76,23 +76,17 @@ struct MICROFMT_API_CLASS arm_abi_traits {
    * @param reg DWARF register number.
    * @return `true` for the link register (R14).
    */
-  [[nodiscard]] static constexpr bool
-  is_return_address_register(uint32_t reg) noexcept {
-    return reg == lr_reg;
-  }
+  [[nodiscard]] static constexpr bool is_return_address_register(uint32_t reg) noexcept { return reg == lr_reg; }
   /**
    * @brief Reports whether a register is a frame pointer.
    * @param reg DWARF register number.
    * @return `true` for R11 and R7 (Thumb frame pointer).
    */
-  [[nodiscard]] static constexpr bool
-  is_frame_pointer_register(uint32_t reg) noexcept {
-    return reg == fp_reg ||
-           reg == 7; // Support both R11 and R7 (Thumb frame pointer)
+  [[nodiscard]] static constexpr bool is_frame_pointer_register(uint32_t reg) noexcept {
+    return reg == fp_reg || reg == 7; // Support both R11 and R7 (Thumb frame pointer)
   }
 
-  [[nodiscard]] static constexpr uintptr_t
-  normalize_pc(uintptr_t raw_ra) noexcept {
+  [[nodiscard]] static constexpr uintptr_t normalize_pc(uintptr_t raw_ra) noexcept {
     // Clear the Thumb-2 mode bit (bit 0)
     return raw_ra & ~static_cast<uintptr_t>(1);
   }
@@ -112,8 +106,7 @@ struct MICROFMT_API_CLASS arm_abi_traits {
    * @param reg_ctx Register context to consult for CPSR.
    * @return `7` (R7) in Thumb state, otherwise @ref fp_reg (`11`, R11).
    */
-  [[nodiscard]] static uint32_t
-  resolve_fp_reg(register_context_ref reg_ctx) noexcept {
+  [[nodiscard]] static uint32_t resolve_fp_reg(register_context_ref reg_ctx) noexcept {
     uint32_t cpsr = 0;
     if (reg_ctx && reg_ctx.read(dwarf::arm32::cpsr, cpsr)) {
       constexpr uint32_t thumb_bit = 0x20U; // CPSR.T
@@ -151,10 +144,8 @@ struct MICROFMT_API_CLASS arm_abi_traits {
    * @ref resolve_fp_reg's fallback); `false` in Thumb/Thumb-2 state, where
    * FP-chain walking cannot be trusted.
    */
-  [[nodiscard]] static bool
-  resolve_frame_slot_offsets(register_context_ref reg_ctx,
-                            ptrdiff_t &out_fp_slot_offset,
-                            ptrdiff_t &out_ra_slot_offset) noexcept {
+  [[nodiscard]] static bool resolve_frame_slot_offsets(register_context_ref reg_ctx, ptrdiff_t &out_fp_slot_offset,
+                                                       ptrdiff_t &out_ra_slot_offset) noexcept {
     uint32_t cpsr = 0;
     if (reg_ctx && reg_ctx.read(dwarf::arm32::cpsr, cpsr)) {
       constexpr uint32_t thumb_bit = 0x20U; // CPSR.T
@@ -199,22 +190,15 @@ struct MICROFMT_API_CLASS aarch64_abi_traits {
    * @param reg DWARF register number.
    * @return `true` for the link register (X30).
    */
-  [[nodiscard]] static constexpr bool
-  is_return_address_register(uint32_t reg) noexcept {
-    return reg == ra_reg;
-  }
+  [[nodiscard]] static constexpr bool is_return_address_register(uint32_t reg) noexcept { return reg == ra_reg; }
   /**
    * @brief Reports whether a register is a frame pointer.
    * @param reg DWARF register number.
    * @return `true` for X29.
    */
-  [[nodiscard]] static constexpr bool
-  is_frame_pointer_register(uint32_t reg) noexcept {
-    return reg == fp_reg;
-  }
+  [[nodiscard]] static constexpr bool is_frame_pointer_register(uint32_t reg) noexcept { return reg == fp_reg; }
 
-  [[nodiscard]] static constexpr uintptr_t
-  normalize_pc(uintptr_t raw_ra) noexcept {
+  [[nodiscard]] static constexpr uintptr_t normalize_pc(uintptr_t raw_ra) noexcept {
     if constexpr (sizeof(uintptr_t) < sizeof(uint64_t))
       return raw_ra & ~static_cast<uintptr_t>(1);
 
@@ -224,8 +208,7 @@ struct MICROFMT_API_CLASS aarch64_abi_traits {
     const bool is_kernel = (pc & (UINT64_C(1) << 63)) != 0;
 
     if (is_kernel) {
-      return static_cast<uintptr_t>((pc & UINT64_C(0x0000FFFFFFFFFFFF)) |
-                                    UINT64_C(0xFFFF000000000000));
+      return static_cast<uintptr_t>((pc & UINT64_C(0x0000FFFFFFFFFFFF)) | UINT64_C(0xFFFF000000000000));
     } else {
       // User-space PAC masking
       return static_cast<uintptr_t>(pc & UINT64_C(0x0000FFFFFFFFFFFF));
@@ -268,24 +251,15 @@ struct MICROFMT_API_CLASS riscv32_abi_traits {
    * @param reg DWARF register number.
    * @return `true` for x1 (ra).
    */
-  [[nodiscard]] static constexpr bool
-  is_return_address_register(uint32_t reg) noexcept {
-    return reg == ra_reg;
-  }
+  [[nodiscard]] static constexpr bool is_return_address_register(uint32_t reg) noexcept { return reg == ra_reg; }
   /**
    * @brief Reports whether a register is a frame pointer.
    * @param reg DWARF register number.
    * @return `true` for x8 (s0/fp).
    */
-  [[nodiscard]] static constexpr bool
-  is_frame_pointer_register(uint32_t reg) noexcept {
-    return reg == fp_reg;
-  }
+  [[nodiscard]] static constexpr bool is_frame_pointer_register(uint32_t reg) noexcept { return reg == fp_reg; }
 
-  [[nodiscard]] static constexpr uintptr_t
-  normalize_pc(uintptr_t raw_ra) noexcept {
-    return raw_ra;
-  }
+  [[nodiscard]] static constexpr uintptr_t normalize_pc(uintptr_t raw_ra) noexcept { return raw_ra; }
 };
 
 // ============================================================================
@@ -320,24 +294,15 @@ struct MICROFMT_API_CLASS riscv64_abi_traits {
    * @param reg DWARF register number.
    * @return `true` for x1 (ra).
    */
-  [[nodiscard]] static constexpr bool
-  is_return_address_register(uint32_t reg) noexcept {
-    return reg == ra_reg;
-  }
+  [[nodiscard]] static constexpr bool is_return_address_register(uint32_t reg) noexcept { return reg == ra_reg; }
   /**
    * @brief Reports whether a register is a frame pointer.
    * @param reg DWARF register number.
    * @return `true` for x8 (s0/fp).
    */
-  [[nodiscard]] static constexpr bool
-  is_frame_pointer_register(uint32_t reg) noexcept {
-    return reg == fp_reg;
-  }
+  [[nodiscard]] static constexpr bool is_frame_pointer_register(uint32_t reg) noexcept { return reg == fp_reg; }
 
-  [[nodiscard]] static constexpr uintptr_t
-  normalize_pc(uintptr_t raw_ra) noexcept {
-    return raw_ra;
-  }
+  [[nodiscard]] static constexpr uintptr_t normalize_pc(uintptr_t raw_ra) noexcept { return raw_ra; }
 };
 
 // ============================================================================
@@ -375,24 +340,15 @@ struct MICROFMT_API_CLASS x86_abi_traits {
    * @param reg DWARF register number.
    * @return `true` for EIP (register 8).
    */
-  [[nodiscard]] static constexpr bool
-  is_return_address_register(uint32_t reg) noexcept {
-    return reg == ra_reg;
-  }
+  [[nodiscard]] static constexpr bool is_return_address_register(uint32_t reg) noexcept { return reg == ra_reg; }
   /**
    * @brief Reports whether a register is a frame pointer.
    * @param reg DWARF register number.
    * @return `true` for EBP.
    */
-  [[nodiscard]] static constexpr bool
-  is_frame_pointer_register(uint32_t reg) noexcept {
-    return reg == fp_reg;
-  }
+  [[nodiscard]] static constexpr bool is_frame_pointer_register(uint32_t reg) noexcept { return reg == fp_reg; }
 
-  [[nodiscard]] static constexpr uintptr_t
-  normalize_pc(uintptr_t raw_ra) noexcept {
-    return raw_ra;
-  }
+  [[nodiscard]] static constexpr uintptr_t normalize_pc(uintptr_t raw_ra) noexcept { return raw_ra; }
 };
 
 // ============================================================================
@@ -427,24 +383,15 @@ struct MICROFMT_API_CLASS x86_64_abi_traits {
    * @param reg DWARF register number.
    * @return `true` for RIP (register 16).
    */
-  [[nodiscard]] static constexpr bool
-  is_return_address_register(uint32_t reg) noexcept {
-    return reg == ra_reg;
-  }
+  [[nodiscard]] static constexpr bool is_return_address_register(uint32_t reg) noexcept { return reg == ra_reg; }
   /**
    * @brief Reports whether a register is a frame pointer.
    * @param reg DWARF register number.
    * @return `true` for RBP.
    */
-  [[nodiscard]] static constexpr bool
-  is_frame_pointer_register(uint32_t reg) noexcept {
-    return reg == fp_reg;
-  }
+  [[nodiscard]] static constexpr bool is_frame_pointer_register(uint32_t reg) noexcept { return reg == fp_reg; }
 
-  [[nodiscard]] static constexpr uintptr_t
-  normalize_pc(uintptr_t raw_ra) noexcept {
-    return raw_ra;
-  }
+  [[nodiscard]] static constexpr uintptr_t normalize_pc(uintptr_t raw_ra) noexcept { return raw_ra; }
 };
 
 namespace detail {
@@ -453,29 +400,25 @@ namespace detail {
 /// `resolve_fp_reg(register_context_ref)` (currently only @ref
 /// arm_abi_traits, whose frame-pointer register depends on the live
 /// ARM/Thumb instruction-set state).
-template <typename AbiTraits, typename = void>
-struct has_resolve_fp_reg : std::false_type {};
+template <typename AbiTraits, typename = void> struct has_resolve_fp_reg : std::false_type {};
 
 template <typename AbiTraits>
-struct has_resolve_fp_reg<
-    AbiTraits, std::void_t<decltype(AbiTraits::resolve_fp_reg(
-                   std::declval<register_context_ref>()))>> : std::true_type {
-};
+struct has_resolve_fp_reg<AbiTraits,
+                          std::void_t<decltype(AbiTraits::resolve_fp_reg(std::declval<register_context_ref>()))>>
+    : std::true_type {};
 
 /// Detects whether `AbiTraits` supplies a dynamic, register-context-aware
 /// `resolve_frame_slot_offsets(register_context_ref, ptrdiff_t&,
 /// ptrdiff_t&)` (currently only @ref arm_abi_traits, whose FP-chain slot
 /// layout depends on the live ARM/Thumb instruction-set state and is only
 /// reliable in ARM/A32 state).
-template <typename AbiTraits, typename = void>
-struct has_resolve_frame_slot_offsets : std::false_type {};
+template <typename AbiTraits, typename = void> struct has_resolve_frame_slot_offsets : std::false_type {};
 
 template <typename AbiTraits>
 struct has_resolve_frame_slot_offsets<
-    AbiTraits,
-    std::void_t<decltype(AbiTraits::resolve_frame_slot_offsets(
-        std::declval<register_context_ref>(), std::declval<ptrdiff_t &>(),
-        std::declval<ptrdiff_t &>()))>> : std::true_type {};
+    AbiTraits, std::void_t<decltype(AbiTraits::resolve_frame_slot_offsets(
+                   std::declval<register_context_ref>(), std::declval<ptrdiff_t &>(), std::declval<ptrdiff_t &>()))>>
+    : std::true_type {};
 
 } // namespace detail
 
@@ -492,9 +435,7 @@ struct has_resolve_frame_slot_offsets<
  * @param reg_ctx Register context to consult, if the traits need it.
  * @return DWARF register number holding the frame pointer.
  */
-template <typename AbiTraits>
-[[nodiscard]] uint32_t
-resolve_fp_register(register_context_ref reg_ctx) noexcept {
+template <typename AbiTraits> [[nodiscard]] uint32_t resolve_fp_register(register_context_ref reg_ctx) noexcept {
   if constexpr (detail::has_resolve_fp_reg<AbiTraits>::value) {
     return AbiTraits::resolve_fp_reg(reg_ctx);
   } else {
@@ -522,13 +463,10 @@ resolve_fp_register(register_context_ref reg_ctx) noexcept {
  * state).
  */
 template <typename AbiTraits>
-[[nodiscard]] bool
-resolve_frame_slot_offsets(register_context_ref reg_ctx,
-                          ptrdiff_t &out_fp_slot_offset,
-                          ptrdiff_t &out_ra_slot_offset) noexcept {
+[[nodiscard]] bool resolve_frame_slot_offsets(register_context_ref reg_ctx, ptrdiff_t &out_fp_slot_offset,
+                                              ptrdiff_t &out_ra_slot_offset) noexcept {
   if constexpr (detail::has_resolve_frame_slot_offsets<AbiTraits>::value) {
-    return AbiTraits::resolve_frame_slot_offsets(reg_ctx, out_fp_slot_offset,
-                                                out_ra_slot_offset);
+    return AbiTraits::resolve_frame_slot_offsets(reg_ctx, out_fp_slot_offset, out_ra_slot_offset);
   } else {
     out_fp_slot_offset = AbiTraits::fp_slot_offset;
     out_ra_slot_offset = AbiTraits::ra_slot_offset;
@@ -537,13 +475,11 @@ resolve_frame_slot_offsets(register_context_ref reg_ctx,
 }
 
 template <typename Traits> struct validate_abi_traits {
-  static_assert(
-      sizeof(typename Traits::register_type) == Traits::pointer_size,
-      "AbiTraits error: register_type size must exactly match pointer_size!");
+  static_assert(sizeof(typename Traits::register_type) == Traits::pointer_size,
+                "AbiTraits error: register_type size must exactly match pointer_size!");
 
-  static_assert(
-      Traits::pointer_size == 4 || Traits::pointer_size == 8,
-      "AbiTraits error: pointer_size must be either 4 (32-bit) or 8 (64-bit)!");
+  static_assert(Traits::pointer_size == 4 || Traits::pointer_size == 8,
+                "AbiTraits error: pointer_size must be either 4 (32-bit) or 8 (64-bit)!");
 
   static constexpr bool value = true;
 };

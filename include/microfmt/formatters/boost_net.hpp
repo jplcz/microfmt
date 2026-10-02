@@ -15,22 +15,17 @@
 namespace microfmt {
 namespace detail {
 
-inline void format_boost_address_v4(const boost::asio::ip::address_v4 &address,
-                                    const sink &out) noexcept {
+inline void format_boost_address_v4(const boost::asio::ip::address_v4 &address, const sink &out) noexcept {
   const auto bytes = address.to_bytes();
-  microfmt::format_to(out, "{}.{}.{}.{}", bytes[0], bytes[1],
-                      bytes[2], bytes[3]);
+  microfmt::format_to(out, "{}.{}.{}.{}", bytes[0], bytes[1], bytes[2], bytes[3]);
 }
 
-inline void format_boost_address_v6(const boost::asio::ip::address_v6 &address,
-                                    const sink &out) noexcept {
+inline void format_boost_address_v6(const boost::asio::ip::address_v6 &address, const sink &out) noexcept {
   const auto bytes = address.to_bytes();
   uint16_t words[8]{};
   RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   for (std::size_t index = 0; index < 8; ++index) {
-    words[index] =
-        static_cast<uint16_t>((static_cast<uint16_t>(bytes[index * 2]) << 8) |
-                              bytes[index * 2 + 1]);
+    words[index] = static_cast<uint16_t>((static_cast<uint16_t>(bytes[index * 2]) << 8) | bytes[index * 2 + 1]);
   }
 
   std::size_t best_start = 8;
@@ -76,8 +71,7 @@ inline void format_boost_address_v6(const boost::asio::ip::address_v6 &address,
 template <> struct formatter<boost::asio::ip::address_v4> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const boost::asio::ip::address_v4 &address,
-              const sink &out) const noexcept {
+  void format(const boost::asio::ip::address_v4 &address, const sink &out) const noexcept {
     detail::format_boost_address_v4(address, out);
   }
 };
@@ -85,8 +79,7 @@ template <> struct formatter<boost::asio::ip::address_v4> {
 template <> struct formatter<boost::asio::ip::address_v6> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const boost::asio::ip::address_v6 &address,
-              const sink &out) const noexcept {
+  void format(const boost::asio::ip::address_v6 &address, const sink &out) const noexcept {
     detail::format_boost_address_v6(address, out);
   }
 };
@@ -94,8 +87,7 @@ template <> struct formatter<boost::asio::ip::address_v6> {
 template <> struct formatter<boost::asio::ip::address> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const boost::asio::ip::address &address,
-              const sink &out) const noexcept {
+  void format(const boost::asio::ip::address &address, const sink &out) const noexcept {
     if (address.is_v4()) {
       detail::format_boost_address_v4(address.to_v4(), out);
     } else {
@@ -104,12 +96,10 @@ template <> struct formatter<boost::asio::ip::address> {
   }
 };
 
-template <typename InternetProtocol>
-struct formatter<boost::asio::ip::basic_endpoint<InternetProtocol>> {
+template <typename InternetProtocol> struct formatter<boost::asio::ip::basic_endpoint<InternetProtocol>> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const boost::asio::ip::basic_endpoint<InternetProtocol> &endpoint,
-              const sink &out) const noexcept {
+  void format(const boost::asio::ip::basic_endpoint<InternetProtocol> &endpoint, const sink &out) const noexcept {
     const auto address = endpoint.address();
     if (address.is_v6()) {
       out.put('[');

@@ -50,29 +50,25 @@ bool write_arm_register(void *ctx, microfmt::address_space_ref, uint32_t dwarf_r
 template <> struct microfmt::address_space_traits<simulated_space_tag> {
   using context_type = simulated_space_context;
 
-  static bool read_bytes(microfmt::value_ref<const context_type> context,
-                         uintptr_t addr, void *dest, size_t size) noexcept {
+  static bool read_bytes(microfmt::value_ref<const context_type> context, uintptr_t addr, void *dest,
+                         size_t size) noexcept {
     if (addr == 0 || !dest)
       return false;
     if (addr + size > context->buffer_size)
       return false;
 
-    std::memcpy(
-        dest, reinterpret_cast<const void *>(context->buffer_base + addr),
-        size);
+    std::memcpy(dest, reinterpret_cast<const void *>(context->buffer_base + addr), size);
     return true;
   }
 
-  static bool read_string(microfmt::value_ref<const context_type> context,
-                          uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
-                          bool &null_term) noexcept {
+  static bool read_string(microfmt::value_ref<const context_type> context, uintptr_t addr, char *dest, size_t max_len,
+                          size_t &out_len, bool &null_term) noexcept {
     if (addr == 0 || !dest || max_len == 0)
       return false;
     if (addr >= context->buffer_size)
       return false;
 
-    const auto *src =
-        reinterpret_cast<const char *>(context->buffer_base + addr);
+    const auto *src = reinterpret_cast<const char *>(context->buffer_base + addr);
     size_t avail = context->buffer_size - addr;
     size_t limit = (max_len < avail) ? max_len : avail;
 
@@ -100,8 +96,7 @@ struct exidx_demo_sym_tag {};
 
 template <> struct microfmt::symbol_resolver_traits<exidx_demo_sym_tag> {
   using context_type = void;
-  static bool resolve(uintptr_t addr, microfmt::span<char>,
-                      microfmt::raw_resolved_symbol &out_raw) noexcept {
+  static bool resolve(uintptr_t addr, microfmt::span<char>, microfmt::raw_resolved_symbol &out_raw) noexcept {
     if (addr >= 0x0800'1000 && addr < 0x0800'1500) {
       out_raw.image_name = "firmware.bin";
       out_raw.symbol_name = "SensorData_Process";
@@ -177,8 +172,7 @@ int main() {
                                .exidx_start = exidx_table_base,
                                .exidx_end = exidx_table_base + 16});
 
-  microfmt::elf_image_enumerator_ref enumerator(
-      microfmt::multi_elf_registry_tag<4>{}, elf_registry);
+  microfmt::elf_image_enumerator_ref enumerator(microfmt::multi_elf_registry_tag<4>{}, elf_registry);
 
   microfmt::elf_image_info off_stack_img_storage{};
 
@@ -199,10 +193,8 @@ int main() {
   register_file.values[microfmt::dwarf::arm32::fp] = initial_fp;
   register_file.values[microfmt::dwarf::arm32::sp] = initial_fp;
   std::byte register_scratch[sizeof(uint64_t)]{};
-  auto register_context =
-      microfmt::make_register_context_ref<read_arm_register,
-                                          write_arm_register>(
-          register_file, space, register_scratch);
+  auto register_context = microfmt::make_register_context_ref<read_arm_register, write_arm_register>(
+      register_file, space, register_scratch);
   microfmt::frame_pointer_iterator it(unwinder, register_context, initial_fp, initial_pc);
   microfmt::remote_backtrace_view bt(it, resolver, symbol_context);
 

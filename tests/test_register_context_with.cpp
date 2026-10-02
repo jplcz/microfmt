@@ -30,8 +30,7 @@ struct registers {
   } other;
 };
 
-using pc_field =
-    microfmt::register_member_field<&registers::pc, reg_pc, reg_alias_pc>;
+using pc_field = microfmt::register_member_field<&registers::pc, reg_pc, reg_alias_pc>;
 
 struct stack_fields {
   using state_type = registers;
@@ -41,13 +40,11 @@ struct stack_fields {
     return index == reg_sp || index == reg_ssp || index == reg_usp;
   }
 
-  [[nodiscard]] static constexpr const value_type *
-  get(const state_type &state, uint32_t index) noexcept {
+  [[nodiscard]] static constexpr const value_type *get(const state_type &state, uint32_t index) noexcept {
     return index == reg_usp ? &state.other.child[1] : &state.other.child[0];
   }
 
-  [[nodiscard]] static constexpr value_type *
-  get(state_type &state, uint32_t index) noexcept {
+  [[nodiscard]] static constexpr value_type *get(state_type &state, uint32_t index) noexcept {
     return index == reg_usp ? &state.other.child[1] : &state.other.child[0];
   }
 };
@@ -64,16 +61,14 @@ struct arm_registers {
 
 struct select_arm_frame_pointer {
   template <typename Registers>
-  [[nodiscard]] constexpr auto operator()(Registers &state,
-                                          uint32_t) const noexcept
-      -> decltype(&state.r7) {
+  [[nodiscard]] constexpr auto operator()(Registers &state, uint32_t) const noexcept -> decltype(&state.r7) {
     constexpr uint32_t thumb_bit = UINT32_C(1) << 5;
     return (state.cpsr & thumb_bit) != 0 ? &state.r7 : &state.r11;
   }
 };
 
-using arm_frame_pointer_field = microfmt::register_selected_field<
-    arm_registers, uint32_t, select_arm_frame_pointer, reg_frame_pointer>;
+using arm_frame_pointer_field =
+    microfmt::register_selected_field<arm_registers, uint32_t, select_arm_frame_pointer, reg_frame_pointer>;
 
 struct hardware_registers {
   uint32_t status;
@@ -81,8 +76,7 @@ struct hardware_registers {
   uint32_t reads;
 };
 
-bool read_hardware_register(const hardware_registers &state,
-                            microfmt::address_space_ref, uint32_t index,
+bool read_hardware_register(const hardware_registers &state, microfmt::address_space_ref, uint32_t index,
                             uint32_t &value) noexcept {
   if (index == reg_hardware_status) {
     value = state.status;
@@ -95,8 +89,7 @@ bool read_hardware_register(const hardware_registers &state,
   return false;
 }
 
-bool write_hardware_register(hardware_registers &state,
-                             microfmt::address_space_ref, uint32_t index,
+bool write_hardware_register(hardware_registers &state, microfmt::address_space_ref, uint32_t index,
                              const uint32_t &value) noexcept {
   if (index != reg_hardware_control)
     return false;
@@ -104,15 +97,13 @@ bool write_hardware_register(hardware_registers &state,
   return true;
 }
 
-using hardware_status_field = microfmt::register_callback_field<
-    hardware_registers, uint32_t, read_hardware_register, nullptr,
-    reg_hardware_status>;
-using hardware_control_field = microfmt::register_callback_field<
-    hardware_registers, uint32_t, read_hardware_register,
-    write_hardware_register, reg_hardware_control>;
+using hardware_status_field = microfmt::register_callback_field<hardware_registers, uint32_t, read_hardware_register,
+                                                                nullptr, reg_hardware_status>;
+using hardware_control_field = microfmt::register_callback_field<hardware_registers, uint32_t, read_hardware_register,
+                                                                 write_hardware_register, reg_hardware_control>;
 
-bool read_fallback(const void *opaque, microfmt::address_space_ref,
-                   uint32_t index, void *output, size_t size) noexcept {
+bool read_fallback(const void *opaque, microfmt::address_space_ref, uint32_t index, void *output,
+                   size_t size) noexcept {
   if (index != reg_fallback || !output || size != sizeof(uint32_t))
     return false;
   const auto &state = *static_cast<const fallback_state *>(opaque);
@@ -122,8 +113,8 @@ bool read_fallback(const void *opaque, microfmt::address_space_ref,
   return true;
 }
 
-bool write_fallback(void *opaque, microfmt::address_space_ref, uint32_t index,
-                    const void *input, size_t size) noexcept {
+bool write_fallback(void *opaque, microfmt::address_space_ref, uint32_t index, const void *input,
+                    size_t size) noexcept {
   if (index != reg_fallback || !input || size != sizeof(uint32_t))
     return false;
   auto &state = *static_cast<fallback_state *>(opaque);
@@ -136,8 +127,7 @@ bool write_fallback(void *opaque, microfmt::address_space_ref, uint32_t index,
 TEST(RegisterContextRefWith, BindsMembersAliasesAndNestedSelections) {
   registers state{0x1000, {{0x2000, 0x3000}}};
   std::byte scratch[16]{};
-  microfmt::register_context_ref_with<registers, pc_field, stack_fields>
-      mapped(state, {}, scratch);
+  microfmt::register_context_ref_with<registers, pc_field, stack_fields> mapped(state, {}, scratch);
   microfmt::register_context_ref context = mapped.ref();
 
   uint32_t value = 0;
@@ -160,8 +150,7 @@ TEST(RegisterContextRefWith, BindsMembersAliasesAndNestedSelections) {
 TEST(RegisterContextRefWith, RejectsWrongWidthsAndConstWrites) {
   const registers state{0x1000, {{0x2000, 0x3000}}};
   std::byte scratch[8]{};
-  microfmt::register_context_ref_with<registers, pc_field, stack_fields>
-      mapped(state, {}, scratch);
+  microfmt::register_context_ref_with<registers, pc_field, stack_fields> mapped(state, {}, scratch);
   auto context = mapped.ref();
 
   uint64_t wide = 0;
@@ -174,11 +163,8 @@ TEST(RegisterContextRefWith, ChainsToFallbackContext) {
   registers state{0x1000, {{0x2000, 0x3000}}};
   fallback_state fallback_state_value{0x5000};
   std::byte scratch[16]{};
-  auto fallback =
-      microfmt::make_register_context_ref<read_fallback, write_fallback>(
-          fallback_state_value, {}, scratch);
-  microfmt::register_context_ref_with<registers, pc_field, stack_fields>
-      mapped(state, {}, scratch, fallback);
+  auto fallback = microfmt::make_register_context_ref<read_fallback, write_fallback>(fallback_state_value, {}, scratch);
+  microfmt::register_context_ref_with<registers, pc_field, stack_fields> mapped(state, {}, scratch, fallback);
   auto context = mapped.ref();
 
   uint32_t value = 0;
@@ -195,10 +181,8 @@ TEST(RegisterContextRefWith, ChainsMappedContextsInOrder) {
   registers upper_state{0xaaaa, {{0xbbbb, 0xcccc}}};
   std::byte scratch[16]{};
 
-  microfmt::register_context_ref_with<registers, stack_fields> lower(
-      lower_state, {}, scratch);
-  microfmt::register_context_ref_with<registers, pc_field> upper(
-      upper_state, {}, scratch, lower.ref());
+  microfmt::register_context_ref_with<registers, stack_fields> lower(lower_state, {}, scratch);
+  microfmt::register_context_ref_with<registers, pc_field> upper(upper_state, {}, scratch, lower.ref());
   auto context = upper.ref();
 
   uint32_t value = 0;
@@ -212,9 +196,7 @@ TEST(RegisterContextRefWith, SelectsFieldsFromSourceRegisterState) {
   constexpr uint32_t thumb_bit = UINT32_C(1) << 5;
   arm_registers state{thumb_bit, 0x7000, 0xb000};
   std::byte scratch[8]{};
-  microfmt::register_context_ref_with<arm_registers,
-                                      arm_frame_pointer_field>
-      mapped(state, {}, scratch);
+  microfmt::register_context_ref_with<arm_registers, arm_frame_pointer_field> mapped(state, {}, scratch);
   auto context = mapped.ref();
 
   uint32_t value = 0;
@@ -234,10 +216,8 @@ TEST(RegisterContextRefWith, SelectsFieldsFromSourceRegisterState) {
 TEST(RegisterContextRefWith, QueriesHardwareAndHonorsReadOnlyCallbacks) {
   hardware_registers state{0x1234, 0x5678, 0};
   std::byte scratch[8]{};
-  microfmt::register_context_ref_with<hardware_registers,
-                                      hardware_status_field,
-                                      hardware_control_field>
-      mapped(state, {}, scratch);
+  microfmt::register_context_ref_with<hardware_registers, hardware_status_field, hardware_control_field> mapped(
+      state, {}, scratch);
   auto context = mapped.ref();
 
   uint32_t value = 0;

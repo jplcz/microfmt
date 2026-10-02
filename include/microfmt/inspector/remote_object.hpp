@@ -90,8 +90,8 @@ public:
    * @param scratch Scratch work buffer for chunked reading.
    * @param max_limit Maximum character render limit.
    */
-  [[nodiscard]] constexpr foreign_string_view
-  as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND, size_t max_limit = 4096) const noexcept {
+  [[nodiscard]] constexpr foreign_string_view as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND,
+                                                      size_t max_limit = 4096) const noexcept {
     return foreign_string_view(addr_, space, scratch, max_limit);
   }
 
@@ -137,8 +137,8 @@ public:
    * @param scratch Scratch work buffer for chunked reading.
    * @param max_limit Maximum character render limit.
    */
-  [[nodiscard]] constexpr foreign_string_view
-  as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND, size_t max_limit = 4096) const noexcept {
+  [[nodiscard]] constexpr foreign_string_view as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND,
+                                                      size_t max_limit = 4096) const noexcept {
     return foreign_string_view(address(), space, scratch, max_limit);
   }
 
@@ -223,9 +223,7 @@ public:
 
   [[nodiscard]] constexpr uintptr_t address() const noexcept { return addr_; }
   [[nodiscard]] constexpr address_space_ref space() const noexcept { return space_; }
-  [[nodiscard]] constexpr span<const remote_field_desc> fields() const noexcept RELOCO_LIFETIMEBOUND {
-    return fields_;
-  }
+  [[nodiscard]] constexpr span<const remote_field_desc> fields() const noexcept RELOCO_LIFETIMEBOUND { return fields_; }
   [[nodiscard]] constexpr size_t struct_size() const noexcept { return struct_size_; }
   [[nodiscard]] constexpr span<std::byte> scratch() const noexcept RELOCO_LIFETIMEBOUND { return scratch_; }
   [[nodiscard]] constexpr bool is_null() const noexcept { return addr_ == 0; }

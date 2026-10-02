@@ -41,7 +41,8 @@
  */
 
 #if !defined(MICROFMT_SHARED_BUILD)
-#error "microfmt_compile.hpp is only meant for the translation unit that builds a MICROFMT_SHARED library -- define MICROFMT_SHARED and MICROFMT_SHARED_BUILD before including it (see microfmt/detail/compat.hpp)"
+#error                                                                                                                 \
+    "microfmt_compile.hpp is only meant for the translation unit that builds a MICROFMT_SHARED library -- define MICROFMT_SHARED and MICROFMT_SHARED_BUILD before including it (see microfmt/detail/compat.hpp)"
 #endif
 
 #include "microfmt.hpp"

@@ -21,8 +21,7 @@ int main() {
   metadata.set("Firmware", microfmt::value_ref(firmware));
   metadata.set("Build ID", microfmt::value_ref(build_id));
   metadata.set("Uptime (s)", microfmt::value_ref(uptime_seconds));
-  metadata.set("Temperature (C)",
-               microfmt::value_ref(temperature_celsius));
+  metadata.set("Temperature (C)", microfmt::value_ref(temperature_celsius));
   metadata.set("Healthy", microfmt::value_ref(healthy));
 
   auto output = microfmt::stdout_sink();
@@ -31,9 +30,7 @@ int main() {
   char value_scratch[64];
 
   document.h1("Device Diagnostics").newline();
-  microfmt::md::write_metadata_table(
-      document, metadata.make_view(iteration), value_scratch,
-      "Runtime Metadata");
+  microfmt::md::write_metadata_table(document, metadata.make_view(iteration), value_scratch, "Runtime Metadata");
 
   return 0;
 }

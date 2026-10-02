@@ -13,17 +13,13 @@ TEST(FmtCompatTest, FormatToN) {
   auto res1 = fmt::format_to_n(buffer, 6, "Hello, {:s}!", "World");
   EXPECT_EQ(res1.size, 13u);
   EXPECT_EQ(static_cast<size_t>(res1.out - buffer), 6u);
-  EXPECT_EQ(microfmt::string_view(buffer,
-                                  static_cast<size_t>(res1.out - buffer)),
-            "Hello,");
+  EXPECT_EQ(microfmt::string_view(buffer, static_cast<size_t>(res1.out - buffer)), "Hello,");
 
   // Format with sufficient space (capacity = 16, total required = 7)
   auto res2 = fmt::format_to_n(buffer, sizeof(buffer), "Val: {:d}", 42);
   EXPECT_EQ(res2.size, 7u);
   EXPECT_EQ(static_cast<size_t>(res2.out - buffer), 7u);
-  EXPECT_EQ(microfmt::string_view(buffer,
-                                  static_cast<size_t>(res2.out - buffer)),
-            "Val: 42");
+  EXPECT_EQ(microfmt::string_view(buffer, static_cast<size_t>(res2.out - buffer)), "Val: 42");
 
   // Dry run / count-only (n = 0, out = nullptr)
   auto res3 = fmt::format_to_n(nullptr, 0, "Test: {:d}", 12345);

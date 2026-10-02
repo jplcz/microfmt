@@ -32,8 +32,7 @@ int main() {
 
   // Native sbintime_t formatted via as_sbintime adapter
   sbintime_t sbt_raw = (static_cast<int64_t>(5) << 32) | (1ULL << 31); // 5.5s
-  microfmt::println(out, "Native sbintime       : {}",
-                    microfmt::as_sbintime(sbt_raw));
+  microfmt::println(out, "Native sbintime       : {}", microfmt::as_sbintime(sbt_raw));
 
   return 0;
 }

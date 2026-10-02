@@ -6,9 +6,9 @@
 /** @file metadata_map.hpp
  * @brief Type-erased, zero-allocation metadata map generator view. */
 
-#include "../reloco.hpp"
 #include "../markdown.hpp"
 #include "../microfmt.hpp"
+#include "../reloco.hpp"
 #include <reloco/type_id.hpp>
 
 namespace microfmt {
@@ -61,9 +61,7 @@ public:
    * @param ctx Mutable pointer to caller-owned stack state.
    * @param next_fn Function pointer that populates the next property and advances state.
    */
-  constexpr metadata_map(
-      void *ctx RELOCO_LIFETIMEBOUND
-          RELOCO_LIFETIME_CAPTURE_BY_THIS,
+  constexpr metadata_map(void *ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS,
                          metadata_next_fn_t next_fn) noexcept
       : m_ctx(ctx), m_next_fn(next_fn) {}
 

@@ -4,9 +4,9 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <microfmt/formatters/debug_float.hpp>
 #include <microfmt/microfmt.hpp>
-#include <limits>
 
 TEST(DebugFloatTest, WholeNumberGetsTrailingDotZero) {
   const double value = 1.0;

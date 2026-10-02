@@ -85,31 +85,24 @@ struct MICROFMT_API_CLASS resolved_symbol_info {
    * @brief Reports whether a symbol name is available.
    * @return `true` when @ref symbol_name is non-empty.
    */
-  [[nodiscard]] constexpr bool has_symbol() const noexcept {
-    return !symbol_name.empty();
-  }
+  [[nodiscard]] constexpr bool has_symbol() const noexcept { return !symbol_name.empty(); }
 
   /**
    * @brief Reports whether an owning image is known.
    * @return `true` when @ref image_name is non-empty.
    */
-  [[nodiscard]] constexpr bool has_image() const noexcept {
-    return !image_name.empty();
-  }
+  [[nodiscard]] constexpr bool has_image() const noexcept { return !image_name.empty(); }
 };
 
 /**
  * @brief Caller-owned temporary storage for one symbol resolution.
  */
 struct MICROFMT_API_CLASS RELOCO_POINTER symbol_resolution_context {
-  constexpr explicit symbol_resolution_context(
-      span<char> string_scratch RELOCO_LIFETIMEBOUND = {}) noexcept
+  constexpr explicit symbol_resolution_context(span<char> string_scratch RELOCO_LIFETIMEBOUND = {}) noexcept
       : scratch(string_scratch) {}
 
   template <size_t N>
-  constexpr explicit symbol_resolution_context(char (&string_scratch)[N])
-      noexcept
-      : scratch(string_scratch, N) {}
+  constexpr explicit symbol_resolution_context(char (&string_scratch)[N]) noexcept : scratch(string_scratch, N) {}
 
   span<char> scratch{};
   raw_resolved_symbol raw{};
@@ -145,8 +138,7 @@ public:
     /**
      * @brief Resolves an address. See @ref symbol_resolver_ref::resolve.
      */
-    bool (*resolve)(const void *ctx, uintptr_t addr, span<char> scratch,
-                    raw_resolved_symbol &out_raw) noexcept;
+    bool (*resolve)(const void *ctx, uintptr_t addr, span<char> scratch, raw_resolved_symbol &out_raw) noexcept;
   };
 
   /**
@@ -159,11 +151,9 @@ public:
    * @tparam Tag Resolver tag type.
    * @tparam Traits Specialized traits, enabled when `context_type` is `void`.
    */
-  template <
-      typename Tag, typename Traits = symbol_resolver_traits<Tag>,
-      std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
-  constexpr explicit symbol_resolver_ref(Tag) noexcept
-      : ctx_(nullptr), vtbl_(&s_vtbl<Tag>) {}
+  template <typename Tag, typename Traits = symbol_resolver_traits<Tag>,
+            std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
+  constexpr explicit symbol_resolver_ref(Tag) noexcept : ctx_(nullptr), vtbl_(&s_vtbl<Tag>) {}
 
   /**
    * @brief Constructs a handle for a stateful resolver tag.
@@ -173,20 +163,14 @@ public:
    * and @p Context converts to it.
    * @param ctx Context object performing the resolution.
    */
-  template <typename Tag, typename Context,
-            typename Traits = symbol_resolver_traits<Tag>,
-            std::enable_if_t<
-                !std::is_void_v<typename Traits::context_type> &&
-                    std::is_convertible_v<
-                        const Context *, const typename Traits::context_type *>,
-                int> = 0>
-  constexpr symbol_resolver_ref(
-      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
-               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  template <typename Tag, typename Context, typename Traits = symbol_resolver_traits<Tag>,
+            std::enable_if_t<!std::is_void_v<typename Traits::context_type> &&
+                                 std::is_convertible_v<const Context *, const typename Traits::context_type *>,
+                             int> = 0>
+  constexpr symbol_resolver_ref(Tag, const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
-  template <typename Tag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   constexpr symbol_resolver_ref(Tag, Context &&) = delete;
 
   /**
@@ -195,9 +179,8 @@ public:
    * @tparam Traits Specialized traits, enabled when `context_type` is `void`.
    * @return An @ref symbol_resolver_ref for the tag.
    */
-  template <
-      typename Tag, typename Traits = symbol_resolver_traits<Tag>,
-      std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
+  template <typename Tag, typename Traits = symbol_resolver_traits<Tag>,
+            std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
   [[nodiscard]] static constexpr symbol_resolver_ref make() noexcept {
     return symbol_resolver_ref(Tag{});
   }
@@ -210,17 +193,13 @@ public:
    * @param ctx Context object performing the resolution.
    * @return An @ref symbol_resolver_ref bound to @p ctx.
    */
-  template <
-      typename Tag, typename Context,
-      typename Traits = symbol_resolver_traits<Tag>,
-      std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
-  [[nodiscard]] static constexpr symbol_resolver_ref
-  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
+  template <typename Tag, typename Context, typename Traits = symbol_resolver_traits<Tag>,
+            std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
+  [[nodiscard]] static constexpr symbol_resolver_ref make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return symbol_resolver_ref(Tag{}, ctx);
   }
 
-  template <typename Tag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   static symbol_resolver_ref make(Context &&) = delete;
 
   /**
@@ -231,8 +210,7 @@ public:
    * @return `true` on success, `false` when the handle is empty or resolution
    * fails.
    */
-  [[nodiscard]] bool resolve(uintptr_t addr,
-                             symbol_resolution_context &context) const noexcept {
+  [[nodiscard]] bool resolve(uintptr_t addr, symbol_resolution_context &context) const noexcept {
     return resolve(addr, context.scratch, context.raw, context.resolved);
   }
 
@@ -245,10 +223,8 @@ public:
    * @return `true` on success, `false` when the handle is empty or resolution
    * fails.
    */
-  [[nodiscard]] bool
-  resolve(uintptr_t addr, span<char> scratch,
-          raw_resolved_symbol &raw_storage,
-          resolved_symbol_info &out_info) const noexcept {
+  [[nodiscard]] bool resolve(uintptr_t addr, span<char> scratch, raw_resolved_symbol &raw_storage,
+                             resolved_symbol_info &out_info) const noexcept {
     if (!vtbl_)
       return false;
 
@@ -270,8 +246,7 @@ public:
       out_info.offset_from_symbol = 0;
     }
 
-    if (raw_storage.image_load_base != 0 &&
-        addr >= raw_storage.image_load_base) {
+    if (raw_storage.image_load_base != 0 && addr >= raw_storage.image_load_base) {
       out_info.offset_from_image = addr - raw_storage.image_load_base;
     } else {
       out_info.offset_from_image = 0;
@@ -284,37 +259,29 @@ public:
    * @brief Reports whether the handle is bound to a resolver.
    * @return `true` when the handle is valid.
    */
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return vtbl_ != nullptr;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return vtbl_ != nullptr; }
 
 private:
   template <typename Tag>
-  static bool resolve_entry(const void *context, uintptr_t address,
-                            span<char> scratch,
+  static bool resolve_entry(const void *context, uintptr_t address, span<char> scratch,
                             raw_resolved_symbol &result) noexcept {
     using context_type = typename symbol_resolver_traits<Tag>::context_type;
     if constexpr (std::is_void_v<context_type>) {
       return symbol_resolver_traits<Tag>::resolve(address, scratch, result);
     } else {
-      const auto &typed_context =
-          *static_cast<const context_type *>(context);
-      return symbol_resolver_traits<Tag>::resolve(
-          value_ref<const context_type>(typed_context), address, scratch,
-          result);
+      const auto &typed_context = *static_cast<const context_type *>(context);
+      return symbol_resolver_traits<Tag>::resolve(value_ref<const context_type>(typed_context), address, scratch,
+                                                  result);
     }
   }
 
-  template <typename Tag>
-  static constexpr vtable s_vtbl{&resolve_entry<Tag>};
+  template <typename Tag> static constexpr vtable s_vtbl{&resolve_entry<Tag>};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
 };
 
-template <typename Tag,
-          bool Stateless =
-              std::is_void_v<typename symbol_resolver_traits<Tag>::context_type>>
+template <typename Tag, bool Stateless = std::is_void_v<typename symbol_resolver_traits<Tag>::context_type>>
 class symbol_resolver;
 
 template <typename Tag> class RELOCO_OWNER symbol_resolver<Tag, false> {
@@ -322,21 +289,17 @@ public:
   using traits_type = symbol_resolver_traits<Tag>;
   using context_type = typename traits_type::context_type;
 
-  constexpr explicit symbol_resolver(context_type context) noexcept
-      : context_(std::move(context)) {}
+  constexpr explicit symbol_resolver(context_type context) noexcept : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
-  [[nodiscard]] constexpr symbol_resolver_ref
-  ref() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr symbol_resolver_ref ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return symbol_resolver_ref(Tag{}, context_);
   }
 
@@ -350,9 +313,7 @@ private:
 
 template <typename Tag> class symbol_resolver<Tag, true> {
 public:
-  [[nodiscard]] static constexpr symbol_resolver_ref ref() noexcept {
-    return symbol_resolver_ref(Tag{});
-  }
+  [[nodiscard]] static constexpr symbol_resolver_ref ref() noexcept { return symbol_resolver_ref(Tag{}); }
 };
 
 // ============================================================================
@@ -377,11 +338,8 @@ public:
    * @param demangle When `true`, demangle Itanium symbol names.
    */
   constexpr remote_symbol_view(uintptr_t addr, symbol_resolver_ref resolver,
-                               symbol_resolution_context &context
-                                   RELOCO_LIFETIMEBOUND,
-                               bool demangle = true) noexcept
-      : addr_(addr), resolver_(resolver), context_(&context),
-        demangle_(demangle) {}
+                               symbol_resolution_context &context RELOCO_LIFETIMEBOUND, bool demangle = true) noexcept
+      : addr_(addr), resolver_(resolver), context_(&context), demangle_(demangle) {}
 
   /**
    * @brief Returns the address being resolved.
@@ -392,16 +350,11 @@ public:
    * @brief Returns the symbol resolver handle.
    * @return Bound @ref symbol_resolver_ref.
    */
-  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept {
-    return resolver_;
-  }
+  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept { return resolver_; }
   /**
    * @brief Returns caller-owned symbol-resolution temporaries.
    */
-  [[nodiscard]] constexpr symbol_resolution_context &
-  context() const noexcept RELOCO_LIFETIMEBOUND {
-    return *context_;
-  }
+  [[nodiscard]] constexpr symbol_resolution_context &context() const noexcept RELOCO_LIFETIMEBOUND { return *context_; }
   /**
    * @brief Reports whether symbol names are demangled.
    * @return `true` when demangling is enabled.
@@ -466,8 +419,7 @@ template <> struct formatter<remote_symbol_view> {
 
     // 1. Unresolved fallback
     if (!ok || (!info.has_symbol() && !info.has_image())) {
-      microfmt::format_to(out, "<unknown@{:#x}>",
-                          view.address());
+      microfmt::format_to(out, "<unknown@{:#x}>", view.address());
       return;
     }
 
@@ -478,23 +430,20 @@ template <> struct formatter<remote_symbol_view> {
       }
 
       if (view.demangle()) {
-        microfmt::format_to(out, "{}",
-                            as_demangled(info.symbol_name));
+        microfmt::format_to(out, "{}", as_demangled(info.symbol_name));
       } else {
         out.write(info.symbol_name);
       }
 
       if (info.offset_from_symbol > 0) {
-        microfmt::format_to(out, "+{:#x}",
-                            info.offset_from_symbol);
+        microfmt::format_to(out, "+{:#x}", info.offset_from_symbol);
       }
       return;
     }
 
     // Module/Image known, but symbol stripped (e.g. nvgpu.ko+0x1420)
     if (info.has_image()) {
-      microfmt::format_to(out, "{}+{:#x}", info.image_name,
-                          info.offset_from_image);
+      microfmt::format_to(out, "{}+{:#x}", info.image_name, info.offset_from_image);
     }
   }
 };
@@ -507,10 +456,8 @@ template <> struct formatter<remote_symbol_view> {
  * @param demangle When `true`, demangle Itanium symbol names.
  * @return A configured @ref remote_symbol_view.
  */
-[[nodiscard]] constexpr auto
-make_remote_symbol(uintptr_t addr, symbol_resolver_ref resolver,
-                   symbol_resolution_context &context,
-                   bool demangle = true) noexcept {
+[[nodiscard]] constexpr auto make_remote_symbol(uintptr_t addr, symbol_resolver_ref resolver,
+                                                symbol_resolution_context &context, bool demangle = true) noexcept {
   return remote_symbol_view(addr, resolver, context, demangle);
 }
 

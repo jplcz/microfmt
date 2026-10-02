@@ -38,9 +38,8 @@ enum class char_transform : uint8_t {
 class MICROFMT_API_CLASS transform_sink {
 public:
   /** Create a transform adapter that forwards to @p target. */
-  explicit constexpr transform_sink(
-      sink target RELOCO_LIFETIME_CAPTURE_BY_THIS,
-      char_transform t = char_transform::none) noexcept
+  explicit constexpr transform_sink(sink target RELOCO_LIFETIME_CAPTURE_BY_THIS,
+                                    char_transform t = char_transform::none) noexcept
       : target_(target), transform_(t) {}
 
   transform_sink(const transform_sink &) = delete;
@@ -50,9 +49,8 @@ public:
 
   /** Return a type-erased sink suitable for @ref format_to. */
   [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
-    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
-                  static_cast<transform_sink *>(ctx)->write(sv);
-                }};
+    return sink{this,
+                [](void *ctx, microfmt::string_view sv) noexcept { static_cast<transform_sink *>(ctx)->write(sv); }};
   }
 
   /** Change the transformation applied to subsequent output. */
@@ -78,9 +76,7 @@ private:
         return static_cast<char>(c + ('a' - 'A'));
       return c;
     case char_transform::sanitize_ascii:
-      if ((static_cast<uint8_t>(c) < 0x20 || c == '\x7f') && c != '\n' &&
-          c != '\r' &&
-          c != '\t') {
+      if ((static_cast<uint8_t>(c) < 0x20 || c == '\x7f') && c != '\n' && c != '\r' && c != '\t') {
         return '.';
       }
       return c;
@@ -103,10 +99,8 @@ private:
 class MICROFMT_API_CLASS prefix_sink {
 public:
   /** Create a line-prefix adapter that forwards to @p target. */
-  explicit constexpr prefix_sink(
-      sink target RELOCO_LIFETIME_CAPTURE_BY_THIS,
-      microfmt::string_view prefix RELOCO_LIFETIME_CAPTURE_BY_THIS =
-          "  ") noexcept
+  explicit constexpr prefix_sink(sink target RELOCO_LIFETIME_CAPTURE_BY_THIS,
+                                 microfmt::string_view prefix RELOCO_LIFETIME_CAPTURE_BY_THIS = "  ") noexcept
       : target_(target), prefix_(prefix) {}
 
   prefix_sink(const prefix_sink &) = delete;
@@ -116,17 +110,11 @@ public:
 
   /** Return a type-erased sink suitable for @ref format_to. */
   [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
-    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
-                  static_cast<prefix_sink *>(ctx)->write(sv);
-                }};
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept { static_cast<prefix_sink *>(ctx)->write(sv); }};
   }
 
   /** Change the prefix used for subsequent lines. */
-  void set_prefix(
-      microfmt::string_view p
-          RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept {
-    prefix_ = p;
-  }
+  void set_prefix(microfmt::string_view p RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept { prefix_ = p; }
 
   void put(char c) noexcept {
     if (at_line_start_) {
@@ -157,9 +145,7 @@ private:
 class MICROFMT_API_CLASS limit_sink {
 public:
   /** Create an adapter that forwards at most @p max_bytes to @p target. */
-  explicit constexpr limit_sink(
-      sink target RELOCO_LIFETIME_CAPTURE_BY_THIS,
-      size_t max_bytes) noexcept
+  explicit constexpr limit_sink(sink target RELOCO_LIFETIME_CAPTURE_BY_THIS, size_t max_bytes) noexcept
       : target_(target), remaining_(max_bytes) {}
 
   limit_sink(const limit_sink &) = delete;
@@ -169,9 +155,7 @@ public:
 
   /** Return a type-erased sink suitable for @ref format_to. */
   [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
-    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
-                  static_cast<limit_sink *>(ctx)->write(sv);
-                }};
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept { static_cast<limit_sink *>(ctx)->write(sv); }};
   }
 
   void put(char c) noexcept {
@@ -191,13 +175,9 @@ public:
   }
 
   /** Return the number of bytes that can still be forwarded. */
-  [[nodiscard]] constexpr size_t remaining() const noexcept {
-    return remaining_;
-  }
+  [[nodiscard]] constexpr size_t remaining() const noexcept { return remaining_; }
   /** Return true when the configured byte limit has been reached. */
-  [[nodiscard]] constexpr bool capped() const noexcept {
-    return remaining_ == 0;
-  }
+  [[nodiscard]] constexpr bool capped() const noexcept { return remaining_ == 0; }
 
 private:
   sink target_;

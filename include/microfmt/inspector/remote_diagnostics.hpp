@@ -29,8 +29,7 @@ namespace microfmt {
  * @param resolver Optional symbol resolver.
  * @param context Caller-owned symbol-resolution temporaries.
  */
-inline void format_remote_fault(const sink &out, uintptr_t addr,
-                                symbol_resolver_ref resolver,
+inline void format_remote_fault(const sink &out, uintptr_t addr, symbol_resolver_ref resolver,
                                 symbol_resolution_context &context) noexcept {
   if (addr == 0) {
     out.write("<fault:nullptr>");
@@ -40,9 +39,7 @@ inline void format_remote_fault(const sink &out, uintptr_t addr,
   if (resolver) {
     context.raw = {};
     context.resolved = {};
-    if (resolver.resolve(addr, context) &&
-        ((context.resolved.has_symbol()) ||
-         context.resolved.has_image())) {
+    if (resolver.resolve(addr, context) && ((context.resolved.has_symbol()) || context.resolved.has_image())) {
       const auto &info = context.resolved;
       out.write("<fault@");
 
@@ -51,8 +48,7 @@ inline void format_remote_fault(const sink &out, uintptr_t addr,
           out.write(info.image_name);
           out.put('!');
         }
-        microfmt::format_to(out, "{}",
-                            as_demangled(info.symbol_name));
+        microfmt::format_to(out, "{}", as_demangled(info.symbol_name));
         if (info.offset_from_symbol > 0) {
           out.write("+0x");
           detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(info.offset_from_symbol), false, 0);
@@ -97,8 +93,7 @@ public:
    * @param context Caller-owned symbol-resolution temporaries.
    */
   constexpr remote_fn_ptr(uintptr_t addr, symbol_resolver_ref resolver,
-                          symbol_resolution_context &context
-                              RELOCO_LIFETIMEBOUND) noexcept
+                          symbol_resolution_context &context RELOCO_LIFETIMEBOUND) noexcept
       : addr_(addr), resolver_(resolver), context_(&context) {}
 
   /**
@@ -115,16 +110,11 @@ public:
    * @brief Returns the symbol resolver handle.
    * @return Bound @ref symbol_resolver_ref.
    */
-  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept {
-    return resolver_;
-  }
+  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept { return resolver_; }
   /**
    * @brief Returns caller-owned symbol-resolution temporaries.
    */
-  [[nodiscard]] constexpr symbol_resolution_context &
-  context() const noexcept RELOCO_LIFETIMEBOUND {
-    return *context_;
-  }
+  [[nodiscard]] constexpr symbol_resolution_context &context() const noexcept RELOCO_LIFETIMEBOUND { return *context_; }
 
 private:
   /// Code address.
@@ -174,8 +164,7 @@ template <> struct formatter<remote_fn_ptr> {
       return;
     }
 
-    auto sym_view =
-        remote_symbol_view(fn.address(), fn.resolver(), fn.context(), true);
+    auto sym_view = remote_symbol_view(fn.address(), fn.resolver(), fn.context(), true);
     if (mode == '#') {
       microfmt::format_to(out, "{:#}", sym_view);
     } else {
@@ -203,13 +192,10 @@ public:
    * @param scratch Reusable, aligned object scratch buffer.
    * @param symbol_context Caller-owned symbol-resolution temporaries.
    */
-  constexpr remote_diag_ref(uintptr_t addr, address_space_ref space,
-                            symbol_resolver_ref resolver,
+  constexpr remote_diag_ref(uintptr_t addr, address_space_ref space, symbol_resolver_ref resolver,
                             span<std::byte> scratch RELOCO_LIFETIMEBOUND,
-                            symbol_resolution_context &symbol_context
-                                RELOCO_LIFETIMEBOUND) noexcept
-      : addr_(addr), space_(space), resolver_(resolver), scratch_(scratch),
-        symbol_context_(&symbol_context) {}
+                            symbol_resolution_context &symbol_context RELOCO_LIFETIMEBOUND) noexcept
+      : addr_(addr), space_(space), resolver_(resolver), scratch_(scratch), symbol_context_(&symbol_context) {}
 
   /**
    * @brief Returns the remote object address.
@@ -226,8 +212,7 @@ public:
    * @brief Loads the object into the scratch buffer.
    * @return A pointer into the scratch buffer, or a precise loading error.
    */
-  [[nodiscard]] expected<T *, remote_load_error>
-  load() const noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] expected<T *, remote_load_error> load() const noexcept RELOCO_LIFETIMEBOUND {
     if (addr_ == 0)
       return unexpected(remote_load_error::null_address);
     if (scratch_.size() < sizeof(T))
@@ -247,18 +232,13 @@ public:
    * @brief Returns the address space handle.
    * @return Bound @ref address_space_ref.
    */
-  [[nodiscard]] constexpr address_space_ref space() const noexcept {
-    return space_;
-  }
+  [[nodiscard]] constexpr address_space_ref space() const noexcept { return space_; }
   /**
    * @brief Returns the symbol resolver handle.
    * @return Bound @ref symbol_resolver_ref.
    */
-  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept {
-    return resolver_;
-  }
-  [[nodiscard]] constexpr symbol_resolution_context &
-  symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept { return resolver_; }
+  [[nodiscard]] constexpr symbol_resolution_context &symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
     return *symbol_context_;
   }
 
@@ -292,9 +272,7 @@ template <typename T> struct formatter<remote_diag_ref<T>> {
    * @brief Captures the specifier for the element formatter.
    * @param ctx Format parse context exposing the specifier text.
    */
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    spec_ = ctx.spec();
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { spec_ = ctx.spec(); }
 
   /**
    * @brief Loads and renders the remote object (or a fault description).
@@ -309,8 +287,7 @@ template <typename T> struct formatter<remote_diag_ref<T>> {
 
     auto staged = view.load();
     if (!staged) {
-      format_remote_fault(out, view.address(), view.resolver(),
-                          view.symbol_context());
+      format_remote_fault(out, view.address(), view.resolver(), view.symbol_context());
       return;
     }
 

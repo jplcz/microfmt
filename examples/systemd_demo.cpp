@@ -7,8 +7,7 @@
 
 int main() {
   microfmt::log::systemd_sink journal;
-  microfmt::log::basic_logger<1, 256> logger("microfmt-service",
-                                               journal.as_sink());
+  microfmt::log::basic_logger<1, 256> logger("microfmt-service", journal.as_sink());
 
   logger.info("Service started");
   logger.warn("Worker {} is running behind schedule", 3);

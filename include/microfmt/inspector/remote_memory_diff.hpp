@@ -141,4 +141,4 @@ private:
   }
 };
 
-} // namespace microfmt1
+} // namespace microfmt

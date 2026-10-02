@@ -21,22 +21,16 @@ template <std::size_t MessageCapacity, std::size_t IdentifierCapacity> class sys
 /** @brief Tag selecting `systemd_sink<MessageCapacity, IdentifierCapacity>` as a `log_sink` backend. */
 template <std::size_t MessageCapacity, std::size_t IdentifierCapacity> struct systemd_sink_tag {};
 
-template <std::size_t MessageCapacity = 512,
-          std::size_t IdentifierCapacity = 64>
+template <std::size_t MessageCapacity = 512, std::size_t IdentifierCapacity = 64>
 /** @brief Adapter that writes structured records to the systemd journal. */
 class systemd_sink {
-  static_assert(MessageCapacity > 0,
-                "Message capacity must be at least 1 byte");
-  static_assert(IdentifierCapacity > 0,
-                "Identifier capacity must be at least 1 byte");
+  static_assert(MessageCapacity > 0, "Message capacity must be at least 1 byte");
+  static_assert(IdentifierCapacity > 0, "Identifier capacity must be at least 1 byte");
 
 public:
-  using write_fn_t = void (*)(int priority, microfmt::string_view identifier,
-                              microfmt::string_view message) noexcept;
+  using write_fn_t = void (*)(int priority, microfmt::string_view identifier, microfmt::string_view message) noexcept;
 
-  explicit constexpr systemd_sink(
-      write_fn_t write_fn = write_to_journal) noexcept
-      : write_fn_(write_fn) {}
+  explicit constexpr systemd_sink(write_fn_t write_fn = write_to_journal) noexcept : write_fn_(write_fn) {}
 
   [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
     return log_sink(systemd_sink_tag<MessageCapacity, IdentifierCapacity>{}, *this);
@@ -49,8 +43,7 @@ public:
   }
 
 private:
-  static void write_to_journal(int priority, microfmt::string_view identifier,
-                               microfmt::string_view message) noexcept {
+  static void write_to_journal(int priority, microfmt::string_view identifier, microfmt::string_view message) noexcept {
     if (::sd_booted() <= 0) {
       write_to_stdio(identifier, message);
       return;
@@ -81,8 +74,7 @@ private:
     }
   }
 
-  static void write_to_stdio(microfmt::string_view identifier,
-                             microfmt::string_view message) noexcept {
+  static void write_to_stdio(microfmt::string_view identifier, microfmt::string_view message) noexcept {
     buffer_sink<MessageCapacity + IdentifierCapacity + 4> output;
     const auto out = output.as_sink();
     if (!identifier.empty()) {

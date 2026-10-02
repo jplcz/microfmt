@@ -22,10 +22,8 @@ struct RemoteTreeContainer {
 };
 
 int main() {
-  auto space_ref =
-      microfmt::address_space_ref::make<microfmt::local_space_tag>();
-  std::byte
-      scratch[2048]; // Scratch buffer used for stack partitioning & node reads
+  auto space_ref = microfmt::address_space_ref::make<microfmt::local_space_tag>();
+  std::byte scratch[2048]; // Scratch buffer used for stack partitioning & node reads
 
   // Build a mock Binary Search Tree structure in memory:
   //          [40 : 400]
@@ -41,17 +39,14 @@ int main() {
   RemoteTreeContainer remote_tree{&node40};
   uintptr_t tree_addr = reinterpret_cast<uintptr_t>(&remote_tree);
 
-  auto tree = microfmt::make_remote_binary_tree<int, int>(
-      tree_addr, offsetof(RemoteTreeContainer, root), offsetof(BSTNode, left),
-      offsetof(BSTNode, right), offsetof(BSTNode, key),
-      offsetof(BSTNode, value));
+  auto tree = microfmt::make_remote_binary_tree<int, int>(tree_addr, offsetof(RemoteTreeContainer, root),
+                                                          offsetof(BSTNode, left), offsetof(BSTNode, right),
+                                                          offsetof(BSTNode, key), offsetof(BSTNode, value));
 
   // Configure formatting options (e.g., custom key-value separators and
   // brackets)
-  microfmt::container_options tree_opts{.kv_separator = " => ",
-                                        .entry_separator = ", ",
-                                        .open_bracket = "{ ",
-                                        .close_bracket = " }"};
+  microfmt::container_options tree_opts{
+      .kv_separator = " => ", .entry_separator = ", ", .open_bracket = "{ ", .close_bracket = " }"};
 
   auto container_view = tree.view(space_ref, scratch, tree_opts);
 

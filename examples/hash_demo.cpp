@@ -29,8 +29,7 @@ template <> struct hash<UserSession> {
     // Simple hash combine: seed ^ (hash + 0x9e3779b9 + (seed << 6) + (seed >>
     // 2))
     size_t seed = std::hash<uint32_t>{}(s.user_id);
-    seed ^= std::hash<std::string>{}(s.ip_address) + 0x9e3779b9 + (seed << 6) +
-            (seed >> 2);
+    seed ^= std::hash<std::string>{}(s.ip_address) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return seed;
   }
 };
@@ -41,8 +40,7 @@ template <> struct formatter<UserSession> {
   constexpr void parse(format_parse_context &) noexcept {}
 
   void format(const UserSession &s, const sink &out) const noexcept {
-    microfmt::format_to(out, "UserSession(id={}, ip={})", s.user_id,
-                        s.ip_address);
+    microfmt::format_to(out, "UserSession(id={}, ip={})", s.user_id, s.ip_address);
   }
 };
 } // namespace microfmt
@@ -64,11 +62,9 @@ void demo_primitive_and_string_hashing() {
   microfmt::println("String Dec Hash : {}", microfmt::as_hash(session_key));
 
   // 64-bit padded hexadecimal representation
-  microfmt::println("String Hex Hash : {:#018x}",
-                    microfmt::as_hash(session_key));
+  microfmt::println("String Hex Hash : {:#018x}", microfmt::as_hash(session_key));
   microfmt::println("Int Hex Hash    : {:#018x}", microfmt::as_hash(user_id));
-  microfmt::println("Double Hex Hash : {:#018x}",
-                    microfmt::as_hash(sample_rate));
+  microfmt::println("Double Hex Hash : {:#018x}", microfmt::as_hash(sample_rate));
   microfmt::println();
 }
 
@@ -94,8 +90,8 @@ void demo_collection_hashing() {
   microfmt::println(" 3. Batch Hashing with Range Views");
   microfmt::println("=================================================");
 
-  std::vector<microfmt::string_view> endpoints = {
-      "/api/v1/login", "/api/v1/users", "/api/v1/checkout", "/api/v1/health"};
+  std::vector<microfmt::string_view> endpoints = {"/api/v1/login", "/api/v1/users", "/api/v1/checkout",
+                                                  "/api/v1/health"};
 
   // Transform collection to hash views on the fly
   std::vector<decltype(microfmt::as_hash(endpoints[0]))> hash_views;
@@ -105,8 +101,7 @@ void demo_collection_hashing() {
   }
 
   // Join hash digests with custom delimiter and hex specifier
-  microfmt::println("Endpoint Hashes:\n  [{:#018x}]",
-                    microfmt::join(hash_views, "\n   "));
+  microfmt::println("Endpoint Hashes:\n  [{:#018x}]", microfmt::join(hash_views, "\n   "));
   microfmt::println();
 }
 

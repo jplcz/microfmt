@@ -44,8 +44,7 @@ TEST(BinaryViewTest, PrefixesAndGrouping) {
 
   // Nibble grouped
   buf.reset();
-  microfmt::format_to(buf.as_sink(), "{}",
-                      microfmt::bin_grouped(uint16_t{0xA55A}));
+  microfmt::format_to(buf.as_sink(), "{}", microfmt::bin_grouped(uint16_t{0xA55A}));
   EXPECT_EQ(buf.view(), "1010_0101_0101_1010");
 
   // Specifier flags override ({:#_})

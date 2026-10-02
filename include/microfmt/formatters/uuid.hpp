@@ -30,8 +30,7 @@ struct MICROFMT_API_CLASS uuid_view {
 // ============================================================================
 
 namespace detail {
-MICROFMT_API void format_uuid_bytes(const sink &out, span<const uint8_t> bytes, bool is_upper,
-                                     bool is_braced) noexcept;
+MICROFMT_API void format_uuid_bytes(const sink &out, span<const uint8_t> bytes, bool is_upper, bool is_braced) noexcept;
 
 #if MICROFMT_SHARED_PROVIDE_DEFINITIONS
 #include "uuid.ipp"

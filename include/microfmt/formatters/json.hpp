@@ -29,11 +29,13 @@ template <typename T> void write_integer(const sink &out, T value) noexcept {
     if (value < 0) {
       out.put('-');
       const auto magnitude = static_cast<unsigned_type>(0) - static_cast<unsigned_type>(value);
-      microfmt::detail::format_unsigned<microfmt::detail::radix::decimal>(out, static_cast<uint64_t>(magnitude), false, 0);
+      microfmt::detail::format_unsigned<microfmt::detail::radix::decimal>(out, static_cast<uint64_t>(magnitude), false,
+                                                                          0);
       return;
     }
   }
-  microfmt::detail::format_unsigned<microfmt::detail::radix::decimal>(out, static_cast<uint64_t>(static_cast<unsigned_type>(value)), false, 0);
+  microfmt::detail::format_unsigned<microfmt::detail::radix::decimal>(
+      out, static_cast<uint64_t>(static_cast<unsigned_type>(value)), false, 0);
 }
 
 } // namespace detail
@@ -117,8 +119,7 @@ public:
   }
 
   // Helper for Clang if object state is unknown
-  object_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown")
-      RELOCO_RETURN_TYPESTATE(unconsumed) {
+  object_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown") RELOCO_RETURN_TYPESTATE(unconsumed) {
     RELOCO_ASSERT(!closed_, "Attempt to reuse consumed state");
     return *this;
   }
@@ -209,9 +210,7 @@ private:
  */
 class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) array_writer {
 public:
-  explicit array_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
-    out_.put('[');
-  }
+  explicit array_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) { out_.put('['); }
 
   ~array_writer() noexcept {
     if (!closed_) {
@@ -228,8 +227,7 @@ public:
   }
 
   // Helper for Clang if object state is unknown
-  array_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown")
-      RELOCO_RETURN_TYPESTATE(unconsumed) {
+  array_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown") RELOCO_RETURN_TYPESTATE(unconsumed) {
     RELOCO_ASSERT(!closed_, "Attempt to reuse consumed state");
     return *this;
   }
@@ -274,8 +272,7 @@ public:
     return *this;
   }
 
-  [[nodiscard]] object_writer obj() noexcept RELOCO_CALLABLE_WHEN("unconsumed")
-      RELOCO_RETURN_TYPESTATE(unconsumed) {
+  [[nodiscard]] object_writer obj() noexcept RELOCO_CALLABLE_WHEN("unconsumed") RELOCO_RETURN_TYPESTATE(unconsumed) {
     prefix();
     return object_writer(out_);
   }

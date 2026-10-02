@@ -69,8 +69,7 @@ TEST(FixedPointTest, ZeroValue) {
 }
 
 TEST(FixedPointTest, EmbeddedInFormatString) {
-  auto res = microfmt::format<128>("Supply: {}V | Current: {}A | Temp: {} C",
-                                   microfmt::fixed<1000, 2>(3312),
+  auto res = microfmt::format<128>("Supply: {}V | Current: {}A | Temp: {} C", microfmt::fixed<1000, 2>(3312),
                                    microfmt::micro(850), microfmt::centi(-125));
 
   EXPECT_EQ(res.view(), "Supply: 3.31V | Current: 0.000850A | Temp: -1.25 C");

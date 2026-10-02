@@ -93,8 +93,7 @@ public:
      * @return `true` if the address was successfully classified, `false`
      * otherwise.
      */
-    bool (*classify_address)(const void *ctx, uintptr_t virt_addr,
-                             memory_region_info &out_info) noexcept;
+    bool (*classify_address)(const void *ctx, uintptr_t virt_addr, memory_region_info &out_info) noexcept;
   };
 
   /**
@@ -105,49 +104,36 @@ public:
   /**
    * @brief Constructs a handle for a stateless classifier tag.
    */
-  template <
-      typename Tag, typename Traits = memory_classifier_traits<Tag>,
-      std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
-  constexpr explicit memory_classifier_ref(Tag) noexcept
-      : ctx_(nullptr), vtbl_(&s_vtbl<Tag>) {}
+  template <typename Tag, typename Traits = memory_classifier_traits<Tag>,
+            std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
+  constexpr explicit memory_classifier_ref(Tag) noexcept : ctx_(nullptr), vtbl_(&s_vtbl<Tag>) {}
 
   /**
    * @brief Constructs a handle for a stateful classifier tag.
    */
-  template <typename Tag, typename Context,
-            typename Traits = memory_classifier_traits<Tag>,
-            std::enable_if_t<
-                !std::is_void_v<typename Traits::context_type> &&
-                    std::is_convertible_v<
-                        const Context *, const typename Traits::context_type *>,
-                int> = 0>
-  constexpr memory_classifier_ref(
-      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
-               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  template <typename Tag, typename Context, typename Traits = memory_classifier_traits<Tag>,
+            std::enable_if_t<!std::is_void_v<typename Traits::context_type> &&
+                                 std::is_convertible_v<const Context *, const typename Traits::context_type *>,
+                             int> = 0>
+  constexpr memory_classifier_ref(Tag, const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
-  template <typename Tag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   constexpr memory_classifier_ref(Tag, Context &&) = delete;
 
-  template <
-      typename Tag, typename Traits = memory_classifier_traits<Tag>,
-      std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
+  template <typename Tag, typename Traits = memory_classifier_traits<Tag>,
+            std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
   [[nodiscard]] static constexpr memory_classifier_ref make() noexcept {
     return memory_classifier_ref(Tag{});
   }
 
-  template <
-      typename Tag, typename Context,
-      typename Traits = memory_classifier_traits<Tag>,
-      std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
-  [[nodiscard]] static constexpr memory_classifier_ref
-  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
+  template <typename Tag, typename Context, typename Traits = memory_classifier_traits<Tag>,
+            std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
+  [[nodiscard]] static constexpr memory_classifier_ref make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return memory_classifier_ref(Tag{}, ctx);
   }
 
-  template <typename Tag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   static memory_classifier_ref make(Context &&) = delete;
 
   /**
@@ -156,9 +142,7 @@ public:
    * @param out_info Receives metadata about the memory region.
    * @return `true` on successful classification, `false` otherwise.
    */
-  [[nodiscard]] bool
-  classify_address(uintptr_t virt_addr,
-                   memory_region_info &out_info) const noexcept {
+  [[nodiscard]] bool classify_address(uintptr_t virt_addr, memory_region_info &out_info) const noexcept {
     if (!vtbl_ || !vtbl_->classify_address)
       return false;
     return vtbl_->classify_address(ctx_.get(), virt_addr, out_info);
@@ -167,58 +151,46 @@ public:
   /**
    * @brief Reports whether the handle is bound to a classifier.
    */
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return vtbl_ != nullptr;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return vtbl_ != nullptr; }
 
 private:
   template <typename Tag>
-  static bool classify_entry(const void *context, uintptr_t address,
-                             memory_region_info &info) noexcept {
+  static bool classify_entry(const void *context, uintptr_t address, memory_region_info &info) noexcept {
     using context_type = typename memory_classifier_traits<Tag>::context_type;
     if constexpr (std::is_void_v<context_type>) {
       return memory_classifier_traits<Tag>::classify_address(address, info);
     } else {
-      const auto &typed_context =
-          *static_cast<const context_type *>(context);
-      return memory_classifier_traits<Tag>::classify_address(
-          value_ref<const context_type>(typed_context), address, info);
+      const auto &typed_context = *static_cast<const context_type *>(context);
+      return memory_classifier_traits<Tag>::classify_address(value_ref<const context_type>(typed_context), address,
+                                                             info);
     }
   }
 
-  template <typename Tag>
-  static constexpr vtable s_vtbl{&classify_entry<Tag>};
+  template <typename Tag> static constexpr vtable s_vtbl{&classify_entry<Tag>};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
 };
 
-template <typename Tag,
-          bool Stateless = std::is_void_v<
-              typename memory_classifier_traits<Tag>::context_type>>
+template <typename Tag, bool Stateless = std::is_void_v<typename memory_classifier_traits<Tag>::context_type>>
 class memory_classifier;
 
-template <typename Tag>
-class RELOCO_OWNER memory_classifier<Tag, false> {
+template <typename Tag> class RELOCO_OWNER memory_classifier<Tag, false> {
 public:
   using traits_type = memory_classifier_traits<Tag>;
   using context_type = typename traits_type::context_type;
 
-  constexpr explicit memory_classifier(context_type context) noexcept
-      : context_(std::move(context)) {}
+  constexpr explicit memory_classifier(context_type context) noexcept : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
-  [[nodiscard]] constexpr memory_classifier_ref
-  ref() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr memory_classifier_ref ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return memory_classifier_ref(Tag{}, context_);
   }
 
@@ -232,9 +204,7 @@ private:
 
 template <typename Tag> class memory_classifier<Tag, true> {
 public:
-  [[nodiscard]] static constexpr memory_classifier_ref ref() noexcept {
-    return memory_classifier_ref(Tag{});
-  }
+  [[nodiscard]] static constexpr memory_classifier_ref ref() noexcept { return memory_classifier_ref(Tag{}); }
 };
 
 } // namespace microfmt

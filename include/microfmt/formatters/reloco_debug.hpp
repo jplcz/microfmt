@@ -313,7 +313,7 @@ template <typename T> struct Debug<weak_rc<T>> {
 template <typename T, typename Hash, typename KeyEqual> struct Debug<flat_hash_set<T, Hash, KeyEqual>> {
   static void format(const flat_hash_set<T, Hash, KeyEqual> &val, const sink &out) noexcept {
     microfmt::format_to(out, "flat_hash_set(size: {}, capacity: {}, load_factor_permille: {}) [", val.size(),
-                         val.capacity(), val.load_factor_permille());
+                        val.capacity(), val.load_factor_permille());
     bool is_first = true;
     for (const auto &elem : val) {
       if (!is_first) {
@@ -334,7 +334,7 @@ template <typename Key, typename Mapped, typename Hash, typename KeyEqual>
 struct Debug<flat_hash_map<Key, Mapped, Hash, KeyEqual>> {
   static void format(const flat_hash_map<Key, Mapped, Hash, KeyEqual> &val, const sink &out) noexcept {
     microfmt::format_to(out, "flat_hash_map(size: {}, capacity: {}, load_factor_permille: {}) {{", val.size(),
-                         val.capacity(), val.load_factor_permille());
+                        val.capacity(), val.load_factor_permille());
     bool is_first = true;
     for (const auto &entry : val) {
       if (!is_first) {

@@ -74,21 +74,18 @@ inline constexpr civil_date civil_from_days(int32_t z) noexcept {
 // Formatter for std::chrono::duration
 // ============================================================================
 
-template <typename Rep, typename Period>
-struct formatter<std::chrono::duration<Rep, Period>> {
+template <typename Rep, typename Period> struct formatter<std::chrono::duration<Rep, Period>> {
   bool hide_suffix{false};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
     for (char c : ctx.spec()) {
-      if (c == 'c' ||
-          c == 'C') { // Compact/Clean: prints raw count without unit suffix
+      if (c == 'c' || c == 'C') { // Compact/Clean: prints raw count without unit suffix
         hide_suffix = true;
       }
     }
   }
 
-  void format(const std::chrono::duration<Rep, Period> &d,
-              const sink &out) const noexcept {
+  void format(const std::chrono::duration<Rep, Period> &d, const sink &out) const noexcept {
     const auto count = d.count();
     if constexpr (std::is_signed_v<Rep>) {
       if (count < 0) {
@@ -111,8 +108,7 @@ struct formatter<std::chrono::duration<Rep, Period>> {
 // Formatter for std::chrono::time_point (System Clock / Calendar UTC)
 // ============================================================================
 
-template <typename Duration>
-struct formatter<std::chrono::time_point<std::chrono::system_clock, Duration>> {
+template <typename Duration> struct formatter<std::chrono::time_point<std::chrono::system_clock, Duration>> {
   bool time_only{false};
   bool date_only{false};
 
@@ -125,9 +121,7 @@ struct formatter<std::chrono::time_point<std::chrono::system_clock, Duration>> {
     }
   }
 
-  void
-  format(const std::chrono::time_point<std::chrono::system_clock, Duration> &tp,
-         const sink &out) const noexcept {
+  void format(const std::chrono::time_point<std::chrono::system_clock, Duration> &tp, const sink &out) const noexcept {
     using namespace std::chrono;
     const auto dur = tp.time_since_epoch();
     const auto total_secs = duration_cast<seconds>(dur).count();
@@ -162,7 +156,8 @@ struct formatter<std::chrono::time_point<std::chrono::system_clock, Duration>> {
       out.put(':');
       detail::format_unsigned<detail::radix::decimal>(out, secs, false, 2);
       out.put('.');
-      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint32_t>(sub_ms < 0 ? -sub_ms : sub_ms), false, 3);
+      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint32_t>(sub_ms < 0 ? -sub_ms : sub_ms), false,
+                                                      3);
       out.put('Z');
     }
   }
@@ -172,13 +167,10 @@ struct formatter<std::chrono::time_point<std::chrono::system_clock, Duration>> {
 // Formatter for std::chrono::time_point (Steady / Monotonic Clock Uptime)
 // ============================================================================
 
-template <typename Duration>
-struct formatter<std::chrono::time_point<std::chrono::steady_clock, Duration>> {
+template <typename Duration> struct formatter<std::chrono::time_point<std::chrono::steady_clock, Duration>> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void
-  format(const std::chrono::time_point<std::chrono::steady_clock, Duration> &tp,
-         const sink &out) const noexcept {
+  void format(const std::chrono::time_point<std::chrono::steady_clock, Duration> &tp, const sink &out) const noexcept {
     using namespace std::chrono;
     const auto dur = tp.time_since_epoch();
     const auto total_secs = duration_cast<seconds>(dur).count();

@@ -24,8 +24,7 @@ TEST(ChronoTest, FormatsDurationsWithSuffixes) {
 
 TEST(ChronoTest, FormatsSystemClockTimestamps) {
   microfmt::buffer_sink<64> buffer;
-  const std::chrono::system_clock::time_point timestamp{
-      std::chrono::milliseconds{97445006}};
+  const std::chrono::system_clock::time_point timestamp{std::chrono::milliseconds{97445006}};
 
   microfmt::format_to(buffer.as_sink(), "{}", timestamp);
   EXPECT_EQ(buffer.view(), "1970-01-02T03:04:05.006Z");
@@ -41,8 +40,7 @@ TEST(ChronoTest, FormatsSystemClockTimestamps) {
 
 TEST(ChronoTest, FormatsSteadyClockUptime) {
   microfmt::buffer_sink<32> buffer;
-  const std::chrono::steady_clock::time_point uptime{
-      std::chrono::milliseconds{3723004}};
+  const std::chrono::steady_clock::time_point uptime{std::chrono::milliseconds{3723004}};
 
   microfmt::format_to(buffer.as_sink(), "{}", uptime);
 

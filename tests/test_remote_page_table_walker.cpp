@@ -21,9 +21,8 @@ struct physical_space_context {
 template <> struct microfmt::address_space_traits<physical_space_tag> {
   using context_type = physical_space_context;
 
-  static bool read_bytes(microfmt::value_ref<const context_type> context,
-                         uintptr_t address,
-                         void *destination, size_t size) noexcept {
+  static bool read_bytes(microfmt::value_ref<const context_type> context, uintptr_t address, void *destination,
+                         size_t size) noexcept {
     if (!destination)
       return false;
     if (address < context->base)
@@ -37,8 +36,8 @@ template <> struct microfmt::address_space_traits<physical_space_tag> {
     return true;
   }
 
-  static bool read_string(microfmt::value_ref<const context_type>, uintptr_t,
-                          char *, size_t, size_t &, bool &) noexcept {
+  static bool read_string(microfmt::value_ref<const context_type>, uintptr_t, char *, size_t, size_t &,
+                          bool &) noexcept {
     return false;
   }
 };
@@ -49,9 +48,7 @@ struct test_layout_state {
   uintptr_t physical_mask;
 };
 
-bool describe_test_level(const void *, size_t level,
-                         microfmt::remote_page_table_level &description)
-    noexcept {
+bool describe_test_level(const void *, size_t level, microfmt::remote_page_table_level &description) noexcept {
   if (level == 0) {
     description = {14, 2, 8};
     return true;
@@ -63,14 +60,12 @@ bool describe_test_level(const void *, size_t level,
   return false;
 }
 
-bool decode_test_entry(
-    const void *opaque, size_t, uint64_t raw,
-    microfmt::remote_page_table_decoded_entry &entry) noexcept {
+bool decode_test_entry(const void *opaque, size_t, uint64_t raw,
+                       microfmt::remote_page_table_decoded_entry &entry) noexcept {
   if (!opaque || (raw & 1U) == 0)
     return true;
   const auto &state = *static_cast<const test_layout_state *>(opaque);
-  entry.output_address =
-      static_cast<uintptr_t>(raw) & state.physical_mask;
+  entry.output_address = static_cast<uintptr_t>(raw) & state.physical_mask;
   if ((raw & 2U) != 0) {
     entry.kind = microfmt::remote_page_table_entry_kind::leaf;
     entry.page_size = 4096;
@@ -100,15 +95,11 @@ TEST(RemotePageTableWalker, WalksPhysicalTablesAndRecordsTrace) {
   store_u64(memory, 8, next | 1U);
   store_u64(memory, 0x1000 + 16, physical_page | 1U | 2U | 4U | 8U);
 
-  const physical_space_context space_context{
-      physical_base, memory, sizeof(memory)};
-  const microfmt::address_space_ref physical_space(physical_space_tag{},
-                                                    space_context);
+  const physical_space_context space_context{physical_base, memory, sizeof(memory)};
+  const microfmt::address_space_ref physical_space(physical_space_tag{}, space_context);
   const test_layout_state layout_state{~uintptr_t{0xfff}};
-  const microfmt::remote_page_table_callbacks callbacks{
-      2, describe_test_level, decode_test_entry};
-  const microfmt::remote_page_table_layout_ref layout(layout_state,
-                                                       callbacks);
+  const microfmt::remote_page_table_callbacks callbacks{2, describe_test_level, decode_test_entry};
+  const microfmt::remote_page_table_layout_ref layout(layout_state, callbacks);
   const microfmt::remote_page_table_walker walker(physical_space, layout);
   microfmt::remote_page_table_walk_step steps[2]{};
   microfmt::remote_page_table_walk_trace trace(steps);
@@ -124,11 +115,9 @@ TEST(RemotePageTableWalker, WalksPhysicalTablesAndRecordsTrace) {
   EXPECT_FALSE(trace.truncated());
   const auto traced_steps = trace.steps();
   EXPECT_EQ(traced_steps[0].table_address, root);
-  EXPECT_EQ(traced_steps[0].decoded.kind,
-            microfmt::remote_page_table_entry_kind::next_table);
+  EXPECT_EQ(traced_steps[0].decoded.kind, microfmt::remote_page_table_entry_kind::next_table);
   EXPECT_EQ(traced_steps[1].table_address, next);
-  EXPECT_EQ(traced_steps[1].decoded.kind,
-            microfmt::remote_page_table_entry_kind::leaf);
+  EXPECT_EQ(traced_steps[1].decoded.kind, microfmt::remote_page_table_entry_kind::leaf);
 }
 
 TEST(RemotePageTableWalker, KeepsBoundedTraceAndReportsInvalidEntries) {
@@ -136,22 +125,17 @@ TEST(RemotePageTableWalker, KeepsBoundedTraceAndReportsInvalidEntries) {
   uint8_t memory[0x2000]{};
   store_u64(memory, 8, 0x2000 | 1U);
 
-  const physical_space_context space_context{
-      physical_base, memory, sizeof(memory)};
-  const microfmt::address_space_ref physical_space(physical_space_tag{},
-                                                    space_context);
+  const physical_space_context space_context{physical_base, memory, sizeof(memory)};
+  const microfmt::address_space_ref physical_space(physical_space_tag{}, space_context);
   const test_layout_state layout_state{~uintptr_t{0xfff}};
-  const microfmt::remote_page_table_layout_ref layout(
-      layout_state,
-      {2, describe_test_level, decode_test_entry});
+  const microfmt::remote_page_table_layout_ref layout(layout_state, {2, describe_test_level, decode_test_entry});
   const microfmt::remote_page_table_walker walker(physical_space, layout);
   microfmt::remote_page_table_walk_step steps[1]{};
   microfmt::remote_page_table_walk_trace trace(steps);
 
   auto result = walker.walk(0x1000, 0x6123, trace);
   ASSERT_FALSE(result);
-  EXPECT_EQ(result.error(),
-            microfmt::remote_page_table_walk_error::invalid_entry);
+  EXPECT_EQ(result.error(), microfmt::remote_page_table_walk_error::invalid_entry);
   EXPECT_EQ(trace.size(), 1U);
   EXPECT_TRUE(trace.truncated());
 }
@@ -162,23 +146,17 @@ TEST(RemotePageTableWalker, ReportsInvalidConfigurationAndReadFailures) {
   const microfmt::remote_page_table_walker empty({}, {});
   auto invalid_space = empty.walk(0x1000, 0, trace);
   ASSERT_FALSE(invalid_space);
-  EXPECT_EQ(
-      invalid_space.error(),
-      microfmt::remote_page_table_walk_error::invalid_physical_space);
+  EXPECT_EQ(invalid_space.error(), microfmt::remote_page_table_walk_error::invalid_physical_space);
 
   uint8_t memory[8]{};
   const physical_space_context space_context{0x1000, memory, sizeof(memory)};
-  const microfmt::address_space_ref physical_space(physical_space_tag{},
-                                                    space_context);
+  const microfmt::address_space_ref physical_space(physical_space_tag{}, space_context);
   const test_layout_state layout_state{~uintptr_t{0xfff}};
-  const microfmt::remote_page_table_layout_ref layout(
-      layout_state,
-      {2, describe_test_level, decode_test_entry});
+  const microfmt::remote_page_table_layout_ref layout(layout_state, {2, describe_test_level, decode_test_entry});
   const microfmt::remote_page_table_walker walker(physical_space, layout);
   auto read_failure = walker.walk(0x2000, 0, trace);
   ASSERT_FALSE(read_failure);
-  EXPECT_EQ(read_failure.error(),
-            microfmt::remote_page_table_walk_error::read_failed);
+  EXPECT_EQ(read_failure.error(), microfmt::remote_page_table_walk_error::read_failed);
 }
 
 } // namespace

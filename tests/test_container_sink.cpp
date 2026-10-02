@@ -4,7 +4,6 @@
 
 #include <gtest/gtest.h>
 #include <string>
-#include <string>
 #include <vector>
 
 #include <microfmt/sinks/container_sink.hpp>
@@ -26,10 +25,8 @@ private:
   std::vector<char> storage_;
 };
 
-static_assert(microfmt::is_growable_char_container<std::string>,
-              "std::string must be supported");
-static_assert(microfmt::is_growable_char_container<std::vector<char>>,
-              "std::vector<char> must be supported");
+static_assert(microfmt::is_growable_char_container<std::string>, "std::string must be supported");
+static_assert(microfmt::is_growable_char_container<std::vector<char>>, "std::vector<char> must be supported");
 static_assert(microfmt::is_growable_char_container<push_back_only_container>,
               "push_back-only containers must be supported");
 static_assert(!microfmt::is_growable_char_container<std::vector<int>>,
@@ -59,8 +56,7 @@ TEST(ContainerSinkTest, UsesPushBackFallback) {
 
 TEST(ContainerSinkTest, ReturnsRequestedContainerType) {
   const auto text = microfmt::format_as_container<>("id={}", 7);
-  const auto bytes =
-      microfmt::format_as_container<std::vector<char>>("id={}", 7);
+  const auto bytes = microfmt::format_as_container<std::vector<char>>("id={}", 7);
 
   EXPECT_EQ(text, "id=7");
   EXPECT_EQ(std::string(bytes.begin(), bytes.end()), "id=7");

@@ -25,8 +25,7 @@ public:
    * @brief Constructs a demangler over an Itanium-mangled symbol.
    * @param mangled Source symbol (must start with `_Z`).
    */
-  constexpr explicit itanium_demangler(microfmt::string_view mangled) noexcept
-      : src_(mangled), pos_(0) {}
+  constexpr explicit itanium_demangler(microfmt::string_view mangled) noexcept : src_(mangled), pos_(0) {}
 
   /**
    * @brief Demangles the symbol into the sink.
@@ -87,15 +86,11 @@ private:
   /**
    * @brief Reports whether reading is past the end of the source.
    */
-  [[nodiscard]] constexpr bool eof() const noexcept {
-    return pos_ >= src_.size();
-  }
+  [[nodiscard]] constexpr bool eof() const noexcept { return pos_ >= src_.size(); }
   /**
    * @brief Returns the current character without consuming it.
    */
-  [[nodiscard]] constexpr char peek() const noexcept {
-    return eof() ? '\0' : src_[pos_];
-  }
+  [[nodiscard]] constexpr char peek() const noexcept { return eof() ? '\0' : src_[pos_]; }
   /**
    * @brief Consumes and returns the current character.
    */
@@ -521,9 +516,7 @@ struct MICROFMT_API_CLASS demangle_view {
  * @param sym Mangled symbol.
  * @return A @ref demangle_view over the symbol.
  */
-[[nodiscard]] constexpr auto as_demangled(microfmt::string_view sym) noexcept {
-  return demangle_view{sym};
-}
+[[nodiscard]] constexpr auto as_demangled(microfmt::string_view sym) noexcept { return demangle_view{sym}; }
 
 /**
  * @brief Formatter for @ref demangle_view.

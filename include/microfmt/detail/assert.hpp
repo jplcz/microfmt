@@ -16,6 +16,4 @@
 
 #include <reloco/detail/assert.hpp>
 
-namespace microfmt {
-
-} // namespace microfmt
+namespace microfmt {} // namespace microfmt

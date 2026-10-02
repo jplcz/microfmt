@@ -22,9 +22,8 @@ template <typename Location> struct basic_source_loc_view {
 #if MICROFMT_HAS_STD_SOURCE_LOCATION
 using std_source_loc_view = basic_source_loc_view<std::source_location>;
 
-[[nodiscard]] constexpr std_source_loc_view
-source_loc(std::source_location loc = std::source_location::current(),
-           bool show_fn = true, bool basename_only = true) noexcept {
+[[nodiscard]] constexpr std_source_loc_view source_loc(std::source_location loc = std::source_location::current(),
+                                                       bool show_fn = true, bool basename_only = true) noexcept {
   return std_source_loc_view{loc, show_fn, basename_only};
 }
 #endif
@@ -32,9 +31,8 @@ source_loc(std::source_location loc = std::source_location::current(),
 #if MICROFMT_HAS_BOOST_SOURCE_LOCATION
 using boost_source_loc_view = basic_source_loc_view<boost::source_location>;
 
-[[nodiscard]] constexpr boost_source_loc_view
-source_loc(boost::source_location loc, bool show_fn = true,
-           bool basename_only = true) noexcept {
+[[nodiscard]] constexpr boost_source_loc_view source_loc(boost::source_location loc, bool show_fn = true,
+                                                         bool basename_only = true) noexcept {
   return boost_source_loc_view{loc, show_fn, basename_only};
 }
 #endif
@@ -58,8 +56,7 @@ template <typename Location> struct formatter<basic_source_loc_view<Location>> {
     }
   }
 
-  void format(const basic_source_loc_view<Location> &sv,
-              const sink &out) const noexcept {
+  void format(const basic_source_loc_view<Location> &sv, const sink &out) const noexcept {
     microfmt::string_view file = sv.loc.file_name();
 
     if (sv.file_basename_only) {
@@ -98,8 +95,7 @@ template <> struct formatter<std::source_location> {
 template <> struct formatter<boost::source_location> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const boost::source_location &loc,
-              const sink &out) const noexcept {
+  void format(const boost::source_location &loc, const sink &out) const noexcept {
     formatter<boost_source_loc_view> f;
     f.format(source_loc(loc), out);
   }

@@ -54,11 +54,11 @@
  * see `formatters/floating.hpp`'s own opt-in status).
  */
 
-#include <microfmt/microfmt.hpp>
 #include <array>
 #include <bitset>
 #include <cstddef>
 #include <functional>
+#include <microfmt/microfmt.hpp>
 
 namespace reloco {
 

@@ -27,16 +27,13 @@ template <typename T, typename = void> struct is_hashable : std::false_type {};
  * @tparam T Candidate hashed type.
  */
 template <typename T>
-struct is_hashable<
-    T, std::void_t<decltype(std::hash<T>{}(std::declval<const T &>()))>>
-    : std::true_type {};
+struct is_hashable<T, std::void_t<decltype(std::hash<T>{}(std::declval<const T &>()))>> : std::true_type {};
 
 /**
  * @brief Convenience variable template for @ref is_hashable.
  * @tparam T Candidate hashed type.
  */
-template <typename T>
-inline constexpr bool is_hashable_v = is_hashable<T>::value;
+template <typename T> inline constexpr bool is_hashable_v = is_hashable<T>::value;
 
 } // namespace detail
 
@@ -56,9 +53,7 @@ public:
    * @brief Constructs a hash view referencing an existing value.
    * @param val Value whose `std::hash` result will be formatted.
    */
-  constexpr explicit hash_view(
-      const T &val RELOCO_LIFETIMEBOUND) noexcept
-      : val_(val) {}
+  constexpr explicit hash_view(const T &val RELOCO_LIFETIMEBOUND) noexcept : val_(val) {}
 
   constexpr explicit hash_view(const T &&) = delete;
 
@@ -66,9 +61,7 @@ public:
    * @brief Computes the hash of the referenced value.
    * @return Result of `std::hash<T>{}` applied to the stored value.
    */
-  [[nodiscard]] std::size_t compute_hash() const noexcept {
-    return std::hash<T>{}(*val_);
-  }
+  [[nodiscard]] std::size_t compute_hash() const noexcept { return std::hash<T>{}(*val_); }
 
 private:
   /// Referenced value.
@@ -86,16 +79,12 @@ private:
  * @return A formattable @ref hash_view over @p val.
  */
 template <typename T, std::enable_if_t<detail::is_hashable_v<T>, int> = 0>
-[[nodiscard]] constexpr auto
-as_hash(const T &val RELOCO_LIFETIMEBOUND) noexcept {
+[[nodiscard]] constexpr auto as_hash(const T &val RELOCO_LIFETIMEBOUND) noexcept {
   return hash_view<T>{val};
 }
 
-template <
-    typename T,
-    std::enable_if_t<!std::is_lvalue_reference_v<T> &&
-                         detail::is_hashable_v<std::remove_reference_t<T>>,
-                     int> = 0>
+template <typename T, std::enable_if_t<
+                          !std::is_lvalue_reference_v<T> && detail::is_hashable_v<std::remove_reference_t<T>>, int> = 0>
 [[nodiscard]] constexpr auto as_hash(T &&) noexcept = delete;
 
 // ============================================================================
@@ -120,18 +109,14 @@ template <typename T> struct formatter<hash_view<T>> {
    * @brief Parses the specifier for the wrapped integer formatter.
    * @param ctx Format parse context exposing the specifier text.
    */
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    int_fmt_.parse(ctx);
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { int_fmt_.parse(ctx); }
 
   /**
    * @brief Computes and renders the hash value.
    * @param view The hash view to format.
    * @param out Destination sink.
    */
-  void format(const hash_view<T> &view, const sink &out) const noexcept {
-    int_fmt_.format(view.compute_hash(), out);
-  }
+  void format(const hash_view<T> &view, const sink &out) const noexcept { int_fmt_.format(view.compute_hash(), out); }
 };
 
 } // namespace microfmt

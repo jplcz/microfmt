@@ -13,13 +13,10 @@ int main() {
   const uint8_t imu_config[] = {0x20, 0x47};
   const uint8_t sensor_response[] = {0x00, 0x00, 0x00, 0x00};
 
-  const auto flash_read = microfmt::spi_duplex(
-      flash_read_command, flash_read_response, 0, microfmt::spi_mode::mode0);
-  const auto configure_imu =
-      microfmt::spi_write(imu_config, 1, microfmt::spi_mode::mode3);
+  const auto flash_read = microfmt::spi_duplex(flash_read_command, flash_read_response, 0, microfmt::spi_mode::mode0);
+  const auto configure_imu = microfmt::spi_write(imu_config, 1, microfmt::spi_mode::mode3);
   const auto failed_sensor_read =
-      microfmt::spi_read(sensor_response, 1, microfmt::spi_mode::mode3,
-                         microfmt::spi_status::timeout);
+      microfmt::spi_read(sensor_response, 1, microfmt::spi_mode::mode3, microfmt::spi_status::timeout);
 
   microfmt::println("=== Synthesized SPI traffic ===");
   microfmt::println("{}", flash_read);

@@ -53,8 +53,7 @@ template <typename T> struct reg_grid_type_tag {};
  * @brief Deduction guide deriving the entry count for @ref reg_grid_desc.
  */
 template <typename WordType, typename... Names>
-reg_grid_desc(reg_grid_type_tag<WordType>, microfmt::string_view, uint8_t,
-              Names...)
+reg_grid_desc(reg_grid_type_tag<WordType>, microfmt::string_view, uint8_t, Names...)
     -> reg_grid_desc<WordType, sizeof...(Names)>;
 
 // ============================================================================

@@ -17,8 +17,7 @@
 namespace {
 
 TEST(DisableDebugFlagTest, StringViewDoesNotQuoteOrEscape) {
-  auto buffer =
-      microfmt::format<64>("{:?}", microfmt::string_view("hi\"there\n"));
+  auto buffer = microfmt::format<64>("{:?}", microfmt::string_view("hi\"there\n"));
   EXPECT_EQ(buffer.view(), microfmt::string_view("hi\"there\n"));
 }
 

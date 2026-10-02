@@ -70,8 +70,7 @@ public:
      * @brief Detects whether (fp, pc) sits at an exception trampoline. See
      * @ref exception_matcher_ref::match_trap_frame.
      */
-    bool (*match_trap_frame)(const void *ctx, uintptr_t fp, uintptr_t pc,
-                             uintptr_t &out_trap_frame_addr) noexcept;
+    bool (*match_trap_frame)(const void *ctx, uintptr_t fp, uintptr_t pc, uintptr_t &out_trap_frame_addr) noexcept;
   };
 
   /**
@@ -85,30 +84,20 @@ public:
    * @tparam Context Concrete context convertible to the trait context type.
    * @param ctx Context object performing the match.
    */
-  template <typename Tag, typename Context,
-            typename Traits = exception_matcher_traits<Tag>,
-            std::enable_if_t<std::is_convertible_v<
-                                 const Context *,
-                                 const typename Traits::context_type *>,
-                             int> = 0>
-  constexpr exception_matcher_ref(
-      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
-               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  template <typename Tag, typename Context, typename Traits = exception_matcher_traits<Tag>,
+            std::enable_if_t<std::is_convertible_v<const Context *, const typename Traits::context_type *>, int> = 0>
+  constexpr exception_matcher_ref(Tag, const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
-  template <typename Tag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   constexpr exception_matcher_ref(Tag, Context &&) = delete;
 
-  template <typename Tag, typename Context,
-            typename Traits = exception_matcher_traits<Tag>>
-  [[nodiscard]] static constexpr exception_matcher_ref
-  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
+  template <typename Tag, typename Context, typename Traits = exception_matcher_traits<Tag>>
+  [[nodiscard]] static constexpr exception_matcher_ref make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return exception_matcher_ref(Tag{}, ctx);
   }
 
-  template <typename Tag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   static exception_matcher_ref make(Context &&) = delete;
 
   /**
@@ -118,34 +107,26 @@ public:
    * @param out_trap_frame_addr Receives the trap frame address.
    * @return `true` when matched.
    */
-  [[nodiscard]] bool
-  match_trap_frame(uintptr_t fp, uintptr_t pc,
-                   uintptr_t &out_trap_frame_addr) const noexcept {
+  [[nodiscard]] bool match_trap_frame(uintptr_t fp, uintptr_t pc, uintptr_t &out_trap_frame_addr) const noexcept {
     if (!vtbl_)
       return false;
-    return vtbl_->match_trap_frame(ctx_.get(), fp, pc,
-                                   out_trap_frame_addr);
+    return vtbl_->match_trap_frame(ctx_.get(), fp, pc, out_trap_frame_addr);
   }
 
   /**
    * @brief Reports whether the matcher is bound.
    * @return `true` when the matcher is valid.
    */
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return vtbl_ != nullptr;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return vtbl_ != nullptr; }
 
 private:
   template <typename Tag>
-  static constexpr vtable s_vtbl{
-      [](const void *context, uintptr_t fp, uintptr_t pc,
-         uintptr_t &out_addr) noexcept {
-        using context_type = typename exception_matcher_traits<Tag>::context_type;
-        const auto &typed_context =
-            *static_cast<const context_type *>(context);
-        return exception_matcher_traits<Tag>::match_trap_frame(
-            value_ref<const context_type>(typed_context), fp, pc, out_addr);
-      }};
+  static constexpr vtable s_vtbl{[](const void *context, uintptr_t fp, uintptr_t pc, uintptr_t &out_addr) noexcept {
+    using context_type = typename exception_matcher_traits<Tag>::context_type;
+    const auto &typed_context = *static_cast<const context_type *>(context);
+    return exception_matcher_traits<Tag>::match_trap_frame(value_ref<const context_type>(typed_context), fp, pc,
+                                                           out_addr);
+  }};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
@@ -159,28 +140,21 @@ public:
   using traits_type = exception_matcher_traits<Tag>;
   using context_type = typename traits_type::context_type;
 
-  constexpr explicit exception_matcher(context_type context) noexcept
-      : context_(std::move(context)) {}
+  constexpr explicit exception_matcher(context_type context) noexcept : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
-  [[nodiscard]] constexpr exception_matcher_ref
-  ref() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr exception_matcher_ref ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return exception_matcher_ref(Tag{}, context_);
   }
 
-  [[nodiscard]] constexpr operator exception_matcher_ref()
-      const & noexcept RELOCO_LIFETIMEBOUND {
-    return ref();
-  }
+  [[nodiscard]] constexpr operator exception_matcher_ref() const & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
 
   value_ref<context_type> context() && = delete;
   value_ref<const context_type> context() const && = delete;
@@ -210,31 +184,22 @@ public:
    * @param initial_fp Frame pointer of the starting frame.
    * @param initial_pc Program counter of the starting frame.
    */
-  constexpr hybrid_stack_unwinder(frame_unwinder_ref fp_unwinder,
-                                  exception_frame_ref trap_decoder,
-                                  exception_matcher_ref matcher,
-                                  register_context_ref reg_ctx,
-                                  uintptr_t initial_fp,
+  constexpr hybrid_stack_unwinder(frame_unwinder_ref fp_unwinder, exception_frame_ref trap_decoder,
+                                  exception_matcher_ref matcher, register_context_ref reg_ctx, uintptr_t initial_fp,
                                   uintptr_t initial_pc) noexcept
-      : fp_unwinder_(fp_unwinder), trap_decoder_(trap_decoder),
-        matcher_(matcher), reg_ctx_(reg_ctx),
-        current_{0, initial_fp, initial_pc, frame_kind::standard, {}},
-        is_valid_(initial_fp != 0 || initial_pc != 0) {}
+      : fp_unwinder_(fp_unwinder), trap_decoder_(trap_decoder), matcher_(matcher), reg_ctx_(reg_ctx),
+        current_{0, initial_fp, initial_pc, frame_kind::standard, {}}, is_valid_(initial_fp != 0 || initial_pc != 0) {}
 
   /**
    * @brief Returns the current frame record.
    * @return Reference to the current @ref hybrid_frame.
    */
-  [[nodiscard]] constexpr const hybrid_frame &operator*() const noexcept {
-    return current_;
-  }
+  [[nodiscard]] constexpr const hybrid_frame &operator*() const noexcept { return current_; }
   /**
    * @brief Returns the current frame record.
    * @return Pointer to the current @ref hybrid_frame.
    */
-  [[nodiscard]] constexpr const hybrid_frame *operator->() const noexcept {
-    return &current_;
-  }
+  [[nodiscard]] constexpr const hybrid_frame *operator->() const noexcept { return &current_; }
 
   /**
    * @brief Reports whether the cursor is positioned on a frame.
@@ -245,9 +210,7 @@ public:
    * @brief Reports whether the cursor is positioned on a frame.
    * @return `true` while the current frame is valid.
    */
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return is_valid_;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return is_valid_; }
 
   /**
    * @brief Advances to the next frame.
@@ -263,11 +226,9 @@ public:
 
     // Check if the current frame is an exception trampoline
     uintptr_t trap_frame_addr = 0;
-    if (matcher_ &&
-        matcher_.match_trap_frame(current_.fp, current_.pc, trap_frame_addr)) {
+    if (matcher_ && matcher_.match_trap_frame(current_.fp, current_.pc, trap_frame_addr)) {
       current_.trap = {};
-      if (trap_decoder_ &&
-          trap_decoder_.decode(trap_frame_addr, current_.trap)) {
+      if (trap_decoder_ && trap_decoder_.decode(trap_frame_addr, current_.trap)) {
         // Synthesize a trap transition frame
         current_.frame_index++;
         current_.kind = frame_kind::trap_transition;
@@ -308,8 +269,7 @@ public:
    * @param visitor Visitor invoked per frame.
    * @param max_depth Maximum number of frames to visit.
    */
-  template <typename Visitor>
-  void for_each_frame(Visitor &&visitor, uint32_t max_depth = 64) noexcept {
+  template <typename Visitor> void for_each_frame(Visitor &&visitor, uint32_t max_depth = 64) noexcept {
     while (is_valid_ && current_.frame_index < max_depth) {
       if (!visitor(current_)) {
         break;
@@ -349,43 +309,30 @@ public:
    * @param symbol_context Caller-owned symbol-resolution scratch and state.
    * @param max_depth Maximum number of frames to render.
    */
-  constexpr explicit hybrid_backtrace_view(
-                                           hybrid_stack_unwinder &unwinder
-                                               RELOCO_LIFETIMEBOUND,
+  constexpr explicit hybrid_backtrace_view(hybrid_stack_unwinder &unwinder RELOCO_LIFETIMEBOUND,
                                            symbol_resolver_ref resolver,
-                                           symbol_resolution_context
-                                               &symbol_context
-                                                   RELOCO_LIFETIMEBOUND,
+                                           symbol_resolution_context &symbol_context RELOCO_LIFETIMEBOUND,
                                            uint32_t max_depth = 32) noexcept
-      : unwinder_(&unwinder), resolver_(resolver),
-        symbol_context_(&symbol_context), max_depth_(max_depth) {}
+      : unwinder_(&unwinder), resolver_(resolver), symbol_context_(&symbol_context), max_depth_(max_depth) {}
 
   /**
    * @brief Returns the underlying unwinder.
    * @return Reference to the @ref hybrid_stack_unwinder.
    */
-  [[nodiscard]] constexpr hybrid_stack_unwinder &
-  unwinder() const noexcept RELOCO_LIFETIMEBOUND {
-    return *unwinder_;
-  }
+  [[nodiscard]] constexpr hybrid_stack_unwinder &unwinder() const noexcept RELOCO_LIFETIMEBOUND { return *unwinder_; }
   /**
    * @brief Returns the symbol resolver handle.
    * @return Bound @ref symbol_resolver_ref.
    */
-  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept {
-    return resolver_;
-  }
-  [[nodiscard]] constexpr symbol_resolution_context &
-  symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept { return resolver_; }
+  [[nodiscard]] constexpr symbol_resolution_context &symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
     return *symbol_context_;
   }
   /**
    * @brief Returns the maximum frame depth.
    * @return Frame render limit.
    */
-  [[nodiscard]] constexpr uint32_t max_depth() const noexcept {
-    return max_depth_;
-  }
+  [[nodiscard]] constexpr uint32_t max_depth() const noexcept { return max_depth_; }
 
 private:
   /// Unwinder cursor, stored by reference to eliminate stack bloat.
@@ -427,8 +374,7 @@ template <> struct formatter<hybrid_backtrace_view> {
    * @param view The backtrace view to format.
    * @param out Destination sink.
    */
-  void format(const hybrid_backtrace_view &view,
-              const sink &out) const noexcept {
+  void format(const hybrid_backtrace_view &view, const sink &out) const noexcept {
     hybrid_stack_unwinder cursor = view.unwinder();
 
     bool first = true;
@@ -446,15 +392,12 @@ template <> struct formatter<hybrid_backtrace_view> {
             } else {
               out.write("Nested Fault");
             }
-            microfmt::format_to(out, " (vec {:#x})] ---\n",
-                                frame.trap.vector_or_reason);
+            microfmt::format_to(out, " (vec {:#x})] ---\n", frame.trap.vector_or_reason);
           }
 
-          microfmt::format_to(out, "  #{:<2} fp={:#x}  pc=",
-                              frame.frame_index, frame.fp);
+          microfmt::format_to(out, "  #{:<2} fp={:#x}  pc=", frame.frame_index, frame.fp);
 
-          remote_fn_ptr fn_sym(frame.pc, view.resolver(),
-                               view.symbol_context());
+          remote_fn_ptr fn_sym(frame.pc, view.resolver(), view.symbol_context());
           if (mode == '#') {
             microfmt::format_to(out, "{:#}", fn_sym);
           } else {

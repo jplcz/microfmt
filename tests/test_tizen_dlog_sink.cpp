@@ -22,21 +22,17 @@ struct dlog_record {
 
 dlog_record captured_dlog;
 
-void copy_to_buffer(microfmt::string_view text, char *destination,
-                    std::size_t capacity, std::size_t &size) noexcept {
+void copy_to_buffer(microfmt::string_view text, char *destination, std::size_t capacity, std::size_t &size) noexcept {
   size = text.size() < capacity ? text.size() : capacity;
   for (std::size_t i = 0; i < size; ++i) {
     destination[i] = text[i];
   }
 }
 
-void capture_dlog(int priority, microfmt::string_view tag,
-                  microfmt::string_view message) noexcept {
+void capture_dlog(int priority, microfmt::string_view tag, microfmt::string_view message) noexcept {
   captured_dlog.priority = priority;
-  copy_to_buffer(tag, captured_dlog.tag.data(), captured_dlog.tag.size(),
-                 captured_dlog.tag_size);
-  copy_to_buffer(message, captured_dlog.message.data(),
-                 captured_dlog.message.size(), captured_dlog.message_size);
+  copy_to_buffer(tag, captured_dlog.tag.data(), captured_dlog.tag.size(), captured_dlog.tag_size);
+  copy_to_buffer(message, captured_dlog.message.data(), captured_dlog.message.size(), captured_dlog.message_size);
 }
 
 } // namespace
@@ -54,13 +50,8 @@ TEST(TizenDlogSinkTest, MapsSeverityAndForwardsLogRecord) {
 
   EXPECT_EQ(captured_dlog.priority, DLOG_FATAL);
   // The originating logger's name is forwarded as the DLOG tag.
-  EXPECT_EQ(microfmt::string_view(captured_dlog.tag.data(),
-                                  captured_dlog.tag_size),
-            "telemetry");
-  EXPECT_EQ(
-      microfmt::string_view(captured_dlog.message.data(),
-                            captured_dlog.message_size),
-      "sensor failure");
+  EXPECT_EQ(microfmt::string_view(captured_dlog.tag.data(), captured_dlog.tag_size), "telemetry");
+  EXPECT_EQ(microfmt::string_view(captured_dlog.message.data(), captured_dlog.message_size), "sensor failure");
 }
 
 TEST(TizenDlogSinkTest, FallsBackToSinkTagWhenLoggerNameIsEmpty) {
@@ -73,9 +64,7 @@ TEST(TizenDlogSinkTest, FallsBackToSinkTagWhenLoggerNameIsEmpty) {
       .payload = "no logger name",
   });
 
-  EXPECT_EQ(microfmt::string_view(captured_dlog.tag.data(),
-                                  captured_dlog.tag_size),
-            "microfmt");
+  EXPECT_EQ(microfmt::string_view(captured_dlog.tag.data(), captured_dlog.tag_size), "microfmt");
 }
 
 TEST(TizenDlogSinkTest, HonorsConfiguredSinkThreshold) {

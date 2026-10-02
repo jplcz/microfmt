@@ -17,9 +17,7 @@ namespace microfmt {
 template <typename T> struct formatter<boost::optional<T>> {
   microfmt::string_view forwarded_spec{};
 
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    forwarded_spec = ctx.spec();
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { forwarded_spec = ctx.spec(); }
 
   void format(const boost::optional<T> &value, const sink &out) const noexcept {
     if (!value) {
@@ -49,8 +47,7 @@ template <typename... Ts> struct formatter<boost::variant2::variant<Ts...>> {
     forwarded_spec = spec;
   }
 
-  void format(const boost::variant2::variant<Ts...> &value,
-              const sink &out) const noexcept {
+  void format(const boost::variant2::variant<Ts...> &value, const sink &out) const noexcept {
     if (show_index) {
       microfmt::format_to(out, "variant[{}](", value.index());
     }
@@ -75,13 +72,9 @@ template <typename R, typename S, typename NoValuePolicy>
 struct formatter<boost::outcome_v2::basic_result<R, S, NoValuePolicy>> {
   microfmt::string_view forwarded_spec{};
 
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    forwarded_spec = ctx.spec();
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { forwarded_spec = ctx.spec(); }
 
-  void
-  format(const boost::outcome_v2::basic_result<R, S, NoValuePolicy> &result,
-         const sink &out) const noexcept {
+  void format(const boost::outcome_v2::basic_result<R, S, NoValuePolicy> &result, const sink &out) const noexcept {
     if (result.has_value()) {
       out.write("Ok(");
       if constexpr (!std::is_void_v<R>) {

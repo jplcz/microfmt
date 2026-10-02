@@ -28,9 +28,9 @@
  * trailing `.0` either way).
  */
 
-#include <microfmt/microfmt.hpp>
 #include <cstddef>
 #include <cstdio>
+#include <microfmt/microfmt.hpp>
 #include <type_traits>
 
 namespace reloco {
@@ -53,14 +53,14 @@ template <typename T> inline void format_debug_float(T val, const sink &out) noe
     return;
   }
 
-  const std::size_t len = static_cast<std::size_t>(written) < sizeof(buf) ? static_cast<std::size_t>(written)
-                                                                           : sizeof(buf) - 1;
+  const std::size_t len =
+      static_cast<std::size_t>(written) < sizeof(buf) ? static_cast<std::size_t>(written) : sizeof(buf) - 1;
   const microfmt::string_view text(buf, len);
   out.write(text);
 
-  const bool has_dot_or_exp =
-      text.find('.') != microfmt::string_view::npos || text.find('e') != microfmt::string_view::npos ||
-      text.find('E') != microfmt::string_view::npos;
+  const bool has_dot_or_exp = text.find('.') != microfmt::string_view::npos ||
+                              text.find('e') != microfmt::string_view::npos ||
+                              text.find('E') != microfmt::string_view::npos;
   const bool is_special =
       text.find("inf") != microfmt::string_view::npos || text.find("nan") != microfmt::string_view::npos;
   if (!has_dot_or_exp && !is_special) {

@@ -15,23 +15,19 @@ namespace microfmt {
 namespace detail {
 
 // Check if T has Boost.Describe members (only takes T)
-template <typename T>
-using is_described_struct = boost::describe::has_describe_members<T>;
+template <typename T> using is_described_struct = boost::describe::has_describe_members<T>;
 
 // Check if E is an enum registered with Boost.Describe
 template <typename E>
 struct is_described_enum
-    : std::integral_constant<
-          bool, std::is_enum_v<E> &&
-                    boost::describe::has_describe_enumerators<E>::value> {};
+    : std::integral_constant<bool, std::is_enum_v<E> && boost::describe::has_describe_enumerators<E>::value> {};
 
 } // namespace detail
 
 // ============================================================================
 // Formatter for Boost.Describe Reflected Enums
 // ============================================================================
-template <typename E>
-struct formatter<E, std::enable_if_t<detail::is_described_enum<E>::value>> {
+template <typename E> struct formatter<E, std::enable_if_t<detail::is_described_enum<E>::value>> {
   constexpr void parse(format_parse_context &ctx) noexcept { (void)ctx; }
 
   void format(E val, const sink &out) const noexcept {
@@ -60,13 +56,11 @@ struct formatter<E, std::enable_if_t<detail::is_described_enum<E>::value>> {
 // ============================================================================
 // Formatter for Boost.Describe Reflected Structs & Classes
 // ============================================================================
-template <typename T>
-struct formatter<T, std::enable_if_t<detail::is_described_struct<T>::value>> {
+template <typename T> struct formatter<T, std::enable_if_t<detail::is_described_struct<T>::value>> {
   constexpr void parse(format_parse_context &ctx) noexcept { (void)ctx; }
 
   void format(const T &val, const sink &out) const noexcept {
-    using Members =
-        boost::describe::describe_members<T, boost::describe::mod_public>;
+    using Members = boost::describe::describe_members<T, boost::describe::mod_public>;
 
     out.put('{');
     bool first = true;

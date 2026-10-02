@@ -152,7 +152,8 @@ template <size_t N, typename UInt> struct formatter<reg_view<N, UInt>> {
     // Register Name & Raw Value
     out.write(d.name);
     out.write("=0x");
-    detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(rv.value), true, static_cast<int>(d.byte_width * 2));
+    detail::format_unsigned<detail::radix::hex>(out, static_cast<uint64_t>(rv.value), true,
+                                                static_cast<int>(d.byte_width * 2));
 
     // Decode Bitfields
     if (!naked)

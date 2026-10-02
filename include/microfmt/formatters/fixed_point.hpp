@@ -31,13 +31,10 @@ constexpr uint64_t ct_pow10(uint8_t exp) noexcept {
 // Scale: Value representation divider (e.g., Scale = 1000 for
 // millivolts/milliseconds) Decimals: Number of fractional digits to format (0
 // to 18)
-template <uint64_t Scale, uint8_t Decimals = 2, typename IntType = int32_t>
-struct fixed_point_view {
+template <uint64_t Scale, uint8_t Decimals = 2, typename IntType = int32_t> struct fixed_point_view {
   static_assert(Scale > 0, "fixed_point Scale must be greater than 0");
-  static_assert(Decimals <= 18,
-                "fixed_point Decimals exceeds 64-bit precision");
-  static_assert(std::is_integral_v<IntType>,
-                "fixed_point value must be an integral type");
+  static_assert(Decimals <= 18, "fixed_point Decimals exceeds 64-bit precision");
+  static_assert(std::is_integral_v<IntType>, "fixed_point value must be an integral type");
 
   IntType raw_value{0};
 };
@@ -49,28 +46,22 @@ template <uint64_t Scale, uint8_t Decimals = 2, typename IntType>
 }
 
 // Common embedded aliases
-template <typename IntType = int32_t>
-using milli_view = fixed_point_view<1000, 3, IntType>; // e.g., mV -> V, ms -> s
+template <typename IntType = int32_t> using milli_view = fixed_point_view<1000, 3, IntType>; // e.g., mV -> V, ms -> s
+
+template <typename IntType = int32_t> using centi_view = fixed_point_view<100, 2, IntType>; // e.g., 0.01 increments
 
 template <typename IntType = int32_t>
-using centi_view = fixed_point_view<100, 2, IntType>; // e.g., 0.01 increments
+using micro_view = fixed_point_view<1000000, 6, IntType>; // e.g., us -> s, uA -> A
 
-template <typename IntType = int32_t>
-using micro_view =
-    fixed_point_view<1000000, 6, IntType>; // e.g., us -> s, uA -> A
-
-template <typename IntType>
-[[nodiscard]] constexpr auto milli(IntType raw_val) noexcept {
+template <typename IntType> [[nodiscard]] constexpr auto milli(IntType raw_val) noexcept {
   return milli_view<IntType>{raw_val};
 }
 
-template <typename IntType>
-[[nodiscard]] constexpr auto centi(IntType raw_val) noexcept {
+template <typename IntType> [[nodiscard]] constexpr auto centi(IntType raw_val) noexcept {
   return centi_view<IntType>{raw_val};
 }
 
-template <typename IntType>
-[[nodiscard]] constexpr auto micro(IntType raw_val) noexcept {
+template <typename IntType> [[nodiscard]] constexpr auto micro(IntType raw_val) noexcept {
   return micro_view<IntType>{raw_val};
 }
 
@@ -81,11 +72,9 @@ template <uint64_t Scale, uint8_t Decimals, typename IntType>
 struct formatter<fixed_point_view<Scale, Decimals, IntType>> {
   constexpr void parse(format_parse_context &ctx) noexcept { (void)ctx; }
 
-  void format(const fixed_point_view<Scale, Decimals, IntType> &fp,
-              const sink &out) const noexcept {
+  void format(const fixed_point_view<Scale, Decimals, IntType> &fp, const sink &out) const noexcept {
     using UnsignedType =
-        std::make_unsigned_t<std::conditional_t<(sizeof(IntType) < 4), uint32_t,
-                                                std::make_unsigned_t<IntType>>>;
+        std::make_unsigned_t<std::conditional_t<(sizeof(IntType) < 4), uint32_t, std::make_unsigned_t<IntType>>>;
 
     bool is_negative = false;
     UnsignedType abs_raw = 0;
@@ -94,8 +83,7 @@ struct formatter<fixed_point_view<Scale, Decimals, IntType>> {
       if (fp.raw_value < 0) {
         is_negative = true;
         // Avoid undefined behavior on INT_MIN
-        abs_raw = static_cast<UnsignedType>(0) -
-                  static_cast<UnsignedType>(fp.raw_value);
+        abs_raw = static_cast<UnsignedType>(0) - static_cast<UnsignedType>(fp.raw_value);
       } else {
         abs_raw = static_cast<UnsignedType>(fp.raw_value);
       }

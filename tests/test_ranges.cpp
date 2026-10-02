@@ -5,8 +5,8 @@
 #include <array>
 #include <cstdint>
 #include <gtest/gtest.h>
-#include <microfmt/microfmt.hpp>
 #include <microfmt/formatters/ranges.hpp>
+#include <microfmt/microfmt.hpp>
 
 TEST(JoinTest, EmptyRange) {
   microfmt::buffer_sink<64> buf;
@@ -63,8 +63,7 @@ TEST(JoinTest, SpanAndStdArray) {
 
 TEST(JoinTest, DirectFormatEmbedding) {
   const uint32_t channel_mask[] = {1, 2, 4, 8};
-  auto res = microfmt::format<128>("Channels active: ({})",
-                                   microfmt::join(channel_mask, ", "));
+  auto res = microfmt::format<128>("Channels active: ({})", microfmt::join(channel_mask, ", "));
 
   EXPECT_EQ(res.view(), "Channels active: (1, 2, 4, 8)");
 }

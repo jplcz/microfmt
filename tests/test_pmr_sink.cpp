@@ -16,8 +16,7 @@ TEST(PmrSinkTest, FormatsStringAndVectorWithProvidedResource) {
   std::pmr::monotonic_buffer_resource resource(storage.data(), storage.size());
 
   const auto text = microfmt::pmr::format(&resource, "value={}", 42);
-  const auto bytes =
-      microfmt::pmr::format_vector(&resource, "id={:04x}", 0x2a);
+  const auto bytes = microfmt::pmr::format_vector(&resource, "id={:04x}", 0x2a);
 
   EXPECT_EQ(text.get_allocator().resource(), &resource);
   EXPECT_EQ(bytes.get_allocator().resource(), &resource);

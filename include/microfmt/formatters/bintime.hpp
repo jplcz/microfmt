@@ -22,12 +22,10 @@ namespace microfmt {
 namespace detail {
 
 // Primary detection: checks for struct with .sec and .frac members
-template <typename T, typename = void>
-struct is_bintime_struct : std::false_type {};
+template <typename T, typename = void> struct is_bintime_struct : std::false_type {};
 
 template <typename T>
-struct is_bintime_struct<T, std::void_t<decltype(std::declval<T>().sec),
-                                        decltype(std::declval<T>().frac)>>
+struct is_bintime_struct<T, std::void_t<decltype(std::declval<T>().sec), decltype(std::declval<T>().frac)>>
     : std::true_type {};
 
 } // namespace detail
@@ -47,8 +45,7 @@ template <typename T> struct is_bintime : detail::is_bintime_struct<T> {};
  * @tparam T Candidate time type.
  */
 template <typename T>
-inline constexpr bool is_bintime_v =
-    is_bintime<std::remove_cv_t<std::remove_reference_t<T>>>::value;
+inline constexpr bool is_bintime_v = is_bintime<std::remove_cv_t<std::remove_reference_t<T>>>::value;
 
 /**
  * @brief Fractional-second precision selectors for time formatting.
@@ -56,13 +53,7 @@ inline constexpr bool is_bintime_v =
  * Each enumerator value encodes the corresponding number of fractional decimal
  * digits to emit.
  */
-enum class time_precision : uint8_t {
-  sec = 0,
-  ms = 3,
-  us = 6,
-  ns = 9,
-  ps = 12
-};
+enum class time_precision : uint8_t { sec = 0, ms = 3, us = 6, ns = 9, ps = 12 };
 
 // ============================================================================
 // Zero-Float Scaling Helpers
@@ -77,8 +68,7 @@ namespace detail {
  * @param prec Target decimal precision.
  * @return Decimal-scaled fractional value, or `0` for `sec` precision.
  */
-inline uint64_t bintime_frac_to_decimal(uint64_t frac,
-                                        time_precision prec) noexcept {
+inline uint64_t bintime_frac_to_decimal(uint64_t frac, time_precision prec) noexcept {
   uint64_t multiplier = 1'000'000'000;
   switch (prec) {
   case time_precision::ms:
@@ -104,8 +94,7 @@ inline uint64_t bintime_frac_to_decimal(uint64_t frac,
   const uint64_t multiplier_high = multiplier >> 32;
 
   const uint64_t low_product = frac_low * multiplier_low;
-  const uint64_t middle =
-      frac_high * multiplier_low + (low_product >> 32);
+  const uint64_t middle = frac_high * multiplier_low + (low_product >> 32);
   const uint64_t middle_low = middle & half_mask;
   const uint64_t middle_high = middle >> 32;
   const uint64_t cross = middle_low + frac_low * multiplier_high;
@@ -120,8 +109,7 @@ inline uint64_t bintime_frac_to_decimal(uint64_t frac,
  * @param prec Target decimal precision.
  * @return Decimal-scaled fractional value.
  */
-inline uint32_t sbintime_frac_to_decimal(uint32_t frac32,
-                                         time_precision prec) noexcept {
+inline uint32_t sbintime_frac_to_decimal(uint32_t frac32, time_precision prec) noexcept {
   uint64_t multiplier = 1'000'000'000;
   switch (prec) {
   case time_precision::ms:
@@ -137,8 +125,7 @@ inline uint32_t sbintime_frac_to_decimal(uint32_t frac32,
     multiplier = 1'000'000'000;
     break;
   }
-  return static_cast<uint32_t>((static_cast<uint64_t>(frac32) * multiplier) >>
-                               32);
+  return static_cast<uint32_t>((static_cast<uint64_t>(frac32) * multiplier) >> 32);
 }
 
 } // namespace detail
@@ -293,8 +280,7 @@ template <typename T> struct formatter<sbintime_view<T>> {
     }
 
     const uint64_t sec = magnitude >> 32;
-    const uint32_t frac =
-        static_cast<uint32_t>(magnitude & UINT64_C(0xFFFFFFFF));
+    const uint32_t frac = static_cast<uint32_t>(magnitude & UINT64_C(0xFFFFFFFF));
 
     detail::format_unsigned<detail::radix::decimal>(out, sec, false, 0);
 

@@ -35,8 +35,7 @@ TEST(MathTest, Vec3OwnsValuesFromSeparateArguments) {
 TEST(MathTest, FormatsRowMajorMatrices) {
   const int values[] = {1, 2, 3, 4, 5, 6};
 
-  const auto rendered =
-      microfmt::format<64>("{}", microfmt::mat<int, 2, 3>(values));
+  const auto rendered = microfmt::format<64>("{}", microfmt::mat<int, 2, 3>(values));
 
   EXPECT_EQ(rendered.view(), "[\n  [1, 2, 3]\n  [4, 5, 6]\n]");
 }

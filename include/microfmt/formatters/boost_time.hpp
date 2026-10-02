@@ -15,8 +15,7 @@
 namespace microfmt {
 namespace detail {
 
-template <typename Period>
-constexpr microfmt::string_view boost_duration_suffix() noexcept {
+template <typename Period> constexpr microfmt::string_view boost_duration_suffix() noexcept {
   if constexpr (Period::num == 1 && Period::den == 1000000000) {
     return "ns";
   } else if constexpr (Period::num == 1 && Period::den == 1000000) {
@@ -34,8 +33,7 @@ constexpr microfmt::string_view boost_duration_suffix() noexcept {
   }
 }
 
-inline void format_boost_date(const boost::gregorian::date &date,
-                              const sink &out) noexcept {
+inline void format_boost_date(const boost::gregorian::date &date, const sink &out) noexcept {
   if (date.is_not_a_date()) {
     out.write("not-a-date");
     return;
@@ -55,9 +53,7 @@ inline void format_boost_date(const boost::gregorian::date &date,
   detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(date.day()), false, 2);
 }
 
-inline void format_boost_time_duration(
-    const boost::posix_time::time_duration &duration,
-    const sink &out) noexcept {
+inline void format_boost_time_duration(const boost::posix_time::time_duration &duration, const sink &out) noexcept {
   if (duration.is_special()) {
     if (duration.is_not_a_date_time()) {
       out.write("not-a-date-time");
@@ -72,25 +68,26 @@ inline void format_boost_time_duration(
   if (duration.is_negative()) {
     out.put('-');
   }
-  detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(duration.hours() < 0 ? -duration.hours()
-                                                       : duration.hours()), false, 2);
+  detail::format_unsigned<detail::radix::decimal>(
+      out, static_cast<uint64_t>(duration.hours() < 0 ? -duration.hours() : duration.hours()), false, 2);
   out.put(':');
-  detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(duration.minutes() < 0 ? -duration.minutes()
-                                                         : duration.minutes()), false, 2);
+  detail::format_unsigned<detail::radix::decimal>(
+      out, static_cast<uint64_t>(duration.minutes() < 0 ? -duration.minutes() : duration.minutes()), false, 2);
   out.put(':');
-  detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(duration.seconds() < 0 ? -duration.seconds()
-                                                         : duration.seconds()), false, 2);
+  detail::format_unsigned<detail::radix::decimal>(
+      out, static_cast<uint64_t>(duration.seconds() < 0 ? -duration.seconds() : duration.seconds()), false, 2);
   const auto fractional = duration.fractional_seconds();
   if (fractional != 0) {
     out.put('.');
-    detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(fractional < 0 ? -fractional : fractional), false, static_cast<unsigned>(boost::posix_time::time_duration::num_fractional_digits()));
+    detail::format_unsigned<detail::radix::decimal>(
+        out, static_cast<uint64_t>(fractional < 0 ? -fractional : fractional), false,
+        static_cast<unsigned>(boost::posix_time::time_duration::num_fractional_digits()));
   }
 }
 
 } // namespace detail
 
-template <typename Rep, typename Period>
-struct formatter<boost::chrono::duration<Rep, Period>> {
+template <typename Rep, typename Period> struct formatter<boost::chrono::duration<Rep, Period>> {
   bool hide_suffix{false};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
@@ -101,8 +98,7 @@ struct formatter<boost::chrono::duration<Rep, Period>> {
     }
   }
 
-  void format(const boost::chrono::duration<Rep, Period> &duration,
-              const sink &out) const noexcept {
+  void format(const boost::chrono::duration<Rep, Period> &duration, const sink &out) const noexcept {
     formatter<Rep> count_formatter;
     format_parse_context count_context("");
     count_formatter.parse(count_context);
@@ -113,16 +109,12 @@ struct formatter<boost::chrono::duration<Rep, Period>> {
   }
 };
 
-template <typename Clock, typename Duration>
-struct formatter<boost::chrono::time_point<Clock, Duration>> {
+template <typename Clock, typename Duration> struct formatter<boost::chrono::time_point<Clock, Duration>> {
   formatter<Duration> duration_formatter{};
 
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    duration_formatter.parse(ctx);
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { duration_formatter.parse(ctx); }
 
-  void format(const boost::chrono::time_point<Clock, Duration> &time_point,
-              const sink &out) const noexcept {
+  void format(const boost::chrono::time_point<Clock, Duration> &time_point, const sink &out) const noexcept {
     duration_formatter.format(time_point.time_since_epoch(), out);
     out.write(" since epoch");
   }
@@ -131,8 +123,7 @@ struct formatter<boost::chrono::time_point<Clock, Duration>> {
 template <> struct formatter<boost::gregorian::date> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const boost::gregorian::date &date,
-              const sink &out) const noexcept {
+  void format(const boost::gregorian::date &date, const sink &out) const noexcept {
     detail::format_boost_date(date, out);
   }
 };
@@ -140,8 +131,7 @@ template <> struct formatter<boost::gregorian::date> {
 template <> struct formatter<boost::posix_time::time_duration> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const boost::posix_time::time_duration &duration,
-              const sink &out) const noexcept {
+  void format(const boost::posix_time::time_duration &duration, const sink &out) const noexcept {
     detail::format_boost_time_duration(duration, out);
   }
 };
@@ -149,8 +139,7 @@ template <> struct formatter<boost::posix_time::time_duration> {
 template <> struct formatter<boost::posix_time::ptime> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const boost::posix_time::ptime &time,
-              const sink &out) const noexcept {
+  void format(const boost::posix_time::ptime &time, const sink &out) const noexcept {
     if (time.is_not_a_date_time()) {
       out.write("not-a-date-time");
       return;

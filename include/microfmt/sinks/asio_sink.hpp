@@ -8,8 +8,8 @@
 
 /** @file asio_sink.hpp @brief Boost.Asio buffer and stream sink adapters for zero-allocation formatting. */
 
-#include "../reloco.hpp"
 #include "../microfmt.hpp"
+#include "../reloco.hpp"
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <cstddef>
@@ -36,8 +36,8 @@ public:
    * this sink, and (via @ref written_buffer) any pending async write that
    * consumes its result.
    */
-  explicit asio_mutable_buffer_sink(boost::asio::mutable_buffer buf RELOCO_LIFETIMEBOUND
-                                         RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  explicit asio_mutable_buffer_sink(
+      boost::asio::mutable_buffer buf RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : data_(static_cast<char *>(buf.data())), capacity_(buf.size()) {}
 
   asio_mutable_buffer_sink(const asio_mutable_buffer_sink &) = delete;
@@ -104,9 +104,8 @@ public:
    * @param max_chars Maximum number of characters accepted before further
    * writes are silently dropped.
    */
-  explicit asio_streambuf_sink(boost::asio::streambuf &buf RELOCO_LIFETIMEBOUND
-                                    RELOCO_LIFETIME_CAPTURE_BY_THIS,
-                                size_t max_chars = 1024) noexcept
+  explicit asio_streambuf_sink(boost::asio::streambuf &buf RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS,
+                               size_t max_chars = 1024) noexcept
       : streambuf_(&buf), max_chars_(max_chars) {}
 
   /**

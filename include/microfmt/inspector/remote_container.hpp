@@ -49,16 +49,14 @@ struct MICROFMT_API_CLASS container_options {
  * @tparam IteratorState State retained while traversing the container.
  * @tparam FormatterFn Callable used to format the container.
  */
-template <typename IteratorState, typename FormatterFn>
-class RELOCO_OWNER container_context {
+template <typename IteratorState, typename FormatterFn> class RELOCO_OWNER container_context {
 public:
   /**
    * @brief Stores container traversal state and its formatting callback.
    * @param initial_state Initial state used by @p formatter.
    * @param formatter Callable that renders the container.
    */
-  constexpr container_context(IteratorState initial_state,
-                              FormatterFn formatter)
+  constexpr container_context(IteratorState initial_state, FormatterFn formatter)
       : state_(initial_state), formatter_fn_(formatter) {}
 
   /**
@@ -70,8 +68,7 @@ public:
    * @param opts Rendering options selected by the view.
    * @return The result reported by the stored formatter.
    */
-  static bool format_thunk(void *raw_ctx, address_space_ref space,
-                           span<std::byte> scratch, const sink &out,
+  static bool format_thunk(void *raw_ctx, address_space_ref space, span<std::byte> scratch, const sink &out,
                            const container_options &opts) noexcept {
     auto *self = static_cast<container_context *>(raw_ctx);
     return self->formatter_fn_(self->state_, opts, space, scratch, out);
@@ -86,9 +83,7 @@ public:
    * @brief Returns the traversal state.
    * @return Const reference to the stored state.
    */
-  [[nodiscard]] constexpr const IteratorState &state() const noexcept {
-    return state_;
-  }
+  [[nodiscard]] constexpr const IteratorState &state() const noexcept { return state_; }
 
 private:
   IteratorState state_;
@@ -102,47 +97,38 @@ private:
  * trait calls; only conversion to @ref remote_container_view introduces type
  * erasure.
  */
-template <typename Tag, typename Dispatcher>
-class RELOCO_OWNER basic_remote_container {
+template <typename Tag, typename Dispatcher> class RELOCO_OWNER basic_remote_container {
 public:
   using traits_type = typename Dispatcher::traits_type;
   using context_type = typename traits_type::context_type;
 
-  constexpr basic_remote_container(uintptr_t container_addr,
-                                   context_type context) noexcept
+  constexpr basic_remote_container(uintptr_t container_addr, context_type context) noexcept
       : container_addr_(container_addr), context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr uintptr_t container_address() const noexcept {
-    return container_addr_;
-  }
+  [[nodiscard]] constexpr uintptr_t container_address() const noexcept { return container_addr_; }
 
-  [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
   value_ref<context_type> context() && = delete;
   value_ref<const context_type> context() const && = delete;
 
-  [[nodiscard]] constexpr remote_container_view
-  view(address_space_ref space,
-       span<std::byte> scratch RELOCO_LIFETIMEBOUND,
-       container_options options = {}) & noexcept RELOCO_LIFETIMEBOUND;
+  [[nodiscard]] constexpr remote_container_view view(address_space_ref space,
+                                                     span<std::byte> scratch RELOCO_LIFETIMEBOUND,
+                                                     container_options options = {}) & noexcept RELOCO_LIFETIMEBOUND;
 
-  remote_container_view view(address_space_ref, span<std::byte>,
-                             container_options = {}) && = delete;
+  remote_container_view view(address_space_ref, span<std::byte>, container_options = {}) && = delete;
 
-  static bool format_thunk(void *raw_ctx, address_space_ref space,
-                           span<std::byte> scratch, const sink &out,
+  static bool format_thunk(void *raw_ctx, address_space_ref space, span<std::byte> scratch, const sink &out,
                            const container_options &opts) noexcept {
     auto &self = *static_cast<basic_remote_container *>(raw_ctx);
-    return Dispatcher::format(value_ref<const context_type>(self.context_),
-                              self.container_addr_, opts, space, scratch, out);
+    return Dispatcher::format(value_ref<const context_type>(self.context_), self.container_addr_, opts, space, scratch,
+                              out);
   }
 
 private:
@@ -160,11 +146,8 @@ private:
  * @return A @ref container_context retaining the supplied state and callable.
  */
 template <typename IteratorState, typename FormatterFn>
-[[nodiscard]] constexpr auto
-make_container_context(IteratorState initial_state,
-                       FormatterFn formatter) noexcept {
-  return container_context<IteratorState, FormatterFn>(initial_state,
-                                                       formatter);
+[[nodiscard]] constexpr auto make_container_context(IteratorState initial_state, FormatterFn formatter) noexcept {
+  return container_context<IteratorState, FormatterFn>(initial_state, formatter);
 }
 
 /**
@@ -176,8 +159,7 @@ public:
   /**
    * @brief Type-erased function signature used to format a container.
    */
-  using format_fn_t = bool (*)(void *ctx, address_space_ref space,
-                               span<std::byte> scratch, const sink &out,
+  using format_fn_t = bool (*)(void *ctx, address_space_ref space, span<std::byte> scratch, const sink &out,
                                const container_options &opts) noexcept;
 
   /**
@@ -195,56 +177,39 @@ public:
    * @param options Formatting configuration.
    */
   template <typename Context>
-  constexpr remote_container_view(uintptr_t container_addr,
-                                  address_space_ref space,
-                                  span<std::byte> scratch
-                                      RELOCO_LIFETIMEBOUND
-                                          RELOCO_LIFETIME_CAPTURE_BY_THIS,
-                                  value_ref<Context> ctx
-                                      RELOCO_LIFETIME_CAPTURE_BY_THIS,
+  constexpr remote_container_view(uintptr_t container_addr, address_space_ref space,
+                                  span<std::byte> scratch RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS,
+                                  value_ref<Context> ctx RELOCO_LIFETIME_CAPTURE_BY_THIS,
                                   container_options options = {}) noexcept
-      : container_addr_(container_addr), space_(space), scratch_(scratch),
-        ctx_(ctx.pointer()), format_fn_(&Context::format_thunk),
-        options_(options) {}
+      : container_addr_(container_addr), space_(space), scratch_(scratch), ctx_(ctx.pointer()),
+        format_fn_(&Context::format_thunk), options_(options) {}
 
   /**
    * @brief Returns the remote container address.
    * @return Absolute container address.
    */
-  [[nodiscard]] constexpr uintptr_t container_address() const noexcept {
-    return container_addr_;
-  }
+  [[nodiscard]] constexpr uintptr_t container_address() const noexcept { return container_addr_; }
   /**
    * @brief Returns the address space.
    * @return Address-space handle used for reads.
    */
-  [[nodiscard]] constexpr address_space_ref space() const noexcept {
-    return space_;
-  }
+  [[nodiscard]] constexpr address_space_ref space() const noexcept { return space_; }
   /**
    * @brief Returns the reusable scratch storage.
    * @return Scratch byte span.
    */
-  [[nodiscard]] constexpr span<std::byte>
-  scratch() const noexcept RELOCO_LIFETIMEBOUND {
-    return scratch_;
-  }
+  [[nodiscard]] constexpr span<std::byte> scratch() const noexcept RELOCO_LIFETIMEBOUND { return scratch_; }
   /**
    * @brief Returns the rendering configuration.
    * @return Const reference to the view options.
    */
-  [[nodiscard]] constexpr const container_options &
-  options() const & noexcept RELOCO_LIFETIMEBOUND {
-    return options_;
-  }
+  [[nodiscard]] constexpr const container_options &options() const & noexcept RELOCO_LIFETIMEBOUND { return options_; }
   const container_options &options() const && = delete;
   /**
    * @brief Reports whether the view lacks a container address or context.
    * @return `true` when the view cannot be formatted.
    */
-  [[nodiscard]] constexpr bool is_null() const noexcept {
-    return container_addr_ == 0 || !ctx_;
-  }
+  [[nodiscard]] constexpr bool is_null() const noexcept { return container_addr_ == 0 || !ctx_; }
 
   /**
    * @brief Formats the remote container through its bound context.
@@ -262,9 +227,7 @@ public:
    * @brief Reports whether the view can be formatted.
    * @return `true` when the view is non-null.
    */
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return !is_null();
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return !is_null(); }
 
 private:
   uintptr_t container_addr_{0};
@@ -277,12 +240,9 @@ private:
 
 template <typename Tag, typename Dispatcher>
 [[nodiscard]] constexpr remote_container_view
-basic_remote_container<Tag, Dispatcher>::view(
-    address_space_ref space, span<std::byte> scratch,
-    container_options options) & noexcept {
-  return remote_container_view(container_addr_, space, scratch,
-                               value_ref<basic_remote_container>(*this),
-                               options);
+basic_remote_container<Tag, Dispatcher>::view(address_space_ref space, span<std::byte> scratch,
+                                              container_options options) & noexcept {
+  return remote_container_view(container_addr_, space, scratch, value_ref<basic_remote_container>(*this), options);
 }
 
 } // namespace microfmt
@@ -294,8 +254,7 @@ basic_remote_container<Tag, Dispatcher>::view(
 template <> struct microfmt::formatter<microfmt::remote_container_view> {
   constexpr void parse(microfmt::format_parse_context &) noexcept {}
 
-  void format(const microfmt::remote_container_view &view,
-              const microfmt::sink &out) const noexcept {
+  void format(const microfmt::remote_container_view &view, const microfmt::sink &out) const noexcept {
     if (view.is_null()) {
       out.write("<null>");
       return;

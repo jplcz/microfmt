@@ -33,9 +33,8 @@ struct MICROFMT_API_CLASS bitfield_view {
 };
 
 // Convenience helper to construct a bitfield_view
-[[nodiscard]] constexpr bitfield_view
-bits(uint32_t raw_val, span<const bit_field> fields, bool show_raw_hex = true,
-     microfmt::string_view sep = " | ") noexcept {
+[[nodiscard]] constexpr bitfield_view bits(uint32_t raw_val, span<const bit_field> fields, bool show_raw_hex = true,
+                                           microfmt::string_view sep = " | ") noexcept {
   return bitfield_view{raw_val, fields, sep, show_raw_hex};
 }
 
@@ -54,51 +53,37 @@ template <> struct formatter<bitfield_view> {
 // ============================================================================
 
 // 1-bit boolean flag at bit position 'pos'
-#define MICROFMT_BIT_FLAG(pos, name)                                           \
-  ::microfmt::bit_field {                                                      \
-    (1u << (pos)), static_cast<uint8_t>(pos), (name),                          \
-        ::microfmt::bit_type::flag                                             \
-  }
+#define MICROFMT_BIT_FLAG(pos, name)                                                                                   \
+  ::microfmt::bit_field { (1u << (pos)), static_cast<uint8_t>(pos), (name), ::microfmt::bit_type::flag }
 
 // Multi-bit masked integer field (mask, shift, name)
-#define MICROFMT_BIT_VALUE_DEC(mask, shift, name)                              \
-  ::microfmt::bit_field {                                                      \
-    (mask), static_cast<uint8_t>(shift), (name),                               \
-        ::microfmt::bit_type::value_dec                                        \
-  }
+#define MICROFMT_BIT_VALUE_DEC(mask, shift, name)                                                                      \
+  ::microfmt::bit_field { (mask), static_cast<uint8_t>(shift), (name), ::microfmt::bit_type::value_dec }
 
-#define MICROFMT_BIT_VALUE_HEX(mask, shift, name)                              \
-  ::microfmt::bit_field {                                                      \
-    (mask), static_cast<uint8_t>(shift), (name),                               \
-        ::microfmt::bit_type::value_hex                                        \
-  }
+#define MICROFMT_BIT_VALUE_HEX(mask, shift, name)                                                                      \
+  ::microfmt::bit_field { (mask), static_cast<uint8_t>(shift), (name), ::microfmt::bit_type::value_hex }
 
 // ============================================================================
 // Register Type Synthesis Macro
 // ============================================================================
 
-#define MICROFMT_DEFINE_REGISTER_TYPE(TypeName, UnderlyingType, ...)           \
-  struct TypeName {                                                            \
-    UnderlyingType value{0};                                                   \
-                                                                               \
-    constexpr TypeName() noexcept = default;                                   \
-    constexpr TypeName(UnderlyingType v) noexcept : value(v) {}                \
-    constexpr explicit operator UnderlyingType() const noexcept {              \
-      return value;                                                            \
-    }                                                                          \
-                                                                               \
-    static constexpr ::microfmt::bit_field fields[] = {__VA_ARGS__};           \
-  };                                                                           \
-                                                                               \
-  template <> struct microfmt::formatter<TypeName> {                           \
-    constexpr void parse(::microfmt::format_parse_context &) noexcept {}       \
-    void format(const TypeName &reg,                                           \
-                const ::microfmt::sink &out) const noexcept {                  \
-      ::microfmt::formatter<::microfmt::bitfield_view> f;                      \
-      f.format(::microfmt::bits(static_cast<uint32_t>(reg.value),              \
-                                ::microfmt::span(TypeName::fields)),           \
-               out);                                                           \
-    }                                                                          \
+#define MICROFMT_DEFINE_REGISTER_TYPE(TypeName, UnderlyingType, ...)                                                   \
+  struct TypeName {                                                                                                    \
+    UnderlyingType value{0};                                                                                           \
+                                                                                                                       \
+    constexpr TypeName() noexcept = default;                                                                           \
+    constexpr TypeName(UnderlyingType v) noexcept : value(v) {}                                                        \
+    constexpr explicit operator UnderlyingType() const noexcept { return value; }                                      \
+                                                                                                                       \
+    static constexpr ::microfmt::bit_field fields[] = {__VA_ARGS__};                                                   \
+  };                                                                                                                   \
+                                                                                                                       \
+  template <> struct microfmt::formatter<TypeName> {                                                                   \
+    constexpr void parse(::microfmt::format_parse_context &) noexcept {}                                               \
+    void format(const TypeName &reg, const ::microfmt::sink &out) const noexcept {                                     \
+      ::microfmt::formatter<::microfmt::bitfield_view> f;                                                              \
+      f.format(::microfmt::bits(static_cast<uint32_t>(reg.value), ::microfmt::span(TypeName::fields)), out);           \
+    }                                                                                                                  \
   };
 
 } // namespace microfmt

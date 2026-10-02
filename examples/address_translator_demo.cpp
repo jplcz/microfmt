@@ -28,8 +28,7 @@ struct demo_translator_context {
 template <> struct microfmt::address_translator_traits<demo_translator_tag> {
   using context_type = demo_translator_context;
 
-  static bool translate(microfmt::value_ref<const context_type> context,
-                        uintptr_t virtual_address,
+  static bool translate(microfmt::value_ref<const context_type> context, uintptr_t virtual_address,
                         microfmt::translation_attributes &attributes) noexcept {
     for (size_t i = 0; i < context->mapping_count; ++i) {
       RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;

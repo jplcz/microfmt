@@ -34,8 +34,7 @@ enum class admonition : uint8_t { note, tip, important, warning, caution };
 class writer;
 
 template <typename Callable>
-writer &details(writer &w, microfmt::string_view summary, Callable &&body,
-                bool open = false) noexcept;
+writer &details(writer &w, microfmt::string_view summary, Callable &&body, bool open = false) noexcept;
 
 // ============================================================================
 // Markdown Document Writer (Zero Allocation)
@@ -71,14 +70,12 @@ public:
     return *this;
   }
 
-  template <typename... Args>
-  writer &print(microfmt::string_view fmt, const Args &...args) noexcept {
+  template <typename... Args> writer &print(microfmt::string_view fmt, const Args &...args) noexcept {
     format_to(m_sink, fmt, args...);
     return *this;
   }
 
-  template <typename... Args>
-  writer &println(microfmt::string_view fmt, const Args &...args) noexcept {
+  template <typename... Args> writer &println(microfmt::string_view fmt, const Args &...args) noexcept {
     format_to(m_sink, fmt, args...);
     m_sink.put('\n');
     return *this;
@@ -88,9 +85,7 @@ public:
   // Headings & Dividers
   // ------------------------------------------------------------------------
 
-  template <typename... Args>
-  writer &heading(uint8_t level, microfmt::string_view fmt,
-                  const Args &...args) noexcept {
+  template <typename... Args> writer &heading(uint8_t level, microfmt::string_view fmt, const Args &...args) noexcept {
     const uint8_t clamped = std::clamp<uint8_t>(level, 1, 6);
     pad('#', clamped);
     put(' ');
@@ -98,18 +93,10 @@ public:
     return newline();
   }
 
-  writer &h1(microfmt::string_view title) noexcept {
-    return heading(1, "{}", title);
-  }
-  writer &h2(microfmt::string_view title) noexcept {
-    return heading(2, "{}", title);
-  }
-  writer &h3(microfmt::string_view title) noexcept {
-    return heading(3, "{}", title);
-  }
-  writer &h4(microfmt::string_view title) noexcept {
-    return heading(4, "{}", title);
-  }
+  writer &h1(microfmt::string_view title) noexcept { return heading(1, "{}", title); }
+  writer &h2(microfmt::string_view title) noexcept { return heading(2, "{}", title); }
+  writer &h3(microfmt::string_view title) noexcept { return heading(3, "{}", title); }
+  writer &h4(microfmt::string_view title) noexcept { return heading(4, "{}", title); }
 
   writer &horizontal_rule() noexcept { return write("---\n"); }
 
@@ -127,8 +114,7 @@ public:
 
   writer &code_block_end() noexcept { return write("```\n"); }
 
-  template <typename Callable>
-  writer &code_block(microfmt::string_view lang, Callable &&body) noexcept {
+  template <typename Callable> writer &code_block(microfmt::string_view lang, Callable &&body) noexcept {
     code_block_begin(lang);
     body(*this);
     return code_block_end();
@@ -138,23 +124,20 @@ public:
   // Blockquotes & Lists
   // ------------------------------------------------------------------------
 
-  template <typename... Args>
-  writer &blockquote(microfmt::string_view fmt, const Args &...args) noexcept {
+  template <typename... Args> writer &blockquote(microfmt::string_view fmt, const Args &...args) noexcept {
     write("> ");
     format_to(m_sink, fmt, args...);
     return newline();
   }
 
-  template <typename... Args>
-  writer &list_item(microfmt::string_view fmt, const Args &...args) noexcept {
+  template <typename... Args> writer &list_item(microfmt::string_view fmt, const Args &...args) noexcept {
     write("- ");
     format_to(m_sink, fmt, args...);
     return newline();
   }
 
   template <typename... Args>
-  writer &numbered_item(size_t index, microfmt::string_view fmt,
-                        const Args &...args) noexcept {
+  writer &numbered_item(size_t index, microfmt::string_view fmt, const Args &...args) noexcept {
     format_to(m_sink, "{}. ", index);
     format_to(m_sink, fmt, args...);
     return newline();
@@ -244,8 +227,7 @@ public:
   }
 
   template <size_t ScratchSize = 128, typename... Args>
-  writer &table_cell_fmt(const column &col, microfmt::string_view fmt,
-                         const Args &...args) noexcept {
+  writer &table_cell_fmt(const column &col, microfmt::string_view fmt, const Args &...args) noexcept {
     buffer_sink<ScratchSize> scratch;
     format_to(scratch.as_sink(), fmt, args...);
     return table_cell(scratch.view(), col);
@@ -255,25 +237,21 @@ public:
 
   [[nodiscard]] constexpr sink get_sink() const noexcept { return m_sink; }
 
-  template <typename... Args>
-  writer &task_item(bool checked, microfmt::string_view fmt,
-                    const Args &...args) noexcept {
+  template <typename... Args> writer &task_item(bool checked, microfmt::string_view fmt, const Args &...args) noexcept {
     write(checked ? "- [x] " : "- [ ] ");
     format_to(m_sink, fmt, args...);
     return newline();
   }
 
   template <typename... Args>
-  writer &nested_list_item(uint8_t indent_level, microfmt::string_view fmt,
-                           const Args &...args) noexcept {
+  writer &nested_list_item(uint8_t indent_level, microfmt::string_view fmt, const Args &...args) noexcept {
     pad(' ', static_cast<size_t>(indent_level) * 2);
     write("- ");
     format_to(m_sink, fmt, args...);
     return newline();
   }
 
-  template <typename Callable>
-  writer &alert(admonition type, Callable &&body) noexcept {
+  template <typename Callable> writer &alert(admonition type, Callable &&body) noexcept {
     switch (type) {
     case admonition::note:
       write("> [!NOTE]\n");
@@ -296,14 +274,9 @@ public:
     return newline();
   }
 
-  template <typename... Args>
-  writer &hexdump_block(microfmt::string_view summary,
-                        span<const uint8_t> data) noexcept {
+  template <typename... Args> writer &hexdump_block(microfmt::string_view summary, span<const uint8_t> data) noexcept {
     return details(*this, summary, [&](writer &w) {
-      w.code_block("text", [&](writer &cw) {
-        format_to(cw.get_sink(), "{}",
-                  microfmt::hexdump(data));
-      });
+      w.code_block("text", [&](writer &cw) { format_to(cw.get_sink(), "{}", microfmt::hexdump(data)); });
     });
   }
 
@@ -333,24 +306,14 @@ struct MICROFMT_API_CLASS image_view {
   microfmt::string_view url;
 };
 
-[[nodiscard]] constexpr bold_view bold(microfmt::string_view s) noexcept {
-  return {s};
-}
-[[nodiscard]] constexpr italic_view italic(microfmt::string_view s) noexcept {
-  return {s};
-}
-[[nodiscard]] constexpr strike_view strike(microfmt::string_view s) noexcept {
-  return {s};
-}
-[[nodiscard]] constexpr code_view code(microfmt::string_view s) noexcept {
-  return {s};
-}
-[[nodiscard]] constexpr link_view link(microfmt::string_view label,
-                                       microfmt::string_view url) noexcept {
+[[nodiscard]] constexpr bold_view bold(microfmt::string_view s) noexcept { return {s}; }
+[[nodiscard]] constexpr italic_view italic(microfmt::string_view s) noexcept { return {s}; }
+[[nodiscard]] constexpr strike_view strike(microfmt::string_view s) noexcept { return {s}; }
+[[nodiscard]] constexpr code_view code(microfmt::string_view s) noexcept { return {s}; }
+[[nodiscard]] constexpr link_view link(microfmt::string_view label, microfmt::string_view url) noexcept {
   return {label, url};
 }
-[[nodiscard]] constexpr image_view image(microfmt::string_view alt,
-                                         microfmt::string_view url) noexcept {
+[[nodiscard]] constexpr image_view image(microfmt::string_view alt, microfmt::string_view url) noexcept {
   return {alt, url};
 }
 
@@ -358,8 +321,7 @@ struct MICROFMT_API_CLASS image_view {
 
 template <> struct microfmt::formatter<microfmt::md::bold_view> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(const microfmt::md::bold_view &v,
-              const sink &out) const noexcept {
+  void format(const microfmt::md::bold_view &v, const sink &out) const noexcept {
     out.write("**");
     out.write(v.text);
     out.write("**");
@@ -368,8 +330,7 @@ template <> struct microfmt::formatter<microfmt::md::bold_view> {
 
 template <> struct microfmt::formatter<microfmt::md::code_view> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(const microfmt::md::code_view &v,
-              const sink &out) const noexcept {
+  void format(const microfmt::md::code_view &v, const sink &out) const noexcept {
     out.put('`');
     out.write(v.text);
     out.put('`');
@@ -378,8 +339,7 @@ template <> struct microfmt::formatter<microfmt::md::code_view> {
 
 template <> struct microfmt::formatter<microfmt::md::italic_view> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(const microfmt::md::italic_view &v,
-              const sink &out) const noexcept {
+  void format(const microfmt::md::italic_view &v, const sink &out) const noexcept {
     out.put('_');
     out.write(v.text);
     out.put('_');
@@ -388,8 +348,7 @@ template <> struct microfmt::formatter<microfmt::md::italic_view> {
 
 template <> struct microfmt::formatter<microfmt::md::strike_view> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(const microfmt::md::strike_view &v,
-              const sink &out) const noexcept {
+  void format(const microfmt::md::strike_view &v, const sink &out) const noexcept {
     out.write("~~");
     out.write(v.text);
     out.write("~~");
@@ -398,8 +357,7 @@ template <> struct microfmt::formatter<microfmt::md::strike_view> {
 
 template <> struct microfmt::formatter<microfmt::md::link_view> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(const microfmt::md::link_view &v,
-              const sink &out) const noexcept {
+  void format(const microfmt::md::link_view &v, const sink &out) const noexcept {
     out.put('[');
     out.write(v.label);
     out.write("](");
@@ -410,8 +368,7 @@ template <> struct microfmt::formatter<microfmt::md::link_view> {
 
 template <> struct microfmt::formatter<microfmt::md::image_view> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(const microfmt::md::image_view &v,
-              const sink &out) const noexcept {
+  void format(const microfmt::md::image_view &v, const sink &out) const noexcept {
     out.write("![");
     out.write(v.alt);
     out.write("](");
@@ -428,14 +385,12 @@ namespace microfmt::md {
 
 class MICROFMT_API_CLASS details_guard {
 public:
-  explicit details_guard(writer &w, microfmt::string_view summary,
-                         bool open = false) noexcept;
+  explicit details_guard(writer &w, microfmt::string_view summary, bool open = false) noexcept;
   ~details_guard() noexcept;
 
   details_guard(const details_guard &) = delete;
   details_guard &operator=(const details_guard &) = delete;
-  details_guard(details_guard &&o) noexcept
-      : m_writer(std::exchange(o.m_writer, nullptr)) {}
+  details_guard(details_guard &&o) noexcept : m_writer(std::exchange(o.m_writer, nullptr)) {}
 
 private:
   writer *m_writer{nullptr};
@@ -445,9 +400,7 @@ private:
 // details_guard Implementation
 // ============================================================================
 
-inline details_guard::details_guard(writer &w, microfmt::string_view summary,
-                                    bool open) noexcept
-    : m_writer(&w) {
+inline details_guard::details_guard(writer &w, microfmt::string_view summary, bool open) noexcept : m_writer(&w) {
   if (open) {
     m_writer->write("<details open>\n<summary>");
   } else {
@@ -464,8 +417,7 @@ inline details_guard::~details_guard() noexcept {
 }
 
 template <typename Callable>
-inline writer &details(writer &w, microfmt::string_view summary, Callable &&body,
-                       bool open) noexcept {
+inline writer &details(writer &w, microfmt::string_view summary, Callable &&body, bool open) noexcept {
   details_guard guard(w, summary, open);
   body(w);
   return w;
@@ -473,19 +425,16 @@ inline writer &details(writer &w, microfmt::string_view summary, Callable &&body
 
 template <size_t NumCols> class table_writer {
 public:
-  table_writer(writer &w, span<const column> cols) noexcept
-      : m_writer(w), m_cols(cols) {
+  table_writer(writer &w, span<const column> cols) noexcept : m_writer(w), m_cols(cols) {
     m_writer.table_header(m_cols);
   }
 
-  template <typename... Cells>
-  table_writer &row(const Cells &...cells) noexcept {
+  template <typename... Cells> table_writer &row(const Cells &...cells) noexcept {
     m_writer.table_row_begin();
     size_t col_idx = 0;
     auto format_cell = [&](const auto &cell) {
       if constexpr (std::is_convertible_v<decltype(cell), microfmt::string_view>) {
-        m_writer.table_cell(static_cast<microfmt::string_view>(cell),
-                            m_cols[col_idx++]);
+        m_writer.table_cell(static_cast<microfmt::string_view>(cell), m_cols[col_idx++]);
       } else {
         m_writer.table_cell_fmt(m_cols[col_idx++], "{}", cell);
       }

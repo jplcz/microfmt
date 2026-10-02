@@ -23,8 +23,7 @@ captured_log captured;
 void capture_log(const microfmt::log::log_msg &message) noexcept {
   captured.level = message.lvl;
   captured.message_size =
-      message.payload.size() < captured.message.size() ? message.payload.size()
-                                                       : captured.message.size();
+      message.payload.size() < captured.message.size() ? message.payload.size() : captured.message.size();
   for (std::size_t i = 0; i < captured.message_size; ++i) {
     captured.message[i] = message.payload[i];
   }
@@ -48,8 +47,8 @@ template <> struct log_sink_traits<capture_log_tag> {
 
 namespace {
 
-microfmt::log::logger application_logger(
-    "application", microfmt::log::log_sink(capture_log_tag{}, microfmt::log::level::trace));
+microfmt::log::logger application_logger("application",
+                                         microfmt::log::log_sink(capture_log_tag{}, microfmt::log::level::trace));
 
 } // namespace
 
@@ -64,9 +63,7 @@ TEST(LoggerConfigurationTest, DefaultMacrosUseApplicationLoggerOverride) {
 
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::info);
-  EXPECT_EQ(
-      microfmt::string_view(captured.message.data(), captured.message_size),
-      "value=42");
+  EXPECT_EQ(microfmt::string_view(captured.message.data(), captured.message_size), "value=42");
 }
 
 TEST(LoggerConfigurationTest, CompileTimeFormatStringsUseLoggerOverloads) {
@@ -77,9 +74,7 @@ TEST(LoggerConfigurationTest, CompileTimeFormatStringsUseLoggerOverloads) {
 
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::info);
-  EXPECT_EQ(
-      microfmt::string_view(captured.message.data(), captured.message_size),
-      "value=002a");
+  EXPECT_EQ(microfmt::string_view(captured.message.data(), captured.message_size), "value=002a");
 
   captured = {};
   microfmt::log::set_default_logger(&application_logger);
@@ -87,27 +82,21 @@ TEST(LoggerConfigurationTest, CompileTimeFormatStringsUseLoggerOverloads) {
 
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::warn);
-  EXPECT_EQ(
-      microfmt::string_view(captured.message.data(), captured.message_size),
-      "enabled=true");
+  EXPECT_EQ(microfmt::string_view(captured.message.data(), captured.message_size), "enabled=true");
 
   captured = {};
   MICROFMT_LOGGER_ERROR(application_logger, "code={:02X}", 0x2a);
 
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::err);
-  EXPECT_EQ(
-      microfmt::string_view(captured.message.data(), captured.message_size),
-      "code=2A");
+  EXPECT_EQ(microfmt::string_view(captured.message.data(), captured.message_size), "code=2A");
 
   captured = {};
   MICROFMT_LOGGER_DEBUG(application_logger, "ready");
 
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::debug);
-  EXPECT_EQ(
-      microfmt::string_view(captured.message.data(), captured.message_size),
-      "ready");
+  EXPECT_EQ(microfmt::string_view(captured.message.data(), captured.message_size), "ready");
 
   microfmt::log::set_default_logger(nullptr);
 }
@@ -124,9 +113,7 @@ TEST(LoggerConfigurationTest, LogAcceptsPreBuiltLogMsgForAdvancedUsage) {
 
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::warn);
-  EXPECT_EQ(
-      microfmt::string_view(captured.message.data(), captured.message_size),
-      "relayed payload");
+  EXPECT_EQ(microfmt::string_view(captured.message.data(), captured.message_size), "relayed payload");
 
   // Still honors the logger's configured level threshold.
   captured = {};
@@ -154,9 +141,7 @@ TEST(LoggerConfigurationTest, DefaultLoggerCanBeSetOrCleared) {
   microfmt::log::info("configured={}", true);
   EXPECT_EQ(captured.count, 1U);
   EXPECT_EQ(captured.level, microfmt::log::level::info);
-  EXPECT_EQ(
-      microfmt::string_view(captured.message.data(), captured.message_size),
-      "configured=true");
+  EXPECT_EQ(microfmt::string_view(captured.message.data(), captured.message_size), "configured=true");
 
   microfmt::log::set_default_logger(nullptr);
 }

@@ -49,8 +49,7 @@ enum class attribute : uint8_t {
 };
 
 [[nodiscard]] constexpr attribute operator|(attribute a, attribute b) noexcept {
-  return static_cast<attribute>(static_cast<uint8_t>(a) |
-                                static_cast<uint8_t>(b));
+  return static_cast<attribute>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
 }
 
 [[nodiscard]] constexpr bool operator&(attribute a, attribute b) noexcept {
@@ -120,20 +119,15 @@ inline constexpr style bg_bright_white{color::none, color::bright_white};
 inline constexpr style bold{color::none, color::none, attribute::bold};
 inline constexpr style dim{color::none, color::none, attribute::dim};
 inline constexpr style italic{color::none, color::none, attribute::italic};
-inline constexpr style underline{color::none, color::none,
-                                 attribute::underline};
+inline constexpr style underline{color::none, color::none, attribute::underline};
 inline constexpr style blink{color::none, color::none, attribute::blink};
 inline constexpr style reverse{color::none, color::none, attribute::reverse};
 
 // Semantic Status Styles
-inline constexpr style error_style{color::bright_red, color::none,
-                                   attribute::bold};
-inline constexpr style warn_style{color::bright_yellow, color::none,
-                                  attribute::bold};
-inline constexpr style ok_style{color::bright_green, color::none,
-                                attribute::bold};
-inline constexpr style info_style{color::bright_cyan, color::none,
-                                  attribute::none};
+inline constexpr style error_style{color::bright_red, color::none, attribute::bold};
+inline constexpr style warn_style{color::bright_yellow, color::none, attribute::bold};
+inline constexpr style ok_style{color::bright_green, color::none, attribute::bold};
+inline constexpr style info_style{color::bright_cyan, color::none, attribute::none};
 
 // ============================================================================
 // Low-Level ANSI Code Emitter
@@ -151,48 +145,39 @@ template <typename T> struct styled_view {
   style st;
 };
 
-template <typename T>
-[[nodiscard]] constexpr styled_view<T> styled(const T &val, style st) noexcept {
+template <typename T> [[nodiscard]] constexpr styled_view<T> styled(const T &val, style st) noexcept {
   return styled_view<T>{val, st};
 }
 
-template <typename T>
-[[nodiscard]] constexpr styled_view<T> red(const T &val) noexcept {
+template <typename T> [[nodiscard]] constexpr styled_view<T> red(const T &val) noexcept {
   return styled_view<T>{val, fg_red};
 }
 
-template <typename T>
-[[nodiscard]] constexpr styled_view<T> green(const T &val) noexcept {
+template <typename T> [[nodiscard]] constexpr styled_view<T> green(const T &val) noexcept {
   return styled_view<T>{val, fg_green};
 }
 
-template <typename T>
-[[nodiscard]] constexpr styled_view<T> yellow(const T &val) noexcept {
+template <typename T> [[nodiscard]] constexpr styled_view<T> yellow(const T &val) noexcept {
   return styled_view<T>{val, fg_yellow};
 }
 
-template <typename T>
-[[nodiscard]] constexpr styled_view<T> blue(const T &val) noexcept {
+template <typename T> [[nodiscard]] constexpr styled_view<T> blue(const T &val) noexcept {
   return styled_view<T>{val, fg_blue};
 }
 
-template <typename T>
-[[nodiscard]] constexpr styled_view<T> magenta(const T &val) noexcept {
+template <typename T> [[nodiscard]] constexpr styled_view<T> magenta(const T &val) noexcept {
   return styled_view<T>{val, fg_magenta};
 }
 
-template <typename T>
-[[nodiscard]] constexpr styled_view<T> cyan(const T &val) noexcept {
+template <typename T> [[nodiscard]] constexpr styled_view<T> cyan(const T &val) noexcept {
   return styled_view<T>{val, fg_cyan};
 }
 
-template <typename T>
-[[nodiscard]] constexpr styled_view<T> white(const T &val) noexcept {
+template <typename T> [[nodiscard]] constexpr styled_view<T> white(const T &val) noexcept {
   return styled_view<T>{val, fg_white};
 }
 
-template <typename T>
-[[nodiscard]] constexpr styled_view<T> gray(const T &val) noexcept {
+template <typename T> [[nodiscard]] constexpr styled_view<T> gray(const T &val) noexcept {
   return styled_view<T>{val, fg_gray};
 }
 
@@ -213,9 +198,7 @@ namespace microfmt {
 template <> struct formatter<ansi::style> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const ansi::style &st, const sink &out) const noexcept {
-    ansi::emit_style(st, out);
-  }
+  void format(const ansi::style &st, const sink &out) const noexcept { ansi::emit_style(st, out); }
 };
 
 // Automatic scoped styling: microfmt::format_to(out, "Status: {}",

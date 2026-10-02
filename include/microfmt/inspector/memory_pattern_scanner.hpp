@@ -84,8 +84,8 @@ public:
             std::enable_if_t<!std::is_void_v<typename Traits::context_type> &&
                                  std::is_convertible_v<const Context *, const typename Traits::context_type *>,
                              int> = 0>
-  constexpr memory_pattern_scanner_ref(
-      Tag, const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  constexpr memory_pattern_scanner_ref(Tag,
+                                       const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
@@ -212,9 +212,8 @@ struct MICROFMT_API_CLASS linear_memory_scanner_context {
   /** @brief Caller-provided chunk buffer used for the sliding window. */
   span<std::byte> scratch;
 
-  constexpr linear_memory_scanner_context(address_space_ref space_ref,
-                                          span<std::byte> scratch_buf RELOCO_LIFETIMEBOUND
-                                              RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  constexpr linear_memory_scanner_context(address_space_ref space_ref, span<std::byte> scratch_buf RELOCO_LIFETIMEBOUND
+                                                                           RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : space(space_ref), scratch(scratch_buf) {}
 };
 
@@ -265,8 +264,7 @@ template <> struct memory_pattern_scanner_traits<linear_memory_scanner_tag> {
 
       // Advance the window, keeping (pattern.size() - 1) overlap to catch cross-chunk matches
       size_t advance = to_read - pattern.size() + 1;
-      if (current_addr >
-          std::numeric_limits<uintptr_t>::max() - advance) {
+      if (current_addr > std::numeric_limits<uintptr_t>::max() - advance) {
         return unexpected(address_space_error::invalid_address);
       }
       current_addr += advance;

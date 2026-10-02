@@ -19,8 +19,7 @@ struct timeval {
 #endif
 
 // Helper to compute time difference between two timespec snapshots
-constexpr timespec diff_timespec(const timespec &start,
-                                 const timespec &end) noexcept {
+constexpr timespec diff_timespec(const timespec &start, const timespec &end) noexcept {
   timespec result{};
   if ((end.tv_nsec - start.tv_nsec) < 0) {
     result.tv_sec = end.tv_sec - start.tv_sec - 1;

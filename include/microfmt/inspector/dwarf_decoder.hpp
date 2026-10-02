@@ -29,8 +29,7 @@ template <typename AbiTraits> class dwarf_cfi_decoder {
 public:
   using register_type = typename AbiTraits::register_type;
 
-  static bool read_uleb128(address_space_ref space, uintptr_t &addr,
-                           uint64_t &out_val) noexcept {
+  static bool read_uleb128(address_space_ref space, uintptr_t &addr, uint64_t &out_val) noexcept {
     uint64_t result = 0;
     unsigned shift = 0;
     uint8_t byte = 0;
@@ -47,8 +46,7 @@ public:
     return false;
   }
 
-  static bool read_sleb128(address_space_ref space, uintptr_t &addr,
-                           int64_t &out_val) noexcept {
+  static bool read_sleb128(address_space_ref space, uintptr_t &addr, int64_t &out_val) noexcept {
     int64_t result = 0;
     unsigned shift = 0;
     uint8_t byte = 0;
@@ -92,11 +90,7 @@ public:
    * @brief Tracks location type for saved registers (Memory offset vs Live
    * Register).
    */
-  enum class reg_rule_type : uint8_t {
-    unspecified,
-    from_memory_cfa_offset,
-    from_register
-  };
+  enum class reg_rule_type : uint8_t { unspecified, from_memory_cfa_offset, from_register };
 
   struct reg_location {
     reg_rule_type type{reg_rule_type::unspecified};
@@ -107,10 +101,8 @@ public:
     uint32_t cfa_reg{AbiTraits::sp_reg};
     int64_t cfa_offset{0};
 
-    reg_location ra_loc{reg_rule_type::from_memory_cfa_offset,
-                        -static_cast<int64_t>(AbiTraits::pointer_size)};
-    reg_location fp_loc{reg_rule_type::from_memory_cfa_offset,
-                        -static_cast<int64_t>(AbiTraits::pointer_size * 2)};
+    reg_location ra_loc{reg_rule_type::from_memory_cfa_offset, -static_cast<int64_t>(AbiTraits::pointer_size)};
+    reg_location fp_loc{reg_rule_type::from_memory_cfa_offset, -static_cast<int64_t>(AbiTraits::pointer_size * 2)};
 
     uintptr_t current_loc{0};
   };
@@ -133,10 +125,8 @@ public:
    * register-to-register mapping.
    */
   template <size_t MaxStateStackDepth>
-  static bool
-  execute_fde(register_context_ref reg_ctx, uintptr_t fde_addr,
-              uintptr_t target_pc, uintptr_t &out_fp, uintptr_t &out_pc,
-              scratch_context<MaxStateStackDepth> &scratch) noexcept {
+  static bool execute_fde(register_context_ref reg_ctx, uintptr_t fde_addr, uintptr_t target_pc, uintptr_t &out_fp,
+                          uintptr_t &out_pc, scratch_context<MaxStateStackDepth> &scratch) noexcept {
     if (!reg_ctx)
       return false;
     address_space_ref space = reg_ctx.space();
@@ -186,8 +176,7 @@ public:
         uint64_t offset = 0;
         if (!read_uleb128(space, inst_ptr, offset))
           break;
-        int64_t mem_offset =
-            -static_cast<int64_t>(offset * AbiTraits::pointer_size);
+        int64_t mem_offset = -static_cast<int64_t>(offset * AbiTraits::pointer_size);
         if (AbiTraits::is_return_address_register(reg)) {
           state.ra_loc = {reg_rule_type::from_memory_cfa_offset, mem_offset};
         } else if (AbiTraits::is_frame_pointer_register(reg)) {
@@ -200,17 +189,12 @@ public:
         case DW_CFA_register: {
           uint64_t reg = 0;
           uint64_t target_reg = 0;
-          if (!read_uleb128(space, inst_ptr, reg) ||
-              !read_uleb128(space, inst_ptr, target_reg))
+          if (!read_uleb128(space, inst_ptr, reg) || !read_uleb128(space, inst_ptr, target_reg))
             return false;
-          if (AbiTraits::is_return_address_register(
-                  static_cast<uint32_t>(reg))) {
-            state.ra_loc = {reg_rule_type::from_register,
-                            static_cast<int64_t>(target_reg)};
-          } else if (AbiTraits::is_frame_pointer_register(
-                         static_cast<uint32_t>(reg))) {
-            state.fp_loc = {reg_rule_type::from_register,
-                            static_cast<int64_t>(target_reg)};
+          if (AbiTraits::is_return_address_register(static_cast<uint32_t>(reg))) {
+            state.ra_loc = {reg_rule_type::from_register, static_cast<int64_t>(target_reg)};
+          } else if (AbiTraits::is_frame_pointer_register(static_cast<uint32_t>(reg))) {
+            state.fp_loc = {reg_rule_type::from_register, static_cast<int64_t>(target_reg)};
           }
           break;
         }
@@ -232,16 +216,12 @@ public:
         case DW_CFA_offset_extended: {
           uint64_t reg = 0;
           uint64_t offset = 0;
-          if (!read_uleb128(space, inst_ptr, reg) ||
-              !read_uleb128(space, inst_ptr, offset))
+          if (!read_uleb128(space, inst_ptr, reg) || !read_uleb128(space, inst_ptr, offset))
             return false;
-          int64_t mem_offset =
-              -static_cast<int64_t>(offset * AbiTraits::pointer_size);
-          if (AbiTraits::is_return_address_register(
-                  static_cast<uint32_t>(reg))) {
+          int64_t mem_offset = -static_cast<int64_t>(offset * AbiTraits::pointer_size);
+          if (AbiTraits::is_return_address_register(static_cast<uint32_t>(reg))) {
             state.ra_loc = {reg_rule_type::from_memory_cfa_offset, mem_offset};
-          } else if (AbiTraits::is_frame_pointer_register(
-                         static_cast<uint32_t>(reg))) {
+          } else if (AbiTraits::is_frame_pointer_register(static_cast<uint32_t>(reg))) {
             state.fp_loc = {reg_rule_type::from_memory_cfa_offset, mem_offset};
           }
           break;
@@ -249,14 +229,11 @@ public:
         case DW_CFA_offset_extended_sf: {
           uint64_t reg = 0;
           int64_t offset = 0;
-          if (!read_uleb128(space, inst_ptr, reg) ||
-              !read_sleb128(space, inst_ptr, offset))
+          if (!read_uleb128(space, inst_ptr, reg) || !read_sleb128(space, inst_ptr, offset))
             return false;
-          if (AbiTraits::is_return_address_register(
-                  static_cast<uint32_t>(reg))) {
+          if (AbiTraits::is_return_address_register(static_cast<uint32_t>(reg))) {
             state.ra_loc = {reg_rule_type::from_memory_cfa_offset, offset};
-          } else if (AbiTraits::is_frame_pointer_register(
-                         static_cast<uint32_t>(reg))) {
+          } else if (AbiTraits::is_frame_pointer_register(static_cast<uint32_t>(reg))) {
             state.fp_loc = {reg_rule_type::from_memory_cfa_offset, offset};
           }
           break;
@@ -274,8 +251,7 @@ public:
         case DW_CFA_def_cfa: {
           uint64_t reg = 0;
           uint64_t offset = 0;
-          if (!read_uleb128(space, inst_ptr, reg) ||
-              !read_uleb128(space, inst_ptr, offset))
+          if (!read_uleb128(space, inst_ptr, reg) || !read_uleb128(space, inst_ptr, offset))
             return false;
           state.cfa_reg = static_cast<uint32_t>(reg);
           state.cfa_offset = static_cast<int64_t>(offset);
@@ -311,8 +287,7 @@ public:
     // 1. SELECTIVE REGISTER ACCESS: Read the CFA base register from the
     // register context
     register_type cfa_base_val = 0;
-    if (!reg_ctx.read_raw(state.cfa_reg, &cfa_base_val,
-                          AbiTraits::pointer_size)) {
+    if (!reg_ctx.read_raw(state.cfa_reg, &cfa_base_val, AbiTraits::pointer_size)) {
       return false;
     }
     uintptr_t cfa = static_cast<uintptr_t>(cfa_base_val) + state.cfa_offset;
@@ -325,8 +300,7 @@ public:
     } else if (state.fp_loc.type == reg_rule_type::from_register) {
       // SELECTIVE REGISTER ACCESS: Query source register directly via register
       // accessor
-      reg_ctx.read_raw(static_cast<uint32_t>(state.fp_loc.value), &saved_fp,
-                       AbiTraits::pointer_size);
+      reg_ctx.read_raw(static_cast<uint32_t>(state.fp_loc.value), &saved_fp, AbiTraits::pointer_size);
     }
 
     // 3. Resolve saved Return Address (RA)
@@ -338,8 +312,7 @@ public:
     } else if (state.ra_loc.type == reg_rule_type::from_register) {
       // SELECTIVE REGISTER ACCESS: Query source register directly via register
       // accessor
-      if (!reg_ctx.read_raw(static_cast<uint32_t>(state.ra_loc.value),
-                            &saved_ra, AbiTraits::pointer_size))
+      if (!reg_ctx.read_raw(static_cast<uint32_t>(state.ra_loc.value), &saved_ra, AbiTraits::pointer_size))
         return false;
     }
 
@@ -356,12 +329,9 @@ public:
     // read-only register contexts still let this single step succeed via
     // out_fp/out_pc, they just can't chain further through this tier.
     auto cfa_reg_val = static_cast<register_type>(cfa);
-    std::ignore =
-        reg_ctx.write_raw(AbiTraits::sp_reg, &cfa_reg_val, AbiTraits::pointer_size);
-    std::ignore =
-        reg_ctx.write_raw(AbiTraits::fp_reg, &saved_fp, AbiTraits::pointer_size);
-    std::ignore =
-        reg_ctx.write_raw(AbiTraits::ra_reg, &saved_ra, AbiTraits::pointer_size);
+    std::ignore = reg_ctx.write_raw(AbiTraits::sp_reg, &cfa_reg_val, AbiTraits::pointer_size);
+    std::ignore = reg_ctx.write_raw(AbiTraits::fp_reg, &saved_fp, AbiTraits::pointer_size);
+    std::ignore = reg_ctx.write_raw(AbiTraits::ra_reg, &saved_ra, AbiTraits::pointer_size);
 
     return true;
   }
@@ -371,28 +341,21 @@ public:
  * @brief Immutable context describing a DWARF unwinder back to the type-erased
  * handle.
  */
-template <typename AbiTraits, size_t MaxStateStackDepth = 8>
-struct dwarf_unwinder_context {
+template <typename AbiTraits, size_t MaxStateStackDepth = 8> struct dwarf_unwinder_context {
   address_space_ref space;
   elf_image_enumerator_ref enumerator;
   elf_image_info *img_storage{nullptr};
-  typename dwarf_cfi_decoder<AbiTraits>::template scratch_context<
-      MaxStateStackDepth> *dwarf_scratch{nullptr};
+  typename dwarf_cfi_decoder<AbiTraits>::template scratch_context<MaxStateStackDepth> *dwarf_scratch{nullptr};
 };
 
-template <typename AbiTraits, size_t MaxStateStackDepth = 8>
-struct dwarf_unwinder_tag {};
+template <typename AbiTraits, size_t MaxStateStackDepth = 8> struct dwarf_unwinder_tag {};
 
-template <typename AbiTraits, size_t MaxStateStackDepth = 8>
-struct dwarf_unwinder_holder {
+template <typename AbiTraits, size_t MaxStateStackDepth = 8> struct dwarf_unwinder_holder {
   elf_image_info img_storage{};
-  typename dwarf_cfi_decoder<AbiTraits>::template scratch_context<
-      MaxStateStackDepth>
-      dwarf_scratch{};
+  typename dwarf_cfi_decoder<AbiTraits>::template scratch_context<MaxStateStackDepth> dwarf_scratch{};
   dwarf_unwinder_context<AbiTraits, MaxStateStackDepth> ctx;
 
-  dwarf_unwinder_holder(address_space_ref space,
-                        elf_image_enumerator_ref enumerator) noexcept
+  dwarf_unwinder_holder(address_space_ref space, elf_image_enumerator_ref enumerator) noexcept
       : ctx{space, enumerator, &img_storage, &dwarf_scratch} {}
 
   dwarf_unwinder_holder(const dwarf_unwinder_holder &) = delete;
@@ -401,8 +364,7 @@ struct dwarf_unwinder_holder {
   dwarf_unwinder_holder &operator=(dwarf_unwinder_holder &&) = delete;
 
   [[nodiscard]] frame_unwinder_ref make_ref() & noexcept {
-    return frame_unwinder_ref(
-        dwarf_unwinder_tag<AbiTraits, MaxStateStackDepth>{}, ctx);
+    return frame_unwinder_ref(dwarf_unwinder_tag<AbiTraits, MaxStateStackDepth>{}, ctx);
   }
 };
 
@@ -413,10 +375,8 @@ struct dwarf_unwinder_holder {
  * register_context_ref access.
  */
 template <typename AbiTraits, size_t MaxStateStackDepth>
-struct microfmt::frame_unwinder_traits<
-    microfmt::dwarf_unwinder_tag<AbiTraits, MaxStateStackDepth>> {
-  using context_type =
-      microfmt::dwarf_unwinder_context<AbiTraits, MaxStateStackDepth>;
+struct microfmt::frame_unwinder_traits<microfmt::dwarf_unwinder_tag<AbiTraits, MaxStateStackDepth>> {
+  using context_type = microfmt::dwarf_unwinder_context<AbiTraits, MaxStateStackDepth>;
   using decoder_type = microfmt::dwarf_cfi_decoder<AbiTraits>;
 
   /**
@@ -434,14 +394,12 @@ struct microfmt::frame_unwinder_traits<
    * @param next_pc Receives the caller's program counter.
    * @return `true` on success.
    */
-  static bool step(value_ref<const context_type> context,
-                   register_context_ref reg_ctx, uintptr_t current_pc,
+  static bool step(value_ref<const context_type> context, register_context_ref reg_ctx, uintptr_t current_pc,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
     if (!reg_ctx)
       return false;
 
-    if (!context->enumerator || !context->img_storage ||
-        !context->dwarf_scratch) {
+    if (!context->enumerator || !context->img_storage || !context->dwarf_scratch) {
       return false;
     }
 
@@ -450,8 +408,7 @@ struct microfmt::frame_unwinder_traits<
     microfmt::elf_image_info &img = *context->img_storage;
     img = {};
 
-    if (!context->enumerator.find_by_pc(fault_pc, img) ||
-        !img.has_debug_frame()) {
+    if (!context->enumerator.find_by_pc(fault_pc, img) || !img.has_debug_frame()) {
       return false;
     }
 
@@ -463,8 +420,7 @@ struct microfmt::frame_unwinder_traits<
       if (len == 0)
         break;
 
-      if (decoder_type::execute_fde(reg_ctx, curr, fault_pc, next_fp, next_pc,
-                                    *context->dwarf_scratch)) {
+      if (decoder_type::execute_fde(reg_ctx, curr, fault_pc, next_fp, next_pc, *context->dwarf_scratch)) {
         return true;
       }
 

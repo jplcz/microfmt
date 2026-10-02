@@ -23,30 +23,25 @@ struct RemoteHashMap {
 };
 
 int main() {
-  auto space_ref =
-      microfmt::address_space_ref::make<microfmt::local_space_tag>();
+  auto space_ref = microfmt::address_space_ref::make<microfmt::local_space_tag>();
   std::byte scratch[1024];
 
   // Build a mock chaining hash table
   HashNode node2{nullptr, 2, 200};
   HashNode node1{&node2, 1, 100};
 
-  HashNode *bucket_array[4] = {&node1, nullptr, nullptr,
-                               nullptr}; // Bucket 0 has a chain of 2 nodes
+  HashNode *bucket_array[4] = {&node1, nullptr, nullptr, nullptr}; // Bucket 0 has a chain of 2 nodes
   RemoteHashMap remote_map{bucket_array, 4};
 
   uintptr_t map_addr = reinterpret_cast<uintptr_t>(&remote_map);
 
-  auto map = microfmt::make_remote_hash_table<int, int>(
-      map_addr, offsetof(RemoteHashMap, buckets),
-      offsetof(RemoteHashMap, bucket_count), offsetof(HashNode, next),
-      offsetof(HashNode, key), offsetof(HashNode, value));
+  auto map = microfmt::make_remote_hash_table<int, int>(map_addr, offsetof(RemoteHashMap, buckets),
+                                                        offsetof(RemoteHashMap, bucket_count), offsetof(HashNode, next),
+                                                        offsetof(HashNode, key), offsetof(HashNode, value));
 
   // Wrap in remote_container_view with custom options
-  microfmt::container_options map_opts{.kv_separator = " -> ",
-                                       .entry_separator = ", ",
-                                       .open_bracket = "{",
-                                       .close_bracket = "}"};
+  microfmt::container_options map_opts{
+      .kv_separator = " -> ", .entry_separator = ", ", .open_bracket = "{", .close_bracket = "}"};
 
   auto container_view = map.view(space_ref, scratch, map_opts);
 

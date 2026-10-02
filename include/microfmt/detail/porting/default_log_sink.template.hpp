@@ -78,9 +78,7 @@ template <> struct log_sink_traits<kernel_log_sink_tag> {
 /** @brief Adapter that writes structured records to the FreeBSD kernel's `log(9)`. */
 class kernel_log_sink {
 public:
-  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
-    return log_sink(kernel_log_sink_tag{}, *this);
-  }
+  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND { return log_sink(kernel_log_sink_tag{}, *this); }
 
   void log_impl(const log_msg &msg) noexcept {
     if (msg.lvl == level::off) {

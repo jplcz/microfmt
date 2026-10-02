@@ -12,13 +12,7 @@
 
 namespace microfmt {
 
-enum class task_state : uint8_t {
-  ready,
-  running,
-  suspended,
-  waiting,
-  terminated
-};
+enum class task_state : uint8_t { ready, running, suspended, waiting, terminated };
 
 } // namespace microfmt
 

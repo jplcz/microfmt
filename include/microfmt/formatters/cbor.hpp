@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "../reloco.hpp"
 #include "../microfmt.hpp"
+#include "../reloco.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
@@ -91,8 +91,7 @@ public:
   }
 
   // Helper for Clang if object state is unknown
-  map_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown")
-      RELOCO_RETURN_TYPESTATE(unconsumed) {
+  map_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown") RELOCO_RETURN_TYPESTATE(unconsumed) {
     RELOCO_ASSERT(!closed_, "Attempt to reuse consumed state");
     return *this;
   }
@@ -229,8 +228,7 @@ public:
   }
 
   // Helper for Clang if object state is unknown
-  array_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown")
-      RELOCO_RETURN_TYPESTATE(unconsumed) {
+  array_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown") RELOCO_RETURN_TYPESTATE(unconsumed) {
     RELOCO_ASSERT(!closed_, "Attempt to reuse consumed state");
     return *this;
   }

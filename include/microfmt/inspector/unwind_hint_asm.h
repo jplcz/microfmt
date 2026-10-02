@@ -40,38 +40,34 @@ inline constexpr std::size_t unwind_hint_asm_size = 3 * sizeof(uintptr_t);
 #endif
 
 #ifndef MICROFMT_UNWIND_HINT_POINTER_SIZE
-# if defined(__SIZEOF_POINTER__)
-#  define MICROFMT_UNWIND_HINT_POINTER_SIZE __SIZEOF_POINTER__
-# else
-#  define MICROFMT_UNWIND_HINT_POINTER_SIZE 4
-# endif
+#if defined(__SIZEOF_POINTER__)
+#define MICROFMT_UNWIND_HINT_POINTER_SIZE __SIZEOF_POINTER__
+#else
+#define MICROFMT_UNWIND_HINT_POINTER_SIZE 4
+#endif
 #endif
 
 #define MICROFMT_UNWIND_HINT_PC_START_OFFSET 0
-#define MICROFMT_UNWIND_HINT_PC_END_OFFSET \
-  (MICROFMT_UNWIND_HINT_POINTER_SIZE)
-#define MICROFMT_UNWIND_HINT_ROUTINE_OFFSET \
-  (2 * MICROFMT_UNWIND_HINT_POINTER_SIZE)
-#define MICROFMT_UNWIND_HINT_SIZE \
-  (3 * MICROFMT_UNWIND_HINT_POINTER_SIZE)
+#define MICROFMT_UNWIND_HINT_PC_END_OFFSET (MICROFMT_UNWIND_HINT_POINTER_SIZE)
+#define MICROFMT_UNWIND_HINT_ROUTINE_OFFSET (2 * MICROFMT_UNWIND_HINT_POINTER_SIZE)
+#define MICROFMT_UNWIND_HINT_SIZE (3 * MICROFMT_UNWIND_HINT_POINTER_SIZE)
 
 #if defined(__ASSEMBLER__)
-# if MICROFMT_UNWIND_HINT_POINTER_SIZE == 8
-#  define MICROFMT_UNWIND_HINT_PTR(value) .quad value
-# elif MICROFMT_UNWIND_HINT_POINTER_SIZE == 4
-#  define MICROFMT_UNWIND_HINT_PTR(value) .long value
-# else
-#  error "MICROFMT_UNWIND_HINT_POINTER_SIZE must be 4 or 8"
-# endif
+#if MICROFMT_UNWIND_HINT_POINTER_SIZE == 8
+#define MICROFMT_UNWIND_HINT_PTR(value) .quad value
+#elif MICROFMT_UNWIND_HINT_POINTER_SIZE == 4
+#define MICROFMT_UNWIND_HINT_PTR(value) .long value
+#else
+#error "MICROFMT_UNWIND_HINT_POINTER_SIZE must be 4 or 8"
+#endif
 
-#define MICROFMT_UNWIND_HINT_TABLE_BEGIN(name) \
-  .balign MICROFMT_UNWIND_HINT_POINTER_SIZE; \
-  .global name; \
-name:
-#define MICROFMT_UNWIND_HINT_TABLE_END(name) \
-  .size name, .-name
-#define MICROFMT_UNWIND_HINT(pc_start, pc_end, routine) \
-  MICROFMT_UNWIND_HINT_PTR(pc_start); \
-  MICROFMT_UNWIND_HINT_PTR(pc_end); \
+#define MICROFMT_UNWIND_HINT_TABLE_BEGIN(name)                                                                         \
+  .balign MICROFMT_UNWIND_HINT_POINTER_SIZE;                                                                           \
+  .global name;                                                                                                        \
+  name:
+#define MICROFMT_UNWIND_HINT_TABLE_END(name) .size name, .- name
+#define MICROFMT_UNWIND_HINT(pc_start, pc_end, routine)                                                                \
+  MICROFMT_UNWIND_HINT_PTR(pc_start);                                                                                  \
+  MICROFMT_UNWIND_HINT_PTR(pc_end);                                                                                    \
   MICROFMT_UNWIND_HINT_PTR(routine)
 #endif

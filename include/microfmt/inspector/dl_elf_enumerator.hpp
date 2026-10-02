@@ -7,7 +7,7 @@
 
 #pragma once
 
-#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__NetBSD__) &&                 \
+#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__NetBSD__) &&                   \
     !defined(__DragonFly__)
 #error "microfmt/inspector/dl_elf_enumerator.hpp only supports Linux and BSD systems"
 #endif
@@ -149,7 +149,7 @@ inline bool decode_eh_frame_hdr(uintptr_t hdr_start, uintptr_t hdr_end, uintptr_
   RELOCO_END_UNSAFE_BUFFER_USAGE;
 
   const uintptr_t value = (format == k_dw_eh_pe_udata4) ? static_cast<uintptr_t>(static_cast<uint32_t>(raw_value))
-                                                         : static_cast<uintptr_t>(raw_value);
+                                                        : static_cast<uintptr_t>(raw_value);
 
   out_eh_frame_start = (application == k_dw_eh_pe_pcrel) ? field_addr + value : value;
   return true;
@@ -230,8 +230,7 @@ inline int dl_enumerate_callback(dl_phdr_info *info, size_t, void *data) noexcep
     return 0; // No PT_LOAD segments (e.g. the Linux VDSO on some ABIs); skip.
 
   elf_image_info entry{};
-  entry.image_name =
-      (info->dlpi_name && info->dlpi_name[0] != '\0') ? string_view(info->dlpi_name) : string_view("");
+  entry.image_name = (info->dlpi_name && info->dlpi_name[0] != '\0') ? string_view(info->dlpi_name) : string_view("");
   entry.load_base = base;
   entry.image_size = size;
 #if defined(PT_ARM_EXIDX)

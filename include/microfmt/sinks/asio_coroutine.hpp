@@ -10,8 +10,8 @@
  * writing over Boost.Asio streams.
  */
 
-#include "../reloco.hpp"
 #include "../microfmt.hpp"
+#include "../reloco.hpp"
 #include "asio_sink.hpp"
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/use_awaitable.hpp>

@@ -8,8 +8,8 @@
 #include <microfmt/formatters/bitfield.hpp>
 #include <microfmt/formatters/escaped.hpp>
 #include <microfmt/formatters/fixed_point.hpp>
-#include <microfmt/microfmt.hpp>
 #include <microfmt/formatters/ranges.hpp>
+#include <microfmt/microfmt.hpp>
 #include <string_view>
 
 #if defined(_MSC_VER)
@@ -23,11 +23,9 @@
 #endif
 
 // Register setup for bitfield probe
-MICROFMT_DEFINE_REGISTER_TYPE(
-    ProbeUartReg, uint32_t, MICROFMT_BIT_FLAG(0, "PE"),
-    MICROFMT_BIT_FLAG(5, "RXNE"), MICROFMT_BIT_FLAG(7, "TXE"),
-    MICROFMT_BIT_VALUE_DEC(0x3u << 10, 10, "DMA_BURST"),
-    MICROFMT_BIT_VALUE_HEX(0xFu << 16, 16, "FIFO_CNT"))
+MICROFMT_DEFINE_REGISTER_TYPE(ProbeUartReg, uint32_t, MICROFMT_BIT_FLAG(0, "PE"), MICROFMT_BIT_FLAG(5, "RXNE"),
+                              MICROFMT_BIT_FLAG(7, "TXE"), MICROFMT_BIT_VALUE_DEC(0x3u << 10, 10, "DMA_BURST"),
+                              MICROFMT_BIT_VALUE_HEX(0xFu << 16, 16, "FIFO_CNT"))
 
 namespace {
 
@@ -49,60 +47,48 @@ inline void null_writer(void *, microfmt::string_view) noexcept {}
 // ============================================================================
 
 NOINLINE uintptr_t probe_bitfield_stack(uint32_t val) {
-  const uintptr_t frame_top =
-      reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
+  const uintptr_t frame_top = reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
 
   microfmt::sink sink{nullptr, null_writer};
   ProbeUartReg reg{val};
   microfmt::format_to(sink, "Reg: {}", reg);
 
-  const uintptr_t frame_bottom =
-      reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
-  return (frame_top >= frame_bottom) ? (frame_top - frame_bottom)
-                                     : (frame_bottom - frame_top);
+  const uintptr_t frame_bottom = reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
+  return (frame_top >= frame_bottom) ? (frame_top - frame_bottom) : (frame_bottom - frame_top);
 }
 
 NOINLINE uintptr_t probe_fixed_point_stack(int32_t raw_val) {
-  const uintptr_t frame_top =
-      reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
+  const uintptr_t frame_top = reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
 
   microfmt::sink sink{nullptr, null_writer};
   auto fp_milli = microfmt::milli(raw_val);
   auto fp_micro = microfmt::micro(raw_val);
   microfmt::format_to(sink, "V: {} | I: {}", fp_milli, fp_micro);
 
-  const uintptr_t frame_bottom =
-      reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
-  return (frame_top >= frame_bottom) ? (frame_top - frame_bottom)
-                                     : (frame_bottom - frame_top);
+  const uintptr_t frame_bottom = reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
+  return (frame_top >= frame_bottom) ? (frame_top - frame_bottom) : (frame_bottom - frame_top);
 }
 
 NOINLINE uintptr_t probe_join_stack(const int32_t *arr, size_t len) {
-  const uintptr_t frame_top =
-      reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
+  const uintptr_t frame_top = reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
 
   microfmt::sink sink{nullptr, null_writer};
   microfmt::span<const int32_t> sp(arr, len);
   microfmt::format_to(sink, "Items: [{}]", microfmt::join(sp, ", "));
 
-  const uintptr_t frame_bottom =
-      reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
-  return (frame_top >= frame_bottom) ? (frame_top - frame_bottom)
-                                     : (frame_bottom - frame_top);
+  const uintptr_t frame_bottom = reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
+  return (frame_top >= frame_bottom) ? (frame_top - frame_bottom) : (frame_bottom - frame_top);
 }
 
 NOINLINE uintptr_t probe_escaped_stack(const uint8_t *data, size_t len) {
-  const uintptr_t frame_top =
-      reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
+  const uintptr_t frame_top = reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
 
   microfmt::sink sink{nullptr, null_writer};
   microfmt::span<const uint8_t> sp(data, len);
   microfmt::format_to(sink, "Escaped: {}", microfmt::escaped(sp, true));
 
-  const uintptr_t frame_bottom =
-      reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
-  return (frame_top >= frame_bottom) ? (frame_top - frame_bottom)
-                                     : (frame_bottom - frame_top);
+  const uintptr_t frame_bottom = reinterpret_cast<uintptr_t>(MICROFMT_TEST_FRAME_ADDRESS());
+  return (frame_top >= frame_bottom) ? (frame_top - frame_bottom) : (frame_bottom - frame_top);
 }
 
 } // namespace
@@ -116,14 +102,10 @@ NOINLINE uintptr_t probe_escaped_stack(const uint8_t *data, size_t len) {
 TEST(StackProbeTest, ViewObjectSizes) {
   // 64-bit alignment: span (16B) + string_view (16B) + raw_value (8B padded) +
   // bool (8B padded) = 48B
-  static_assert(sizeof(microfmt::bitfield_view) <= 48,
-                "bitfield_view size exceeded limit");
-  static_assert(sizeof(microfmt::fixed_point_view<1000, 3, int32_t>) <= 8,
-                "fixed_point_view size exceeded limit");
-  static_assert(sizeof(microfmt::escaped_view) <= 32,
-                "escaped_view size exceeded limit");
-  static_assert(sizeof(microfmt::join_view<const int *, const int *>) <= 32,
-                "join_view size exceeded limit");
+  static_assert(sizeof(microfmt::bitfield_view) <= 48, "bitfield_view size exceeded limit");
+  static_assert(sizeof(microfmt::fixed_point_view<1000, 3, int32_t>) <= 8, "fixed_point_view size exceeded limit");
+  static_assert(sizeof(microfmt::escaped_view) <= 32, "escaped_view size exceeded limit");
+  static_assert(sizeof(microfmt::join_view<const int *, const int *>) <= 32, "join_view size exceeded limit");
 
   SUCCEED();
 }

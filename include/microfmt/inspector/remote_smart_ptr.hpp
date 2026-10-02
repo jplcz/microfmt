@@ -24,10 +24,8 @@ namespace microfmt {
  * @tparam T Pointee type.
  * @tparam RemotePtr Pointer representation in the target process.
  */
-template <typename T, typename RemotePtr = uintptr_t>
-class RELOCO_POINTER remote_unique_ptr_view {
-  using pointer_query =
-      decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
+template <typename T, typename RemotePtr = uintptr_t> class RELOCO_POINTER remote_unique_ptr_view {
+  using pointer_query = decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
 
 public:
   /**
@@ -38,9 +36,7 @@ public:
    * @param ptr_offset Offset from @p ptr_addr to the stored pointer.
    */
   constexpr remote_unique_ptr_view(uintptr_t ptr_addr, address_space_ref space,
-                                   span<std::byte> scratch
-                                       RELOCO_LIFETIMEBOUND,
-                                   ptrdiff_t ptr_offset = 0) noexcept
+                                   span<std::byte> scratch RELOCO_LIFETIMEBOUND, ptrdiff_t ptr_offset = 0) noexcept
       : ptr_addr_(ptr_addr), space_(space), scratch_(scratch),
         pointer_(make_remote_offset_query<uintptr_t, RemotePtr>(ptr_offset)) {}
 
@@ -92,13 +88,10 @@ private:
  * @tparam RemotePtr Pointer representation in the target process.
  * @tparam RemoteRefCount Reference-count representation in the target process.
  */
-template <typename T, typename RemotePtr = uintptr_t,
-          typename RemoteRefCount = int32_t>
+template <typename T, typename RemotePtr = uintptr_t, typename RemoteRefCount = int32_t>
 class RELOCO_POINTER remote_shared_ptr_view {
-  using pointer_query =
-      decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
-  using count_query =
-      decltype(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(0));
+  using pointer_query = decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
+  using count_query = decltype(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(0));
 
 public:
   /**
@@ -112,22 +105,15 @@ public:
    * @param use_count_offset Offset in the control block to the strong count.
    * @param weak_count_offset Offset in the control block to the weak count.
    */
-  constexpr remote_shared_ptr_view(uintptr_t shared_ptr_addr,
-                                   address_space_ref space,
-                                   span<std::byte> scratch
-                                       RELOCO_LIFETIMEBOUND,
-                                   ptrdiff_t ptr_offset,
-                                   ptrdiff_t control_block_offset,
-                                   ptrdiff_t use_count_offset,
+  constexpr remote_shared_ptr_view(uintptr_t shared_ptr_addr, address_space_ref space,
+                                   span<std::byte> scratch RELOCO_LIFETIMEBOUND, ptrdiff_t ptr_offset,
+                                   ptrdiff_t control_block_offset, ptrdiff_t use_count_offset,
                                    ptrdiff_t weak_count_offset) noexcept
       : addr_(shared_ptr_addr), space_(space), scratch_(scratch),
         pointer_(make_remote_offset_query<uintptr_t, RemotePtr>(ptr_offset)),
-        control_block_(make_remote_offset_query<uintptr_t, RemotePtr>(
-            control_block_offset)),
-        use_count_(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(
-            use_count_offset)),
-        weak_count_(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(
-            weak_count_offset)) {}
+        control_block_(make_remote_offset_query<uintptr_t, RemotePtr>(control_block_offset)),
+        use_count_(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(use_count_offset)),
+        weak_count_(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(weak_count_offset)) {}
 
   /**
    * @brief Loads and renders the pointee and reference counts.
@@ -174,8 +160,7 @@ public:
       }
     }
 
-    microfmt::format_to(out, ", use_count={}, weak_count={})",
-                        static_cast<int64_t>(use_cnt),
+    microfmt::format_to(out, ", use_count={}, weak_count={})", static_cast<int64_t>(use_cnt),
                         static_cast<int64_t>(weak_cnt));
     return true;
   }
@@ -200,13 +185,10 @@ private:
  * @tparam RemotePtr Pointer representation in the target process.
  * @tparam RemoteRefCount Reference-count representation in the target process.
  */
-template <typename T, typename RemotePtr = uintptr_t,
-          typename RemoteRefCount = int32_t>
+template <typename T, typename RemotePtr = uintptr_t, typename RemoteRefCount = int32_t>
 class RELOCO_POINTER remote_intrusive_ptr_view {
-  using pointer_query =
-      decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
-  using count_query =
-      decltype(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(0));
+  using pointer_query = decltype(make_remote_offset_query<uintptr_t, RemotePtr>(0));
+  using count_query = decltype(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(0));
 
 public:
   /**
@@ -217,17 +199,12 @@ public:
    * @param ptr_offset Offset to the stored pointee pointer.
    * @param ref_count_offset Offset in the pointee to its reference count.
    */
-  constexpr remote_intrusive_ptr_view(uintptr_t intrusive_ptr_addr,
-                                      address_space_ref space,
-                                      span<std::byte> scratch
-                                          RELOCO_LIFETIMEBOUND,
-                                      ptrdiff_t ptr_offset,
+  constexpr remote_intrusive_ptr_view(uintptr_t intrusive_ptr_addr, address_space_ref space,
+                                      span<std::byte> scratch RELOCO_LIFETIMEBOUND, ptrdiff_t ptr_offset,
                                       ptrdiff_t ref_count_offset) noexcept
       : addr_(intrusive_ptr_addr), space_(space), scratch_(scratch),
         pointer_(make_remote_offset_query<uintptr_t, RemotePtr>(ptr_offset)),
-        ref_count_(
-            make_remote_offset_query<RemoteRefCount, RemoteRefCount>(
-                ref_count_offset)) {}
+        ref_count_(make_remote_offset_query<RemoteRefCount, RemoteRefCount>(ref_count_offset)) {}
 
   /**
    * @brief Loads and renders the pointee and its embedded reference count.
@@ -290,13 +267,9 @@ public:
   constexpr remote_unique_ptr() noexcept : ptr_(0) {}
   constexpr explicit remote_unique_ptr(RemotePtr ptr) noexcept : ptr_(ptr) {}
 
-  [[nodiscard]] constexpr uintptr_t address() const noexcept {
-    return static_cast<uintptr_t>(ptr_);
-  }
+  [[nodiscard]] constexpr uintptr_t address() const noexcept { return static_cast<uintptr_t>(ptr_); }
   [[nodiscard]] constexpr bool is_null() const noexcept { return ptr_ == 0; }
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return ptr_ != 0;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return ptr_ != 0; }
 
 private:
   RemotePtr ptr_{0};
@@ -309,22 +282,16 @@ private:
  * @tparam RemotePtr Pointer representation in the target process.
  * @tparam RemoteRefCount Reference-count representation in the target process.
  */
-template <typename T, typename RemotePtr = uintptr_t,
-          typename RemoteRefCount = int32_t>
-class remote_shared_ptr {
+template <typename T, typename RemotePtr = uintptr_t, typename RemoteRefCount = int32_t> class remote_shared_ptr {
 public:
   constexpr remote_shared_ptr() noexcept : ptr_(0), control_block_(0) {}
 
-  [[nodiscard]] constexpr uintptr_t address() const noexcept {
-    return static_cast<uintptr_t>(ptr_);
-  }
+  [[nodiscard]] constexpr uintptr_t address() const noexcept { return static_cast<uintptr_t>(ptr_); }
   [[nodiscard]] constexpr uintptr_t control_block_address() const noexcept {
     return static_cast<uintptr_t>(control_block_);
   }
   [[nodiscard]] constexpr bool is_null() const noexcept { return ptr_ == 0; }
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return ptr_ != 0;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return ptr_ != 0; }
 
 private:
   RemotePtr ptr_{0};
@@ -338,24 +305,17 @@ private:
  * @tparam RemotePtr Pointer representation in the target process.
  * @tparam RemoteRefCount Reference-count representation in the target process.
  */
-template <typename T, ptrdiff_t RefCountOffset = 0,
-          typename RemotePtr = uintptr_t, typename RemoteRefCount = int32_t>
+template <typename T, ptrdiff_t RefCountOffset = 0, typename RemotePtr = uintptr_t, typename RemoteRefCount = int32_t>
 class remote_intrusive_ptr {
 public:
   constexpr remote_intrusive_ptr() noexcept : ptr_(0) {}
   constexpr explicit remote_intrusive_ptr(RemotePtr ptr) noexcept : ptr_(ptr) {}
 
-  [[nodiscard]] constexpr uintptr_t address() const noexcept {
-    return static_cast<uintptr_t>(ptr_);
-  }
+  [[nodiscard]] constexpr uintptr_t address() const noexcept { return static_cast<uintptr_t>(ptr_); }
   [[nodiscard]] constexpr bool is_null() const noexcept { return ptr_ == 0; }
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return ptr_ != 0;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return ptr_ != 0; }
 
-  static constexpr ptrdiff_t ref_count_offset() noexcept {
-    return RefCountOffset;
-  }
+  static constexpr ptrdiff_t ref_count_offset() noexcept { return RefCountOffset; }
 
 private:
   RemotePtr ptr_{0};
@@ -365,64 +325,48 @@ private:
 // remote_field_traits Specializations
 // ============================================================================
 
-template <typename T, typename RemotePtr>
-struct remote_field_traits<remote_unique_ptr<T, RemotePtr>> {
-  static void format(address_space_ref space, const void *field_ptr,
-                     span<char> work_buf, const sink &out) noexcept {
-    const auto &uptr =
-        *static_cast<const remote_unique_ptr<T, RemotePtr> *>(field_ptr);
+template <typename T, typename RemotePtr> struct remote_field_traits<remote_unique_ptr<T, RemotePtr>> {
+  static void format(address_space_ref space, const void *field_ptr, span<char> work_buf, const sink &out) noexcept {
+    const auto &uptr = *static_cast<const remote_unique_ptr<T, RemotePtr> *>(field_ptr);
     uintptr_t obj_addr = uptr.address();
     if (obj_addr == 0) {
       out.write("nullptr");
       return;
     }
-    span<std::byte> scratch_bytes(
-        reinterpret_cast<std::byte *>(work_buf.data()), work_buf.size());
-    remote_unique_ptr_view<T, RemotePtr> view(
-        reinterpret_cast<uintptr_t>(field_ptr), space, scratch_bytes, 0);
+    span<std::byte> scratch_bytes(reinterpret_cast<std::byte *>(work_buf.data()), work_buf.size());
+    remote_unique_ptr_view<T, RemotePtr> view(reinterpret_cast<uintptr_t>(field_ptr), space, scratch_bytes, 0);
     view.format(out);
   }
 };
 
 template <typename T, typename RemotePtr, typename RemoteRefCount>
 struct remote_field_traits<remote_shared_ptr<T, RemotePtr, RemoteRefCount>> {
-  static void format(address_space_ref space, const void *field_ptr,
-                     span<char> work_buf, const sink &out) noexcept {
-    const auto &sptr =
-        *static_cast<const remote_shared_ptr<T, RemotePtr, RemoteRefCount> *>(
-            field_ptr);
+  static void format(address_space_ref space, const void *field_ptr, span<char> work_buf, const sink &out) noexcept {
+    const auto &sptr = *static_cast<const remote_shared_ptr<T, RemotePtr, RemoteRefCount> *>(field_ptr);
     if (sptr.is_null()) {
       out.write("shared_ptr(nullptr)");
       return;
     }
-    span<std::byte> scratch_bytes(
-        reinterpret_cast<std::byte *>(work_buf.data()), work_buf.size());
+    span<std::byte> scratch_bytes(reinterpret_cast<std::byte *>(work_buf.data()), work_buf.size());
     remote_shared_ptr_view<T, RemotePtr, RemoteRefCount> view(
-        reinterpret_cast<uintptr_t>(field_ptr), space, scratch_bytes, 0,
-        sizeof(RemotePtr), 0, sizeof(RemoteRefCount));
+        reinterpret_cast<uintptr_t>(field_ptr), space, scratch_bytes, 0, sizeof(RemotePtr), 0, sizeof(RemoteRefCount));
     view.format(out);
   }
 };
 
-template <typename T, ptrdiff_t RefCountOffset, typename RemotePtr,
-          typename RemoteRefCount>
-struct remote_field_traits<
-    remote_intrusive_ptr<T, RefCountOffset, RemotePtr, RemoteRefCount>> {
-  static void format(address_space_ref space, const void *field_ptr,
-                     span<char> work_buf, const sink &out) noexcept {
+template <typename T, ptrdiff_t RefCountOffset, typename RemotePtr, typename RemoteRefCount>
+struct remote_field_traits<remote_intrusive_ptr<T, RefCountOffset, RemotePtr, RemoteRefCount>> {
+  static void format(address_space_ref space, const void *field_ptr, span<char> work_buf, const sink &out) noexcept {
     const auto &iptr =
-        *static_cast<const remote_intrusive_ptr<T, RefCountOffset, RemotePtr,
-                                                RemoteRefCount> *>(field_ptr);
+        *static_cast<const remote_intrusive_ptr<T, RefCountOffset, RemotePtr, RemoteRefCount> *>(field_ptr);
     if (iptr.is_null()) {
       out.write("intrusive_ptr(nullptr)");
       return;
     }
 
-    span<std::byte> scratch_bytes(
-        reinterpret_cast<std::byte *>(work_buf.data()), work_buf.size());
-    remote_intrusive_ptr_view<T, RemotePtr, RemoteRefCount> view(
-        reinterpret_cast<uintptr_t>(field_ptr), space, scratch_bytes, 0,
-        RefCountOffset);
+    span<std::byte> scratch_bytes(reinterpret_cast<std::byte *>(work_buf.data()), work_buf.size());
+    remote_intrusive_ptr_view<T, RemotePtr, RemoteRefCount> view(reinterpret_cast<uintptr_t>(field_ptr), space,
+                                                                 scratch_bytes, 0, RefCountOffset);
     view.format(out);
   }
 };
@@ -433,8 +377,7 @@ struct remote_field_traits<
 
 template <typename T, typename RP> struct formatter<remote_unique_ptr<T, RP>> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(const remote_unique_ptr<T, RP> &ptr,
-              const sink &out) const noexcept {
+  void format(const remote_unique_ptr<T, RP> &ptr, const sink &out) const noexcept {
     if (ptr.is_null()) {
       out.write("nullptr");
     } else {
@@ -443,11 +386,9 @@ template <typename T, typename RP> struct formatter<remote_unique_ptr<T, RP>> {
   }
 };
 
-template <typename T, typename RP, typename RRC>
-struct formatter<remote_shared_ptr<T, RP, RRC>> {
+template <typename T, typename RP, typename RRC> struct formatter<remote_shared_ptr<T, RP, RRC>> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(const remote_shared_ptr<T, RP, RRC> &ptr,
-              const sink &out) const noexcept {
+  void format(const remote_shared_ptr<T, RP, RRC> &ptr, const sink &out) const noexcept {
     if (ptr.is_null()) {
       out.write("shared_ptr(nullptr)");
     } else {
@@ -456,11 +397,9 @@ struct formatter<remote_shared_ptr<T, RP, RRC>> {
   }
 };
 
-template <typename T, ptrdiff_t RO, typename RP, typename RRC>
-struct formatter<remote_intrusive_ptr<T, RO, RP, RRC>> {
+template <typename T, ptrdiff_t RO, typename RP, typename RRC> struct formatter<remote_intrusive_ptr<T, RO, RP, RRC>> {
   constexpr void parse(format_parse_context &) noexcept {}
-  void format(const remote_intrusive_ptr<T, RO, RP, RRC> &ptr,
-              const sink &out) const noexcept {
+  void format(const remote_intrusive_ptr<T, RO, RP, RRC> &ptr, const sink &out) const noexcept {
     if (ptr.is_null()) {
       out.write("intrusive_ptr(nullptr)");
     } else {
@@ -475,11 +414,21 @@ struct formatter<remote_intrusive_ptr<T, RO, RP, RRC>> {
 // Formatter Specializations for microfmt::print Integration
 // ============================================================================
 
-template <typename T, typename RemotePtr>
-struct microfmt::formatter<microfmt::remote_unique_ptr_view<T, RemotePtr>> {
+template <typename T, typename RemotePtr> struct microfmt::formatter<microfmt::remote_unique_ptr_view<T, RemotePtr>> {
   constexpr void parse(microfmt::format_parse_context &) noexcept {}
 
-  void format(const microfmt::remote_unique_ptr_view<T, RemotePtr> &view,
+  void format(const microfmt::remote_unique_ptr_view<T, RemotePtr> &view, const microfmt::sink &out) const noexcept {
+    if (!view.format(out)) {
+      out.write("<fault>");
+    }
+  }
+};
+
+template <typename T, typename RemotePtr, typename RemoteRefCount>
+struct microfmt::formatter<microfmt::remote_shared_ptr_view<T, RemotePtr, RemoteRefCount>> {
+  constexpr void parse(microfmt::format_parse_context &) noexcept {}
+
+  void format(const microfmt::remote_shared_ptr_view<T, RemotePtr, RemoteRefCount> &view,
               const microfmt::sink &out) const noexcept {
     if (!view.format(out)) {
       out.write("<fault>");
@@ -488,26 +437,10 @@ struct microfmt::formatter<microfmt::remote_unique_ptr_view<T, RemotePtr>> {
 };
 
 template <typename T, typename RemotePtr, typename RemoteRefCount>
-struct microfmt::formatter<
-    microfmt::remote_shared_ptr_view<T, RemotePtr, RemoteRefCount>> {
+struct microfmt::formatter<microfmt::remote_intrusive_ptr_view<T, RemotePtr, RemoteRefCount>> {
   constexpr void parse(microfmt::format_parse_context &) noexcept {}
 
-  void format(const microfmt::remote_shared_ptr_view<T, RemotePtr,
-                                                     RemoteRefCount> &view,
-              const microfmt::sink &out) const noexcept {
-    if (!view.format(out)) {
-      out.write("<fault>");
-    }
-  }
-};
-
-template <typename T, typename RemotePtr, typename RemoteRefCount>
-struct microfmt::formatter<
-    microfmt::remote_intrusive_ptr_view<T, RemotePtr, RemoteRefCount>> {
-  constexpr void parse(microfmt::format_parse_context &) noexcept {}
-
-  void format(const microfmt::remote_intrusive_ptr_view<T, RemotePtr,
-                                                        RemoteRefCount> &view,
+  void format(const microfmt::remote_intrusive_ptr_view<T, RemotePtr, RemoteRefCount> &view,
               const microfmt::sink &out) const noexcept {
     if (!view.format(out)) {
       out.write("<fault>");

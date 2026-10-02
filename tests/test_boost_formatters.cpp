@@ -35,13 +35,9 @@ struct described_record {
 BOOST_DESCRIBE_STRUCT(described_record, (), (id, ready))
 
 TEST(BoostFormattersTest, FormatsDescribedEnumsAndStructs) {
-  EXPECT_EQ(microfmt::format<32>("{} {}", described_state::running,
-                                static_cast<described_state>(9))
-                .view(),
+  EXPECT_EQ(microfmt::format<32>("{} {}", described_state::running, static_cast<described_state>(9)).view(),
             "running static_cast<uint8_t>(9)");
-  EXPECT_EQ(
-      microfmt::format<64>("{}", described_record{7, true}).view(),
-      "{id: 7, ready: true}");
+  EXPECT_EQ(microfmt::format<64>("{}", described_record{7, true}).view(), "{id: 7, ready: true}");
 }
 
 TEST(BoostFormattersTest, FormatsOptionalVariantAndOutcome) {
@@ -51,21 +47,17 @@ TEST(BoostFormattersTest, FormatsOptionalVariantAndOutcome) {
   EXPECT_EQ(output.view(), "Some(002a)");
 
   output.reset();
-  microfmt::format_to(output.as_sink(), "{:#04x}",
-                      boost::variant2::variant<int, bool>{42});
+  microfmt::format_to(output.as_sink(), "{:#04x}", boost::variant2::variant<int, bool>{42});
   EXPECT_EQ(output.view(), "variant[0](002a)");
 
   output.reset();
-  using test_result =
-      boost::outcome_v2::basic_result<int, short,
-                                      boost::outcome_v2::policy::all_narrow>;
+  using test_result = boost::outcome_v2::basic_result<int, short, boost::outcome_v2::policy::all_narrow>;
   test_result success{boost::outcome_v2::success(42)};
   microfmt::format_to(output.as_sink(), "{:04x}", success);
   EXPECT_EQ(output.view(), "Ok(002a)");
 
   output.reset();
-  test_result failure{
-      boost::outcome_v2::failure(short{7})};
+  test_result failure{boost::outcome_v2::failure(short{7})};
   microfmt::format_to(output.as_sink(), "{}", failure);
   EXPECT_EQ(output.view(), "Err(7)");
 }
@@ -73,8 +65,7 @@ TEST(BoostFormattersTest, FormatsOptionalVariantAndOutcome) {
 TEST(BoostFormattersTest, FormatsSystemErrorsAndContainers) {
   microfmt::buffer_sink<128> output;
 
-  const auto error =
-      boost::system::errc::make_error_code(boost::system::errc::invalid_argument);
+  const auto error = boost::system::errc::make_error_code(boost::system::errc::invalid_argument);
   microfmt::format_to(output.as_sink(), "{}", error);
   EXPECT_EQ(output.view(), "generic:22");
 
@@ -122,16 +113,14 @@ TEST(BoostFormattersTest, FormatsBitsetRationalAndTribool) {
 
   output.reset();
   const boost::logic::tribool unknown = boost::logic::indeterminate;
-  microfmt::format_to(output.as_sink(), "{} {} {}", boost::logic::tribool(true),
-                      boost::logic::tribool(false), unknown);
+  microfmt::format_to(output.as_sink(), "{} {} {}", boost::logic::tribool(true), boost::logic::tribool(false), unknown);
   EXPECT_EQ(output.view(), "true false indeterminate");
 }
 
 TEST(BoostFormattersTest, FormatsBoostChronoAndDateTime) {
   microfmt::buffer_sink<128> output;
 
-  microfmt::format_to(output.as_sink(), "{}",
-                      boost::chrono::milliseconds(125));
+  microfmt::format_to(output.as_sink(), "{}", boost::chrono::milliseconds(125));
   EXPECT_EQ(output.view(), "125ms");
 
   output.reset();
@@ -140,9 +129,8 @@ TEST(BoostFormattersTest, FormatsBoostChronoAndDateTime) {
   EXPECT_EQ(output.view(), "2026-09-17");
 
   output.reset();
-  const boost::posix_time::ptime time(
-      date, boost::posix_time::hours(18) + boost::posix_time::minutes(28) +
-                boost::posix_time::seconds(15));
+  const boost::posix_time::ptime time(date, boost::posix_time::hours(18) + boost::posix_time::minutes(28) +
+                                                boost::posix_time::seconds(15));
   microfmt::format_to(output.as_sink(), "{}", time);
   EXPECT_EQ(output.view(), "2026-09-17T18:28:15");
 }

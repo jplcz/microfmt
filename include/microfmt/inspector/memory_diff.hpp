@@ -46,7 +46,8 @@ template <typename T1, typename T2>
                                                   uintptr_t base_addr = 0) noexcept {
   return memory_diff_view{
       span<const std::byte>(reinterpret_cast<const std::byte *>(old_span.data()), old_span.size_bytes()),
-      span<const std::byte>(reinterpret_cast<const std::byte *>(new_span.data()), new_span.size_bytes()), base_addr, 16};
+      span<const std::byte>(reinterpret_cast<const std::byte *>(new_span.data()), new_span.size_bytes()), base_addr,
+      16};
 }
 
 // Overload for matching template types
@@ -55,7 +56,8 @@ template <typename T1, typename T2>
                                                   uintptr_t base_addr = 0) noexcept {
   return memory_diff_view{
       span<const std::byte>(reinterpret_cast<const std::byte *>(old_span.data()), old_span.size_bytes()),
-      span<const std::byte>(reinterpret_cast<const std::byte *>(new_span.data()), new_span.size_bytes()), base_addr, 16};
+      span<const std::byte>(reinterpret_cast<const std::byte *>(new_span.data()), new_span.size_bytes()), base_addr,
+      16};
 }
 
 #if RELOCO_HAS_STD_SPAN

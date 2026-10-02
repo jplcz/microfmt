@@ -30,12 +30,10 @@ TEST(BaseViewsTest, EncodesBase64WithPadding) {
 TEST(BaseViewsTest, GroupsBinaryWithCustomSeparators) {
   microfmt::buffer_sink<32> buffer;
 
-  microfmt::format_to(buffer.as_sink(), "{}",
-                      microfmt::bin_grouped(uint8_t{0xa5}, 2, ':'));
+  microfmt::format_to(buffer.as_sink(), "{}", microfmt::bin_grouped(uint8_t{0xa5}, 2, ':'));
   EXPECT_EQ(buffer.view(), "0b10:10:01:01");
 
   buffer.reset();
-  microfmt::format_to(buffer.as_sink(), "{}",
-                      microfmt::bin_grouped(uint8_t{0xa5}, 0));
+  microfmt::format_to(buffer.as_sink(), "{}", microfmt::bin_grouped(uint8_t{0xa5}, 0));
   EXPECT_EQ(buffer.view(), "0b10100101");
 }

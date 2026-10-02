@@ -59,16 +59,14 @@ public:
 
   template <typename Tag, typename Traits = value_range_scanner_traits<Tag, T>,
             std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
-  constexpr explicit value_range_scanner_ref(Tag) noexcept
-      : ctx_(nullptr), vtbl_(&s_vtbl<Tag>) {}
+  constexpr explicit value_range_scanner_ref(Tag) noexcept : ctx_(nullptr), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context, typename Traits = value_range_scanner_traits<Tag, T>,
             std::enable_if_t<!std::is_void_v<typename Traits::context_type> &&
-                                 std::is_convertible_v<const Context *,
-                                                       const typename Traits::context_type *>,
+                                 std::is_convertible_v<const Context *, const typename Traits::context_type *>,
                              int> = 0>
-  constexpr value_range_scanner_ref(
-      Tag, const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  constexpr value_range_scanner_ref(Tag,
+                                    const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
@@ -82,8 +80,7 @@ public:
 
   template <typename Tag, typename Context, typename Traits = value_range_scanner_traits<Tag, T>,
             std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
-  [[nodiscard]] static constexpr value_range_scanner_ref
-  make(const Context &context RELOCO_LIFETIMEBOUND) noexcept {
+  [[nodiscard]] static constexpr value_range_scanner_ref make(const Context &context RELOCO_LIFETIMEBOUND) noexcept {
     return value_range_scanner_ref(Tag{}, context);
   }
 
@@ -112,13 +109,11 @@ private:
                                                                       const T &max_val, size_t stride) noexcept {
     using context_type = typename value_range_scanner_traits<Tag, T>::context_type;
     if constexpr (std::is_void_v<context_type>) {
-      return value_range_scanner_traits<Tag, T>::scan(
-          start_addr, search_length, min_val, max_val, stride);
+      return value_range_scanner_traits<Tag, T>::scan(start_addr, search_length, min_val, max_val, stride);
     } else {
       const auto &typed_context = *static_cast<const context_type *>(context);
-      return value_range_scanner_traits<Tag, T>::scan(
-          value_ref<const context_type>(typed_context), start_addr,
-          search_length, min_val, max_val, stride);
+      return value_range_scanner_traits<Tag, T>::scan(value_ref<const context_type>(typed_context), start_addr,
+                                                      search_length, min_val, max_val, stride);
     }
   }
 
@@ -138,25 +133,21 @@ private:
  * @tparam T Trivially copyable type to interpret from memory.
  */
 template <typename Tag, typename T,
-          bool Stateless =
-              std::is_void_v<typename value_range_scanner_traits<Tag, T>::context_type>>
+          bool Stateless = std::is_void_v<typename value_range_scanner_traits<Tag, T>::context_type>>
 class value_range_scanner;
 
-template <typename Tag, typename T>
-class RELOCO_OWNER value_range_scanner<Tag, T, false> {
+template <typename Tag, typename T> class RELOCO_OWNER value_range_scanner<Tag, T, false> {
 public:
   using traits_type = value_range_scanner_traits<Tag, T>;
   using context_type = typename value_range_scanner_traits<Tag, T>::context_type;
 
   constexpr explicit value_range_scanner(context_type context) noexcept : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
@@ -164,10 +155,7 @@ public:
     return value_range_scanner_ref<T>(Tag{}, context_);
   }
 
-  [[nodiscard]] constexpr operator value_range_scanner_ref<T>()
-      const & noexcept RELOCO_LIFETIMEBOUND {
-    return ref();
-  }
+  [[nodiscard]] constexpr operator value_range_scanner_ref<T>() const & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
 
   value_ref<context_type> context() && = delete;
   value_ref<const context_type> context() const && = delete;
@@ -178,15 +166,12 @@ private:
   context_type context_;
 };
 
-template <typename Tag, typename T>
-class value_range_scanner<Tag, T, true> {
+template <typename Tag, typename T> class value_range_scanner<Tag, T, true> {
 public:
   using traits_type = value_range_scanner_traits<Tag, T>;
   using context_type = void;
 
-  [[nodiscard]] static constexpr value_range_scanner_ref<T> ref() noexcept {
-    return value_range_scanner_ref<T>(Tag{});
-  }
+  [[nodiscard]] static constexpr value_range_scanner_ref<T> ref() noexcept { return value_range_scanner_ref<T>(Tag{}); }
 };
 
 // ============================================================================
@@ -228,13 +213,11 @@ public:
 
   template <typename Tag, typename Traits = dependent_value_scanner_traits<Tag>,
             std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
-  constexpr explicit dependent_value_scanner_ref(Tag) noexcept
-      : ctx_(nullptr), vtbl_(&s_vtbl<Tag>) {}
+  constexpr explicit dependent_value_scanner_ref(Tag) noexcept : ctx_(nullptr), vtbl_(&s_vtbl<Tag>) {}
 
   template <typename Tag, typename Context, typename Traits = dependent_value_scanner_traits<Tag>,
             std::enable_if_t<!std::is_void_v<typename Traits::context_type> &&
-                                 std::is_convertible_v<const Context *,
-                                                       const typename Traits::context_type *>,
+                                 std::is_convertible_v<const Context *, const typename Traits::context_type *>,
                              int> = 0>
   constexpr dependent_value_scanner_ref(
       Tag, const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
@@ -283,14 +266,12 @@ private:
              dependent_predicate_fn predicate, void *user_context) noexcept {
     using context_type = typename dependent_value_scanner_traits<Tag>::context_type;
     if constexpr (std::is_void_v<context_type>) {
-      return dependent_value_scanner_traits<Tag>::scan(
-          start_addr, search_length, window_size, stride, predicate,
-          user_context);
+      return dependent_value_scanner_traits<Tag>::scan(start_addr, search_length, window_size, stride, predicate,
+                                                       user_context);
     } else {
       const auto &typed_context = *static_cast<const context_type *>(context);
-      return dependent_value_scanner_traits<Tag>::scan(
-          value_ref<const context_type>(typed_context), start_addr,
-          search_length, window_size, stride, predicate, user_context);
+      return dependent_value_scanner_traits<Tag>::scan(value_ref<const context_type>(typed_context), start_addr,
+                                                       search_length, window_size, stride, predicate, user_context);
     }
   }
 
@@ -308,26 +289,21 @@ private:
  *
  * @tparam Tag Tag identifying the scanner implementation.
  */
-template <typename Tag,
-          bool Stateless =
-              std::is_void_v<typename dependent_value_scanner_traits<Tag>::context_type>>
+template <typename Tag, bool Stateless = std::is_void_v<typename dependent_value_scanner_traits<Tag>::context_type>>
 class dependent_value_scanner;
 
-template <typename Tag>
-class RELOCO_OWNER dependent_value_scanner<Tag, false> {
+template <typename Tag> class RELOCO_OWNER dependent_value_scanner<Tag, false> {
 public:
   using traits_type = dependent_value_scanner_traits<Tag>;
   using context_type = typename dependent_value_scanner_traits<Tag>::context_type;
 
   constexpr explicit dependent_value_scanner(context_type context) noexcept : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
@@ -335,10 +311,7 @@ public:
     return dependent_value_scanner_ref(Tag{}, context_);
   }
 
-  [[nodiscard]] constexpr operator dependent_value_scanner_ref()
-      const & noexcept RELOCO_LIFETIMEBOUND {
-    return ref();
-  }
+  [[nodiscard]] constexpr operator dependent_value_scanner_ref() const & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
 
   value_ref<context_type> context() && = delete;
   value_ref<const context_type> context() const && = delete;
@@ -349,8 +322,7 @@ private:
   context_type context_;
 };
 
-template <typename Tag>
-class dependent_value_scanner<Tag, true> {
+template <typename Tag> class dependent_value_scanner<Tag, true> {
 public:
   using traits_type = dependent_value_scanner_traits<Tag>;
   using context_type = void;
@@ -398,8 +370,7 @@ template <typename T> struct value_range_scanner_traits<linear_value_range_scann
         std::memcpy(&val, ctx->scratch.data() + offset, sizeof(T));
         RELOCO_END_UNSAFE_BUFFER_USAGE;
         if (val >= min_val && val <= max_val) {
-          if (current_addr >
-              std::numeric_limits<uintptr_t>::max() - offset) {
+          if (current_addr > std::numeric_limits<uintptr_t>::max() - offset) {
             return unexpected(address_space_error::invalid_address);
           }
           return memory_scan_result{true, current_addr + offset};
@@ -407,8 +378,7 @@ template <typename T> struct value_range_scanner_traits<linear_value_range_scann
       }
 
       size_t advance = ((search_limit) / stride) * stride + stride;
-      if (current_addr >
-          std::numeric_limits<uintptr_t>::max() - advance) {
+      if (current_addr > std::numeric_limits<uintptr_t>::max() - advance) {
         return unexpected(address_space_error::invalid_address);
       }
       current_addr += advance;
@@ -452,8 +422,7 @@ template <> struct dependent_value_scanner_traits<linear_dependent_value_scanner
         const void *window = ctx->scratch.data() + offset;
         RELOCO_END_UNSAFE_BUFFER_USAGE;
         if (predicate(window, user_context)) {
-          if (current_addr >
-              std::numeric_limits<uintptr_t>::max() - offset) {
+          if (current_addr > std::numeric_limits<uintptr_t>::max() - offset) {
             return unexpected(address_space_error::invalid_address);
           }
           return memory_scan_result{true, current_addr + offset};
@@ -461,8 +430,7 @@ template <> struct dependent_value_scanner_traits<linear_dependent_value_scanner
       }
 
       size_t advance = ((search_limit) / stride) * stride + stride;
-      if (current_addr >
-          std::numeric_limits<uintptr_t>::max() - advance) {
+      if (current_addr > std::numeric_limits<uintptr_t>::max() - advance) {
         return unexpected(address_space_error::invalid_address);
       }
       current_addr += advance;

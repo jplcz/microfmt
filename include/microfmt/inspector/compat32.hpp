@@ -37,57 +37,39 @@ public:
    * @brief Returns the raw 32-bit address.
    * @return Stored address value.
    */
-  [[nodiscard]] constexpr uint32_t raw_value() const noexcept {
-    return raw_addr_;
-  }
+  [[nodiscard]] constexpr uint32_t raw_value() const noexcept { return raw_addr_; }
   /**
    * @brief Widens the address to a host pointer-size integer.
    * @return Stored address as @c uintptr_t.
    */
-  [[nodiscard]] constexpr uintptr_t to_uintptr() const noexcept {
-    return static_cast<uintptr_t>(raw_addr_);
-  }
+  [[nodiscard]] constexpr uintptr_t to_uintptr() const noexcept { return static_cast<uintptr_t>(raw_addr_); }
   /**
    * @brief Reports whether the pointer is null.
    * @return `true` when the address is zero.
    */
-  [[nodiscard]] constexpr bool is_null() const noexcept {
-    return raw_addr_ == 0;
-  }
+  [[nodiscard]] constexpr bool is_null() const noexcept { return raw_addr_ == 0; }
   /**
    * @brief Reports whether the pointer is non-null.
    * @return `true` when the address is non-zero.
    */
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return raw_addr_ != 0;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return raw_addr_ != 0; }
 
   /// Compares two pointers for equality.
-  constexpr bool operator==(const compat32_ptr &other) const noexcept {
-    return raw_addr_ == other.raw_addr_;
-  }
+  constexpr bool operator==(const compat32_ptr &other) const noexcept { return raw_addr_ == other.raw_addr_; }
   /// Compares two pointers for inequality.
-  constexpr bool operator!=(const compat32_ptr &other) const noexcept {
-    return raw_addr_ != other.raw_addr_;
-  }
+  constexpr bool operator!=(const compat32_ptr &other) const noexcept { return raw_addr_ != other.raw_addr_; }
   /// Compares against null.
-  constexpr bool operator==(std::nullptr_t) const noexcept {
-    return raw_addr_ == 0;
-  }
+  constexpr bool operator==(std::nullptr_t) const noexcept { return raw_addr_ == 0; }
   /// Compares against null.
-  constexpr bool operator!=(std::nullptr_t) const noexcept {
-    return raw_addr_ != 0;
-  }
+  constexpr bool operator!=(std::nullptr_t) const noexcept { return raw_addr_ != 0; }
 
 private:
   /// Raw 32-bit address.
   uint32_t raw_addr_{0};
 };
 
-static_assert(sizeof(compat32_ptr<void>) == 4,
-              "compat32_ptr must be exactly 4 bytes");
-static_assert(alignof(compat32_ptr<void>) == 4,
-              "compat32_ptr must be 4-byte aligned");
+static_assert(sizeof(compat32_ptr<void>) == 4, "compat32_ptr must be exactly 4 bytes");
+static_assert(alignof(compat32_ptr<void>) == 4, "compat32_ptr must be 4-byte aligned");
 
 // ============================================================================
 // Formatter for compat32_ptr<T>
@@ -134,9 +116,8 @@ template <typename T> struct formatter<compat32_ptr<T>> {
  * @return A @ref remote_string_view bound to the pointer.
  */
 template <size_t N>
-[[nodiscard]] constexpr auto
-make_remote_string32(compat32_ptr<const char> ptr, address_space_ref space,
-                     char (&scratch)[N], size_t max_limit = 4096) noexcept {
+[[nodiscard]] constexpr auto make_remote_string32(compat32_ptr<const char> ptr, address_space_ref space,
+                                                  char (&scratch)[N], size_t max_limit = 4096) noexcept {
   return remote_string_view(ptr.to_uintptr(), space, scratch, max_limit);
 }
 
@@ -150,10 +131,9 @@ make_remote_string32(compat32_ptr<const char> ptr, address_space_ref space,
  * @return A @ref remote_ref bound to the pointer.
  */
 template <typename T, size_t N>
-[[nodiscard]] constexpr auto
-make_remote_ref32(compat32_ptr<T> ptr, address_space_ref space,
-                  std::byte (&scratch)[N]) noexcept {
+[[nodiscard]] constexpr auto make_remote_ref32(compat32_ptr<T> ptr, address_space_ref space,
+                                               std::byte (&scratch)[N]) noexcept {
   return remote_ref<T>(ptr.to_uintptr(), space, scratch);
 }
 
-} // namespace microfmt 
+} // namespace microfmt

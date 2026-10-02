@@ -23,8 +23,7 @@ public:
    * @param prel31 Raw PREL31 encoding.
    * @return Absolute address computed from the entry location.
    */
-  [[nodiscard]] static constexpr uintptr_t
-  decode_prel31(uintptr_t entry_addr, uint32_t prel31) noexcept {
+  [[nodiscard]] static constexpr uintptr_t decode_prel31(uintptr_t entry_addr, uint32_t prel31) noexcept {
     // PREL31 is a 31-bit signed offset relative to the address of the prel31
     // word itself. Arithmetic right shift sign-extends from bit 30 to
     // 32-bit/64-bit int32_t.
@@ -46,10 +45,8 @@ public:
    * `.ARM.extab` pointer).
    * @return `true` when a non-`EXIDX_CANTUNWIND` entry matched.
    */
-  [[nodiscard]] static bool
-  find_exidx_entry(address_space_ref space, uintptr_t table_base,
-                   size_t num_entries, uintptr_t target_pc,
-                   uint32_t &out_unwind_data) noexcept {
+  [[nodiscard]] static bool find_exidx_entry(address_space_ref space, uintptr_t table_base, size_t num_entries,
+                                             uintptr_t target_pc, uint32_t &out_unwind_data) noexcept {
     if (num_entries == 0 || table_base == 0)
       return false;
 
@@ -60,8 +57,7 @@ public:
     // Iterative binary search: find the highest function address <= target_pc
     while (low < high) {
       size_t mid = low + (high - low) / 2;
-      uintptr_t entry_addr =
-          table_base + (mid * 8); // Each entry is 2 words (8 bytes)
+      uintptr_t entry_addr = table_base + (mid * 8); // Each entry is 2 words (8 bytes)
 
       uint32_t prel31 = 0;
       if (!space.read_bytes(entry_addr, &prel31, 4)) {

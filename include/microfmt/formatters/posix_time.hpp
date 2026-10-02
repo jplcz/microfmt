@@ -23,8 +23,7 @@ namespace detail {
  * @brief SFINAE trait detecting `timespec`-like types with `tv_sec`/`tv_nsec`.
  * @tparam T Candidate type.
  */
-template <typename T, typename = void>
-struct is_timespec_like : std::false_type {};
+template <typename T, typename = void> struct is_timespec_like : std::false_type {};
 
 /**
  * @brief Specialization enabling @ref is_timespec_like for types exposing
@@ -32,16 +31,14 @@ struct is_timespec_like : std::false_type {};
  * @tparam T Candidate type.
  */
 template <typename T>
-struct is_timespec_like<T, std::void_t<decltype(std::declval<T>().tv_sec),
-                                       decltype(std::declval<T>().tv_nsec)>>
+struct is_timespec_like<T, std::void_t<decltype(std::declval<T>().tv_sec), decltype(std::declval<T>().tv_nsec)>>
     : std::true_type {};
 
 /**
  * @brief SFINAE trait detecting `timeval`-like types with `tv_sec`/`tv_usec`.
  * @tparam T Candidate type.
  */
-template <typename T, typename = void>
-struct is_timeval_like : std::false_type {};
+template <typename T, typename = void> struct is_timeval_like : std::false_type {};
 
 /**
  * @brief Specialization enabling @ref is_timeval_like for types exposing
@@ -49,8 +46,7 @@ struct is_timeval_like : std::false_type {};
  * @tparam T Candidate type.
  */
 template <typename T>
-struct is_timeval_like<T, std::void_t<decltype(std::declval<T>().tv_sec),
-                                      decltype(std::declval<T>().tv_usec)>>
+struct is_timeval_like<T, std::void_t<decltype(std::declval<T>().tv_sec), decltype(std::declval<T>().tv_usec)>>
     : std::true_type {};
 
 } // namespace detail
@@ -60,18 +56,14 @@ struct is_timeval_like<T, std::void_t<decltype(std::declval<T>().tv_sec),
  * @tparam T Candidate type.
  */
 template <typename T>
-inline constexpr bool is_timespec_v =
-    detail::is_timespec_like<
-        std::remove_cv_t<std::remove_reference_t<T>>>::value;
+inline constexpr bool is_timespec_v = detail::is_timespec_like<std::remove_cv_t<std::remove_reference_t<T>>>::value;
 
 /**
  * @brief Variable template for @ref detail::is_timeval_like.
  * @tparam T Candidate type.
  */
 template <typename T>
-inline constexpr bool is_timeval_v =
-    detail::is_timeval_like<
-        std::remove_cv_t<std::remove_reference_t<T>>>::value;
+inline constexpr bool is_timeval_v = detail::is_timeval_like<std::remove_cv_t<std::remove_reference_t<T>>>::value;
 
 // ============================================================================
 // Formatter for struct timespec (.tv_sec, .tv_nsec)

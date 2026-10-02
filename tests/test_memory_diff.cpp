@@ -18,8 +18,8 @@ std::byte to_byte(int value) noexcept { return static_cast<std::byte>(value); }
 
 TEST(MemoryDiffViewTest, CollapsesFullyIdenticalRegionsIntoSummary) {
   const std::array<uint8_t, 32> old_buf{{0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
-                                        0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
-                                        0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f}};
+                                         0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
+                                         0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f}};
   const auto &new_buf = old_buf;
 
   microfmt::span<const uint8_t> old_span(old_buf.data(), old_buf.size());
@@ -47,8 +47,7 @@ TEST(MemoryDiffViewTest, EmitsRowsForEveryDivergentByte) {
 
   // Byte columns are always rendered as uppercase hex, regardless of the
   // (lowercase) address column.
-  EXPECT_EQ(output.view(),
-            "  0x00002000: 00 01 02 03 04 05 06 07  -> FF FF FF FF FF FF FF FF \n");
+  EXPECT_EQ(output.view(), "  0x00002000: 00 01 02 03 04 05 06 07  -> FF FF FF FF FF FF FF FF \n");
 }
 
 TEST(MemoryDiffViewTest, CollapsesLeadingAndTrailingIdenticalRowsAroundDivergence) {
@@ -67,8 +66,8 @@ TEST(MemoryDiffViewTest, CollapsesLeadingAndTrailingIdenticalRowsAroundDivergenc
   microfmt::format_to(output.as_sink(), "{}", diff);
 
   EXPECT_EQ(output.view(), "  [... 1 identical rows hidden ...]\n"
-                          "  0x00000004: 00 00 00 00  -> AA 00 00 00 \n"
-                          "  [... 1 identical rows hidden ...]\n");
+                           "  0x00000004: 00 00 00 00  -> AA 00 00 00 \n"
+                           "  [... 1 identical rows hidden ...]\n");
 }
 
 TEST(MemoryDiffViewTest, TruncatesToShorterOfTheTwoRegions) {
@@ -112,7 +111,7 @@ TEST(MemoryDiffViewTest, TreatsZeroBytesPerRowAsDefaultRowSize) {
   microfmt::format_to(output.as_sink(), "{}", diff);
 
   EXPECT_EQ(output.view(), "  0x00000000: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  "
-                          "-> 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 \n");
+                           "-> 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 \n");
 }
 
 TEST(MemoryDiffViewTest, ConstructsFromMatchingTemplateSpanTypes) {

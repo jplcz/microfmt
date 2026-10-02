@@ -57,13 +57,10 @@ struct MICROFMT_API_CLASS remote_page_table_decoded_entry {
 struct MICROFMT_API_CLASS remote_page_table_callbacks {
   size_t level_count{0};
 
-  bool (*describe_level)(const void *state, size_t level,
-                         remote_page_table_level &description) noexcept{
-      nullptr};
+  bool (*describe_level)(const void *state, size_t level, remote_page_table_level &description) noexcept {nullptr};
 
   bool (*decode_entry)(const void *state, size_t level, uint64_t raw_entry,
-                       remote_page_table_decoded_entry &entry) noexcept{
-      nullptr};
+                       remote_page_table_decoded_entry &entry) noexcept {nullptr};
 };
 
 /**
@@ -73,37 +70,29 @@ class MICROFMT_API_CLASS RELOCO_POINTER remote_page_table_layout_ref {
 public:
   constexpr remote_page_table_layout_ref() noexcept = default;
 
-  constexpr explicit remote_page_table_layout_ref(
-      remote_page_table_callbacks callbacks) noexcept
+  constexpr explicit remote_page_table_layout_ref(remote_page_table_callbacks callbacks) noexcept
       : callbacks_(callbacks) {}
 
   template <typename State>
-  constexpr remote_page_table_layout_ref(
-      const State &state RELOCO_LIFETIMEBOUND,
-      remote_page_table_callbacks callbacks) noexcept
+  constexpr remote_page_table_layout_ref(const State &state RELOCO_LIFETIMEBOUND,
+                                         remote_page_table_callbacks callbacks) noexcept
       : state_(&state), callbacks_(callbacks) {}
 
-  [[nodiscard]] constexpr size_t level_count() const noexcept {
-    return callbacks_.level_count;
-  }
+  [[nodiscard]] constexpr size_t level_count() const noexcept { return callbacks_.level_count; }
 
-  [[nodiscard]] bool
-  describe_level(size_t level,
-                 remote_page_table_level &description) const noexcept {
+  [[nodiscard]] bool describe_level(size_t level, remote_page_table_level &description) const noexcept {
     return callbacks_.describe_level && level < callbacks_.level_count &&
            callbacks_.describe_level(state_.get(), level, description);
   }
 
-  [[nodiscard]] bool
-  decode_entry(size_t level, uint64_t raw_entry,
-               remote_page_table_decoded_entry &entry) const noexcept {
+  [[nodiscard]] bool decode_entry(size_t level, uint64_t raw_entry,
+                                  remote_page_table_decoded_entry &entry) const noexcept {
     return callbacks_.decode_entry && level < callbacks_.level_count &&
            callbacks_.decode_entry(state_.get(), level, raw_entry, entry);
   }
 
   [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return callbacks_.level_count != 0 && callbacks_.describe_level &&
-           callbacks_.decode_entry;
+    return callbacks_.level_count != 0 && callbacks_.describe_level && callbacks_.decode_entry;
   }
 
 private:
@@ -127,25 +116,20 @@ struct MICROFMT_API_CLASS remote_page_table_walk_step {
  */
 class MICROFMT_API_CLASS remote_page_table_walk_trace {
 public:
-  constexpr explicit remote_page_table_walk_trace(
-      span<remote_page_table_walk_step> storage) noexcept
+  constexpr explicit remote_page_table_walk_trace(span<remote_page_table_walk_step> storage) noexcept
       : storage_(storage) {}
 
   template <size_t N>
-  constexpr explicit remote_page_table_walk_trace(
-      remote_page_table_walk_step (&storage)[N]) noexcept
+  constexpr explicit remote_page_table_walk_trace(remote_page_table_walk_step (&storage)[N]) noexcept
       : storage_(storage, N) {}
 
-  [[nodiscard]] constexpr
-  span<const remote_page_table_walk_step> steps() const noexcept {
+  [[nodiscard]] constexpr span<const remote_page_table_walk_step> steps() const noexcept {
     return span<const remote_page_table_walk_step>(storage_.data(), size_);
   }
 
   [[nodiscard]] constexpr size_t size() const noexcept { return size_; }
 
-  [[nodiscard]] constexpr bool truncated() const noexcept {
-    return truncated_;
-  }
+  [[nodiscard]] constexpr bool truncated() const noexcept { return truncated_; }
 
 private:
   friend class remote_page_table_walker;
@@ -199,9 +183,7 @@ struct MICROFMT_API_CLASS remote_page_table_walk_result {
  */
 class MICROFMT_API_CLASS remote_page_table_walker {
 public:
-  constexpr remote_page_table_walker(
-      address_space_ref physical_space,
-      remote_page_table_layout_ref layout) noexcept
+  constexpr remote_page_table_walker(address_space_ref physical_space, remote_page_table_layout_ref layout) noexcept
       : physical_space_(physical_space), layout_(layout) {}
 
   /**
@@ -211,14 +193,11 @@ public:
    * success and failure. Walking continues when trace storage is exhausted;
    * `trace.truncated()` then reports the loss of diagnostic steps.
    */
-  [[nodiscard]] expected<remote_page_table_walk_result,
-                         remote_page_table_walk_error>
-  walk(uintptr_t root_table_address, uintptr_t virtual_address,
-       remote_page_table_walk_trace &trace) const noexcept {
+  [[nodiscard]] expected<remote_page_table_walk_result, remote_page_table_walk_error>
+  walk(uintptr_t root_table_address, uintptr_t virtual_address, remote_page_table_walk_trace &trace) const noexcept {
     trace.reset();
     if (!physical_space_)
-      return unexpected(
-          remote_page_table_walk_error::invalid_physical_space);
+      return unexpected(remote_page_table_walk_error::invalid_physical_space);
     if (!layout_)
       return unexpected(remote_page_table_walk_error::invalid_layout);
     if (root_table_address == 0)
@@ -229,90 +208,63 @@ public:
 
     for (size_t level = 0; level < level_count; ++level) {
       remote_page_table_level description{};
-      if (!layout_.describe_level(level, description) ||
-          description.index_bits == 0 || description.index_bits >= 64 ||
-          description.index_shift >=
-              static_cast<uint8_t>(sizeof(uintptr_t) * 8)) {
+      if (!layout_.describe_level(level, description) || description.index_bits == 0 || description.index_bits >= 64 ||
+          description.index_shift >= static_cast<uint8_t>(sizeof(uintptr_t) * 8)) {
         return unexpected(remote_page_table_walk_error::invalid_level);
       }
-      if (description.entry_size != 1 && description.entry_size != 2 &&
-          description.entry_size != 4 && description.entry_size != 8) {
-        return unexpected(
-            remote_page_table_walk_error::unsupported_entry_size);
+      if (description.entry_size != 1 && description.entry_size != 2 && description.entry_size != 4 &&
+          description.entry_size != 8) {
+        return unexpected(remote_page_table_walk_error::unsupported_entry_size);
       }
 
-      const uint64_t index_mask =
-          (UINT64_C(1) << description.index_bits) - UINT64_C(1);
-      const uint64_t index =
-          (static_cast<uint64_t>(virtual_address) >>
-           description.index_shift) &
-          index_mask;
-      if (index >
-          std::numeric_limits<uintptr_t>::max() / description.entry_size) {
+      const uint64_t index_mask = (UINT64_C(1) << description.index_bits) - UINT64_C(1);
+      const uint64_t index = (static_cast<uint64_t>(virtual_address) >> description.index_shift) & index_mask;
+      if (index > std::numeric_limits<uintptr_t>::max() / description.entry_size) {
         return unexpected(remote_page_table_walk_error::address_overflow);
       }
-      const uintptr_t entry_offset =
-          static_cast<uintptr_t>(index) * description.entry_size;
-      if (table_address >
-          std::numeric_limits<uintptr_t>::max() - entry_offset) {
+      const uintptr_t entry_offset = static_cast<uintptr_t>(index) * description.entry_size;
+      if (table_address > std::numeric_limits<uintptr_t>::max() - entry_offset) {
         return unexpected(remote_page_table_walk_error::address_overflow);
       }
       const uintptr_t entry_address = table_address + entry_offset;
 
       array<std::byte, 8> entry_bytes{};
-      auto read_result = physical_space_.read_bytes(
-          entry_address, entry_bytes.data(), description.entry_size);
+      auto read_result = physical_space_.read_bytes(entry_address, entry_bytes.data(), description.entry_size);
       if (!read_result)
         return unexpected(remote_page_table_walk_error::read_failed);
 
       uint64_t raw_entry = 0;
       for (size_t byte = 0; byte < description.entry_size; ++byte) {
-        raw_entry |=
-            static_cast<uint64_t>(
-                static_cast<unsigned char>(entry_bytes[byte]))
-            << (byte * 8);
+        raw_entry |= static_cast<uint64_t>(static_cast<unsigned char>(entry_bytes[byte])) << (byte * 8);
       }
 
       remote_page_table_decoded_entry decoded{};
       if (!layout_.decode_entry(level, raw_entry, decoded))
         return unexpected(remote_page_table_walk_error::decode_failed);
 
-      trace.append(remote_page_table_walk_step{
-          level, table_address, entry_address, raw_entry, decoded});
+      trace.append(remote_page_table_walk_step{level, table_address, entry_address, raw_entry, decoded});
 
       if (decoded.kind == remote_page_table_entry_kind::invalid)
         return unexpected(remote_page_table_walk_error::invalid_entry);
 
       if (decoded.kind == remote_page_table_entry_kind::next_table) {
         if (level + 1 == level_count || decoded.output_address == 0)
-          return unexpected(
-              remote_page_table_walk_error::unexpected_next_table);
+          return unexpected(remote_page_table_walk_error::unexpected_next_table);
         table_address = decoded.output_address;
         continue;
       }
 
-      if (decoded.kind != remote_page_table_entry_kind::leaf ||
-          decoded.page_size == 0 ||
+      if (decoded.kind != remote_page_table_entry_kind::leaf || decoded.page_size == 0 ||
           (decoded.page_size & (decoded.page_size - 1)) != 0 ||
           decoded.output_address >
-              std::numeric_limits<uintptr_t>::max() -
-                  (virtual_address & (decoded.page_size - 1))) {
+              std::numeric_limits<uintptr_t>::max() - (virtual_address & (decoded.page_size - 1))) {
         return unexpected(remote_page_table_walk_error::invalid_leaf);
       }
 
-      const uintptr_t physical_address =
-          decoded.output_address +
-          (virtual_address & (decoded.page_size - 1));
-      translation_attributes attributes{
-          physical_address,
-          decoded.space_id,
-          decoded.is_secure,
-          decoded.readable,
-          decoded.writable,
-          decoded.executable,
-          decoded.user_accessible};
-      return remote_page_table_walk_result{
-          physical_address, decoded.page_size, attributes};
+      const uintptr_t physical_address = decoded.output_address + (virtual_address & (decoded.page_size - 1));
+      translation_attributes attributes{physical_address, decoded.space_id,   decoded.is_secure,      decoded.readable,
+                                        decoded.writable, decoded.executable, decoded.user_accessible};
+      return remote_page_table_walk_result{physical_address, decoded.page_size, attributes};
     }
 
     return unexpected(remote_page_table_walk_error::invalid_entry);

@@ -14,20 +14,16 @@ namespace microfmt {
 template <> struct formatter<boost::system::error_code> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const boost::system::error_code &error,
-              const sink &out) const noexcept {
-    microfmt::format_to(out, "{}:{}", error.category().name(),
-                        error.value());
+  void format(const boost::system::error_code &error, const sink &out) const noexcept {
+    microfmt::format_to(out, "{}:{}", error.category().name(), error.value());
   }
 };
 
 template <> struct formatter<boost::system::error_condition> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const boost::system::error_condition &condition,
-              const sink &out) const noexcept {
-    microfmt::format_to(out, "{}:{}",
-                        condition.category().name(), condition.value());
+  void format(const boost::system::error_condition &condition, const sink &out) const noexcept {
+    microfmt::format_to(out, "{}:{}", condition.category().name(), condition.value());
   }
 };
 

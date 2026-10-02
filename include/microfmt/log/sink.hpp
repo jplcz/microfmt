@@ -51,7 +51,7 @@ template <typename Tag, typename = void> struct has_log_sink_flush : std::false_
 
 template <typename Tag>
 struct has_log_sink_flush<Tag, std::void_t<decltype(log_sink_traits<Tag>::flush(
-                                    std::declval<value_ref<typename log_sink_traits<Tag>::context_type>>()))>>
+                                   std::declval<value_ref<typename log_sink_traits<Tag>::context_type>>()))>>
     : std::true_type {};
 
 template <typename Tag, typename = void> struct has_stateless_log_sink_flush : std::false_type {};
@@ -114,7 +114,7 @@ public:
                                  std::is_convertible_v<Context *, typename Traits::context_type *>,
                              int> = 0>
   constexpr log_sink(Tag, Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS,
-                      level lvl = level::trace) noexcept
+                     level lvl = level::trace) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>), lvl_(lvl) {}
 
   // Refuses to bind to a temporary context, which would leave ctx_ dangling
@@ -239,11 +239,9 @@ public:
       microfmt::format_to(out, "[{}] ", ansi::red("ERROR"));
       break;
     case level::critical:
-      microfmt::format_to(out, "[{}] ", ansi::styled(
-                                "CRIT ",
-                                ansi::style{ansi::color::bright_white,
-                                            ansi::color::red,
-                                            ansi::attribute::bold}));
+      microfmt::format_to(
+          out, "[{}] ",
+          ansi::styled("CRIT ", ansi::style{ansi::color::bright_white, ansi::color::red, ansi::attribute::bold}));
       break;
     default:
       break;

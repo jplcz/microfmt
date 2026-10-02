@@ -6,8 +6,7 @@
 #include <microfmt/sinks/stdio.hpp>
 
 int main() {
-  auto space_ref =
-      microfmt::address_space_ref::make<microfmt::local_space_tag>();
+  auto space_ref = microfmt::address_space_ref::make<microfmt::local_space_tag>();
   std::byte scratch[1024];
 
   // Define custom state for a mock sequence container (e.g., generating
@@ -22,10 +21,8 @@ int main() {
   // Build the external context using the renamed make_container_context
   // helper
   auto context = microfmt::make_container_context(
-      my_sequence,
-      [](SequenceState &state, const microfmt::container_options &opts,
-         microfmt::address_space_ref, microfmt::span<std::byte>,
-         const microfmt::sink &out) noexcept {
+      my_sequence, [](SequenceState &state, const microfmt::container_options &opts, microfmt::address_space_ref,
+                      microfmt::span<std::byte>, const microfmt::sink &out) noexcept {
         out.write(opts.open_bracket);
 
         for (int i = 0; i < state.count; ++i) {
@@ -60,9 +57,8 @@ int main() {
 
   // Instantiate remote_container_view, borrowing the required context.
   uintptr_t mock_remote_address = 0x7FFF0000;
-  microfmt::remote_container_view container_view(
-      mock_remote_address, space_ref, scratch, microfmt::value_ref(context),
-      custom_opts);
+  microfmt::remote_container_view container_view(mock_remote_address, space_ref, scratch, microfmt::value_ref(context),
+                                                 custom_opts);
 
   // Print the container view
   microfmt::print("Inspected Sequence: {}\n", container_view);

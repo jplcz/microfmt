@@ -55,55 +55,41 @@ struct MICROFMT_API_CLASS styled_str_view {
 };
 
 /** Pad text to at least @p width characters using the selected alignment. */
-[[nodiscard]] constexpr styled_str_view pad(microfmt::string_view s, size_t width,
-                                            text_align a = text_align::left,
+[[nodiscard]] constexpr styled_str_view pad(microfmt::string_view s, size_t width, text_align a = text_align::left,
                                             char fill = ' ') noexcept {
   return {s, width, fill, a, text_case::none, quote_style::none, 0, false};
 }
 
 /** Center text in a field of at least @p width characters. */
-[[nodiscard]] constexpr styled_str_view
-pad_center(microfmt::string_view s, size_t width, char fill = ' ') noexcept {
+[[nodiscard]] constexpr styled_str_view pad_center(microfmt::string_view s, size_t width, char fill = ' ') noexcept {
   return pad(s, width, text_align::center, fill);
 }
 
 /** Right-align text in a field of at least @p width characters. */
-[[nodiscard]] constexpr styled_str_view
-pad_right(microfmt::string_view s, size_t width, char fill = ' ') noexcept {
+[[nodiscard]] constexpr styled_str_view pad_right(microfmt::string_view s, size_t width, char fill = ' ') noexcept {
   return pad(s, width, text_align::right, fill);
 }
 
 /** Convert ASCII letters in text to uppercase while formatting. */
 [[nodiscard]] constexpr styled_str_view to_upper(microfmt::string_view s) noexcept {
-  return {s, 0,    ' ', text_align::left, text_case::upper, quote_style::none,
-          0, false};
+  return {s, 0, ' ', text_align::left, text_case::upper, quote_style::none, 0, false};
 }
 
 /** Convert ASCII letters in text to lowercase while formatting. */
 [[nodiscard]] constexpr styled_str_view to_lower(microfmt::string_view s) noexcept {
-  return {s, 0,    ' ', text_align::left, text_case::lower, quote_style::none,
-          0, false};
+  return {s, 0, ' ', text_align::left, text_case::lower, quote_style::none, 0, false};
 }
 
 /** Limit text to @p max_chars, optionally replacing its final three characters
  *  with an ellipsis when it is truncated. */
-[[nodiscard]] constexpr styled_str_view
-truncate(microfmt::string_view s, size_t max_chars,
-         bool use_ellipsis = true) noexcept {
-  return {s,
-          0,
-          ' ',
-          text_align::left,
-          text_case::none,
-          quote_style::none,
-          max_chars,
-          use_ellipsis};
+[[nodiscard]] constexpr styled_str_view truncate(microfmt::string_view s, size_t max_chars,
+                                                 bool use_ellipsis = true) noexcept {
+  return {s, 0, ' ', text_align::left, text_case::none, quote_style::none, max_chars, use_ellipsis};
 }
 
 /** Surround text with the selected pair of delimiters. */
-[[nodiscard]] constexpr styled_str_view
-quoted(microfmt::string_view s,
-       quote_style q = quote_style::double_quotes) noexcept {
+[[nodiscard]] constexpr styled_str_view quoted(microfmt::string_view s,
+                                               quote_style q = quote_style::double_quotes) noexcept {
   return {s, 0, ' ', text_align::left, text_case::none, q, 0, false};
 }
 

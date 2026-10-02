@@ -31,8 +31,7 @@ template <typename T> struct repeated_view {
 };
 
 /** Create a view that repeats @p value @p count times with no separator. */
-template <typename T>
-[[nodiscard]] constexpr auto repeat(T value, size_t count) noexcept {
+template <typename T> [[nodiscard]] constexpr auto repeat(T value, size_t count) noexcept {
   return repeated_view<std::decay_t<T>>{std::move(value), count, microfmt::string_view("")};
 }
 

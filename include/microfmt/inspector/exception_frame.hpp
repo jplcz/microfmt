@@ -85,8 +85,7 @@ public:
     /**
      * @brief Decodes a raw trap frame. See @ref exception_frame_ref::decode.
      */
-    bool (*decode)(const void *ctx, uintptr_t trap_frame_addr,
-                   trap_context &out_trap) noexcept;
+    bool (*decode)(const void *ctx, uintptr_t trap_frame_addr, trap_context &out_trap) noexcept;
     /**
      * @brief Finds the next nested trap frame. See
      * @ref exception_frame_ref::next_trap_frame.
@@ -97,8 +96,7 @@ public:
      * @brief Describes a vector/reason code. See
      * @ref exception_frame_ref::describe_reason.
      */
-    microfmt::string_view (*describe_reason)(const void *ctx,
-                                        uint64_t vector_or_reason) noexcept;
+    microfmt::string_view (*describe_reason)(const void *ctx, uint64_t vector_or_reason) noexcept;
   };
 
   /**
@@ -111,11 +109,9 @@ public:
    * @tparam ArchTag Architecture tag type.
    * @tparam Traits Specialized traits, enabled when `context_type` is `void`.
    */
-  template <
-      typename ArchTag, typename Traits = exception_frame_traits<ArchTag>,
-      std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
-  constexpr explicit exception_frame_ref(ArchTag) noexcept
-      : ctx_(nullptr), vtbl_(&s_vtbl<ArchTag>) {}
+  template <typename ArchTag, typename Traits = exception_frame_traits<ArchTag>,
+            std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
+  constexpr explicit exception_frame_ref(ArchTag) noexcept : ctx_(nullptr), vtbl_(&s_vtbl<ArchTag>) {}
 
   /**
    * @brief Constructs a handle for a stateful architecture tag.
@@ -125,20 +121,15 @@ public:
    * and @p Context converts to it.
    * @param ctx Context object decoding trap frames.
    */
-  template <typename ArchTag, typename Context,
-            typename Traits = exception_frame_traits<ArchTag>,
-            std::enable_if_t<
-                !std::is_void_v<typename Traits::context_type> &&
-                    std::is_convertible_v<
-                        const Context *, const typename Traits::context_type *>,
-                int> = 0>
-  constexpr exception_frame_ref(
-      ArchTag, const Context &ctx RELOCO_LIFETIMEBOUND
-                   RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  template <typename ArchTag, typename Context, typename Traits = exception_frame_traits<ArchTag>,
+            std::enable_if_t<!std::is_void_v<typename Traits::context_type> &&
+                                 std::is_convertible_v<const Context *, const typename Traits::context_type *>,
+                             int> = 0>
+  constexpr exception_frame_ref(ArchTag,
+                                const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<ArchTag>) {}
 
-  template <typename ArchTag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename ArchTag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   constexpr exception_frame_ref(ArchTag, Context &&) = delete;
 
   /**
@@ -147,9 +138,8 @@ public:
    * @tparam Traits Specialized traits, enabled when `context_type` is `void`.
    * @return An @ref exception_frame_ref for the tag.
    */
-  template <
-      typename ArchTag, typename Traits = exception_frame_traits<ArchTag>,
-      std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
+  template <typename ArchTag, typename Traits = exception_frame_traits<ArchTag>,
+            std::enable_if_t<std::is_void_v<typename Traits::context_type>, int> = 0>
   [[nodiscard]] static constexpr exception_frame_ref make() noexcept {
     return exception_frame_ref(ArchTag{});
   }
@@ -162,17 +152,13 @@ public:
    * @param ctx Context object decoding trap frames.
    * @return An @ref exception_frame_ref bound to @p ctx.
    */
-  template <
-      typename ArchTag, typename Context,
-      typename Traits = exception_frame_traits<ArchTag>,
-      std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
-  [[nodiscard]] static constexpr exception_frame_ref
-  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
+  template <typename ArchTag, typename Context, typename Traits = exception_frame_traits<ArchTag>,
+            std::enable_if_t<!std::is_void_v<typename Traits::context_type>, int> = 0>
+  [[nodiscard]] static constexpr exception_frame_ref make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return exception_frame_ref(ArchTag{}, ctx);
   }
 
-  template <typename ArchTag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename ArchTag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   static exception_frame_ref make(Context &&) = delete;
 
   /**
@@ -182,8 +168,7 @@ public:
    * @return `true` on success, `false` when the handle is empty or decoding
    * fails.
    */
-  [[nodiscard]] bool decode(uintptr_t trap_frame_addr,
-                            trap_context &out_trap) const noexcept {
+  [[nodiscard]] bool decode(uintptr_t trap_frame_addr, trap_context &out_trap) const noexcept {
     if (!vtbl_)
       return false;
     return vtbl_->decode(ctx_.get(), trap_frame_addr, out_trap);
@@ -195,13 +180,11 @@ public:
    * @param next_trap_frame_addr Receives the next trap frame address.
    * @return `true` when a next frame was found.
    */
-  [[nodiscard]] bool
-  next_trap_frame(uintptr_t current_trap_frame_addr,
-                  uintptr_t &next_trap_frame_addr) const noexcept {
+  [[nodiscard]] bool next_trap_frame(uintptr_t current_trap_frame_addr,
+                                     uintptr_t &next_trap_frame_addr) const noexcept {
     if (!vtbl_)
       return false;
-    return vtbl_->next_trap_frame(ctx_.get(), current_trap_frame_addr,
-                                  next_trap_frame_addr);
+    return vtbl_->next_trap_frame(ctx_.get(), current_trap_frame_addr, next_trap_frame_addr);
   }
 
   /**
@@ -209,8 +192,7 @@ public:
    * @param vector_or_reason Vector number or reason code.
    * @return Human-readable description, or an empty view when unavailable.
    */
-  [[nodiscard]] microfmt::string_view
-  describe_reason(uint64_t vector_or_reason) const noexcept {
+  [[nodiscard]] microfmt::string_view describe_reason(uint64_t vector_or_reason) const noexcept {
     if (!vtbl_ || !vtbl_->describe_reason)
       return {};
     return vtbl_->describe_reason(ctx_.get(), vector_or_reason);
@@ -220,68 +202,52 @@ public:
    * @brief Reports whether the handle is bound to a decoder.
    * @return `true` when the handle is valid.
    */
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return vtbl_ != nullptr;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return vtbl_ != nullptr; }
 
 private:
   template <typename ArchTag>
-  static bool decode_entry(const void *context, uintptr_t address,
-                           trap_context &trap) noexcept {
+  static bool decode_entry(const void *context, uintptr_t address, trap_context &trap) noexcept {
     using context_type = typename exception_frame_traits<ArchTag>::context_type;
     if constexpr (std::is_void_v<context_type>) {
       return exception_frame_traits<ArchTag>::decode(address, trap);
     } else {
-      const auto &typed_context =
-          *static_cast<const context_type *>(context);
-      return exception_frame_traits<ArchTag>::decode(
-          value_ref<const context_type>(typed_context), address, trap);
+      const auto &typed_context = *static_cast<const context_type *>(context);
+      return exception_frame_traits<ArchTag>::decode(value_ref<const context_type>(typed_context), address, trap);
     }
   }
 
   template <typename ArchTag>
-  static bool next_entry(const void *context, uintptr_t address,
-                         uintptr_t &next_address) noexcept {
+  static bool next_entry(const void *context, uintptr_t address, uintptr_t &next_address) noexcept {
     using context_type = typename exception_frame_traits<ArchTag>::context_type;
     if constexpr (std::is_void_v<context_type>) {
-      return exception_frame_traits<ArchTag>::next_trap_frame(address,
-                                                               next_address);
+      return exception_frame_traits<ArchTag>::next_trap_frame(address, next_address);
     } else {
-      const auto &typed_context =
-          *static_cast<const context_type *>(context);
-      return exception_frame_traits<ArchTag>::next_trap_frame(
-          value_ref<const context_type>(typed_context), address, next_address);
+      const auto &typed_context = *static_cast<const context_type *>(context);
+      return exception_frame_traits<ArchTag>::next_trap_frame(value_ref<const context_type>(typed_context), address,
+                                                              next_address);
     }
   }
 
   template <typename ArchTag>
-  static microfmt::string_view
-  describe_entry(const void *context, uint64_t reason) noexcept {
+  static microfmt::string_view describe_entry(const void *context, uint64_t reason) noexcept {
     using context_type = typename exception_frame_traits<ArchTag>::context_type;
     if constexpr (std::is_void_v<context_type>) {
-      return microfmt::string_view(
-          exception_frame_traits<ArchTag>::describe_reason(reason));
+      return microfmt::string_view(exception_frame_traits<ArchTag>::describe_reason(reason));
     } else {
-      const auto &typed_context =
-          *static_cast<const context_type *>(context);
+      const auto &typed_context = *static_cast<const context_type *>(context);
       return microfmt::string_view(
-          exception_frame_traits<ArchTag>::describe_reason(
-              value_ref<const context_type>(typed_context), reason));
+          exception_frame_traits<ArchTag>::describe_reason(value_ref<const context_type>(typed_context), reason));
     }
   }
 
   template <typename ArchTag>
-  static constexpr vtable s_vtbl{&decode_entry<ArchTag>,
-                                 &next_entry<ArchTag>,
-                                 &describe_entry<ArchTag>};
+  static constexpr vtable s_vtbl{&decode_entry<ArchTag>, &next_entry<ArchTag>, &describe_entry<ArchTag>};
 
   value_ptr<const void> ctx_{};
   const vtable *vtbl_{nullptr};
 };
 
-template <typename Tag,
-          bool Stateless =
-              std::is_void_v<typename exception_frame_traits<Tag>::context_type>>
+template <typename Tag, bool Stateless = std::is_void_v<typename exception_frame_traits<Tag>::context_type>>
 class exception_frame;
 
 template <typename Tag> class RELOCO_OWNER exception_frame<Tag, false> {
@@ -289,21 +255,17 @@ public:
   using traits_type = exception_frame_traits<Tag>;
   using context_type = typename traits_type::context_type;
 
-  constexpr explicit exception_frame(context_type context) noexcept
-      : context_(std::move(context)) {}
+  constexpr explicit exception_frame(context_type context) noexcept : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
-  [[nodiscard]] constexpr exception_frame_ref
-  ref() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr exception_frame_ref ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return exception_frame_ref(Tag{}, context_);
   }
 
@@ -317,9 +279,7 @@ private:
 
 template <typename Tag> class exception_frame<Tag, true> {
 public:
-  [[nodiscard]] static constexpr exception_frame_ref ref() noexcept {
-    return exception_frame_ref(Tag{});
-  }
+  [[nodiscard]] static constexpr exception_frame_ref ref() noexcept { return exception_frame_ref(Tag{}); }
 };
 
 // ============================================================================
@@ -341,10 +301,8 @@ public:
    * @param decoder Trap-frame decoder driving the iteration.
    * @param initial_trap_frame_addr Address of the first trap frame.
    */
-  constexpr exception_frame_iterator(exception_frame_ref decoder,
-                                     uintptr_t initial_trap_frame_addr) noexcept
-      : decoder_(decoder), raw_frame_addr_(initial_trap_frame_addr),
-        is_valid_(initial_trap_frame_addr != 0) {
+  constexpr exception_frame_iterator(exception_frame_ref decoder, uintptr_t initial_trap_frame_addr) noexcept
+      : decoder_(decoder), raw_frame_addr_(initial_trap_frame_addr), is_valid_(initial_trap_frame_addr != 0) {
     if (is_valid_) {
       load_current();
     }
@@ -354,16 +312,12 @@ public:
    * @brief Returns the current decoded trap context.
    * @return Reference to the current @ref trap_context.
    */
-  [[nodiscard]] constexpr const trap_context &operator*() const noexcept {
-    return current_;
-  }
+  [[nodiscard]] constexpr const trap_context &operator*() const noexcept { return current_; }
   /**
    * @brief Returns the current decoded trap context.
    * @return Pointer to the current @ref trap_context.
    */
-  [[nodiscard]] constexpr const trap_context *operator->() const noexcept {
-    return &current_;
-  }
+  [[nodiscard]] constexpr const trap_context *operator->() const noexcept { return &current_; }
 
   /**
    * @brief Reports whether the iterator is positioned on a trap frame.
@@ -374,9 +328,7 @@ public:
    * @brief Reports whether the iterator is positioned on a trap frame.
    * @return `true` while the current frame is valid.
    */
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return is_valid_;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return is_valid_; }
 
   /**
    * @brief Advances to the next (outer/nested) trap frame.
@@ -387,8 +339,7 @@ public:
       return false;
 
     uintptr_t next_raw_addr = 0;
-    if (!decoder_.next_trap_frame(raw_frame_addr_, next_raw_addr) ||
-        next_raw_addr == 0) {
+    if (!decoder_.next_trap_frame(raw_frame_addr_, next_raw_addr) || next_raw_addr == 0) {
       is_valid_ = false;
       return false;
     }
@@ -414,8 +365,7 @@ public:
    * @param visitor Visitor invoked per trap frame.
    * @param max_traps Maximum trap level to visit.
    */
-  template <typename Visitor>
-  void for_each_trap(Visitor &&visitor, uint32_t max_traps = 8) noexcept {
+  template <typename Visitor> void for_each_trap(Visitor &&visitor, uint32_t max_traps = 8) noexcept {
     while (is_valid_ && current_.trap_level < max_traps) {
       if (!visitor(current_)) {
         break;
@@ -463,38 +413,26 @@ public:
    * @param resolver Symbol resolver for PCs.
    * @param symbol_context Caller-owned symbol-resolution scratch and state.
    */
-  constexpr remote_trap_view(const trap_context &trap,
-                             exception_frame_ref decoder,
-                             symbol_resolver_ref resolver,
-                             symbol_resolution_context &symbol_context
-                                 RELOCO_LIFETIMEBOUND) noexcept
-      : trap_(trap), decoder_(decoder), resolver_(resolver),
-        symbol_context_(&symbol_context) {}
+  constexpr remote_trap_view(const trap_context &trap, exception_frame_ref decoder, symbol_resolver_ref resolver,
+                             symbol_resolution_context &symbol_context RELOCO_LIFETIMEBOUND) noexcept
+      : trap_(trap), decoder_(decoder), resolver_(resolver), symbol_context_(&symbol_context) {}
 
   /**
    * @brief Returns the wrapped trap context.
    * @return Reference to the @ref trap_context.
    */
-  [[nodiscard]] constexpr const trap_context &
-  trap() const noexcept RELOCO_LIFETIMEBOUND {
-    return trap_;
-  }
+  [[nodiscard]] constexpr const trap_context &trap() const noexcept RELOCO_LIFETIMEBOUND { return trap_; }
   /**
    * @brief Returns the trap-frame decoder handle.
    * @return Bound @ref exception_frame_ref.
    */
-  [[nodiscard]] constexpr exception_frame_ref decoder() const noexcept {
-    return decoder_;
-  }
+  [[nodiscard]] constexpr exception_frame_ref decoder() const noexcept { return decoder_; }
   /**
    * @brief Returns the symbol resolver handle.
    * @return Bound @ref symbol_resolver_ref.
    */
-  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept {
-    return resolver_;
-  }
-  [[nodiscard]] constexpr symbol_resolution_context &
-  symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr symbol_resolver_ref resolver() const noexcept { return resolver_; }
+  [[nodiscard]] constexpr symbol_resolution_context &symbol_context() const noexcept RELOCO_LIFETIMEBOUND {
     return *symbol_context_;
   }
 
@@ -540,20 +478,15 @@ template <> struct formatter<remote_trap_view> {
    */
   void format(const remote_trap_view &view, const sink &out) const noexcept {
     const auto &trap = view.trap();
-    microfmt::string_view desc =
-        view.decoder().describe_reason(trap.vector_or_reason);
+    microfmt::string_view desc = view.decoder().describe_reason(trap.vector_or_reason);
 
-    microfmt::format_to(
-        out, "[Trap Level {} @ {:#x}] Mode: {}\n",
-        trap.trap_level, trap.trap_frame_addr,
-        trap.is_user_mode ? "User" : "Kernel");
+    microfmt::format_to(out, "[Trap Level {} @ {:#x}] Mode: {}\n", trap.trap_level, trap.trap_frame_addr,
+                        trap.is_user_mode ? "User" : "Kernel");
 
     if (!desc.empty()) {
-      microfmt::format_to(out, "  Reason : {} ({:#x})\n", desc,
-                          trap.vector_or_reason);
+      microfmt::format_to(out, "  Reason : {} ({:#x})\n", desc, trap.vector_or_reason);
     } else if (trap.vector_or_reason != 0) {
-      microfmt::format_to(out, "  Vector : {:#x}\n",
-                          trap.vector_or_reason);
+      microfmt::format_to(out, "  Vector : {:#x}\n", trap.vector_or_reason);
     }
 
     microfmt::format_to(out, "  PC     : ");

@@ -13,14 +13,11 @@ int main() {
   const uint8_t calibration_data[] = {0x00, 0xF4, 0x01, 0x90};
   const uint8_t ten_bit_response[] = {0xDE, 0xAD};
 
-  const auto select_register =
-      microfmt::i2c_write(0x68, who_am_i_register);
+  const auto select_register = microfmt::i2c_write(0x68, who_am_i_register);
   const auto read_identity = microfmt::i2c_read(0x68, who_am_i_value);
-  const auto read_calibration =
-      microfmt::i2c_read(0x68, calibration_data, microfmt::i2c_status::ok);
-  const auto failed_ten_bit_read = microfmt::i2c_10bit(
-      0x2AB, microfmt::i2c_dir::read, microfmt::span(ten_bit_response),
-      microfmt::i2c_status::timeout);
+  const auto read_calibration = microfmt::i2c_read(0x68, calibration_data, microfmt::i2c_status::ok);
+  const auto failed_ten_bit_read = microfmt::i2c_10bit(0x2AB, microfmt::i2c_dir::read, microfmt::span(ten_bit_response),
+                                                       microfmt::i2c_status::timeout);
 
   microfmt::println("=== Synthesized I2C traffic ===");
   microfmt::println("{}", select_register);

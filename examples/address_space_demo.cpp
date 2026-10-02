@@ -23,8 +23,8 @@ struct simulated_guest_context {
 template <> struct microfmt::address_space_traits<simulated_guest_space_tag> {
   using context_type = simulated_guest_context;
 
-  static bool read_bytes(microfmt::value_ref<const context_type> context,
-                         uintptr_t addr, void *dest, size_t size) noexcept {
+  static bool read_bytes(microfmt::value_ref<const context_type> context, uintptr_t addr, void *dest,
+                         size_t size) noexcept {
     if (addr == 0 || !dest)
       return false;
 
@@ -35,8 +35,7 @@ template <> struct microfmt::address_space_traits<simulated_guest_space_tag> {
 
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
-    const auto *src =
-        reinterpret_cast<const void *>(context->host_base_addr + addr);
+    const auto *src = reinterpret_cast<const void *>(context->host_base_addr + addr);
     std::memcpy(dest, src, size);
 
     RELOCO_END_UNSAFE_BUFFER_USAGE;
@@ -44,9 +43,8 @@ template <> struct microfmt::address_space_traits<simulated_guest_space_tag> {
     return true;
   }
 
-  static bool read_string(microfmt::value_ref<const context_type> context,
-                          uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
-                          bool &null_term) noexcept {
+  static bool read_string(microfmt::value_ref<const context_type> context, uintptr_t addr, char *dest, size_t max_len,
+                          size_t &out_len, bool &null_term) noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     if (addr == 0 || !dest || max_len == 0)
@@ -55,8 +53,7 @@ template <> struct microfmt::address_space_traits<simulated_guest_space_tag> {
     if (addr >= context->memory_limit)
       return false;
 
-    const auto *src =
-        reinterpret_cast<const char *>(context->host_base_addr + addr);
+    const auto *src = reinterpret_cast<const char *>(context->host_base_addr + addr);
     size_t available = context->memory_limit - addr;
     size_t limit = (max_len < available) ? max_len : available;
 

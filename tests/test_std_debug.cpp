@@ -4,12 +4,12 @@
 
 #include <gtest/gtest.h>
 
-#include <microfmt/formatters/std_debug.hpp>
-#include <microfmt/microfmt.hpp>
 #include <array>
 #include <bitset>
 #include <cstddef>
 #include <functional>
+#include <microfmt/formatters/std_debug.hpp>
+#include <microfmt/microfmt.hpp>
 
 TEST(StdDebugTest, ArrayPrintsElements) {
   const std::array<int, 3> values{1, 2, 3};

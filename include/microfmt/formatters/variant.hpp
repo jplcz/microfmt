@@ -38,52 +38,36 @@ public:
    * @param suffix Text emitted after the active alternative.
    * @param show_index When `true`, include the alternative index.
    */
-  constexpr explicit variant_view(
-                                  const variant_type &var
-                                      RELOCO_LIFETIMEBOUND,
-                                  microfmt::string_view prefix = "",
-                                  microfmt::string_view suffix = "",
-                                  bool show_index = false) noexcept
+  constexpr explicit variant_view(const variant_type &var RELOCO_LIFETIMEBOUND, microfmt::string_view prefix = "",
+                                  microfmt::string_view suffix = "", bool show_index = false) noexcept
       : var_(var), prefix_(prefix), suffix_(suffix), show_index_(show_index) {}
 
-  constexpr explicit variant_view(variant_type &&,
-                                  microfmt::string_view = "",
-                                  microfmt::string_view = "",
+  constexpr explicit variant_view(variant_type &&, microfmt::string_view = "", microfmt::string_view = "",
                                   bool = false) = delete;
 
-  constexpr explicit variant_view(const variant_type &&,
-                                  microfmt::string_view = "",
-                                  microfmt::string_view = "",
+  constexpr explicit variant_view(const variant_type &&, microfmt::string_view = "", microfmt::string_view = "",
                                   bool = false) = delete;
 
   /**
    * @brief Returns the referenced variant.
    * @return The wrapped `std::variant`.
    */
-  [[nodiscard]] constexpr const variant_type &get() const noexcept {
-    return *var_;
-  }
+  [[nodiscard]] constexpr const variant_type &get() const noexcept { return *var_; }
   /**
    * @brief Returns the prefix decoration.
    * @return Text emitted before the active alternative.
    */
-  [[nodiscard]] constexpr microfmt::string_view prefix() const noexcept {
-    return prefix_;
-  }
+  [[nodiscard]] constexpr microfmt::string_view prefix() const noexcept { return prefix_; }
   /**
    * @brief Returns the suffix decoration.
    * @return Text emitted after the active alternative.
    */
-  [[nodiscard]] constexpr microfmt::string_view suffix() const noexcept {
-    return suffix_;
-  }
+  [[nodiscard]] constexpr microfmt::string_view suffix() const noexcept { return suffix_; }
   /**
    * @brief Reports whether the alternative index is displayed.
    * @return `true` when the index is included in output.
    */
-  [[nodiscard]] constexpr bool show_index() const noexcept {
-    return show_index_;
-  }
+  [[nodiscard]] constexpr bool show_index() const noexcept { return show_index_; }
 
 private:
   /// Referenced variant.
@@ -106,18 +90,13 @@ private:
  * @return A bare @ref variant_view.
  */
 template <typename... Ts>
-[[nodiscard]] constexpr auto
-as_variant(const std::variant<Ts...> &var RELOCO_LIFETIMEBOUND) noexcept {
+[[nodiscard]] constexpr auto as_variant(const std::variant<Ts...> &var RELOCO_LIFETIMEBOUND) noexcept {
   return variant_view<Ts...>(var, "", "", false);
 }
 
-template <typename... Ts>
-[[nodiscard]] constexpr auto as_variant(std::variant<Ts...> &&) noexcept =
-    delete;
+template <typename... Ts> [[nodiscard]] constexpr auto as_variant(std::variant<Ts...> &&) noexcept = delete;
 
-template <typename... Ts>
-[[nodiscard]] constexpr auto
-as_variant(const std::variant<Ts...> &&) noexcept = delete;
+template <typename... Ts> [[nodiscard]] constexpr auto as_variant(const std::variant<Ts...> &&) noexcept = delete;
 
 /**
  * @brief Wraps a variant with custom prefix/suffix decorations.
@@ -128,22 +107,18 @@ as_variant(const std::variant<Ts...> &&) noexcept = delete;
  * @return A decorated @ref variant_view.
  */
 template <typename... Ts>
-[[nodiscard]] constexpr auto
-as_variant(const std::variant<Ts...> &var RELOCO_LIFETIMEBOUND,
-           microfmt::string_view prefix,
-           microfmt::string_view suffix) noexcept {
+[[nodiscard]] constexpr auto as_variant(const std::variant<Ts...> &var RELOCO_LIFETIMEBOUND,
+                                        microfmt::string_view prefix, microfmt::string_view suffix) noexcept {
   return variant_view<Ts...>(var, prefix, suffix, false);
 }
 
 template <typename... Ts>
-[[nodiscard]] constexpr auto
-as_variant(std::variant<Ts...> &&, microfmt::string_view,
-           microfmt::string_view) noexcept = delete;
+[[nodiscard]] constexpr auto as_variant(std::variant<Ts...> &&, microfmt::string_view,
+                                        microfmt::string_view) noexcept = delete;
 
 template <typename... Ts>
-[[nodiscard]] constexpr auto
-as_variant(const std::variant<Ts...> &&, microfmt::string_view,
-           microfmt::string_view) noexcept = delete;
+[[nodiscard]] constexpr auto as_variant(const std::variant<Ts...> &&, microfmt::string_view,
+                                        microfmt::string_view) noexcept = delete;
 
 /**
  * @brief Wraps a variant for debug output (`variant(index, ...)`).
@@ -153,21 +128,16 @@ as_variant(const std::variant<Ts...> &&, microfmt::string_view,
  * @return A debug-oriented @ref variant_view.
  */
 template <typename... Ts>
-[[nodiscard]] constexpr auto
-as_debug_variant(
-                 const std::variant<Ts...> &var RELOCO_LIFETIMEBOUND,
-                 bool show_index = false) noexcept {
+[[nodiscard]] constexpr auto as_debug_variant(const std::variant<Ts...> &var RELOCO_LIFETIMEBOUND,
+                                              bool show_index = false) noexcept {
   return variant_view<Ts...>(var, "variant", "", show_index);
 }
 
 template <typename... Ts>
-[[nodiscard]] constexpr auto
-as_debug_variant(std::variant<Ts...> &&, bool = false) noexcept = delete;
+[[nodiscard]] constexpr auto as_debug_variant(std::variant<Ts...> &&, bool = false) noexcept = delete;
 
 template <typename... Ts>
-[[nodiscard]] constexpr auto
-as_debug_variant(const std::variant<Ts...> &&,
-                 bool = false) noexcept = delete;
+[[nodiscard]] constexpr auto as_debug_variant(const std::variant<Ts...> &&, bool = false) noexcept = delete;
 
 // -----------------------------------------------------------------------------
 // Formatter for variant_view targeting const microfmt::sink&
@@ -196,8 +166,7 @@ template <typename... Ts> struct formatter<variant_view<Ts...>> {
    */
   constexpr void parse(format_parse_context &ctx) noexcept {
     auto spec = ctx.spec();
-    if (!spec.empty() &&
-        (spec.front() == '?' || spec.front() == 'i' || spec.front() == '#')) {
+    if (!spec.empty() && (spec.front() == '?' || spec.front() == 'i' || spec.front() == '#')) {
       spec_mode = spec.front();
       spec.remove_prefix(1);
     }
@@ -218,8 +187,7 @@ template <typename... Ts> struct formatter<variant_view<Ts...>> {
     }
 
     bool print_parens = false;
-    if (spec_mode == '?' || (view.prefix() == "variant" && !view.show_index() &&
-                             spec_mode != 'i')) {
+    if (spec_mode == '?' || (view.prefix() == "variant" && !view.show_index() && spec_mode != 'i')) {
       out.write("variant(");
       print_parens = true;
     } else if (spec_mode == 'i' || spec_mode == '#' || view.show_index()) {
@@ -266,9 +234,7 @@ template <typename... Ts> struct formatter<std::variant<Ts...>> {
    * @brief Parses the specifier for the wrapped view formatter.
    * @param ctx Format parse context exposing the specifier text.
    */
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    view_formatter_.parse(ctx);
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { view_formatter_.parse(ctx); }
 
   /**
    * @brief Renders the variant's active alternative.
@@ -293,9 +259,7 @@ template <> struct formatter<std::monostate> {
    * @brief Writes the literal `null`.
    * @param out Destination sink.
    */
-  void format(std::monostate, const sink &out) const noexcept {
-    out.write("null");
-  }
+  void format(std::monostate, const sink &out) const noexcept { out.write("null"); }
 };
 
 } // namespace microfmt

@@ -10,8 +10,7 @@ int main() {
 
   // format_to_n safety
   char log_buf[32];
-  auto res =
-      fmt::format_to_n(log_buf, sizeof(log_buf), "ADC: raw={}, ch={}", 1023, 2);
+  auto res = fmt::format_to_n(log_buf, sizeof(log_buf), "ADC: raw={}, ch={}", 1023, 2);
   (void)res;
 
   // String view formatting

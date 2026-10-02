@@ -9,13 +9,13 @@
  * abstract sources or register contexts, classifies them, and
  * suppresses hex dumps for sensitive or executable pointer categories. */
 
+#include "../formatters/hexdump.hpp"
+#include "../microfmt.hpp"
 #include "address_space.hpp"
 #include "dwarf_abi.hpp"
 #include "memory_classifier.hpp"
 #include "register_context.hpp"
 #include "symbol_resolver.hpp"
-#include "../formatters/hexdump.hpp"
-#include "../microfmt.hpp"
 #include <cstdint>
 #include <type_traits>
 #include <utility>
@@ -31,30 +31,20 @@ class RELOCO_POINTER address_source_ref {
 public:
   constexpr address_source_ref() noexcept = default;
 
-  template <typename Tag, typename Context,
-            typename Traits = address_source_traits<Tag>,
-            std::enable_if_t<std::is_convertible_v<
-                                 const Context *,
-                                 const typename Traits::context_type *>,
-                             int> = 0>
-  constexpr address_source_ref(
-      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
-               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  template <typename Tag, typename Context, typename Traits = address_source_traits<Tag>,
+            std::enable_if_t<std::is_convertible_v<const Context *, const typename Traits::context_type *>, int> = 0>
+  constexpr address_source_ref(Tag, const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), next_fn_(&next_entry<Tag>) {}
 
-  template <typename Tag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   constexpr address_source_ref(Tag, Context &&) = delete;
 
-  template <typename Tag, typename Context,
-            typename Traits = address_source_traits<Tag>>
-  [[nodiscard]] static constexpr address_source_ref
-  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
+  template <typename Tag, typename Context, typename Traits = address_source_traits<Tag>>
+  [[nodiscard]] static constexpr address_source_ref make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return address_source_ref(Tag{}, ctx);
   }
 
-  template <typename Tag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   static address_source_ref make(Context &&) = delete;
 
   [[nodiscard]] bool next(uintptr_t &out_addr) const noexcept {
@@ -63,17 +53,13 @@ public:
     return next_fn_(ctx_.get(), out_addr);
   }
 
-  [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return next_fn_ != nullptr;
-  }
+  [[nodiscard]] constexpr explicit operator bool() const noexcept { return next_fn_ != nullptr; }
 
 private:
-  template <typename Tag>
-  static bool next_entry(const void *context, uintptr_t &out_addr) noexcept {
+  template <typename Tag> static bool next_entry(const void *context, uintptr_t &out_addr) noexcept {
     using context_type = typename address_source_traits<Tag>::context_type;
     const auto &typed_context = *static_cast<const context_type *>(context);
-    return address_source_traits<Tag>::next(
-        value_ref<const context_type>(typed_context), out_addr);
+    return address_source_traits<Tag>::next(value_ref<const context_type>(typed_context), out_addr);
   }
 
   value_ptr<const void> ctx_{};
@@ -85,21 +71,17 @@ public:
   using traits_type = address_source_traits<Tag>;
   using context_type = typename traits_type::context_type;
 
-  constexpr explicit address_source(context_type context) noexcept
-      : context_(std::move(context)) {}
+  constexpr explicit address_source(context_type context) noexcept : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
-  [[nodiscard]] constexpr address_source_ref
-  ref() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr address_source_ref ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return address_source_ref(Tag{}, context_);
   }
 
@@ -157,25 +139,19 @@ public:
    * @tparam AbiTraits Architecture-specific register and ABI traits.
    */
   template <typename AbiTraits>
-  static void scan_and_dump(address_space_ref space,
-                            memory_classifier_ref classifier,
-                            register_context_ref reg_ctx,
-                            span<const uintptr_t> raw_addresses,
-                            memory_scanner_context &context,
+  static void scan_and_dump(address_space_ref space, memory_classifier_ref classifier, register_context_ref reg_ctx,
+                            span<const uintptr_t> raw_addresses, memory_scanner_context &context,
                             const sink &out) noexcept {
     size_t index = 0;
 
     // If a register context is provided, scan the architecture's ordered
     // pointer-bearing GPR candidates.
     if (reg_ctx) {
-      for (const auto &reg_desc :
-           AbiTraits::register_traits::address_registers()) {
+      for (const auto &reg_desc : AbiTraits::register_traits::address_registers()) {
         typename AbiTraits::register_type reg_val = 0;
-        if (reg_ctx.read_raw(reg_desc.index, &reg_val, sizeof(reg_val)) &&
-            reg_val != 0) {
+        if (reg_ctx.read_raw(reg_desc.index, &reg_val, sizeof(reg_val)) && reg_val != 0) {
           microfmt::format_to(out, "[{}] -> ", reg_desc.name);
-          process_address(space, classifier, index++,
-                          static_cast<uintptr_t>(reg_val), context, out);
+          process_address(space, classifier, index++, static_cast<uintptr_t>(reg_val), context, out);
         }
       }
     }
@@ -190,11 +166,8 @@ public:
    * @brief Scans addresses dynamically pulled from a type-erased abstract
    * source.
    */
-  static void scan_and_dump(address_space_ref space,
-                            memory_classifier_ref classifier,
-                            address_source_ref source,
-                            memory_scanner_context &context,
-                            const sink &out) noexcept {
+  static void scan_and_dump(address_space_ref space, memory_classifier_ref classifier, address_source_ref source,
+                            memory_scanner_context &context, const sink &out) noexcept {
     if (!source)
       return;
 
@@ -206,45 +179,35 @@ public:
   }
 
 private:
-  static void process_address(address_space_ref space,
-                              memory_classifier_ref classifier, size_t index,
-                              uintptr_t addr, memory_scanner_context &context,
-                              const sink &out) noexcept {
+  static void process_address(address_space_ref space, memory_classifier_ref classifier, size_t index, uintptr_t addr,
+                              memory_scanner_context &context, const sink &out) noexcept {
     context.region_info = {};
-    bool classified =
-        classifier &&
-        classifier.classify_address(addr, context.region_info);
+    bool classified = classifier && classifier.classify_address(addr, context.region_info);
     const auto &info = context.region_info;
 
-    microfmt::format_to(out, "  #{:<2} addr={:#018x} | type=",
-                        index, addr);
+    microfmt::format_to(out, "  #{:<2} addr={:#018x} | type=", index, addr);
 
     if (classified) {
       print_region_type(out, info.type);
-      microfmt::format_to(out, " [{:#x} - {:#x}]",
-                          info.start_address, info.end_address);
+      microfmt::format_to(out, " [{:#x} - {:#x}]", info.start_address, info.end_address);
     } else {
       out.write("unknown/unmapped");
     }
 
-    if (classified && context.options.symbol_resolver &&
-        is_symbolic_region(info.type)) {
+    if (classified && context.options.symbol_resolver && is_symbolic_region(info.type)) {
       context.resolved_symbol = {};
-      if (context.options.symbol_resolver.resolve(
-              addr, context.symbol_scratch, context.raw_symbol,
-              context.resolved_symbol) &&
+      if (context.options.symbol_resolver.resolve(addr, context.symbol_scratch, context.raw_symbol,
+                                                  context.resolved_symbol) &&
           context.resolved_symbol.has_symbol()) {
         const auto &symbol = context.resolved_symbol;
         out.write(" | symbol=");
         if (context.options.demangle_symbols) {
-          microfmt::format_to(out, "{}",
-                              as_demangled(symbol.symbol_name));
+          microfmt::format_to(out, "{}", as_demangled(symbol.symbol_name));
         } else {
           out.write(symbol.symbol_name);
         }
         if (symbol.offset_from_symbol != 0) {
-          microfmt::format_to(out, "+{:#x}",
-                              symbol.offset_from_symbol);
+          microfmt::format_to(out, "+{:#x}", symbol.offset_from_symbol);
         }
       }
     }
@@ -274,36 +237,25 @@ private:
     if (!space || context.options.dump_bytes == 0 || !allow_deref)
       return;
 
-    size_t bytes_to_dump =
-        (context.options.dump_bytes > 80) ? 80
-                                          : context.options.dump_bytes;
+    size_t bytes_to_dump = (context.options.dump_bytes > 80) ? 80 : context.options.dump_bytes;
     if (classified && info.end_address > addr) {
-      const size_t bytes_in_region =
-          static_cast<size_t>(info.end_address - addr);
+      const size_t bytes_in_region = static_cast<size_t>(info.end_address - addr);
       if (bytes_to_dump > bytes_in_region)
         bytes_to_dump = bytes_in_region;
     }
 
-    auto reader = [](void *reader_context, uintptr_t source_address,
-                     uint8_t *buffer, size_t size) noexcept -> size_t {
+    auto reader = [](void *reader_context, uintptr_t source_address, uint8_t *buffer, size_t size) noexcept -> size_t {
       if (!reader_context)
         return 0;
-      const auto &target_space =
-          *static_cast<const address_space_ref *>(reader_context);
+      const auto &target_space = *static_cast<const address_space_ref *>(reader_context);
       return target_space.read_bytes(source_address, buffer, size) ? size : 0;
     };
     context.reader_space = space;
-    context.dump_view =
-        hexdump_checked(addr, bytes_to_dump, reader, &context.reader_space, 16,
-                        true);
-    format_hexdump(context.dump_view,
-                   {context.dump_line_buffer,
-                    sizeof(context.dump_line_buffer)},
-                   out);
+    context.dump_view = hexdump_checked(addr, bytes_to_dump, reader, &context.reader_space, 16, true);
+    format_hexdump(context.dump_view, {context.dump_line_buffer, sizeof(context.dump_line_buffer)}, out);
   }
 
-  [[nodiscard]] static constexpr bool
-  is_symbolic_region(memory_region_type type) noexcept {
+  [[nodiscard]] static constexpr bool is_symbolic_region(memory_region_type type) noexcept {
     switch (type) {
     case memory_region_type::kernel_code:
     case memory_region_type::kernel_data:
@@ -315,8 +267,7 @@ private:
     }
   }
 
-  static void print_region_type(const sink &out,
-                                memory_region_type type) noexcept {
+  static void print_region_type(const sink &out, memory_region_type type) noexcept {
     switch (type) {
     case memory_region_type::kernel_code:
       out.write("kernel_code");

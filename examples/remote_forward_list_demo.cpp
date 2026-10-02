@@ -20,8 +20,7 @@ struct ListContainer {
 };
 
 int main() {
-  auto space_ref =
-      microfmt::address_space_ref::make<microfmt::local_space_tag>();
+  auto space_ref = microfmt::address_space_ref::make<microfmt::local_space_tag>();
   std::byte scratch[1024];
 
   // Construct a mock remote linked list: [10] -> [20] -> [30] -> nullptr
@@ -32,12 +31,10 @@ int main() {
 
   uintptr_t list_addr = reinterpret_cast<uintptr_t>(&remote_list);
 
-  auto list = microfmt::make_remote_forward_list<int>(
-      list_addr, offsetof(ListContainer, head), offsetof(ListNode, next),
-      offsetof(ListNode, value));
-  auto container_view = list.view(
-      space_ref, scratch,
-      microfmt::container_options{.open_bracket = "[", .close_bracket = "]"});
+  auto list = microfmt::make_remote_forward_list<int>(list_addr, offsetof(ListContainer, head),
+                                                      offsetof(ListNode, next), offsetof(ListNode, value));
+  auto container_view =
+      list.view(space_ref, scratch, microfmt::container_options{.open_bracket = "[", .close_bracket = "]"});
 
   // Print the inspected linked list
   microfmt::print("Inspected Linked List: {}\n", container_view);

@@ -103,8 +103,7 @@ TEST(PlatformLogSinkTest, AndroidMapsLevelsAndHonorsSinkThreshold) {
   EXPECT_EQ(captured_android_log.priority, ANDROID_LOG_ERROR);
   // The originating logger's name is forwarded as the logcat tag.
   EXPECT_EQ(microfmt::string_view(captured_android_log.tag.data(), captured_android_log.tag_size), "sensor");
-  EXPECT_EQ(microfmt::string_view(captured_android_log.message.data(), captured_android_log.message_size),
-            "overheat");
+  EXPECT_EQ(microfmt::string_view(captured_android_log.message.data(), captured_android_log.message_size), "overheat");
 }
 
 TEST(PlatformLogSinkTest, AndroidFallsBackToSinkTagWhenLoggerNameIsEmpty) {

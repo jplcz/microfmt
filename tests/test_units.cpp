@@ -13,8 +13,7 @@ TEST(UnitsTest, FormatsFixedUnitAndForwardsIntegerSpec) {
   EXPECT_EQ(buffer.view(), "42 mA");
 
   buffer.reset();
-  microfmt::format_to(buffer.as_sink(), "{:04x}",
-                      microfmt::with_unit(42, "mA"));
+  microfmt::format_to(buffer.as_sink(), "{:04x}", microfmt::with_unit(42, "mA"));
   EXPECT_EQ(buffer.view(), "002a mA");
 }
 

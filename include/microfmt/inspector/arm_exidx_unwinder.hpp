@@ -66,8 +66,7 @@ template <typename AbiTraits = arm_abi_traits> struct arm_exidx_unwinder_tag {};
 /**
  * @brief Specializes @ref frame_unwinder_traits for the EXIDX unwinder.
  */
-template <typename AbiTraits>
-struct frame_unwinder_traits<arm_exidx_unwinder_tag<AbiTraits>> {
+template <typename AbiTraits> struct frame_unwinder_traits<arm_exidx_unwinder_tag<AbiTraits>> {
   /// Stateful context type.
   using context_type = arm_exidx_unwinder_context;
 
@@ -87,8 +86,7 @@ struct frame_unwinder_traits<arm_exidx_unwinder_tag<AbiTraits>> {
    * @param next_pc Receives the caller's program counter.
    * @return `true` on success.
    */
-  static bool step(value_ref<const context_type> context,
-                   register_context_ref reg_ctx, uintptr_t current_pc,
+  static bool step(value_ref<const context_type> context, register_context_ref reg_ctx, uintptr_t current_pc,
                    uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
     if (!reg_ctx)
       return false;
@@ -101,11 +99,9 @@ struct frame_unwinder_traits<arm_exidx_unwinder_tag<AbiTraits>> {
     // never explicitly restores it (see below).
     typename AbiTraits::register_type current_sp = 0;
     typename AbiTraits::register_type return_lr = 0;
-    if (!reg_ctx.read_raw(AbiTraits::sp_reg, &current_sp,
-                          AbiTraits::pointer_size))
+    if (!reg_ctx.read_raw(AbiTraits::sp_reg, &current_sp, AbiTraits::pointer_size))
       return false;
-    if (!reg_ctx.read_raw(AbiTraits::ra_reg, &return_lr,
-                          AbiTraits::pointer_size))
+    if (!reg_ctx.read_raw(AbiTraits::ra_reg, &return_lr, AbiTraits::pointer_size))
       return false;
 
     uintptr_t fault_pc = AbiTraits::normalize_pc(current_pc);
@@ -158,16 +154,13 @@ struct frame_unwinder_traits<arm_exidx_unwinder_tag<AbiTraits>> {
           if ((raw_unwind_data & 0x80000000U) != 0U) {
             RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
-            unwind_applied =
-                arm_exidx_bytecode_decoder::execute_bytecode(
-                    context->space, raw_unwind_data, virtual_sp, fault_pc,
-                    reg_ctx);
+            unwind_applied = arm_exidx_bytecode_decoder::execute_bytecode(context->space, raw_unwind_data, virtual_sp,
+                                                                          fault_pc, reg_ctx);
 
             RELOCO_END_UNSAFE_BUFFER_USAGE;
           } else {
             uintptr_t extab_addr = exidx_table_searcher::decode_prel31(word2_address, raw_unwind_data);
-            unwind_applied = extab_stream_executor::execute(
-                context->space, extab_addr, virtual_sp, reg_ctx);
+            unwind_applied = extab_stream_executor::execute(context->space, extab_addr, virtual_sp, reg_ctx);
           }
         }
       }

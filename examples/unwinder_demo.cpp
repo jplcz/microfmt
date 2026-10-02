@@ -42,15 +42,12 @@ struct page_fault_matcher_context {
   arch_register_state *registers;
 };
 
-template <>
-struct microfmt::exception_matcher_traits<page_fault_matcher_tag> {
+template <> struct microfmt::exception_matcher_traits<page_fault_matcher_tag> {
   using context_type = page_fault_matcher_context;
 
-  static bool match_trap_frame(
-      microfmt::value_ref<const context_type> context, uintptr_t, uintptr_t pc,
-      uintptr_t &out_addr) noexcept {
-    if (pc < 0xffff'8000'0010'0200ULL ||
-        pc >= 0xffff'8000'0010'0300ULL)
+  static bool match_trap_frame(microfmt::value_ref<const context_type> context, uintptr_t, uintptr_t pc,
+                               uintptr_t &out_addr) noexcept {
+    if (pc < 0xffff'8000'0010'0200ULL || pc >= 0xffff'8000'0010'0300ULL)
       return false;
     out_addr = context->trap_frame;
     context->registers->fp = context->user_fp;
@@ -100,10 +97,8 @@ struct arch_trap_context {
 template <> struct microfmt::frame_unwinder_traits<arch_x86_64_tag> {
   using context_type = arch_unwinder_context;
 
-  static bool step(microfmt::value_ref<const context_type> context,
-                   microfmt::register_context_ref reg_ctx,
-                   uintptr_t /*current_pc*/, uintptr_t &next_fp,
-                   uintptr_t &next_pc) noexcept {
+  static bool step(microfmt::value_ref<const context_type> context, microfmt::register_context_ref reg_ctx,
+                   uintptr_t /*current_pc*/, uintptr_t &next_fp, uintptr_t &next_pc) noexcept {
     uint64_t raw_fp = 0;
     if (!reg_ctx.read(microfmt::dwarf::x86_64::fp, raw_fp))
       return false;
@@ -137,8 +132,7 @@ template <> struct microfmt::frame_unwinder_traits<arch_x86_64_tag> {
 struct symbol_tag {};
 template <> struct microfmt::symbol_resolver_traits<symbol_tag> {
   using context_type = void;
-  static bool resolve(uintptr_t addr, microfmt::span<char>,
-                      microfmt::raw_resolved_symbol &out_raw) noexcept {
+  static bool resolve(uintptr_t addr, microfmt::span<char>, microfmt::raw_resolved_symbol &out_raw) noexcept {
     // Kernel symbols
     if (addr >= 0xffff'8000'0010'0000ULL && addr < 0xffff'8000'0010'0100ULL) {
       out_raw.image_name = "vmlinux";
@@ -176,8 +170,7 @@ template <> struct microfmt::exception_frame_traits<trap_x86_64_tag> {
   // ==========================================================================
   //  Decode x86-64 pt_regs memory layout into normalized trap_context
   // ==========================================================================
-  static bool decode(microfmt::value_ref<const context_type> context,
-                     uintptr_t trap_frame_addr,
+  static bool decode(microfmt::value_ref<const context_type> context, uintptr_t trap_frame_addr,
                      trap_context &out_trap) noexcept {
     if (trap_frame_addr == 0)
       return false;
@@ -215,8 +208,7 @@ template <> struct microfmt::exception_frame_traits<trap_x86_64_tag> {
       return false;
 
     // Non-fatal optional fields
-    std::ignore = context->space.read_bytes(
-        trap_frame_addr + kOrigRaxOffset, &orig_rax, sizeof(orig_rax));
+    std::ignore = context->space.read_bytes(trap_frame_addr + kOrigRaxOffset, &orig_rax, sizeof(orig_rax));
 
     // Populate the normalized target-agnostic trap snapshot
     out_trap.pc = static_cast<uintptr_t>(rip);
@@ -236,8 +228,7 @@ template <> struct microfmt::exception_frame_traits<trap_x86_64_tag> {
   // ==========================================================================
   // Optional: Chain to nested/outer trap frames if present on stack
   // ==========================================================================
-  static bool next_trap_frame(microfmt::value_ref<const context_type>,
-                              uintptr_t, uintptr_t &) noexcept {
+  static bool next_trap_frame(microfmt::value_ref<const context_type>, uintptr_t, uintptr_t &) noexcept {
     // Returning false indicates a single primary hardware frame (no nested IRQ
     // stack link)
     return false;
@@ -246,9 +237,8 @@ template <> struct microfmt::exception_frame_traits<trap_x86_64_tag> {
   // ==========================================================================
   // Human-readable descriptions for x86-64 CPU exception vectors
   // ==========================================================================
-  static microfmt::string_view
-  describe_reason(microfmt::value_ref<const context_type>,
-                  uint64_t vector_or_reason) noexcept {
+  static microfmt::string_view describe_reason(microfmt::value_ref<const context_type>,
+                                               uint64_t vector_or_reason) noexcept {
     switch (vector_or_reason) {
     case 0x00:
       return "Divide Error (#DE)";
@@ -345,10 +335,8 @@ int main() {
 
   // Matcher: Detects if PC is in 'asm_exc_page_fault', pointing to the saved
   // pt_regs
-  microfmt::exception_matcher<page_fault_matcher_tag> matcher_owner(
-      page_fault_matcher_context{reinterpret_cast<uintptr_t>(pt_regs),
-                                 reinterpret_cast<uintptr_t>(user_f0),
-                                 &register_state});
+  microfmt::exception_matcher<page_fault_matcher_tag> matcher_owner(page_fault_matcher_context{
+      reinterpret_cast<uintptr_t>(pt_regs), reinterpret_cast<uintptr_t>(user_f0), &register_state});
   auto matcher = matcher_owner.ref();
 
   // Initialize Hybrid Unwinder
@@ -357,10 +345,8 @@ int main() {
 
   register_state = {initial_fp, initial_pc};
   std::byte register_scratch[sizeof(uint64_t)]{};
-  auto register_context =
-      microfmt::make_register_context_ref<read_arch_register,
-                                          write_arch_register>(
-          register_state, space, register_scratch);
+  auto register_context = microfmt::make_register_context_ref<read_arch_register, write_arch_register>(
+      register_state, space, register_scratch);
 
   microfmt::hybrid_stack_unwinder unwinder(fp_unwinder, trap_decoder, matcher, register_context, initial_fp,
                                            initial_pc);

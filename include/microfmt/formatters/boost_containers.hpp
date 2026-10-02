@@ -17,9 +17,7 @@ namespace detail {
 template <typename Container> struct boost_sequence_formatter {
   microfmt::string_view element_spec{};
 
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    element_spec = ctx.spec();
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { element_spec = ctx.spec(); }
 
   void format(const Container &container, const sink &out) const noexcept {
     out.put('[');
@@ -36,12 +34,10 @@ template <typename Container> struct boost_sequence_formatter {
 
 template <typename T, std::size_t Capacity, typename Options>
 struct formatter<boost::container::static_vector<T, Capacity, Options>>
-    : detail::boost_sequence_formatter<
-          boost::container::static_vector<T, Capacity, Options>> {};
+    : detail::boost_sequence_formatter<boost::container::static_vector<T, Capacity, Options>> {};
 
 template <typename T, std::size_t N, typename Allocator, typename Options>
 struct formatter<boost::container::small_vector<T, N, Allocator, Options>>
-    : detail::boost_sequence_formatter<
-          boost::container::small_vector<T, N, Allocator, Options>> {};
+    : detail::boost_sequence_formatter<boost::container::small_vector<T, N, Allocator, Options>> {};
 
 } // namespace microfmt

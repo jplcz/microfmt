@@ -20,10 +20,8 @@ template <size_t N = 2> class tee_sink {
   static_assert(N > 0, "tee_sink must have at least one target sink");
 
 public:
-  template <typename... Sinks,
-            std::enable_if_t<(sizeof...(Sinks) <= N), int> = 0>
-  explicit constexpr tee_sink(Sinks... sinks) noexcept
-      : targets_{sinks...}, count_(sizeof...(Sinks)) {}
+  template <typename... Sinks, std::enable_if_t<(sizeof...(Sinks) <= N), int> = 0>
+  explicit constexpr tee_sink(Sinks... sinks) noexcept : targets_{sinks...}, count_(sizeof...(Sinks)) {}
 
   // Non-copyable
   tee_sink(const tee_sink &) = delete;
@@ -32,9 +30,7 @@ public:
   tee_sink &operator=(tee_sink &&) noexcept = default;
 
   [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
-    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
-                  static_cast<tee_sink *>(ctx)->write(sv);
-                }};
+    return sink{this, [](void *ctx, microfmt::string_view sv) noexcept { static_cast<tee_sink *>(ctx)->write(sv); }};
   }
 
   bool add_target(sink s) noexcept {
@@ -57,9 +53,7 @@ public:
     }
   }
 
-  [[nodiscard]] constexpr size_t target_count() const noexcept {
-    return count_;
-  }
+  [[nodiscard]] constexpr size_t target_count() const noexcept { return count_; }
 
 private:
   microfmt::array<sink, N> targets_{};
@@ -67,8 +61,7 @@ private:
 };
 
 // Convenience factory deduction helper
-template <typename... Sinks>
-[[nodiscard]] constexpr auto make_tee(Sinks... sinks) noexcept {
+template <typename... Sinks> [[nodiscard]] constexpr auto make_tee(Sinks... sinks) noexcept {
   return tee_sink<sizeof...(Sinks)>{sinks...};
 }
 

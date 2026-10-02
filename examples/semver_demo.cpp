@@ -11,8 +11,7 @@ int main() {
   microfmt::println("Release: {}", release);
   microfmt::println("Core:    {:c}", release);
   microfmt::println("Tagged:  {:#}", release);
-  microfmt::println("Packed:  {}",
-                    microfmt::from_packed32(0x02030004u));
+  microfmt::println("Packed:  {}", microfmt::from_packed32(0x02030004u));
 
   return 0;
 }

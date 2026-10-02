@@ -18,9 +18,7 @@ struct demo_classifier_context {
 template <> struct microfmt::memory_classifier_traits<demo_classifier_tag> {
   using context_type = demo_classifier_context;
 
-  static bool classify_address(
-      microfmt::value_ref<const context_type> context,
-      uintptr_t virtual_address,
+  static bool classify_address(microfmt::value_ref<const context_type> context, uintptr_t virtual_address,
                                microfmt::memory_region_info &info) noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 

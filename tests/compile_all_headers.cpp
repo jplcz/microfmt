@@ -101,8 +101,8 @@
 #include <microfmt/log/logger.hpp>
 #include <microfmt/log/macros.hpp>
 #include <microfmt/sinks/android_log_sink.hpp>
-#include <microfmt/sinks/tizen_dlog_sink.hpp>
 #include <microfmt/sinks/ring_buffer_sink_protocol_sink.hpp>
+#include <microfmt/sinks/tizen_dlog_sink.hpp>
 #if defined(MICROFMT_COMPILE_WITH_SYSLOG)
 #include <microfmt/sinks/syslog_sink.hpp>
 #endif

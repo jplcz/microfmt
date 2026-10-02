@@ -24,8 +24,7 @@ TEST(TupleTest, FormatsStandardTupleAndPair) {
 
 TEST(TupleTest, DelimiterStylesAndElementSpecifiers) {
   microfmt::buffer_sink<128> output;
-  const std::tuple<uint16_t, uint16_t, uint16_t> registers{
-      0x00A1, 0x000F, 0xBEEF};
+  const std::tuple<uint16_t, uint16_t, uint16_t> registers{0x00A1, 0x000F, 0xBEEF};
 
   microfmt::format_to(output.as_sink(), "{:b04X}", registers);
   EXPECT_EQ(output.view(), "[00A1, 000F, BEEF]");

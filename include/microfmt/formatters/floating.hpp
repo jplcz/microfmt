@@ -96,8 +96,7 @@ inline constexpr parsed_float_spec parse_float_spec(microfmt::string_view spec) 
  * @return Number of bytes written to @p dest, excluding the null terminator.
  */
 template <typename T>
-RELOCO_UNSAFE_BUFFER_USAGE inline size_t build_printf_float_format(char *dest,
-                                                                     const parsed_float_spec &spec) noexcept {
+RELOCO_UNSAFE_BUFFER_USAGE inline size_t build_printf_float_format(char *dest, const parsed_float_spec &spec) noexcept {
   size_t idx = 0;
   dest[idx++] = '%';
 
@@ -134,7 +133,7 @@ RELOCO_UNSAFE_BUFFER_USAGE inline size_t build_printf_float_format(char *dest,
  */
 template <typename T>
 RELOCO_UNSAFE_BUFFER_USAGE inline void format_float_via_printf(T val, const parsed_float_spec &spec,
-                                                                 const sink &out) noexcept {
+                                                               const sink &out) noexcept {
   char fmt_buf[16];
   build_printf_float_format<T>(fmt_buf, spec);
 

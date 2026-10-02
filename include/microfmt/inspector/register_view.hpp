@@ -22,16 +22,11 @@ namespace microfmt {
  * architecture ABI.
  * @tparam AbiTraits Architecture-specific ABI traits.
  */
-template <typename AbiTraits>
-class RELOCO_POINTER register_context_view {
+template <typename AbiTraits> class RELOCO_POINTER register_context_view {
 public:
-  constexpr explicit register_context_view(
-      register_context_ref reg_ctx) noexcept
-      : reg_ctx_(reg_ctx) {}
+  constexpr explicit register_context_view(register_context_ref reg_ctx) noexcept : reg_ctx_(reg_ctx) {}
 
-  [[nodiscard]] constexpr register_context_ref reg_context() const noexcept {
-    return reg_ctx_;
-  }
+  [[nodiscard]] constexpr register_context_ref reg_context() const noexcept { return reg_ctx_; }
 
 private:
   register_context_ref reg_ctx_;
@@ -39,8 +34,7 @@ private:
 
 namespace detail {
 
-inline void write_register_separator(const sink &out, size_t printed,
-                                     size_t columns) noexcept {
+inline void write_register_separator(const sink &out, size_t printed, size_t columns) noexcept {
   if (printed == 0)
     return;
   out.write((printed % columns) == 0 ? "\n" : "  ");
@@ -54,8 +48,7 @@ inline void write_register_separator(const sink &out, size_t printed,
 template <> struct formatter<register_context_view<x86_64_abi_traits>> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const register_context_view<x86_64_abi_traits> &view,
-              const sink &out) const noexcept {
+  void format(const register_context_view<x86_64_abi_traits> &view, const sink &out) const noexcept {
     register_context_ref reg_ctx = view.reg_context();
     if (!reg_ctx) {
       out.write("<null register context>");
@@ -87,8 +80,7 @@ template <> struct formatter<register_context_view<x86_64_abi_traits>> {
 template <> struct formatter<register_context_view<x86_abi_traits>> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const register_context_view<x86_abi_traits> &view,
-              const sink &out) const noexcept {
+  void format(const register_context_view<x86_abi_traits> &view, const sink &out) const noexcept {
     register_context_ref reg_ctx = view.reg_context();
     if (!reg_ctx) {
       out.write("<null register context>");
@@ -120,8 +112,7 @@ template <> struct formatter<register_context_view<x86_abi_traits>> {
 template <> struct formatter<register_context_view<aarch64_abi_traits>> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const register_context_view<aarch64_abi_traits> &view,
-              const sink &out) const noexcept {
+  void format(const register_context_view<aarch64_abi_traits> &view, const sink &out) const noexcept {
     register_context_ref reg_ctx = view.reg_context();
     if (!reg_ctx) {
       out.write("<null register context>");
@@ -139,13 +130,10 @@ template <> struct formatter<register_context_view<aarch64_abi_traits>> {
         detail::write_register_separator(out, printed, 2);
 
         uint64_t display_val = val;
-        if (reg.index == dwarf::aarch64::lr ||
-            reg.index == dwarf::aarch64::pc) {
-          display_val = static_cast<uint64_t>(
-              aarch64_abi_traits::normalize_pc(static_cast<uintptr_t>(val)));
+        if (reg.index == dwarf::aarch64::lr || reg.index == dwarf::aarch64::pc) {
+          display_val = static_cast<uint64_t>(aarch64_abi_traits::normalize_pc(static_cast<uintptr_t>(val)));
         }
-        microfmt::format_to(out, "{}={:#018x}", reg.name,
-                            display_val);
+        microfmt::format_to(out, "{}={:#018x}", reg.name, display_val);
         ++printed;
       }
     };
@@ -161,8 +149,7 @@ template <> struct formatter<register_context_view<aarch64_abi_traits>> {
 template <> struct formatter<register_context_view<arm_abi_traits>> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const register_context_view<arm_abi_traits> &view,
-              const sink &out) const noexcept {
+  void format(const register_context_view<arm_abi_traits> &view, const sink &out) const noexcept {
     register_context_ref reg_ctx = view.reg_context();
     if (!reg_ctx) {
       out.write("<null register context>");
@@ -194,8 +181,7 @@ template <> struct formatter<register_context_view<arm_abi_traits>> {
 template <> struct formatter<register_context_view<riscv32_abi_traits>> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const register_context_view<riscv32_abi_traits> &view,
-              const sink &out) const noexcept {
+  void format(const register_context_view<riscv32_abi_traits> &view, const sink &out) const noexcept {
     register_context_ref reg_ctx = view.reg_context();
     if (!reg_ctx) {
       out.write("<null register context>");
@@ -227,8 +213,7 @@ template <> struct formatter<register_context_view<riscv32_abi_traits>> {
 template <> struct formatter<register_context_view<riscv64_abi_traits>> {
   constexpr void parse(format_parse_context &) noexcept {}
 
-  void format(const register_context_view<riscv64_abi_traits> &view,
-              const sink &out) const noexcept {
+  void format(const register_context_view<riscv64_abi_traits> &view, const sink &out) const noexcept {
     register_context_ref reg_ctx = view.reg_context();
     if (!reg_ctx) {
       out.write("<null register context>");

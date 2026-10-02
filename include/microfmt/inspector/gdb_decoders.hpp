@@ -7,8 +7,8 @@
  * @brief GDB RSP client-request and server-response decoders. */
 
 #include "../microfmt.hpp"
-#include "../scratch_allocator.hpp"
 #include "../reloco.hpp"
+#include "../scratch_allocator.hpp"
 #include "gdb_encoders.hpp"
 #include "gdb_packet_recognizer.hpp"
 

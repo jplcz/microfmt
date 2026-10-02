@@ -23,7 +23,7 @@ struct MICROFMT_API_CLASS semver {
   uint16_t patch{0};
   microfmt::string_view prerelease{}; // e.g. "rc.1", "alpha"
   microfmt::string_view build{};      // e.g. "20260913", "armv7"
-  bool show_v_prefix{false};     // e.g. "v1.2.3"
+  bool show_v_prefix{false};          // e.g. "v1.2.3"
 };
 
 // ============================================================================
@@ -31,18 +31,15 @@ struct MICROFMT_API_CLASS semver {
 // ============================================================================
 
 // Explicit components
-[[nodiscard]] constexpr semver version(uint16_t major, uint16_t minor,
-                                       uint16_t patch,
-                                       microfmt::string_view prerelease = "",
-                                       microfmt::string_view build = "",
+[[nodiscard]] constexpr semver version(uint16_t major, uint16_t minor, uint16_t patch,
+                                       microfmt::string_view prerelease = "", microfmt::string_view build = "",
                                        bool show_v = false) noexcept {
   return semver{major, minor, patch, prerelease, build, show_v};
 }
 
 // Packed 32-bit integer versions (e.g. 0x010203 -> 1.2.3, 8-bit or
 // 10/10/12-bit) Standard 8-8-16 packing: (Major << 24) | (Minor << 16) | Patch
-[[nodiscard]] constexpr semver from_packed32(uint32_t packed,
-                                             bool show_v = false) noexcept {
+[[nodiscard]] constexpr semver from_packed32(uint32_t packed, bool show_v = false) noexcept {
   return semver{static_cast<uint16_t>((packed >> 24) & 0xFF),
                 static_cast<uint16_t>((packed >> 16) & 0xFF),
                 static_cast<uint16_t>(packed & 0xFFFF),
@@ -52,8 +49,7 @@ struct MICROFMT_API_CLASS semver {
 }
 
 // Compact 8-8-8 packing: (Major << 16) | (Minor << 8) | Patch
-[[nodiscard]] constexpr semver from_packed24(uint32_t packed,
-                                             bool show_v = false) noexcept {
+[[nodiscard]] constexpr semver from_packed24(uint32_t packed, bool show_v = false) noexcept {
   return semver{static_cast<uint16_t>((packed >> 16) & 0xFF),
                 static_cast<uint16_t>((packed >> 8) & 0xFF),
                 static_cast<uint16_t>(packed & 0xFF),

@@ -131,30 +131,21 @@ public:
    * `find_by_pc`.
    * @param ctx Context object performing the enumeration.
    */
-  template <typename Tag, typename Context,
-            typename Traits = elf_image_enumerator_traits<Tag>,
-            std::enable_if_t<std::is_convertible_v<
-                                 const Context *,
-                                 const typename Traits::context_type *>,
-                             int> = 0>
-  constexpr elf_image_enumerator_ref(
-      Tag, const Context &ctx RELOCO_LIFETIMEBOUND
-               RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  template <typename Tag, typename Context, typename Traits = elf_image_enumerator_traits<Tag>,
+            std::enable_if_t<std::is_convertible_v<const Context *, const typename Traits::context_type *>, int> = 0>
+  constexpr elf_image_enumerator_ref(Tag,
+                                     const Context &ctx RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : ctx_(&ctx), vtbl_(&s_vtbl<Tag>) {}
 
-  template <typename Tag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   constexpr elf_image_enumerator_ref(Tag, Context &&) = delete;
 
-  template <typename Tag, typename Context,
-            typename Traits = elf_image_enumerator_traits<Tag>>
-  [[nodiscard]] static constexpr elf_image_enumerator_ref
-  make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
+  template <typename Tag, typename Context, typename Traits = elf_image_enumerator_traits<Tag>>
+  [[nodiscard]] static constexpr elf_image_enumerator_ref make(const Context &ctx RELOCO_LIFETIMEBOUND) noexcept {
     return elf_image_enumerator_ref(Tag{}, ctx);
   }
 
-  template <typename Tag, typename Context,
-            std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
+  template <typename Tag, typename Context, std::enable_if_t<!std::is_lvalue_reference_v<Context>, int> = 0>
   static elf_image_enumerator_ref make(Context &&) = delete;
 
   /**
@@ -190,22 +181,15 @@ public:
 private:
   template <typename Tag>
   static constexpr vtable s_vtbl{
-      [](const void *context, span<elf_image_info> buffer,
-         size_t &count) noexcept {
-        using context_type =
-            typename elf_image_enumerator_traits<Tag>::context_type;
-        const auto &typed_context =
-            *static_cast<const context_type *>(context);
-        return elf_image_enumerator_traits<Tag>::enumerate(
-            value_ref<const context_type>(typed_context), buffer, count);
+      [](const void *context, span<elf_image_info> buffer, size_t &count) noexcept {
+        using context_type = typename elf_image_enumerator_traits<Tag>::context_type;
+        const auto &typed_context = *static_cast<const context_type *>(context);
+        return elf_image_enumerator_traits<Tag>::enumerate(value_ref<const context_type>(typed_context), buffer, count);
       },
       [](const void *context, uintptr_t pc, elf_image_info &info) noexcept {
-        using context_type =
-            typename elf_image_enumerator_traits<Tag>::context_type;
-        const auto &typed_context =
-            *static_cast<const context_type *>(context);
-        return elf_image_enumerator_traits<Tag>::find_by_pc(
-            value_ref<const context_type>(typed_context), pc, info);
+        using context_type = typename elf_image_enumerator_traits<Tag>::context_type;
+        const auto &typed_context = *static_cast<const context_type *>(context);
+        return elf_image_enumerator_traits<Tag>::find_by_pc(value_ref<const context_type>(typed_context), pc, info);
       }};
 
   value_ptr<const void> ctx_{};
@@ -220,28 +204,21 @@ public:
   using traits_type = elf_image_enumerator_traits<Tag>;
   using context_type = typename traits_type::context_type;
 
-  constexpr explicit elf_image_enumerator(context_type context) noexcept
-      : context_(std::move(context)) {}
+  constexpr explicit elf_image_enumerator(context_type context) noexcept : context_(std::move(context)) {}
 
-  [[nodiscard]] constexpr value_ref<context_type>
-  context() & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<context_type> context() & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<context_type>(context_);
   }
 
-  [[nodiscard]] constexpr value_ref<const context_type>
-  context() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr value_ref<const context_type> context() const & noexcept RELOCO_LIFETIMEBOUND {
     return value_ref<const context_type>(context_);
   }
 
-  [[nodiscard]] constexpr elf_image_enumerator_ref
-  ref() const & noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr elf_image_enumerator_ref ref() const & noexcept RELOCO_LIFETIMEBOUND {
     return elf_image_enumerator_ref(Tag{}, context_);
   }
 
-  [[nodiscard]] constexpr operator elf_image_enumerator_ref()
-      const & noexcept RELOCO_LIFETIMEBOUND {
-    return ref();
-  }
+  [[nodiscard]] constexpr operator elf_image_enumerator_ref() const & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
 
   value_ref<context_type> context() && = delete;
   value_ref<const context_type> context() const && = delete;
@@ -261,8 +238,7 @@ private:
  *
  * @tparam MaxImages Maximum number of registered images.
  */
-template <size_t MaxImages>
-class RELOCO_OWNER multi_elf_registry_context {
+template <size_t MaxImages> class RELOCO_OWNER multi_elf_registry_context {
 public:
   /**
    * @brief Constructs an empty registry.
@@ -343,18 +319,14 @@ private:
  * @brief Tag identifying @ref multi_elf_registry_context in type-erased
  * handles.
  */
-template <size_t MaxImages>
-struct elf_image_enumerator_traits<multi_elf_registry_tag<MaxImages>> {
+template <size_t MaxImages> struct elf_image_enumerator_traits<multi_elf_registry_tag<MaxImages>> {
   using context_type = multi_elf_registry_context<MaxImages>;
 
-  static bool enumerate(value_ref<const context_type> context,
-                        span<elf_image_info> buffer,
-                        size_t &count) noexcept {
+  static bool enumerate(value_ref<const context_type> context, span<elf_image_info> buffer, size_t &count) noexcept {
     return context->enumerate(buffer, count);
   }
 
-  static bool find_by_pc(value_ref<const context_type> context, uintptr_t pc,
-                         elf_image_info &info) noexcept {
+  static bool find_by_pc(value_ref<const context_type> context, uintptr_t pc, elf_image_info &info) noexcept {
     return context->find_by_pc(pc, info);
   }
 };

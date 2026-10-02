@@ -60,8 +60,7 @@ TEST(SinkProviderTest, AsSinkBridgesToFormatTo) {
 
 TEST(SinkProviderTest, OwningWrapperExposesRefAndAsSink) {
   char buffer[32]{};
-  sink_provider<span_sink_provider_tag> provider(
-      span_sink_provider_context{span<char>(buffer, sizeof(buffer)), 0});
+  sink_provider<span_sink_provider_tag> provider(span_sink_provider_context{span<char>(buffer, sizeof(buffer)), 0});
 
   provider.ref().write("via ref");
   format_to(provider.as_sink(), " and {}", "as_sink");

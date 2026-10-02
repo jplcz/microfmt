@@ -39,22 +39,19 @@ struct dma_channel_hw {
 namespace descriptors {
 
 // 4-column layout for CPU core dumps
-inline constexpr auto CPU_FAULT_GRID = microfmt::reg_grid_desc<uint32_t, 8>{
-    "CPU Exception Stack Frame",
-    4, // 4 registers per row
-    {"R0", "R1", "R2", "R3", "R12", "LR", "PC", "PSR"}};
+inline constexpr auto CPU_FAULT_GRID =
+    microfmt::reg_grid_desc<uint32_t, 8>{"CPU Exception Stack Frame",
+                                         4, // 4 registers per row
+                                         {"R0", "R1", "R2", "R3", "R12", "LR", "PC", "PSR"}};
 
 // 2-column layout for peripheral DMA blocks
-inline constexpr auto DMA_CHANNEL_GRID =
-    microfmt::reg_grid_desc<uint32_t, 4>{"DMA1 Channel 3 State",
-                                         2, // 2 registers per row
-                                         {"CCR", "CNDTR", "CPAR", "CMAR"}};
+inline constexpr auto DMA_CHANNEL_GRID = microfmt::reg_grid_desc<uint32_t, 4>{"DMA1 Channel 3 State",
+                                                                              2, // 2 registers per row
+                                                                              {"CCR", "CNDTR", "CPAR", "CMAR"}};
 
 // 8-column layout for raw hardware word arrays
 inline constexpr auto WORD_BLOCK_GRID = microfmt::reg_grid_desc<uint16_t, 8>{
-    "ADC Conversion FIFO Dump",
-    4,
-    {"CH0", "CH1", "CH2", "CH3", "CH4", "CH5", "CH6", "CH7"}};
+    "ADC Conversion FIFO Dump", 4, {"CH0", "CH1", "CH2", "CH3", "CH4", "CH5", "CH6", "CH7"}};
 
 } // namespace descriptors
 
@@ -78,9 +75,7 @@ int main() {
   };
 
   microfmt::println(term, "[SYSTEM] Panic dump requested:");
-  microfmt::println(
-      term, "{}",
-      microfmt::make_reg_grid(crash_ctx, descriptors::CPU_FAULT_GRID));
+  microfmt::println(term, "{}", microfmt::make_reg_grid(crash_ctx, descriptors::CPU_FAULT_GRID));
 
   // Scenario B: Hardware Peripheral Inspection (DMA Channel)
   const dma_channel_hw dma1_ch3{
@@ -91,18 +86,13 @@ int main() {
   };
 
   microfmt::println(term, "[DRV_DMA] Inspecting active channel:");
-  microfmt::println(
-      term, "{}",
-      microfmt::make_reg_grid(dma1_ch3, descriptors::DMA_CHANNEL_GRID));
+  microfmt::println(term, "{}", microfmt::make_reg_grid(dma1_ch3, descriptors::DMA_CHANNEL_GRID));
 
   // Scenario C: Dumping fixed-size ADC array buffer
-  const std::array<uint16_t, 8> adc_samples = {0x03FF, 0x0180, 0x0000, 0x07FE,
-                                               0x0400, 0x01F4, 0x0A20, 0x0012};
+  const std::array<uint16_t, 8> adc_samples = {0x03FF, 0x0180, 0x0000, 0x07FE, 0x0400, 0x01F4, 0x0A20, 0x0012};
 
   microfmt::println(term, "[DRV_ADC] Inspecting sample buffer:");
-  microfmt::println(
-      term, "{}",
-      microfmt::make_reg_grid(adc_samples, descriptors::WORD_BLOCK_GRID));
+  microfmt::println(term, "{}", microfmt::make_reg_grid(adc_samples, descriptors::WORD_BLOCK_GRID));
 
   return 0;
 }

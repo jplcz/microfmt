@@ -11,16 +11,12 @@
 // Synthesize Test Register Types
 // ============================================================================
 
-MICROFMT_DEFINE_REGISTER_TYPE(
-    TestUartIsr, uint32_t, MICROFMT_BIT_FLAG(0, "PE"),
-    MICROFMT_BIT_FLAG(1, "FE"), MICROFMT_BIT_FLAG(3, "ORE"),
-    MICROFMT_BIT_FLAG(5, "RXNE"), MICROFMT_BIT_FLAG(7, "TXE"),
-    MICROFMT_BIT_VALUE_DEC(0x3u << 10, 10, "DMA_BURST"),
-    MICROFMT_BIT_VALUE_HEX(0xFu << 16, 16, "FIFO_CNT"))
+MICROFMT_DEFINE_REGISTER_TYPE(TestUartIsr, uint32_t, MICROFMT_BIT_FLAG(0, "PE"), MICROFMT_BIT_FLAG(1, "FE"),
+                              MICROFMT_BIT_FLAG(3, "ORE"), MICROFMT_BIT_FLAG(5, "RXNE"), MICROFMT_BIT_FLAG(7, "TXE"),
+                              MICROFMT_BIT_VALUE_DEC(0x3u << 10, 10, "DMA_BURST"),
+                              MICROFMT_BIT_VALUE_HEX(0xFu << 16, 16, "FIFO_CNT"))
 
-MICROFMT_DEFINE_REGISTER_TYPE(TestSpiStatus, uint8_t,
-                              MICROFMT_BIT_FLAG(0, "RXNE"),
-                              MICROFMT_BIT_FLAG(1, "TXE"),
+MICROFMT_DEFINE_REGISTER_TYPE(TestSpiStatus, uint8_t, MICROFMT_BIT_FLAG(0, "RXNE"), MICROFMT_BIT_FLAG(1, "TXE"),
                               MICROFMT_BIT_FLAG(7, "BSY"))
 
 // ============================================================================
@@ -31,60 +27,49 @@ TEST(BitfieldTest, EmptyFieldsList) {
   microfmt::buffer_sink<64> buf;
   const uint32_t val = 0x12345678;
 
-  microfmt::format_to(
-      buf.as_sink(), "{}",
-      microfmt::bits(val, microfmt::span<const microfmt::bit_field>{}));
+  microfmt::format_to(buf.as_sink(), "{}", microfmt::bits(val, microfmt::span<const microfmt::bit_field>{}));
   EXPECT_EQ(buf.view(), "0x12345678 [NONE]");
 }
 
 TEST(BitfieldTest, FlagsOnlyNoBitsSet) {
   microfmt::buffer_sink<64> buf;
-  static constexpr microfmt::bit_field fields[] = {
-      MICROFMT_BIT_FLAG(0, "FLAG0"), MICROFMT_BIT_FLAG(1, "FLAG1")};
+  static constexpr microfmt::bit_field fields[] = {MICROFMT_BIT_FLAG(0, "FLAG0"), MICROFMT_BIT_FLAG(1, "FLAG1")};
 
-  microfmt::format_to(buf.as_sink(), "{}",
-                      microfmt::bits(0, microfmt::span(fields)));
+  microfmt::format_to(buf.as_sink(), "{}", microfmt::bits(0, microfmt::span(fields)));
   EXPECT_EQ(buf.view(), "0x00000000 [NONE]");
 }
 
 TEST(BitfieldTest, SingleAndMultipleFlags) {
   microfmt::buffer_sink<128> buf;
-  static constexpr microfmt::bit_field fields[] = {
-      MICROFMT_BIT_FLAG(0, "READY"), MICROFMT_BIT_FLAG(2, "INT_EN"),
-      MICROFMT_BIT_FLAG(5, "BUSY")};
+  static constexpr microfmt::bit_field fields[] = {MICROFMT_BIT_FLAG(0, "READY"), MICROFMT_BIT_FLAG(2, "INT_EN"),
+                                                   MICROFMT_BIT_FLAG(5, "BUSY")};
 
   // Single flag set
   buf.reset();
-  microfmt::format_to(buf.as_sink(), "{}",
-                      microfmt::bits(1u << 2, microfmt::span(fields)));
+  microfmt::format_to(buf.as_sink(), "{}", microfmt::bits(1u << 2, microfmt::span(fields)));
   EXPECT_EQ(buf.view(), "0x00000004 [INT_EN]");
 
   // Multiple flags set
   buf.reset();
-  microfmt::format_to(
-      buf.as_sink(), "{}",
-      microfmt::bits((1u << 0) | (1u << 5), microfmt::span(fields)));
+  microfmt::format_to(buf.as_sink(), "{}", microfmt::bits((1u << 0) | (1u << 5), microfmt::span(fields)));
   EXPECT_EQ(buf.view(), "0x00000021 [READY | BUSY]");
 }
 
 TEST(BitfieldTest, MultiBitValueFieldsDecimalAndHex) {
   microfmt::buffer_sink<128> buf;
-  static constexpr microfmt::bit_field fields[] = {
-      MICROFMT_BIT_VALUE_DEC(0x07u << 0, 0, "MODE"),
-      MICROFMT_BIT_VALUE_HEX(0xFFu << 8, 8, "CRC")};
+  static constexpr microfmt::bit_field fields[] = {MICROFMT_BIT_VALUE_DEC(0x07u << 0, 0, "MODE"),
+                                                   MICROFMT_BIT_VALUE_HEX(0xFFu << 8, 8, "CRC")};
 
   // MODE = 5, CRC = 0xAB (171)
   const uint32_t val = (5u << 0) | (0xABu << 8);
 
-  microfmt::format_to(buf.as_sink(), "{}",
-                      microfmt::bits(val, microfmt::span(fields)));
+  microfmt::format_to(buf.as_sink(), "{}", microfmt::bits(val, microfmt::span(fields)));
   EXPECT_EQ(buf.view(), "0x0000ab05 [MODE=5 | CRC=0xab]");
 }
 
 TEST(BitfieldTest, CustomFormattingOptions) {
   microfmt::buffer_sink<128> buf;
-  static constexpr microfmt::bit_field fields[] = {MICROFMT_BIT_FLAG(0, "A"),
-                                                   MICROFMT_BIT_FLAG(1, "B"),
+  static constexpr microfmt::bit_field fields[] = {MICROFMT_BIT_FLAG(0, "A"), MICROFMT_BIT_FLAG(1, "B"),
                                                    MICROFMT_BIT_FLAG(2, "C")};
 
   const uint32_t val = (1u << 0) | (1u << 2);
@@ -99,13 +84,11 @@ TEST(BitfieldTest, CustomFormattingOptions) {
 
 TEST(BitfieldTest, IgnoreUnmatchedBits) {
   microfmt::buffer_sink<128> buf;
-  static constexpr microfmt::bit_field fields[] = {
-      MICROFMT_BIT_FLAG(1, "FLAG1")};
+  static constexpr microfmt::bit_field fields[] = {MICROFMT_BIT_FLAG(1, "FLAG1")};
 
   // Bit 0 and Bit 31 are set, but only Bit 1 is tracked
   const uint32_t val = (1u << 0) | (1u << 31);
-  microfmt::format_to(buf.as_sink(), "{}",
-                      microfmt::bits(val, microfmt::span(fields)));
+  microfmt::format_to(buf.as_sink(), "{}", microfmt::bits(val, microfmt::span(fields)));
   EXPECT_EQ(buf.view(), "0x80000001 [NONE]");
 }
 
@@ -143,8 +126,7 @@ TEST(BitfieldTest, SynthesizedRegister8BitType) {
 }
 
 TEST(BitfieldTest, FormatStringEmbedding) {
-  auto res = microfmt::format<128>("ISR: {}, SPI: {}", TestUartIsr{(1u << 5)},
-                                   TestSpiStatus{(1u << 0)});
+  auto res = microfmt::format<128>("ISR: {}, SPI: {}", TestUartIsr{(1u << 5)}, TestSpiStatus{(1u << 0)});
 
   EXPECT_EQ(res.view(), "ISR: 0x00000020 [RXNE], SPI: 0x00000001 [RXNE]");
 }

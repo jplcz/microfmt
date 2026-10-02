@@ -56,11 +56,9 @@ template <std::size_t TagCapacity = 64> class tizen_dlog_sink : public detail::t
   using tag_base = detail::tagged_log_sink_base<TagCapacity>;
 
 public:
-  using write_fn_t = void (*)(int priority, microfmt::string_view tag,
-                              microfmt::string_view message) noexcept;
+  using write_fn_t = void (*)(int priority, microfmt::string_view tag, microfmt::string_view message) noexcept;
 
-  explicit tizen_dlog_sink(microfmt::string_view tag = "microfmt",
-                           write_fn_t write_fn = write_to_dlog) noexcept
+  explicit tizen_dlog_sink(microfmt::string_view tag = "microfmt", write_fn_t write_fn = write_to_dlog) noexcept
       : tag_base(tag), write_fn_(write_fn) {}
 
   [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
@@ -78,10 +76,9 @@ public:
   }
 
 private:
-  static void write_to_dlog(int priority, microfmt::string_view tag,
-                            microfmt::string_view message) noexcept {
-    ::dlog_print(static_cast<::log_priority>(priority), tag.data(), "%.*s",
-                 static_cast<int>(message.size()), message.data());
+  static void write_to_dlog(int priority, microfmt::string_view tag, microfmt::string_view message) noexcept {
+    ::dlog_print(static_cast<::log_priority>(priority), tag.data(), "%.*s", static_cast<int>(message.size()),
+                 message.data());
   }
 
   static int priority_for(level lvl) noexcept {
@@ -113,4 +110,3 @@ template <std::size_t TagCapacity> struct log_sink_traits<tizen_dlog_sink_tag<Ta
 };
 
 } // namespace microfmt::log
-

@@ -9,8 +9,7 @@
 int main() {
   // Standard stdout & stderr formatting
   microfmt::print("System init: {:s}\n", "starting");
-  microfmt::println(stderr, "Log [WARN]: rail voltage low ({} V)",
-                    microfmt::milli(3120));
+  microfmt::println(stderr, "Log [WARN]: rail voltage low ({} V)", microfmt::milli(3120));
 
   // Composing sinks
   auto out = microfmt::stdout_sink();

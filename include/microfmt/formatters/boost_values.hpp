@@ -16,8 +16,7 @@
 
 namespace microfmt {
 
-template <typename Block, typename Allocator>
-struct formatter<boost::dynamic_bitset<Block, Allocator>> {
+template <typename Block, typename Allocator> struct formatter<boost::dynamic_bitset<Block, Allocator>> {
   unsigned base{2};
   bool uppercase{false};
   bool prefix{false};
@@ -35,8 +34,7 @@ struct formatter<boost::dynamic_bitset<Block, Allocator>> {
     }
   }
 
-  void format(const boost::dynamic_bitset<Block, Allocator> &bits,
-              const sink &out) const noexcept {
+  void format(const boost::dynamic_bitset<Block, Allocator> &bits, const sink &out) const noexcept {
     if (prefix) {
       out.write(base == 16 ? (uppercase ? "0X" : "0x") : "0b");
     }
@@ -52,8 +50,7 @@ struct formatter<boost::dynamic_bitset<Block, Allocator>> {
       return;
     }
 
-    const auto &digits =
-        uppercase ? detail::hex_digits_upper : detail::hex_digits_lower;
+    const auto &digits = uppercase ? detail::hex_digits_upper : detail::hex_digits_lower;
     const std::size_t nibble_count = (bits.size() + 3) / 4;
     for (std::size_t nibble = nibble_count; nibble != 0; --nibble) {
       unsigned value = 0;
@@ -71,12 +68,9 @@ struct formatter<boost::dynamic_bitset<Block, Allocator>> {
 template <typename IntType> struct formatter<boost::rational<IntType>> {
   microfmt::string_view forwarded_spec{};
 
-  constexpr void parse(format_parse_context &ctx) noexcept {
-    forwarded_spec = ctx.spec();
-  }
+  constexpr void parse(format_parse_context &ctx) noexcept { forwarded_spec = ctx.spec(); }
 
-  void format(const boost::rational<IntType> &value,
-              const sink &out) const noexcept {
+  void format(const boost::rational<IntType> &value, const sink &out) const noexcept {
     formatter<IntType> integer_formatter;
     format_parse_context integer_context(forwarded_spec);
     integer_formatter.parse(integer_context);

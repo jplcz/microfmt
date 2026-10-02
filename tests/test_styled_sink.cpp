@@ -9,8 +9,7 @@
 
 TEST(StyledSinkTest, TransformsAsciiAndPreservesWhitespace) {
   microfmt::buffer_sink<64> output;
-  microfmt::transform_sink transformed(
-      output.as_sink(), microfmt::char_transform::to_upper);
+  microfmt::transform_sink transformed(output.as_sink(), microfmt::char_transform::to_upper);
 
   microfmt::format_to(transformed.as_sink(), "state={}\n", "ready");
   EXPECT_EQ(output.view(), "STATE=READY\n");
@@ -22,10 +21,8 @@ TEST(StyledSinkTest, TransformsAsciiAndPreservesWhitespace) {
 
 TEST(StyledSinkTest, SanitizesAsciiControlCharacters) {
   microfmt::buffer_sink<64> output;
-  microfmt::transform_sink sanitized(
-      output.as_sink(), microfmt::char_transform::sanitize_ascii);
-  const char input[] = {'A', '\x01', 'B', '\n', 'C', '\t',
-                        'D', '\r',   'E', '\x7f', 'F'};
+  microfmt::transform_sink sanitized(output.as_sink(), microfmt::char_transform::sanitize_ascii);
+  const char input[] = {'A', '\x01', 'B', '\n', 'C', '\t', 'D', '\r', 'E', '\x7f', 'F'};
 
   sanitized.write(microfmt::string_view(input, sizeof(input)));
 
@@ -42,8 +39,7 @@ TEST(StyledSinkTest, PrefixesLinesAcrossSeparateWrites) {
   prefixed.set_prefix("[warn] ");
   prefixed.write("voltage=3080");
 
-  EXPECT_EQ(output.view(),
-            "[trace] boot=ready\n[trace] sensor=42\n[warn] voltage=3080");
+  EXPECT_EQ(output.view(), "[trace] boot=ready\n[trace] sensor=42\n[warn] voltage=3080");
 }
 
 TEST(StyledSinkTest, LimitsOutputAtConfiguredByteCount) {

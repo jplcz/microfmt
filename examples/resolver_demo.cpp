@@ -43,8 +43,7 @@ RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 template <> struct microfmt::symbol_resolver_traits<mock_kernel_symbol_tag> {
   using context_type = mock_kernel_context;
 
-  static bool resolve(microfmt::value_ref<const context_type> context,
-                      uintptr_t addr, microfmt::span<char> /*scratch*/,
+  static bool resolve(microfmt::value_ref<const context_type> context, uintptr_t addr, microfmt::span<char> /*scratch*/,
                       microfmt::raw_resolved_symbol &out_raw) noexcept {
     for (size_t i = 0; i < context->image_count; ++i) {
       const auto &img = context->images[i];

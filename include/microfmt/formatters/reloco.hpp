@@ -1115,4 +1115,3 @@ template <> struct formatter<reloco::type_id> {
 };
 
 } // namespace microfmt
-

@@ -339,7 +339,8 @@ public:
 #if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND)
                   try {
                     self->m_it = std::copy(sv.begin(), sv.end(), self->m_it);
-                  } catch (...) { // std-interop-ok: swallow any exception thrown by the user-supplied OutputIt to preserve the noexcept guarantee
+                  } catch (...) { // std-interop-ok: swallow any exception thrown by the user-supplied OutputIt to
+                                  // preserve the noexcept guarantee
                     // Swallow the exception to maintain noexcept guarantees.
                     // The output will simply be truncated from the point of failure.
                   }

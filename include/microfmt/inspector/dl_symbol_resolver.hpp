@@ -7,7 +7,7 @@
 
 #pragma once
 
-#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__NetBSD__) &&                 \
+#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__NetBSD__) &&                   \
     !defined(__DragonFly__)
 #error "microfmt/inspector/dl_symbol_resolver.hpp only supports Linux and BSD systems"
 #endif

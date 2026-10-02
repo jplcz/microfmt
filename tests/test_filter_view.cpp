@@ -15,9 +15,7 @@ TEST(FilterViewTest, FormatsOnlyMatchingRangeElements) {
   const std::array<int, 6> samples{{-4, -1, 0, 7, 12, 15}};
 
   microfmt::format_to(output.as_sink(), "{}",
-                      microfmt::filter(samples, [](int value) noexcept {
-                        return value >= 0 && value % 2 == 0;
-                      }));
+                      microfmt::filter(samples, [](int value) noexcept { return value >= 0 && value % 2 == 0; }));
 
   EXPECT_EQ(output.view(), "[0, 12]");
 }
@@ -27,17 +25,12 @@ TEST(FilterViewTest, HandlesNoMatchesAndEmptyRanges) {
   const std::vector<int> samples{1, 3, 5};
 
   microfmt::format_to(output.as_sink(), "{}",
-                      microfmt::filter(samples, [](int value) noexcept {
-                        return value % 2 == 0;
-                      }));
+                      microfmt::filter(samples, [](int value) noexcept { return value % 2 == 0; }));
   EXPECT_EQ(output.view(), "[]");
 
   output.reset();
   const std::array<int, 0> empty{};
-  microfmt::format_to(output.as_sink(), "{}",
-                      microfmt::filter(empty, [](int) noexcept {
-                        return true;
-                      }));
+  microfmt::format_to(output.as_sink(), "{}", microfmt::filter(empty, [](int) noexcept { return true; }));
   EXPECT_EQ(output.view(), "[]");
 }
 
@@ -46,34 +39,24 @@ TEST(FilterViewTest, SupportsRawPointerAndCountRanges) {
   const int16_t readings[] = {1200, 1812, 3305, 5004};
 
   microfmt::format_to(output.as_sink(), "{}",
-                      microfmt::filter(readings, size_t{4},
-                                       [](int16_t value) noexcept {
-                                         return value >= 3000;
-                                       }));
+                      microfmt::filter(readings, size_t{4}, [](int16_t value) noexcept { return value >= 3000; }));
 
   EXPECT_EQ(output.view(), "[3305, 5004]");
 
   output.reset();
   microfmt::format_to(
       output.as_sink(), "{}",
-      microfmt::filter(static_cast<const int16_t *>(nullptr), size_t{4},
-                       [](int16_t) noexcept { return true; }));
+      microfmt::filter(static_cast<const int16_t *>(nullptr), size_t{4}, [](int16_t) noexcept { return true; }));
   EXPECT_EQ(output.view(), "[]");
 
   output.reset();
   microfmt::format_to(output.as_sink(), "{:c04x}",
-                      microfmt::filter(readings, size_t{4},
-                                       [](int16_t value) noexcept {
-                                         return value >= 3000;
-                                       }));
+                      microfmt::filter(readings, size_t{4}, [](int16_t value) noexcept { return value >= 3000; }));
   EXPECT_EQ(output.view(), "{0ce9, 138c}");
 
   output.reset();
   microfmt::format_to(output.as_sink(), "{:n}",
-                      microfmt::filter(readings, size_t{4},
-                                       [](int16_t value) noexcept {
-                                         return value < 2000;
-                                       }));
+                      microfmt::filter(readings, size_t{4}, [](int16_t value) noexcept { return value < 2000; }));
   EXPECT_EQ(output.view(), "1200, 1812");
 }
 
@@ -82,23 +65,17 @@ TEST(FilterViewTest, SupportsDelimitersAndForwardedSpecifiers) {
   const uint16_t registers[] = {0x0001, 0x000A, 0x001F, 0x00B0};
 
   microfmt::format_to(output.as_sink(), "{:c04X}",
-                      microfmt::filter(registers, [](uint16_t value) noexcept {
-                        return value >= 0x000A;
-                      }));
+                      microfmt::filter(registers, [](uint16_t value) noexcept { return value >= 0x000A; }));
   EXPECT_EQ(output.view(), "{000A, 001F, 00B0}");
 
   output.reset();
   microfmt::format_to(output.as_sink(), "{:n02x}",
-                      microfmt::filter(registers, [](uint16_t value) noexcept {
-                        return value < 0x0010;
-                      }));
+                      microfmt::filter(registers, [](uint16_t value) noexcept { return value < 0x0010; }));
   EXPECT_EQ(output.view(), "01, 0a");
 
   output.reset();
   microfmt::format_to(output.as_sink(), "{:b}",
-                      microfmt::filter(registers, [](uint16_t value) noexcept {
-                        return value == 0x001F;
-                      }));
+                      microfmt::filter(registers, [](uint16_t value) noexcept { return value == 0x001F; }));
   EXPECT_EQ(output.view(), "[31]");
 }
 
@@ -108,9 +85,7 @@ TEST(FilterViewTest, RetainsCapturedPredicateState) {
   int threshold = 20;
 
   microfmt::format_to(output.as_sink(), "{}",
-                      microfmt::filter(values, [&threshold](int value) noexcept {
-                        return value > threshold;
-                      }));
+                      microfmt::filter(values, [&threshold](int value) noexcept { return value > threshold; }));
 
   EXPECT_EQ(output.view(), "[24, 32]");
 }

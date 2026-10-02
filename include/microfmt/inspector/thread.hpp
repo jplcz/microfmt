@@ -7,8 +7,8 @@
  * @brief Thread descriptor with telemetry and register context integration. */
 
 #include "../formatters/json.hpp"
-#include "../reloco.hpp"
 #include "../microfmt.hpp"
+#include "../reloco.hpp"
 #include "metadata_map.hpp"
 #include "register_context.hpp"
 
@@ -17,14 +17,7 @@ namespace microfmt {
 /**
  * @brief Detailed execution state of an individual thread.
  */
-enum class thread_state : uint8_t {
-  ready,
-  running,
-  suspended,
-  waiting,
-  sleeping,
-  terminated
-};
+enum class thread_state : uint8_t { ready, running, suspended, waiting, sleeping, terminated };
 
 } // namespace microfmt
 

@@ -15,8 +15,7 @@ namespace microfmt::gdb {
  */
 class MICROFMT_API_CLASS RELOCO_POINTER gdb_packet_writer {
 public:
-  explicit constexpr gdb_packet_writer(
-      span<char> buffer RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
+  explicit constexpr gdb_packet_writer(span<char> buffer RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_buf(buffer), m_pos(0), m_checksum(0), m_finalized(false) {
     // Start packet with '$'
     if (m_buf.size() > 0) {

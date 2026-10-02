@@ -34,17 +34,14 @@ bool next_property(void *ctx, microfmt::property_entry &out) noexcept {
   return true;
 }
 
-template <typename T, typename = void>
-struct can_make_metadata_view_from_rvalue : std::false_type {};
+template <typename T, typename = void> struct can_make_metadata_view_from_rvalue : std::false_type {};
 
 template <typename T>
 struct can_make_metadata_view_from_rvalue<
-    T, std::void_t<decltype(std::declval<const T &&>().make_view(
-           std::declval<typename T::span_iteration_state &>()))>>
+    T, std::void_t<decltype(std::declval<const T &&>().make_view(std::declval<typename T::span_iteration_state &>()))>>
     : std::true_type {};
 
-static_assert(
-    !can_make_metadata_view_from_rvalue<microfmt::concrete_metadata_map>::value);
+static_assert(!can_make_metadata_view_from_rvalue<microfmt::concrete_metadata_map>::value);
 
 TEST(PropertyEntry, FormatsValueOrNull) {
   const int value = 42;
@@ -77,8 +74,7 @@ TEST(MetadataMap, IteratesAndFormatsGeneratedEntries) {
   generator_state state{entries, 3, 0};
   const microfmt::metadata_map map(&state, next_property);
 
-  EXPECT_EQ(microfmt::format<64>("{}", map).view(),
-            "{\"first\": 7, \"second\": 11, \"missing\": null}");
+  EXPECT_EQ(microfmt::format<64>("{}", map).view(), "{\"first\": 7, \"second\": 11, \"missing\": null}");
 
   microfmt::property_entry entry;
   EXPECT_FALSE(map.get_next(entry));
@@ -111,8 +107,7 @@ TEST(ConcreteMetadataMap, UpdatesExistingKeyAndValueType) {
   EXPECT_EQ(map.size(), 1U);
 
   microfmt::concrete_metadata_map::span_iteration_state state;
-  EXPECT_EQ(microfmt::format<32>("{}", map.make_view(state)).view(),
-            "{\"state\": ready}");
+  EXPECT_EQ(microfmt::format<32>("{}", map.make_view(state)).view(), "{\"state\": ready}");
 }
 
 TEST(ConcreteMetadataMap, BorrowsValuesAndResetsIterationState) {
@@ -125,18 +120,15 @@ TEST(ConcreteMetadataMap, BorrowsValuesAndResetsIterationState) {
   ASSERT_TRUE(map.set("active", microfmt::value_ref(active)));
 
   microfmt::concrete_metadata_map::span_iteration_state state;
-  EXPECT_EQ(microfmt::format<48>("{}", map.make_view(state)).view(),
-            "{\"count\": 4, \"active\": true}");
+  EXPECT_EQ(microfmt::format<48>("{}", map.make_view(state)).view(), "{\"count\": 4, \"active\": true}");
 
   count = 9;
   active = false;
-  EXPECT_EQ(microfmt::format<48>("{}", map.make_view(state)).view(),
-            "{\"count\": 9, \"active\": false}");
+  EXPECT_EQ(microfmt::format<48>("{}", map.make_view(state)).view(), "{\"count\": 9, \"active\": false}");
 }
 
 TEST(ConcreteMetadataMap, FormatsEmptyStorage) {
-  microfmt::concrete_metadata_map map(
-      microfmt::span<microfmt::property_entry>{});
+  microfmt::concrete_metadata_map map(microfmt::span<microfmt::property_entry>{});
   microfmt::concrete_metadata_map::span_iteration_state state;
 
   EXPECT_EQ(microfmt::format<8>("{}", map.make_view(state)).view(), "{}");

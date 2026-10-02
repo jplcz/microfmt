@@ -5,8 +5,8 @@
 #include <array>
 #include <cstdint>
 #include <gtest/gtest.h>
-#include <microfmt/microfmt.hpp>
 #include <microfmt/formatters/uuid.hpp>
+#include <microfmt/microfmt.hpp>
 #include <string_view>
 
 TEST(UuidTest, CanonicalFormat) {
@@ -23,9 +23,8 @@ TEST(UuidTest, CanonicalFormat) {
 TEST(UuidTest, UppercaseAndBracedSpecs) {
   microfmt::buffer_sink<64> buf;
 
-  const std::array<uint8_t, 16> raw_uuid = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab,
-                                            0xcd, 0xef, 0xfe, 0xdc, 0xba, 0x98,
-                                            0x76, 0x54, 0x32, 0x10};
+  const std::array<uint8_t, 16> raw_uuid = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+                                            0xfe, 0xdc, 0xba, 0x98, 0x76, 0x54, 0x32, 0x10};
 
   // Uppercase via {:X}
   microfmt::format_to(buf.as_sink(), "{:X}", microfmt::uuid(raw_uuid));
@@ -47,7 +46,6 @@ TEST(UuidTest, NilOrInvalidLength) {
 
   // Partial byte span -> fall back to nil UUID string
   const uint8_t short_bytes[8] = {};
-  microfmt::format_to(buf.as_sink(), "{}",
-                      microfmt::uuid(microfmt::span(short_bytes, 8)));
+  microfmt::format_to(buf.as_sink(), "{}", microfmt::uuid(microfmt::span(short_bytes, 8)));
   EXPECT_EQ(buf.view(), "00000000-0000-0000-0000-000000000000");
 }

@@ -56,8 +56,7 @@ int main() {
 
   // A raw write back to the very same object also succeeds.
   uint32_t new_priority = 9;
-  auto write_result =
-      space.write(reinterpret_cast<uintptr_t>(&task.priority), new_priority);
+  auto write_result = space.write(reinterpret_cast<uintptr_t>(&task.priority), new_priority);
   microfmt::println("Write succeeded      : {} (task.priority is now {})", write_result.has_value(), task.priority);
 
   // --------------------------------------------------------------------------
@@ -89,8 +88,7 @@ int main() {
   microfmt::println("\n[3. Recovery Sanity Check]");
 
   auto still_works = space.read<uint32_t>(reinterpret_cast<uintptr_t>(&task.priority));
-  microfmt::println("Read after fault     : ok={}, value={}", still_works.has_value(),
-                    still_works.value_or(0));
+  microfmt::println("Read after fault     : ok={}, value={}", still_works.has_value(), still_works.value_or(0));
 
   // --------------------------------------------------------------------------
   // Scenario D: Safe strings, valid and truncated/unterminated
