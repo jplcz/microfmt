@@ -18,7 +18,7 @@ option(JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS
 option(JPLCZ_MICROFMT_ENABLE_UNSAFE_BUFFER_USAGE
     "Enable Clang unsafe buffer usage diagnostics" OFF)
 option(JPLCZ_MICROFMT_ENABLE_WERROR
-    "Enable build with -Werror" OFF)
+    "Enable build with -Werror" ${JPLCZ_MICROFMT_DEVELOPMENT_DEFAULT})
 option(JPLCZ_MICROFMT_BUILD_TESTS
     "Build test suite" ${JPLCZ_MICROFMT_DEVELOPMENT_DEFAULT})
 option(JPLCZ_MICROFMT_BUILD_EXAMPLES
