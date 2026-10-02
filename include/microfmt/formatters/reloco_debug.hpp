@@ -210,6 +210,12 @@ template <> struct Debug<error> {
     case error::operation_canceled:
       out.write("operation_canceled");
       return;
+    case error::security_violation:
+      out.write("security_violation");
+      return;
+    case error::page_fault:
+      out.write("page_fault");
+      return;
     }
     // Unreachable for any currently-defined `reloco::error` member; kept as a
     // defensive fallback in case a future member is added here without a
