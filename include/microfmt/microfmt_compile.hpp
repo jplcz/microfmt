@@ -15,7 +15,8 @@
  * std::error_category>/<std::error_code>, formatter<semver>, formatter<
  * styled_str_view>, formatter<raw_ptr_view>, formatter<escaped_view>,
  * formatter<bitfield_view>, detail::format_uuid_bytes -- see their
- * respective formatters/*.hpp/*.ipp pairs, and any more added over time)
+ * respective formatters/<name>.hpp and formatters/<name>.ipp pairs, and
+ * any more added over time)
  * only gets its out-of-line *definition* compiled into a translation unit
  * that both defines MICROFMT_SHARED_BUILD *and* includes the header
  * declaring that entity. Consumers only ever need the individual formatter

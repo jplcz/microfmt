@@ -30,8 +30,8 @@
  * of duplicating them into every shard".
  *
  * Usage: put the *same* list of MICROFMT_FORMATTER_INSTANCE(...)
- * invocations (after #including whichever formatters/*.hpp header defines
- * formatter<Type> for each Type) in one shared header, included by both:
+ * invocations (after #including whichever formatters/<name>.hpp header
+ * defines formatter<Type> for each Type) in one shared header, included by both:
  *
  *   1. The one MICROFMT_SHARED_BUILD translation unit (typically the same
  *      one that #includes microfmt_compile.hpp) -- there, each invocation
