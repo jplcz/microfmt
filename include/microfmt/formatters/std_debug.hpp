@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: opt-in Debug<T> specializations for std::array/std::optional/std::variant/std::monostate.
+
 /** @file std_debug.hpp
  * @brief `reloco::Debug<T>` specializations for heap-free standard library
  * types.

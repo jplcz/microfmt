@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: opt-in formatter for std::exception-derived types and std::system_error.
+
 #include "../microfmt.hpp"
 #include <exception>
 #include <system_error>

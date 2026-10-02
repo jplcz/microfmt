@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: opt-in std::span overloads for interop with APIs that already speak <span>.
+
 /** @file memory_diff.hpp @brief Non-owning memory diff view and formatter for binary diagnostics. */
 
 #include <algorithm>

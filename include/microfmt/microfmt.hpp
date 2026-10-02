@@ -69,6 +69,8 @@ public:
       : m_buf(buf), m_pos(0) {}
 
 #if RELOCO_HAS_STD_SPAN
+  // std-interop-begin: opt-in constructor from std::span for interop with
+  // APIs that already speak <span>; reloco::span needs no such adapter.
   /**
    * @brief Constructs a span sink over a @c std::span of character storage.
    *
@@ -79,6 +81,7 @@ public:
   explicit constexpr span_sink(
       std::span<char, Extent> buf RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_buf(buf.data(), buf.size()), m_pos(0) {}
+  // std-interop-end
 #endif
 
   /**
@@ -278,6 +281,8 @@ public:
   }
 
 #if RELOCO_HAS_STD_SPAN
+  // std-interop-begin: opt-in conversion to std::span for interop with
+  // APIs that already speak <span>; reloco::span needs no such adapter.
   /**
    * @brief Returns a standard `std::span` view over the written portion of the
    * buffer.
@@ -291,6 +296,7 @@ public:
 
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
+  // std-interop-end
 #endif
 
   /**
@@ -333,7 +339,7 @@ public:
 #if defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND)
                   try {
                     self->m_it = std::copy(sv.begin(), sv.end(), self->m_it);
-                  } catch (...) {
+                  } catch (...) { // std-interop-ok: swallow any exception thrown by the user-supplied OutputIt to preserve the noexcept guarantee
                     // Swallow the exception to maintain noexcept guarantees.
                     // The output will simply be truncated from the point of failure.
                   }

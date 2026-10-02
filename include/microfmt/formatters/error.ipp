@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause
 
+// std-interop-file: out-of-line bodies formatting std::error_category/
+// std::error_code -- the whole point of this file is std:: interop.
 /** @file error.ipp @brief Out-of-line bodies for formatter<std::error_category>
  * / formatter<std::error_code> (see error.hpp). Included from error.hpp
  * itself, guarded on MICROFMT_SHARED_PROVIDE_DEFINITIONS (see

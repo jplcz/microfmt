@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: opt-in Boost.Asio/std::ostream sink adapters, not pulled in by the default umbrella.
+
 /** @file asio_sink.hpp @brief Boost.Asio buffer and stream sink adapters for zero-allocation formatting. */
 
 #include "../reloco.hpp"

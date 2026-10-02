@@ -1,4 +1,6 @@
 #pragma once
+
+// std-interop-file: opt-in std::span constructor overload for interop with APIs that already speak <span>.
 #include <microfmt/microfmt.hpp>
 
 namespace microfmt {

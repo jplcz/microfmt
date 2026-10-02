@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: opt-in formatter for std::optional, for interop with APIs that already speak it.
+
 /** @file monad.hpp
  * @brief Optional and expected-like value formatting support. */
 

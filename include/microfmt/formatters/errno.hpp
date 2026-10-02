@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: opt-in errno/<system_error> formatter, not pulled in by the default umbrella.
+
 #include "../microfmt.hpp"
 #include <cerrno>
 

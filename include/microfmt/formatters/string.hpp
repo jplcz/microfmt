@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: opt-in formatter/conversions for std::basic_string, for interop with std::string APIs.
+
 /** @file string.hpp @brief `std::basic_string` and advanced string formatting
  * views (fill, align, width, precision, debug escaping). */
 

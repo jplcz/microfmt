@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: emits "std::..." as string-literal demangled-name text, not real type usage.
+
 /** @file demangle.hpp @brief Zero-allocation Itanium (GCC/Clang) name
  * demangler. */
 

@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: opt-in formatter and view wrappers for std::variant.
+
 /** @file variant.hpp @brief `std::variant` and non-owning variant view
  * formatting. */
 

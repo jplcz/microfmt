@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: opt-in sink/formatting adapters defaulting to std::string/std::vector containers.
+
 /** @file container_sink.hpp @brief Growable character-container sink adapter. */
 
 #include "../microfmt.hpp"

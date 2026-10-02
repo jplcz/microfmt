@@ -4,6 +4,8 @@
 
 #pragma once
 
+// std-interop-file: dev-time code-generation tool (std::string-heavy), never part of the formatting hot path.
+
 /** @file reflect_annotate.hpp
  * @brief Always-safe reflection opt-in markers: `MICROFMT_REFLECT_FORMAT`,
  * `MICROFMT_REFLECT_DUMP_ENUM`, `MICROFMT_REFLECT_DUMP_STRUCT`.
