@@ -17,6 +17,7 @@
 #include <reloco/inline_vector.hpp>
 #include <reloco/instant.hpp>
 #include <reloco/non_zero.hpp>
+#include <reloco/obfuscated_string.hpp>
 #include <reloco/ordering.hpp>
 #include <reloco/outline_vec_deque.hpp>
 #include <reloco/outline_vector.hpp>
@@ -272,6 +273,75 @@ template <typename CharT, typename TraitsT> struct formatter<reloco::basic_sso_s
 
   void format(const reloco::basic_sso_string<CharT, TraitsT> &str, const sink &out) const noexcept {
     underlying_formatter.format(str.view(), out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::obfuscated_decrypted_view<N>` -- the type
+ * returned by `obfuscated_string<N>::decrypt()`/`RELOCO_OBFUSCATED_STR`.
+ *
+ * `decrypted_view` already holds its plaintext in a materialized,
+ * RAII-wiped buffer (that is its whole purpose), so there is no "no
+ * storage" concern here: delegates to the non-template
+ * `formatter<microfmt::string_view>`, so the only code instantiated per
+ * distinct `N` is this one-line `view()`-and-forward call; the actual
+ * width/fill/`{:?}` formatting logic (including debug-quoting) is
+ * compiled exactly once and shared across every obfuscated-string length.
+ */
+template <std::size_t N> struct formatter<reloco::obfuscated_decrypted_view<N>> {
+  formatter<microfmt::string_view> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::obfuscated_decrypted_view<N> &val, const sink &out) const noexcept {
+    underlying_formatter.format(val.view(), out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::obfuscated_string_ref` -- the type-erased
+ * handle (see `RELOCO_DECLARE_OBFUSCATED_STR`/`RELOCO_DEFINE_OBFUSCATED_STR`
+ * in `obfuscated_string.hpp`).
+ *
+ * Decodes and writes one byte at a time directly to `out` via
+ * `for_each_byte()`: the plaintext is never materialized as a contiguous
+ * buffer anywhere, not even transiently -- a stronger guarantee than
+ * `formatter<reloco::obfuscated_decrypted_view<N>>` above. This is also
+ * the single, non-template formatter `formatter<reloco::obfuscated_string<N>>`
+ * below delegates to for every `N`, so no formatting logic is duplicated
+ * per obfuscated-string length.
+ *
+ * Because there is no materialized `string_view` to inspect, this
+ * formatter does not support `formatter<microfmt::string_view>`'s `{:?}`
+ * debug-quoting flag -- `{}`/`{:?}` both write the raw decoded bytes,
+ * exactly like `microfmt`'s own numeric formatters, whose `Debug` and
+ * `Display` forms coincide. Reach for `obfuscated_string<N>::decrypt()`
+ * directly if quoting is needed.
+ */
+template <> struct formatter<reloco::obfuscated_string_ref> {
+  constexpr void parse(format_parse_context &) const noexcept {}
+
+  void format(reloco::obfuscated_string_ref val, const sink &out) const noexcept {
+    val.for_each_byte([&out](char ch) noexcept { out.put(ch); });
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::obfuscated_string<N>` itself.
+ *
+ * Type-erases to `reloco::obfuscated_string_ref` and delegates to
+ * `formatter<reloco::obfuscated_string_ref>` above, so decoding happens
+ * byte-by-byte straight to the sink, without ever materializing the full
+ * plaintext in a stack buffer -- and this specialization itself adds no
+ * further per-`N` formatting logic, only the one-line `as_ref()` forward.
+ */
+template <std::size_t N> struct formatter<reloco::obfuscated_string<N>> {
+  formatter<reloco::obfuscated_string_ref> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::obfuscated_string<N> &val, const sink &out) const noexcept {
+    underlying_formatter.format(val.as_ref(), out);
   }
 };
 

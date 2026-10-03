@@ -22,6 +22,7 @@
 #include <reloco/inline_vector.hpp>
 #include <reloco/instant.hpp>
 #include <reloco/non_zero.hpp>
+#include <reloco/obfuscated_string.hpp>
 #include <reloco/ordering.hpp>
 #include <reloco/outline_vec_deque.hpp>
 #include <reloco/outline_vector.hpp>
@@ -134,6 +135,42 @@ TEST(RelocoFormattersTest, FormatsSsoString) {
   microfmt::buffer_sink<32> buffer;
   microfmt::format_to(buffer.as_sink(), "{}", created.value());
   EXPECT_EQ(buffer.view(), "sso");
+}
+
+TEST(RelocoFormattersTest, FormatsObfuscatedString) {
+  static constexpr auto obfuscated = reloco::obfuscated_string("obfuscated-marker", UINT64_C(0x0123456789abcdef));
+
+  microfmt::buffer_sink<32> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", obfuscated);
+  EXPECT_EQ(buffer.view(), "obfuscated-marker");
+}
+
+TEST(RelocoFormattersTest, FormatsObfuscatedStringDecryptedView) {
+  auto view = RELOCO_OBFUSCATED_STR("already-decrypted");
+
+  microfmt::buffer_sink<32> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", view);
+  EXPECT_EQ(buffer.view(), "already-decrypted");
+}
+
+TEST(RelocoFormattersTest, FormatsObfuscatedStringRef) {
+  static constexpr auto obfuscated = reloco::obfuscated_string("type-erased-marker", UINT64_C(0xfedcba9876543210));
+  const reloco::obfuscated_string_ref ref = obfuscated;
+
+  microfmt::buffer_sink<32> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", ref);
+  EXPECT_EQ(buffer.view(), "type-erased-marker");
+}
+
+namespace {
+RELOCO_DECLARE_OBFUSCATED_STR(g_test_formatter_marker);
+RELOCO_DEFINE_OBFUSCATED_STR(g_test_formatter_marker, "declared-marker");
+} // namespace
+
+TEST(RelocoFormattersTest, FormatsDeclaredObfuscatedStringRef) {
+  microfmt::buffer_sink<32> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", g_test_formatter_marker);
+  EXPECT_EQ(buffer.view(), "declared-marker");
 }
 
 TEST(RelocoFormattersTest, FormatsValuePtrAndNull) {
