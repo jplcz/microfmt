@@ -36,6 +36,22 @@ glibc-dependent std:: facilities outside explicitly marked interop points \
 option(JPLCZ_MICROFMT_INSTALL
     "Install jplcz_microfmt headers and CMake package metadata"
     ${JPLCZ_MICROFMT_IS_TOP_LEVEL})
+option(JPLCZ_MICROFMT_INSTALL_HEADERS_ONLY
+    "When JPLCZ_MICROFMT_INSTALL is enabled, install only the public \
+headers (plus any JPLCZ_MICROFMT_PORTING_HEADERS) and skip everything \
+else this project would otherwise install: README/LICENSE/docs/, man \
+pages, and the CMake package (install(TARGETS ... EXPORT ...), \
+install(EXPORT ...), Config/ConfigVersion files). Also forces its fetched \
+jplcz_reloco dependency's own JPLCZ_RELOCO_INSTALL_HEADERS_ONLY to match. \
+Needed when jplcz_microfmt is pulled in via FetchContent/add_subdirectory \
+by a larger build (e.g. an embedded/kernel tree) that defines its own \
+targets depending on jplcz_microfmt (and jplcz_reloco) and performs its \
+own single, consolidated install(EXPORT) for all of them -- CMake forbids \
+an exported target from depending on another target that is itself \
+exported under more than one export set/namespace, so jplcz_microfmt \
+must not also export itself (or jplcz_reloco) on its own in that \
+situation; the caller remains responsible for installing/exporting those \
+targets (and their CMake packages) itself." OFF)
 option(JPLCZ_MICROFMT_BUILD_MANPAGES
     "Generate man(7) pages from the Markdown docs using pandoc, when available"
     OFF)
@@ -197,6 +213,7 @@ if(NOT TARGET jplcz_reloco::reloco)
     set(JPLCZ_RELOCO_BUILD_HEADER_CHECKS OFF CACHE BOOL "" FORCE)
     set(JPLCZ_RELOCO_ENABLE_STRICT_WARNINGS OFF CACHE BOOL "" FORCE)
     set(JPLCZ_RELOCO_INSTALL ${JPLCZ_MICROFMT_INSTALL} CACHE BOOL "" FORCE)
+    set(JPLCZ_RELOCO_INSTALL_HEADERS_ONLY ${JPLCZ_MICROFMT_INSTALL_HEADERS_ONLY} CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(jplcz_reloco)
 endif()
 
@@ -1060,11 +1077,13 @@ if(JPLCZ_MICROFMT_INSTALL)
     include(GNUInstallDirs)
     include(CMakePackageConfigHelpers)
 
-    install(
-        TARGETS jplcz_microfmt jplcz_microfmt_shared jplcz_microfmt_shared_export
-        EXPORT jplcz_microfmtTargets
-        INCLUDES DESTINATION "${JPLCZ_MICROFMT_INSTALL_INCLUDEDIR}"
-    )
+    if(NOT JPLCZ_MICROFMT_INSTALL_HEADERS_ONLY)
+        install(
+            TARGETS jplcz_microfmt jplcz_microfmt_shared jplcz_microfmt_shared_export
+            EXPORT jplcz_microfmtTargets
+            INCLUDES DESTINATION "${JPLCZ_MICROFMT_INSTALL_INCLUDEDIR}"
+        )
+    endif()
 
     install(
         DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
@@ -1089,54 +1108,56 @@ if(JPLCZ_MICROFMT_INSTALL)
     # required). `docs/` is installed as a subdirectory, matching the
     # source-tree layout, so README.md's relative `docs/...` links and the
     # cross-links between guides under docs/ keep resolving after install.
-    install(
-        FILES
-            "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
-            "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
-        DESTINATION "${JPLCZ_MICROFMT_INSTALL_DOCDIR}"
-        COMPONENT Documentation
-    )
+    if(NOT JPLCZ_MICROFMT_INSTALL_HEADERS_ONLY)
+        install(
+            FILES
+                "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
+                "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+            DESTINATION "${JPLCZ_MICROFMT_INSTALL_DOCDIR}"
+            COMPONENT Documentation
+        )
 
-    install(
-        DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs/"
-        DESTINATION "${JPLCZ_MICROFMT_INSTALL_DOCDIR}/docs"
-        COMPONENT Documentation
-        PATTERN "*.css" EXCLUDE
-    )
+        install(
+            DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs/"
+            DESTINATION "${JPLCZ_MICROFMT_INSTALL_DOCDIR}/docs"
+            COMPONENT Documentation
+            PATTERN "*.css" EXCLUDE
+        )
 
-    configure_package_config_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/jplcz_microfmtConfig.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfig.cmake"
-        INSTALL_DESTINATION "${JPLCZ_MICROFMT_INSTALL_CMAKEDIR}"
-        NO_SET_AND_CHECK_MACRO
-        NO_CHECK_REQUIRED_COMPONENTS_MACRO
-    )
-
-    # Header-only INTERFACE library: the package config is architecture
-    # independent (no compiled binaries to match ABI/bitness against), so
-    # skip the platform check and install under share/, not lib/.
-    write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfigVersion.cmake"
-        VERSION "${PROJECT_VERSION}"
-        COMPATIBILITY SameMajorVersion
-        ARCH_INDEPENDENT
-    )
-
-    install(
-        EXPORT jplcz_microfmtTargets
-        FILE jplcz_microfmtTargets.cmake
-        NAMESPACE jplcz_microfmt::
-        DESTINATION "${JPLCZ_MICROFMT_INSTALL_CMAKEDIR}"
-        COMPONENT Development
-    )
-
-    install(
-        FILES
+        configure_package_config_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/jplcz_microfmtConfig.cmake.in"
             "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfig.cmake"
+            INSTALL_DESTINATION "${JPLCZ_MICROFMT_INSTALL_CMAKEDIR}"
+            NO_SET_AND_CHECK_MACRO
+            NO_CHECK_REQUIRED_COMPONENTS_MACRO
+        )
+
+        # Header-only INTERFACE library: the package config is architecture
+        # independent (no compiled binaries to match ABI/bitness against), so
+        # skip the platform check and install under share/, not lib/.
+        write_basic_package_version_file(
             "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfigVersion.cmake"
-        DESTINATION "${JPLCZ_MICROFMT_INSTALL_CMAKEDIR}"
-        COMPONENT Development
-    )
+            VERSION "${PROJECT_VERSION}"
+            COMPATIBILITY SameMajorVersion
+            ARCH_INDEPENDENT
+        )
+
+        install(
+            EXPORT jplcz_microfmtTargets
+            FILE jplcz_microfmtTargets.cmake
+            NAMESPACE jplcz_microfmt::
+            DESTINATION "${JPLCZ_MICROFMT_INSTALL_CMAKEDIR}"
+            COMPONENT Development
+        )
+
+        install(
+            FILES
+                "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfig.cmake"
+                "${CMAKE_CURRENT_BINARY_DIR}/jplcz_microfmtConfigVersion.cmake"
+            DESTINATION "${JPLCZ_MICROFMT_INSTALL_CMAKEDIR}"
+            COMPONENT Development
+        )
+    endif()
 endif()
 
 if(JPLCZ_MICROFMT_BUILD_MANPAGES)
@@ -1200,7 +1221,7 @@ if(JPLCZ_MICROFMT_BUILD_MANPAGES)
 
     add_custom_target(jplcz_microfmt_manpages ALL DEPENDS ${JPLCZ_MICROFMT_MAN_OUTPUTS})
 
-    if(JPLCZ_MICROFMT_INSTALL)
+    if(JPLCZ_MICROFMT_INSTALL AND NOT JPLCZ_MICROFMT_INSTALL_HEADERS_ONLY)
         install(
             FILES ${JPLCZ_MICROFMT_MAN_OUTPUTS}
             DESTINATION "${JPLCZ_MICROFMT_INSTALL_MANDIR}/man${JPLCZ_MICROFMT_MAN_SECTION}"
