@@ -1163,7 +1163,7 @@ struct MICROFMT_API_CLASS int_formatter_specs {
   // normally from this in-header definition exactly as before.
   template <typename T> void format_int_impl(T val, const sink &out) const noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
-    constexpr size_t BUF_SIZE = (sizeof(T) <= 4) ? 12 : 24;
+    constexpr size_t BUF_SIZE = (sizeof(T) <= 4) ? 12 : (sizeof(T) <= 8) ? 24 : 48;
     char buffer[BUF_SIZE];
     char *end = buffer + BUF_SIZE;
     char *start = end;

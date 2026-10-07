@@ -625,3 +625,25 @@ TEST(RelocoFormattersTest, FormatsMiscellaneousTypes) {
   const auto fp = reloco::fixed_point<std::int32_t, 8>::from_raw(384);
   EXPECT_EQ(microfmt::format_as<std::string>("{:.1f}", fp), "1.5");
 }
+
+TEST(RelocoFormattersTest, FormatsWideAndFixedInts) {
+  using i256 = reloco::fixed_int<256>;
+  using u256 = reloco::fixed_uint<256>;
+  i256 big = i256(1);
+  for (int i = 0; i < 70; ++i) {
+    big = big * i256(10);
+  }
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", big), "1" + std::string(70, '0'));
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", -big), "-1" + std::string(70, '0'));
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", i256(0)), "0");
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", i256(-42)), "-42");
+  EXPECT_EQ(microfmt::format_as<std::string>("{:#x}", u256(255)), "0xff");
+  EXPECT_EQ(microfmt::format_as<std::string>("{:06}", i256(7)), "000007");
+  EXPECT_EQ(microfmt::format_as<std::string>("{:x}", u256(1) << 128U), "1" + std::string(32, '0'));
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", ~u256(0)),
+            "115792089237316195423570985008687907853269984665640564039457584007913129639935");
+
+  const reloco::fixed_int<128> n = reloco::fixed_int<128>(1) << 100U;
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", n), "1267650600228229401496703205376");
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", reloco::fixed_uint<128>(0)), "0");
+}

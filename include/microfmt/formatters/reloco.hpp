@@ -12,6 +12,7 @@
 #include <reloco/duration.hpp>
 #include <reloco/error.hpp>
 #include <reloco/external_vector.hpp>
+#include <reloco/fixed_int.hpp>
 #include <reloco/fixed_point.hpp>
 #include <reloco/flat_hash_map.hpp>
 #include <reloco/flat_hash_set.hpp>
@@ -1523,5 +1524,89 @@ struct formatter<reloco::fixed_point<Rep, FracBits>, std::enable_if_t<std::is_ar
     underlying_formatter.format(static_cast<double>(value.raw()) / static_cast<double>(Rep{1} << FracBits), out);
   }
 };
+
+/**
+ * @brief Formatter for `reloco::detail::wide_int<N, Signed>` (the `reloco::fixed_int<N, Signed>` fallback for
+ * widths beyond the native integers).
+ *
+ * Supports the same specifiers as the built-in integer formatter: width, `0` padding, `x`/`X` hex and `#`.
+ */
+template <std::size_t N, bool Signed>
+struct formatter<reloco::detail::wide_int<N, Signed>> : detail::int_formatter_specs {
+  void format(const reloco::detail::wide_int<N, Signed> &val, const sink &out) const noexcept {
+    RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
+    constexpr std::size_t limb_count = N / 32;
+    // Enough for N/4 hex digits or ceil(N * log10(2)) decimal digits.
+    constexpr std::size_t buf_size = N / 3 + 2;
+
+    std::uint32_t mag[limb_count];
+    const bool negative = val.is_negative();
+    const reloco::detail::wide_int<N, Signed> abs_val = negative ? -val : val;
+    for (std::size_t i = 0; i < limb_count; ++i) {
+      mag[i] = abs_val.limb(i);
+    }
+
+    char buffer[buf_size];
+    char *end = buffer + buf_size;
+    char *start = end;
+
+    microfmt::string_view prefix{};
+    if (flags.is_hex) {
+      const char *lut = flags.uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
+      for (std::size_t i = 0; i < limb_count; ++i) {
+        std::uint32_t limb = mag[i];
+        for (int nibble = 0; nibble < 8; ++nibble) {
+          *--start = lut[limb & 0xFU];
+          limb >>= 4;
+        }
+      }
+      // Drop leading zeros, keeping at least one digit.
+      while (start < end - 1 && *start == '0') {
+        ++start;
+      }
+      if (flags.alt_form) {
+        prefix = flags.uppercase ? microfmt::string_view("0X") : microfmt::string_view("0x");
+      }
+    } else {
+      std::size_t used = limb_count;
+      do {
+        // Divide the magnitude by 10^9 in place, emitting the 9-digit remainder.
+        std::uint64_t rem = 0;
+        for (std::size_t i = used; i-- > 0;) {
+          const std::uint64_t cur = (rem << 32) | mag[i];
+          mag[i] = static_cast<std::uint32_t>(cur / 1000000000U);
+          rem = cur % 1000000000U;
+        }
+        while (used > 0 && mag[used - 1] == 0) {
+          --used;
+        }
+        auto chunk = static_cast<std::uint32_t>(rem);
+        for (int digit = 0; digit < 9 && (used > 0 || chunk != 0 || digit == 0); ++digit) {
+          *--start = static_cast<char>('0' + chunk % 10U);
+          chunk /= 10U;
+        }
+      } while (used > 0);
+    }
+
+    detail::emit_formatted_int(out, start, static_cast<std::size_t>(end - start), negative, prefix, width,
+                               flags.zero_pad);
+    RELOCO_END_UNSAFE_BUFFER_USAGE;
+  }
+};
+
+#if defined(__SIZEOF_INT128__)
+/**
+ * @brief Formatter for `__int128`/`unsigned __int128` when they are not `std::is_integral` (strict `-std=c++NN`),
+ * i.e. `reloco::fixed_int<128, S>` there; forwards to the `wide_int` formatter.
+ */
+template <typename T>
+struct formatter<T, std::enable_if_t<reloco::detail::is_builtin_int128_v<T> && !std::is_integral_v<T>>>
+    : formatter<reloco::detail::wide_int<128, std::is_same_v<T, __int128>>> {
+  void format(T val, const sink &out) const noexcept {
+    constexpr bool is_signed = std::is_same_v<T, __int128>;
+    formatter<reloco::detail::wide_int<128, is_signed>>::format(reloco::detail::wide_int<128, is_signed>(val), out);
+  }
+};
+#endif
 
 } // namespace microfmt
