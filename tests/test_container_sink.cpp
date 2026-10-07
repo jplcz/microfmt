@@ -3,8 +3,13 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include <gtest/gtest.h>
+#include <new>
 #include <string>
 #include <vector>
+
+#include <reloco/default_allocator.hpp>
+#include <reloco/string.hpp>
+#include <reloco/vector.hpp>
 
 #include <microfmt/sinks/container_sink.hpp>
 
@@ -61,3 +66,52 @@ TEST(ContainerSinkTest, ReturnsRequestedContainerType) {
   EXPECT_EQ(text, "id=7");
   EXPECT_EQ(std::string(bytes.begin(), bytes.end()), "id=7");
 }
+
+TEST(ContainerSinkTest, SupportsRelocoStringAndVector) {
+  static_assert(microfmt::is_growable_char_container<reloco::string>);
+  static_assert(microfmt::is_growable_char_container<reloco::vector<char>>);
+
+  reloco::string text;
+  microfmt::format_to_container(text, "value={}", 42);
+  EXPECT_EQ(text.view(), "value=42");
+
+  auto bytes = microfmt::format_as_container<reloco::vector<char>>("{:04x}", 0x2a);
+  ASSERT_EQ(bytes.size(), 4u);
+  EXPECT_EQ(microfmt::string_view(bytes.data(), bytes.size()), "002a");
+
+  auto sink = microfmt::make_container_sink(text);
+  microfmt::format_to(sink.as_sink(), "!{}", 1);
+  EXPECT_FALSE(sink.failed());
+  EXPECT_EQ(text.view(), "value=42!1");
+}
+
+TEST(ContainerSinkTest, FormatsWithExplicitAllocator) {
+  auto text = microfmt::try_format_as_container<reloco::string>(reloco::default_allocator(), "n={}", 5);
+  ASSERT_TRUE(text.has_value());
+  EXPECT_EQ(text->view(), "n=5");
+
+  auto bytes = microfmt::try_format_as_container<reloco::vector<char>>(reloco::default_allocator(), "{}", 12);
+  ASSERT_TRUE(bytes.has_value());
+  EXPECT_EQ(bytes->size(), 2u);
+
+  ASSERT_TRUE(microfmt::try_format_to_container(*text, "+{}", 1).has_value());
+  EXPECT_EQ(text->view(), "n=5+1");
+}
+
+#if defined(__cpp_exceptions) || defined(__EXCEPTIONS)
+namespace {
+struct throwing_container {
+  void push_back(char) { throw std::bad_alloc(); }
+  [[nodiscard]] const char *data() const noexcept { return nullptr; }
+  [[nodiscard]] std::size_t size() const noexcept { return 0; }
+};
+} // namespace
+
+TEST(ContainerSinkTest, ThrowingContainerIsWrapped) {
+  throwing_container target;
+  auto sink = microfmt::make_container_sink(target);
+  microfmt::format_to(sink.as_sink(), "abc");
+  EXPECT_TRUE(sink.failed());
+  EXPECT_THROW(microfmt::format_to_container(target, "abc"), std::bad_alloc);
+}
+#endif
