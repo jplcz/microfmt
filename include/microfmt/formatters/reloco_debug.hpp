@@ -47,14 +47,9 @@
  * already-registered `formatter<reloco::type_id>` in
  * `formatters/reloco.hpp`.
  *
- * `reloco::error` also genuinely needs new code: it has no
- * `formatter<reloco::error>` at all today (nor anywhere else in
- * `jplcz_microfmt`) -- there was previously no way to print a bare
- * `reloco::error` value, only its containing `result<T>`'s success value
- * (once that has one too, see below). `Debug<error>` prints the enum
- * member's own name (e.g. `out_of_range`), via a hand-written name table
- * kept in sync with `error.hpp`'s member list -- `reloco::error` has no
- * reflection/name-lookup helper of its own to delegate to.
+ * `Debug<reloco::error>` prints the enum member's own name (e.g.
+ * `out_of_range`) by delegating to `formatter<reloco::error>` in
+ * `formatters/reloco.hpp`, which owns the hand-written name table.
  *
  * `reloco::result<T>` (`= reloco::expected<T, reloco::error>`) also gets
  * a `Debug<T>`, formatting Rust's `Result` debug convention: `Ok(value)`
@@ -121,107 +116,7 @@ template <> struct Debug<any> {
  * reflection/name-lookup helper of its own.
  */
 template <> struct Debug<error> {
-  static void format(const error &val, const sink &out) noexcept {
-    switch (val) {
-    case error::allocation_failed:
-      out.write("allocation_failed");
-      return;
-    case error::in_place_growth_failed:
-      out.write("in_place_growth_failed");
-      return;
-    case error::unsupported_operation:
-      out.write("unsupported_operation");
-      return;
-    case error::out_of_range:
-      out.write("out_of_range");
-      return;
-    case error::invalid_argument:
-      out.write("invalid_argument");
-      return;
-    case error::already_exists:
-      out.write("already_exists");
-      return;
-    case error::empty_pointer:
-      out.write("empty_pointer");
-      return;
-    case error::pointer_expired:
-      out.write("pointer_expired");
-      return;
-    case error::no_owner:
-      out.write("no_owner");
-      return;
-    case error::out_of_bounds:
-      out.write("out_of_bounds");
-      return;
-    case error::deadlock:
-      out.write("deadlock");
-      return;
-    case error::invalid_owner:
-      out.write("invalid_owner");
-      return;
-    case error::still_locked:
-      out.write("still_locked");
-      return;
-    case error::not_locked:
-      out.write("not_locked");
-      return;
-    case error::timed_out:
-      out.write("timed_out");
-      return;
-    case error::try_again:
-      out.write("try_again");
-      return;
-    case error::not_initialized:
-      out.write("not_initialized");
-      return;
-    case error::container_empty:
-      out.write("container_empty");
-      return;
-    case error::not_found:
-      out.write("not_found");
-      return;
-    case error::integer_overflow:
-      out.write("integer_overflow");
-      return;
-    case error::division_by_zero:
-      out.write("division_by_zero");
-      return;
-    case error::capacity_exceeded:
-      out.write("capacity_exceeded");
-      return;
-    case error::invalid_state:
-      out.write("invalid_state");
-      return;
-    case error::permission_denied:
-      out.write("permission_denied");
-      return;
-    case error::interrupted:
-      out.write("interrupted");
-      return;
-    case error::resource_exhausted:
-      out.write("resource_exhausted");
-      return;
-    case error::busy:
-      out.write("busy");
-      return;
-    case error::io_error:
-      out.write("io_error");
-      return;
-    case error::operation_canceled:
-      out.write("operation_canceled");
-      return;
-    case error::security_violation:
-      out.write("security_violation");
-      return;
-    case error::page_fault:
-      out.write("page_fault");
-      return;
-    }
-    // Unreachable for any currently-defined `reloco::error` member; kept as a
-    // defensive fallback in case a future member is added here without a
-    // matching `case` above (e.g. a forgotten update to this table).
-    microfmt::format_to(out, "error({})", static_cast<int>(val));
-  }
+  static void format(const error &val, const sink &out) noexcept { microfmt::formatter<error>{}.format(val, out); }
 };
 
 /**

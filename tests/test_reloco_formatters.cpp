@@ -572,3 +572,56 @@ TEST(RelocoFormattersTest, FormatsUniquePtrOfDisplayOnlyElement) {
   microfmt::format_to(buffer.as_sink(), "{}", ptr);
   EXPECT_EQ(buffer.view(), "(5, 6)");
 }
+
+#include <reloco/call_location.hpp>
+#include <reloco/cell.hpp>
+#include <reloco/error.hpp>
+#include <reloco/external_vector.hpp>
+#include <reloco/fixed_point.hpp>
+#include <reloco/inline_vector.hpp>
+#include <reloco/lru_cache.hpp>
+#include <reloco/packed_bits.hpp>
+#include <reloco/ring_buffer.hpp>
+#include <reloco/tree_map.hpp>
+#include <reloco/tree_set.hpp>
+#include <reloco/variant.hpp>
+
+TEST(RelocoFormattersTest, FormatsTreeSetAndMap) {
+  auto set = reloco::tree_set<int>::try_create();
+  ASSERT_TRUE(set);
+  for (int v : {3, 1, 2}) {
+    ASSERT_TRUE(set->try_insert(v));
+  }
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", *set), "[1, 2, 3]");
+
+  auto map = reloco::tree_map<int, int>::try_create();
+  ASSERT_TRUE(map);
+  ASSERT_TRUE(map->try_insert(2, 20));
+  ASSERT_TRUE(map->try_insert(1, 10));
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", *map), "{1: 10, 2: 20}");
+}
+
+TEST(RelocoFormattersTest, FormatsExternalVectorAndRing) {
+  int storage[4];
+  reloco::external_vector<int> ev{reloco::span<int>(storage)};
+  ASSERT_TRUE(ev.try_push_back(7));
+  ASSERT_TRUE(ev.try_push_back(8));
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", ev), "[7, 8]");
+
+  reloco::inline_ring_buffer<int, 4> ring;
+  const int data[] = {1, 2, 3};
+  ASSERT_TRUE(ring.try_write(reloco::span<const int>(data)));
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", ring), "[1, 2, 3]");
+}
+
+TEST(RelocoFormattersTest, FormatsMiscellaneousTypes) {
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", reloco::error::out_of_range), "out_of_range");
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", reloco::cell<int>(5)), "5");
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", reloco::call_location{"a.cpp", 12}), "a.cpp:12");
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", reloco::call_location_ref{}), "<no location>");
+  EXPECT_EQ(microfmt::format_as<std::string>("{:x}", reloco::packed_bits<unsigned>(255u)), "ff");
+  reloco::variant<int, bool> v{3};
+  EXPECT_EQ(microfmt::format_as<std::string>("{}", v), "3");
+  const auto fp = reloco::fixed_point<std::int32_t, 8>::from_raw(384);
+  EXPECT_EQ(microfmt::format_as<std::string>("{:.1f}", fp), "1.5");
+}

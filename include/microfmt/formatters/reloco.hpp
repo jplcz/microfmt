@@ -1,11 +1,18 @@
 #pragma once
 #include <microfmt/microfmt.hpp>
+#include <microfmt/formatters/floating.hpp>
+#include <microfmt/formatters/variant.hpp>
 #include <reloco/binary_heap.hpp>
 #include <reloco/boxed_slice.hpp>
+#include <reloco/call_location.hpp>
+#include <reloco/cell.hpp>
 #include <reloco/checked.hpp>
 #include <reloco/collection_view.hpp>
 #include <reloco/cow.hpp>
 #include <reloco/duration.hpp>
+#include <reloco/error.hpp>
+#include <reloco/external_vector.hpp>
+#include <reloco/fixed_point.hpp>
 #include <reloco/flat_hash_map.hpp>
 #include <reloco/flat_hash_set.hpp>
 #include <reloco/flat_map.hpp>
@@ -16,12 +23,16 @@
 #include <reloco/inline_vec_deque.hpp>
 #include <reloco/inline_vector.hpp>
 #include <reloco/instant.hpp>
+#include <reloco/lru_cache.hpp>
+#include <reloco/masked_pointer.hpp>
 #include <reloco/non_zero.hpp>
 #include <reloco/obfuscated_string.hpp>
 #include <reloco/ordering.hpp>
 #include <reloco/outline_vec_deque.hpp>
 #include <reloco/outline_vector.hpp>
+#include <reloco/packed_bits.hpp>
 #include <reloco/rc.hpp>
+#include <reloco/ring_buffer.hpp>
 #include <reloco/saturating.hpp>
 #include <reloco/shared_ptr.hpp>
 #include <reloco/sso_flat_map.hpp>
@@ -30,13 +41,51 @@
 #include <reloco/sso_vec_deque.hpp>
 #include <reloco/sso_vector.hpp>
 #include <reloco/string.hpp>
+#include <reloco/tree_map.hpp>
+#include <reloco/tree_set.hpp>
 #include <reloco/type_id.hpp>
 #include <reloco/unique_ptr.hpp>
+#include <reloco/variant.hpp>
 #include <reloco/vec_deque.hpp>
 #include <reloco/vector.hpp>
 #include <reloco/wrapping.hpp>
 
 namespace microfmt {
+
+namespace detail {
+
+template <typename Formatter, typename Range>
+void format_reloco_sequence(const Formatter &elem_formatter, const Range &range, const sink &out) noexcept {
+  out.put('[');
+  bool is_first = true;
+  for (const auto &elem : range) {
+    if (!is_first) {
+      out.write(", ");
+    }
+    is_first = false;
+    elem_formatter.format(elem, out);
+  }
+  out.put(']');
+}
+
+template <typename KeyFormatter, typename ValueFormatter, typename Range>
+void format_reloco_map(const KeyFormatter &key_formatter, const ValueFormatter &value_formatter, const Range &range,
+                       const sink &out) noexcept {
+  out.put('{');
+  bool is_first = true;
+  for (const auto &entry : range) {
+    if (!is_first) {
+      out.write(", ");
+    }
+    is_first = false;
+    key_formatter.format(entry.first, out);
+    out.write(": ");
+    value_formatter.format(entry.second, out);
+  }
+  out.put('}');
+}
+
+} // namespace detail
 
 /**
  * @brief Core formatter for type-erased collection views.
@@ -1181,6 +1230,297 @@ template <> struct formatter<reloco::type_id> {
       return;
     }
     out.write(name);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::error`: the enum member's own name (e.g.
+ * `out_of_range`), via a hand-written name table kept in sync with
+ * `error.hpp`'s member list, since the enum has no name-lookup helper.
+ */
+template <> struct formatter<reloco::error> {
+  constexpr void parse(format_parse_context &) noexcept {}
+
+  void format(const reloco::error &val, const sink &out) const noexcept {
+    using reloco::error;
+    switch (val) {
+    case error::allocation_failed:
+      out.write("allocation_failed");
+      return;
+    case error::in_place_growth_failed:
+      out.write("in_place_growth_failed");
+      return;
+    case error::unsupported_operation:
+      out.write("unsupported_operation");
+      return;
+    case error::out_of_range:
+      out.write("out_of_range");
+      return;
+    case error::invalid_argument:
+      out.write("invalid_argument");
+      return;
+    case error::already_exists:
+      out.write("already_exists");
+      return;
+    case error::empty_pointer:
+      out.write("empty_pointer");
+      return;
+    case error::pointer_expired:
+      out.write("pointer_expired");
+      return;
+    case error::no_owner:
+      out.write("no_owner");
+      return;
+    case error::out_of_bounds:
+      out.write("out_of_bounds");
+      return;
+    case error::deadlock:
+      out.write("deadlock");
+      return;
+    case error::invalid_owner:
+      out.write("invalid_owner");
+      return;
+    case error::still_locked:
+      out.write("still_locked");
+      return;
+    case error::not_locked:
+      out.write("not_locked");
+      return;
+    case error::timed_out:
+      out.write("timed_out");
+      return;
+    case error::try_again:
+      out.write("try_again");
+      return;
+    case error::not_initialized:
+      out.write("not_initialized");
+      return;
+    case error::container_empty:
+      out.write("container_empty");
+      return;
+    case error::not_found:
+      out.write("not_found");
+      return;
+    case error::integer_overflow:
+      out.write("integer_overflow");
+      return;
+    case error::division_by_zero:
+      out.write("division_by_zero");
+      return;
+    case error::capacity_exceeded:
+      out.write("capacity_exceeded");
+      return;
+    case error::invalid_state:
+      out.write("invalid_state");
+      return;
+    case error::permission_denied:
+      out.write("permission_denied");
+      return;
+    case error::interrupted:
+      out.write("interrupted");
+      return;
+    case error::resource_exhausted:
+      out.write("resource_exhausted");
+      return;
+    case error::busy:
+      out.write("busy");
+      return;
+    case error::io_error:
+      out.write("io_error");
+      return;
+    case error::operation_canceled:
+      out.write("operation_canceled");
+      return;
+    case error::security_violation:
+      out.write("security_violation");
+      return;
+    case error::page_fault:
+      out.write("page_fault");
+      return;
+    }
+    // Defensive fallback for members added to `reloco::error` without a matching case above.
+    microfmt::format_to(out, "error({})", static_cast<int>(val));
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::tree_set<T, Compare>`.
+ *
+ * Formats as a JSON-like array of its (sorted, unique) elements:
+ * `[val1, val2, ...]`. Format specifiers cascade down to each element.
+ */
+template <typename T, typename Compare> struct formatter<reloco::tree_set<T, Compare>> {
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::tree_set<T, Compare> &set, const sink &out) const noexcept {
+    detail::format_reloco_sequence(underlying_formatter, set, out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::tree_map<Key, Mapped, Compare>`.
+ *
+ * Formats as a JSON-like object in key order: `{key1: val1, key2: val2, ...}`.
+ */
+template <typename Key, typename Mapped, typename Compare> struct formatter<reloco::tree_map<Key, Mapped, Compare>> {
+  detail::element_formatter<std::remove_cv_t<Key>> key_formatter;
+  detail::element_formatter<std::remove_cv_t<Mapped>> value_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    key_formatter.parse(ctx);
+    value_formatter.parse(ctx);
+  }
+
+  void format(const reloco::tree_map<Key, Mapped, Compare> &map, const sink &out) const noexcept {
+    detail::format_reloco_map(key_formatter, value_formatter, map, out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::lru_cache<Key, Mapped, Hash, KeyEqual>`.
+ *
+ * Formats as a JSON-like object from most- to least-recently used entry.
+ * Does not promote any entry.
+ */
+template <typename Key, typename Mapped, typename Hash, typename KeyEqual>
+struct formatter<reloco::lru_cache<Key, Mapped, Hash, KeyEqual>> {
+  detail::element_formatter<std::remove_cv_t<Key>> key_formatter;
+  detail::element_formatter<std::remove_cv_t<Mapped>> value_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept {
+    key_formatter.parse(ctx);
+    value_formatter.parse(ctx);
+  }
+
+  void format(const reloco::lru_cache<Key, Mapped, Hash, KeyEqual> &cache, const sink &out) const noexcept {
+    detail::format_reloco_map(key_formatter, value_formatter, cache, out);
+  }
+};
+
+/** @brief Formatter for `reloco::external_vector<T>`: `[val1, val2, ...]`. */
+template <typename T> struct formatter<reloco::external_vector<T>> {
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::external_vector<T> &vec, const sink &out) const noexcept {
+    detail::format_reloco_sequence(underlying_formatter, vec, out);
+  }
+};
+
+/**
+ * @brief Formatters for the `reloco::ring_buffer` family (`ring_buffer`,
+ * `outline_ring_buffer`, `inline_ring_buffer`, `sso_ring_buffer`,
+ * `ring_buffer_ref`): `[val1, val2, ...]` from oldest to newest element.
+ */
+#define MICROFMT_RELOCO_RING_FORMATTER(TEMPLATE_HEAD, TYPE)                                                       \
+  TEMPLATE_HEAD struct formatter<TYPE> {                                                                         \
+    detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;                                         \
+    constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }                \
+    void format(const TYPE &ring, const sink &out) const noexcept {                                              \
+      detail::format_reloco_sequence(underlying_formatter, ring, out);                                           \
+    }                                                                                                            \
+  }
+
+#define MICROFMT_COMMA ,
+MICROFMT_RELOCO_RING_FORMATTER(template <typename T>, reloco::ring_buffer<T>);
+MICROFMT_RELOCO_RING_FORMATTER(template <typename T>, reloco::outline_ring_buffer<T>);
+MICROFMT_RELOCO_RING_FORMATTER(template <typename T>, reloco::ring_buffer_ref<T>);
+MICROFMT_RELOCO_RING_FORMATTER(template <typename T MICROFMT_COMMA std::size_t N>,
+                               reloco::inline_ring_buffer<T MICROFMT_COMMA N>);
+MICROFMT_RELOCO_RING_FORMATTER(template <typename T MICROFMT_COMMA std::size_t N>,
+                               reloco::sso_ring_buffer<T MICROFMT_COMMA N>);
+#undef MICROFMT_COMMA
+#undef MICROFMT_RELOCO_RING_FORMATTER
+
+/** @brief Formatter for `reloco::variant<Ts...>`: formats the active alternative like `std::variant`. */
+template <typename... Ts> struct formatter<reloco::variant<Ts...>> {
+  formatter<std::variant<Ts...>> base_formatter; // std-interop-ok: reloco::variant derives from std::variant
+
+  constexpr void parse(format_parse_context &ctx) noexcept { base_formatter.parse(ctx); }
+
+  void format(const reloco::variant<Ts...> &var, const sink &out) const noexcept {
+    base_formatter.format(static_cast<const std::variant<Ts...> &>(var), out); // std-interop-ok: base-class view
+  }
+};
+
+/** @brief Formatter for `reloco::cell<T>`: formats the current value. */
+template <typename T> struct formatter<reloco::cell<T>> {
+  detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::cell<T> &c, const sink &out) const noexcept { underlying_formatter.format(c.get(), out); }
+};
+
+/** @brief Formatter for `reloco::call_location`: `file:line`. */
+template <> struct formatter<reloco::call_location> {
+  constexpr void parse(format_parse_context &) noexcept {}
+
+  void format(const reloco::call_location &loc, const sink &out) const noexcept {
+    out.write(loc.file != nullptr ? microfmt::string_view(loc.file) : microfmt::string_view("<unknown>"));
+    out.put(':');
+    microfmt::format_to(out, "{}", loc.line);
+  }
+};
+
+/** @brief Formatter for `reloco::call_location_ref`: `file:line`, or `<no location>` when empty. */
+template <> struct formatter<reloco::call_location_ref> {
+  constexpr void parse(format_parse_context &) noexcept {}
+
+  void format(const reloco::call_location_ref &ref, const sink &out) const noexcept {
+    if (!ref.has_value()) {
+      out.write("<no location>");
+      return;
+    }
+    formatter<reloco::call_location>{}.format(ref.value(), out);
+  }
+};
+
+/** @brief Formatter for `reloco::packed_bits<T>`: the raw packed integer; specifiers apply to it. */
+template <typename T> struct formatter<reloco::packed_bits<T>> {
+  formatter<T> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::packed_bits<T> &bits, const sink &out) const noexcept {
+    underlying_formatter.format(bits.value(), out);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::masked_pointer<T, AuthPolicy>`: the authenticated pointer address
+ * (`0x...`), or `(null)`. Authenticating a corrupted pointer follows the policy's own failure behavior.
+ */
+template <typename T, typename AuthPolicy> struct formatter<reloco::masked_pointer<T, AuthPolicy>> {
+  constexpr void parse(format_parse_context &) noexcept {}
+
+  void format(const reloco::masked_pointer<T, AuthPolicy> &ptr, const sink &out) const noexcept {
+    const void *raw = static_cast<const void *>(ptr.get());
+    if (raw == nullptr) {
+      out.write("(null)");
+      return;
+    }
+    microfmt::format_to(out, "{}", raw);
+  }
+};
+
+/**
+ * @brief Formatter for `reloco::fixed_point<Rep, FracBits>` with a built-in integral `Rep`.
+ *
+ * Formats the value as a decimal number; the specifier is forwarded to `double`'s formatter
+ * (e.g. `{:.3f}`).
+ */
+template <typename Rep, unsigned FracBits>
+struct formatter<reloco::fixed_point<Rep, FracBits>, std::enable_if_t<std::is_arithmetic_v<Rep>>> {
+  formatter<double> underlying_formatter;
+
+  constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }
+
+  void format(const reloco::fixed_point<Rep, FracBits> &value, const sink &out) const noexcept {
+    underlying_formatter.format(static_cast<double>(value.raw()) / static_cast<double>(Rep{1} << FracBits), out);
   }
 };
 
