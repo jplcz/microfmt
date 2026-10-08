@@ -70,9 +70,13 @@ protected:
 
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
-    const std::size_t n = logger_name.size() < TagCapacity - 1 ? logger_name.size() : TagCapacity - 1;
-    for (std::size_t i = 0; i < n; ++i) {
-      scratch[i] = logger_name[i];
+    // The index bound is spelled out in the loop condition (not only via a
+    // precomputed n) so GCC on riscv64 -O3 can prove i < TagCapacity - 1 and
+    // does not emit a false -Wstringop-overflow after unrolling.
+    std::size_t n = 0;
+    while (n < TagCapacity - 1 && n < logger_name.size()) {
+      scratch[n] = logger_name[n];
+      ++n;
     }
     scratch[n] = '\0';
 

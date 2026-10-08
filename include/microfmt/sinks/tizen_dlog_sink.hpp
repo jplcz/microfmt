@@ -103,6 +103,14 @@ private:
   write_fn_t write_fn_;
 };
 
+// Explicit guides: GCC 11 cannot synthesize the implicit CTAD guide because the
+// constructor's default argument (write_to_dlog) names a member of the
+// still-incomplete class template.
+tizen_dlog_sink() -> tizen_dlog_sink<>;
+tizen_dlog_sink(microfmt::string_view) -> tizen_dlog_sink<>;
+tizen_dlog_sink(microfmt::string_view, void (*)(int, microfmt::string_view, microfmt::string_view) noexcept)
+    -> tizen_dlog_sink<>;
+
 template <std::size_t TagCapacity> struct log_sink_traits<tizen_dlog_sink_tag<TagCapacity>> {
   using context_type = tizen_dlog_sink<TagCapacity>;
 

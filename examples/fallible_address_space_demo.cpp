@@ -65,7 +65,10 @@ int main() {
   microfmt::println("\n[2. Invalid / Unmapped Addresses (no crash!)]");
 
   // A wild pointer far outside any mapped region - would normally SIGSEGV.
-  constexpr uintptr_t wild_addr = 0x0000'dead'beef'0000ULL;
+  // 32-bit targets can't represent the 64-bit pattern, so they use a smaller
+  // (still unmapped) address instead of overflowing uintptr_t.
+  constexpr uintptr_t wild_addr =
+      static_cast<uintptr_t>(sizeof(uintptr_t) >= 8 ? 0x0000'dead'beef'0000ULL : 0xdead'0000ULL);
 
   int probe_dest = 0;
   auto bad_read = space.read_bytes(wild_addr, &probe_dest, sizeof(probe_dest));

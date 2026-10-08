@@ -77,6 +77,12 @@ private:
   write_fn_t write_fn_;
 };
 
+// Explicit guides: GCC 11 cannot synthesize the implicit CTAD guide because the
+// constructor's default argument (write_to_syslog) names a member of the
+// still-incomplete class template.
+syslog_sink() -> syslog_sink<>;
+syslog_sink(void (*)(int, microfmt::string_view) noexcept) -> syslog_sink<>;
+
 template <std::size_t Capacity> struct log_sink_traits<syslog_sink_tag<Capacity>> {
   using context_type = syslog_sink<Capacity>;
 

@@ -106,6 +106,12 @@ private:
   write_fn_t write_fn_;
 };
 
+// Explicit guides: GCC 11 cannot synthesize the implicit CTAD guide because the
+// constructor's default argument (write_to_journal) names a member of the
+// still-incomplete class template.
+systemd_sink() -> systemd_sink<>;
+systemd_sink(void (*)(int, microfmt::string_view, microfmt::string_view) noexcept) -> systemd_sink<>;
+
 template <std::size_t MessageCapacity, std::size_t IdentifierCapacity>
 struct log_sink_traits<systemd_sink_tag<MessageCapacity, IdentifierCapacity>> {
   using context_type = systemd_sink<MessageCapacity, IdentifierCapacity>;

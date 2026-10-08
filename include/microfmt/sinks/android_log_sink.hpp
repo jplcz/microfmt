@@ -119,6 +119,14 @@ private:
   write_fn_t write_fn_;
 };
 
+// Explicit guides: GCC 11 cannot synthesize the implicit CTAD guide because the
+// constructor's default argument (write_to_logcat) names a member of the
+// still-incomplete class template, so `android_log_sink s("tag");` failed there.
+android_log_sink() -> android_log_sink<>;
+android_log_sink(microfmt::string_view) -> android_log_sink<>;
+android_log_sink(microfmt::string_view, void (*)(int, microfmt::string_view, microfmt::string_view) noexcept)
+    -> android_log_sink<>;
+
 template <std::size_t MessageCapacity, std::size_t TagCapacity>
 struct log_sink_traits<android_log_sink_tag<MessageCapacity, TagCapacity>> {
   using context_type = android_log_sink<MessageCapacity, TagCapacity>;
