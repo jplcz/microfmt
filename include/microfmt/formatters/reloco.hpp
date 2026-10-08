@@ -24,6 +24,7 @@
 #include <reloco/inline_vec_deque.hpp>
 #include <reloco/inline_vector.hpp>
 #include <reloco/instant.hpp>
+#include <reloco/lifetime.hpp>
 #include <reloco/lru_cache.hpp>
 #include <reloco/masked_pointer.hpp>
 #include <reloco/non_zero.hpp>
@@ -1595,6 +1596,10 @@ struct formatter<reloco::detail::wide_int<N, Signed>> : detail::int_formatter_sp
 };
 
 #if defined(__SIZEOF_INT128__)
+// Feature-tested use of the GCC/Clang __int128 extension: under strict
+// -std=c++NN it is not std::is_integral, so this formatter is how it reaches
+// the wide_int formatter. -Wpedantic would otherwise reject the type names.
+RELOCO_BEGIN_SUPPRESS_PEDANTIC_INT128
 /**
  * @brief Formatter for `__int128`/`unsigned __int128` when they are not `std::is_integral` (strict `-std=c++NN`),
  * i.e. `reloco::fixed_int<128, S>` there; forwards to the `wide_int` formatter.
@@ -1607,6 +1612,7 @@ struct formatter<T, std::enable_if_t<reloco::detail::is_builtin_int128_v<T> && !
     formatter<reloco::detail::wide_int<128, is_signed>>::format(reloco::detail::wide_int<128, is_signed>(val), out);
   }
 };
+RELOCO_END_SUPPRESS_PEDANTIC_INT128
 #endif
 
 } // namespace microfmt
