@@ -34,6 +34,7 @@ Start with the guide that matches what you are building:
 | [Lifetime safety](docs/lifetime-safety.md) | Borrowed values and pointers, lifetime annotations, and compiler diagnostics |
 | [Bare-metal hardware sinks](docs/bare-metal.md) | PL011 UART and ARM semihosting `microfmt::sink` adapters |
 | [GDB pretty printers](docs/gdb-pretty-printers.md) | Formatting microfmt sinks, buffers, and the logger in GDB: source, auto-load, or embed |
+| [LLDB pretty printers](docs/lldb-pretty-printers.md) | The same formatters for LLDB, loaded with `command script import` |
 | [Shared-library deployments and code size](docs/shared-library.md) | `MICROFMT_SHARED`/`MICROFMT_SHARED_BUILD`, `MICROFMT_FORMATTER_INSTANCE`, and reducing cross-`.so` code duplication |
 | [Developing jplcz_microfmt](docs/development.md) | Builds, tests, warning policy, public-header checks, and contribution constraints |
 
