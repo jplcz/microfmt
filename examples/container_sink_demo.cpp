@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause
 
-#include <cstdio>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -14,5 +14,5 @@ int main() {
 
   const auto packet = microfmt::format_as_container<std::vector<char>>("id={:04x}, status={}", 0x2a, "ready");
 
-  std::printf("%s\npacket: %.*s\n", message.c_str(), static_cast<int>(packet.size()), packet.data());
+  std::cout << message << "\npacket: " << std::string(packet.begin(), packet.end()) << '\n';
 }
