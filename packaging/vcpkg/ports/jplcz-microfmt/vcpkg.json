@@ -5,6 +5,7 @@
   "homepage": "https://github.com/jplcz/microfmt",
   "license": "BSD-2-Clause",
   "dependencies": [
+    "jplcz-reloco",
     {
       "name": "vcpkg-cmake",
       "host": true

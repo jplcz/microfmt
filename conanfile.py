@@ -23,6 +23,10 @@ class JplczMicrofmtConan(ConanFile):
     exports_sources = "include/**", "LICENSE"
     no_copy_source = True
 
+    def requirements(self):
+        # Public headers include reloco's, so consumers need it on their include path too.
+        self.requires("jplcz_reloco/[>=0.2.1]", transitive_headers=True)
+
     def package(self):
         copy(
             self,

@@ -38,6 +38,20 @@ elif ((profile_detected == 0)); then
   exit 1
 fi
 
+# microfmt depends on jplcz_reloco, which has no public package index entry: use a local checkout
+# (JPLCZ_MICROFMT_RELOCO_SOURCE_DIR) or clone the repository.
+reloco_dir="${JPLCZ_MICROFMT_RELOCO_SOURCE_DIR:-}"
+if [[ -z "${reloco_dir}" ]]; then
+  reloco_dir="${source_dir}/build/reloco-src"
+  if [[ ! -d "${reloco_dir}/.git" ]]; then
+    rm -rf "${reloco_dir}"
+    git clone --depth 1 "${JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY:-https://github.com/jplcz/reloco.git}" "${reloco_dir}"
+  fi
+fi
+
+conan create "${reloco_dir}" --build=missing -s compiler.cppstd=17 \
+  ${JPLCZ_MICROFMT_CONAN_COMPILER_VERSION:+-s "compiler.version=${JPLCZ_MICROFMT_CONAN_COMPILER_VERSION}"}
+
 create_args=(
   "${source_dir}"
   --build=missing

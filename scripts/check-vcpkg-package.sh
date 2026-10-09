@@ -20,7 +20,19 @@ if [[ ! -x "${VCPKG_ROOT}/vcpkg" ]]; then
   exit 1
 fi
 
-"${VCPKG_ROOT}/vcpkg" install jplcz-microfmt \
+# microfmt depends on jplcz_reloco, which has no public package index entry: use a local checkout
+# (JPLCZ_MICROFMT_RELOCO_SOURCE_DIR) or clone the repository.
+reloco_dir="${JPLCZ_MICROFMT_RELOCO_SOURCE_DIR:-}"
+if [[ -z "${reloco_dir}" ]]; then
+  reloco_dir="${source_dir}/build/reloco-src"
+  if [[ ! -d "${reloco_dir}/.git" ]]; then
+    rm -rf "${reloco_dir}"
+    git clone --depth 1 "${JPLCZ_MICROFMT_RELOCO_GIT_REPOSITORY:-https://github.com/jplcz/reloco.git}" "${reloco_dir}"
+  fi
+fi
+
+"${VCPKG_ROOT}/vcpkg" install jplcz-reloco jplcz-microfmt \
+  "--overlay-ports=${reloco_dir}/packaging/vcpkg/ports" \
   "--overlay-ports=${source_dir}/packaging/vcpkg/ports" \
   "--triplet=${triplet}"
 
