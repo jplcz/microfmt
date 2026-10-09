@@ -2,6 +2,9 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause
 
+// System headers (windows.h via gtest) use names such as X0/PC/SP as struct members, so they must come first.
+#include <gtest/gtest.h>
+
 #define RAX 0xBAD
 #define FP 0xBAD
 #define LR 0xBAD
@@ -17,8 +20,6 @@
 #undef PC
 #undef SP
 #undef X0
-
-#include <gtest/gtest.h>
 
 TEST(DwarfRegisters, AvoidsUppercaseRegisterMacroCollisions) {
   EXPECT_EQ(microfmt::dwarf::x86_64::rax, 0U);
