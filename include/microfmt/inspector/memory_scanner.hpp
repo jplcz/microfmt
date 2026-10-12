@@ -123,6 +123,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER memory_scanner_context {
   raw_resolved_symbol raw_symbol{};
   resolved_symbol_info resolved_symbol{};
   hexdump_view dump_view{};
+  // NOLINTNEXTLINE(reloco-no-c-array): fixed-size buffer/table for span APIs
   uint8_t dump_line_buffer[16]{};
   address_space_ref reader_space{};
 };
@@ -227,6 +228,13 @@ private:
         allow_deref = false; // Do not dereference code, direct maps, MMIO,
                              // guard pages, or NS maps
         break;
+      case memory_region_type::unknown:
+      case memory_region_type::kernel_data:
+      case memory_region_type::kernel_stack:
+      case memory_region_type::process_stack:
+      case memory_region_type::struct_pages:
+      case memory_region_type::kernel_heap:
+      case memory_region_type::user_data:
       default:
         break;
       }
@@ -263,6 +271,16 @@ private:
     case memory_region_type::user_code:
     case memory_region_type::user_data:
       return true;
+    case memory_region_type::unknown:
+    case memory_region_type::kernel_stack:
+    case memory_region_type::process_stack:
+    case memory_region_type::direct_map:
+    case memory_region_type::struct_pages:
+    case memory_region_type::kernel_heap:
+    case memory_region_type::device_mmio:
+    case memory_region_type::guard_page:
+    case memory_region_type::ns_map:
+    case memory_region_type::ns_device_mmio:
     default:
       return false;
     }
@@ -309,6 +327,7 @@ private:
     case memory_region_type::ns_device_mmio:
       out.write("ns_device_mmio");
       break;
+    case memory_region_type::unknown:
     default:
       out.write("unknown");
       break;

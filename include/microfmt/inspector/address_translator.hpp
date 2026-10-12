@@ -18,7 +18,7 @@ namespace microfmt {
  * @brief Attributes and physical mapping details resolved for a virtual
  * address.
  */
-struct MICROFMT_API_CLASS translation_attributes {
+struct MICROFMT_API_CLASS RELOCO_COPYABLE translation_attributes {
   /// Translated physical address.
   uintptr_t physical_address{0};
 

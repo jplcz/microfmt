@@ -83,6 +83,7 @@ inline uint64_t bintime_frac_to_decimal(uint64_t frac, time_precision prec) noex
   case time_precision::ps:
     multiplier = 1'000'000'000'000ULL;
     break;
+  case time_precision::sec:
   default:
     return 0;
   }
@@ -121,6 +122,8 @@ inline uint32_t sbintime_frac_to_decimal(uint32_t frac32, time_precision prec) n
   case time_precision::ns:
     multiplier = 1'000'000'000;
     break;
+  case time_precision::sec:
+  case time_precision::ps:
   default:
     multiplier = 1'000'000'000;
     break;
@@ -177,6 +180,8 @@ template <typename T> struct formatter<T, std::enable_if_t<is_bintime_v<T>>> {
    * @param bt The value to format (read-only via @p sec/@p frac members).
    * @param out Destination sink.
    */
+  // time-field arithmetic converts between C/POSIX integer widths whose ranges are bounded by the format.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const T &bt, const sink &out) const noexcept {
     int64_t sec = static_cast<int64_t>(bt.sec);
     uint64_t frac = static_cast<uint64_t>(bt.frac);
@@ -198,6 +203,7 @@ template <typename T> struct formatter<T, std::enable_if_t<is_bintime_v<T>>> {
       out.put('s');
     }
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 // ============================================================================

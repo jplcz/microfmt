@@ -243,6 +243,7 @@ public:
           out, "[{}] ",
           ansi::styled("CRIT ", ansi::style{ansi::color::bright_white, ansi::color::red, ansi::attribute::bold}));
       break;
+    case level::off:
     default:
       break;
     }

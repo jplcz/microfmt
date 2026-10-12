@@ -131,13 +131,15 @@ RELOCO_UNSAFE_BUFFER_USAGE inline size_t build_printf_float_format(char *dest, c
  * @param spec Parsed format specifier.
  * @param out Destination sink.
  */
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename T>
 RELOCO_UNSAFE_BUFFER_USAGE inline void format_float_via_printf(T val, const parsed_float_spec &spec,
                                                                const sink &out) noexcept {
-  char fmt_buf[16];
+  char fmt_buf[16] = {};
   build_printf_float_format<T>(fmt_buf, spec);
 
-  char buf[128];
+  char buf[128] = {};
   const auto print_float = [&spec, &fmt_buf, &val](char *dest, size_t size) noexcept {
     if (spec.precision >= 0)
       return std::snprintf(dest, size, fmt_buf, spec.precision, val);
@@ -160,6 +162,7 @@ RELOCO_UNSAFE_BUFFER_USAGE inline void format_float_via_printf(T val, const pars
     }
   }
 }
+RELOCO_END_UNSAFE_CODE
 
 } // namespace detail
 

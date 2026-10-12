@@ -38,8 +38,12 @@ public:
    * @brief Constructs a scratch allocator over a provided character span.
    * @param buffer Caller-owned backing memory storage.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   explicit scratch_allocator(span<char> buffer RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : m_buf(reinterpret_cast<std::byte *>(buffer.data()), buffer.size()) {}
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Reserves aligned storage for objects without constructing them.
@@ -47,6 +51,9 @@ public:
    * @param count Number of contiguous objects to reserve.
    * @return Pointer to the aligned storage, or `nullptr` if it does not fit.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   template <typename T>
   [[nodiscard]] RELOCO_ASSUME_ALIGNED(alignof(T)) T *allocate(size_t count = 1) noexcept RELOCO_LIFETIMEBOUND {
     if (count == 0 || count > available() / sizeof(T)) {
@@ -65,6 +72,7 @@ public:
     m_pos += alignment_offset + size;
     return static_cast<T *>(static_cast<void *>(current_ptr + alignment_offset));
   }
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Places a trivially destructible object of type T into the scratch buffer.

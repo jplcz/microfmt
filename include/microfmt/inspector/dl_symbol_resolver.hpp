@@ -27,6 +27,9 @@ namespace microfmt::detail {
  * @param out_raw Receives the raw resolution result.
  * @return `true` when `dladdr` located at least an owning image.
  */
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline bool dl_resolve_symbol(uintptr_t addr, raw_resolved_symbol &out_raw) noexcept {
   if (addr == 0)
     return false;
@@ -50,6 +53,7 @@ inline bool dl_resolve_symbol(uintptr_t addr, raw_resolved_symbol &out_raw) noex
   out_raw = result;
   return true;
 }
+RELOCO_END_UNSAFE_CODE
 
 } // namespace microfmt::detail
 

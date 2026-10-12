@@ -39,7 +39,7 @@ enum class remote_page_table_entry_kind : uint8_t {
 /**
  * @brief Architecture callback output for one decoded entry.
  */
-struct MICROFMT_API_CLASS remote_page_table_decoded_entry {
+struct MICROFMT_API_CLASS RELOCO_COPYABLE remote_page_table_decoded_entry {
   remote_page_table_entry_kind kind{remote_page_table_entry_kind::invalid};
   uintptr_t output_address{0};
   size_t page_size{0};
@@ -103,7 +103,7 @@ private:
 /**
  * @brief One recorded level from a remote page-table walk.
  */
-struct MICROFMT_API_CLASS remote_page_table_walk_step {
+struct MICROFMT_API_CLASS RELOCO_COPYABLE remote_page_table_walk_step {
   size_t level{0};
   uintptr_t table_address{0};
   uintptr_t entry_address{0};

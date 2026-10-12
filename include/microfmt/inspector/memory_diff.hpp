@@ -40,6 +40,9 @@ struct MICROFMT_API_CLASS RELOCO_POINTER memory_diff_view {
  * @param base_addr Optional base address for absolute address annotation.
  * @return A lightweight @ref memory_diff_view instance.
  */
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename T1, typename T2>
 [[nodiscard]] constexpr memory_diff_view mem_diff(span<const T1> old_span,
                                                   span<const std::byte> new_span, // Allow mixed or standard byte spans
@@ -49,8 +52,12 @@ template <typename T1, typename T2>
       span<const std::byte>(reinterpret_cast<const std::byte *>(new_span.data()), new_span.size_bytes()), base_addr,
       16};
 }
+RELOCO_END_UNSAFE_CODE
 
 // Overload for matching template types
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename T1, typename T2>
 [[nodiscard]] constexpr memory_diff_view mem_diff(span<const T1> old_span, span<const T2> new_span,
                                                   uintptr_t base_addr = 0) noexcept {
@@ -59,11 +66,15 @@ template <typename T1, typename T2>
       span<const std::byte>(reinterpret_cast<const std::byte *>(new_span.data()), new_span.size_bytes()), base_addr,
       16};
 }
+RELOCO_END_UNSAFE_CODE
 
 #if RELOCO_HAS_STD_SPAN
 /**
  * @brief Creates a memory diff view over two standard `std::span` containers.
  */
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename T1, typename T2, std::size_t Extent1, std::size_t Extent2>
 [[nodiscard]] constexpr memory_diff_view mem_diff(std::span<const T1, Extent1> old_span,
                                                   std::span<const std::byte, Extent2> new_span,
@@ -73,7 +84,11 @@ template <typename T1, typename T2, std::size_t Extent1, std::size_t Extent2>
       span<const std::byte>(reinterpret_cast<const std::byte *>(new_span.data()), new_span.size_bytes()), base_addr,
       16};
 }
+RELOCO_END_UNSAFE_CODE
 
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename T1, typename T2, std::size_t Extent1, std::size_t Extent2>
 [[nodiscard]] constexpr memory_diff_view mem_diff(std::span<const T1, Extent1> old_span,
                                                   std::span<const T2, Extent2> new_span,
@@ -83,6 +98,7 @@ template <typename T1, typename T2, std::size_t Extent1, std::size_t Extent2>
       span<const std::byte>(reinterpret_cast<const std::byte *>(new_span.data()), new_span.size_bytes()), base_addr,
       16};
 }
+RELOCO_END_UNSAFE_CODE
 #endif
 
 } // namespace microfmt

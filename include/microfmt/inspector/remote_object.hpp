@@ -47,20 +47,26 @@ struct MICROFMT_API_CLASS RELOCO_POINTER remote_field_desc {
  * etc.
  */
 template <typename T, typename Enable = void> struct remote_field_traits {
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static void format(address_space_ref, const void *field_ptr, span<char>, const sink &out) noexcept {
     const auto &val = *static_cast<const T *>(field_ptr);
     formatter<T> fmt;
     fmt.format(val, out);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 class string_ptr; // forward declaration
 template <> struct remote_field_traits<string_ptr> {
+  // NOLINTNEXTLINE(reloco-no-raw-pointer): the field address is a raw object pointer by the traits contract
   static void format(address_space_ref space, const void *field_ptr, span<char> work_buf, const sink &out) noexcept;
 };
 
 class string32_ptr; // forward declaration
 template <> struct remote_field_traits<string32_ptr> {
+  // NOLINTNEXTLINE(reloco-no-raw-pointer): the field address is a raw object pointer by the traits contract
   static void format(address_space_ref space, const void *field_ptr, span<char> work_buf, const sink &out) noexcept;
 };
 
@@ -78,7 +84,11 @@ class MICROFMT_API_CLASS string_ptr {
 public:
   constexpr string_ptr() noexcept : addr_(0) {}
   constexpr explicit string_ptr(uintptr_t addr) noexcept : addr_(addr) {}
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   explicit string_ptr(const char *ptr) noexcept : addr_(reinterpret_cast<uintptr_t>(ptr)) {}
+  RELOCO_END_UNSAFE_CODE
 
   [[nodiscard]] constexpr uintptr_t address() const noexcept { return addr_; }
   [[nodiscard]] constexpr bool is_null() const noexcept { return addr_ == 0; }
@@ -103,6 +113,9 @@ private:
 };
 
 // Implementations of string formatting traits
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline void remote_field_traits<string_ptr>::format(address_space_ref space, const void *field_ptr, span<char> work_buf,
                                                     const sink &out) noexcept {
   const auto &sptr = *static_cast<const string_ptr *>(field_ptr);
@@ -111,9 +124,10 @@ inline void remote_field_traits<string_ptr>::format(address_space_ref space, con
     return;
   }
   const foreign_string_view fsv = sptr.as_view(space, work_buf);
-  const formatter<foreign_string_view> fmt;
+  const formatter<foreign_string_view> fmt = {};
   fmt.format(fsv, out);
 }
+RELOCO_END_UNSAFE_CODE
 
 static_assert(sizeof(string_ptr) == sizeof(void *), "string_ptr must have correct size");
 static_assert(alignof(string_ptr) == sizeof(void *), "string32_ptr must be naturally aligned");
@@ -152,6 +166,9 @@ private:
   uint32_t addr_{0};
 };
 
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline void remote_field_traits<string32_ptr>::format(address_space_ref space, const void *field_ptr,
                                                       span<char> work_buf, const sink &out) noexcept {
   const auto &sptr = *static_cast<const string32_ptr *>(field_ptr);
@@ -160,9 +177,10 @@ inline void remote_field_traits<string32_ptr>::format(address_space_ref space, c
     return;
   }
   const foreign_string_view fsv = sptr.as_view(space, work_buf);
-  const formatter<foreign_string_view> fmt;
+  const formatter<foreign_string_view> fmt = {};
   fmt.format(fsv, out);
 }
+RELOCO_END_UNSAFE_CODE
 
 static_assert(sizeof(string32_ptr) == 4, "string32_ptr must be exactly 4 bytes");
 static_assert(alignof(string32_ptr) == 4, "string32_ptr must be 4-byte aligned");
@@ -234,6 +252,9 @@ public:
   [[nodiscard]] constexpr span<std::byte> scratch() const noexcept RELOCO_LIFETIMEBOUND { return scratch_; }
   [[nodiscard]] constexpr bool is_null() const noexcept { return addr_ == 0; }
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] expected<const void *, remote_load_error> load_raw() const noexcept {
     if (addr_ == 0)
       return unexpected(remote_load_error::null_address);
@@ -248,6 +269,7 @@ public:
       return unexpected(remote_load_error::read_failed);
     return static_cast<const void *>(scratch_.data());
   }
+  RELOCO_END_UNSAFE_CODE
 
 private:
   uintptr_t addr_{0};
@@ -265,6 +287,9 @@ private:
 template <> struct formatter<remote_object_view> {
   constexpr void parse(format_parse_context &) noexcept {}
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const remote_object_view &view, const sink &out) const noexcept {
     if (view.is_null()) {
       out.write("(null)");
@@ -308,6 +333,7 @@ template <> struct formatter<remote_object_view> {
     }
     out.write(" }");
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace microfmt

@@ -15,6 +15,9 @@
 namespace microfmt::gdb {
 
 namespace detail {
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] constexpr bool parse_hex_nibble(char c, uint8_t &val) noexcept {
   if (c >= '0' && c <= '9') {
     val = static_cast<uint8_t>(c - '0');
@@ -30,7 +33,11 @@ namespace detail {
   }
   return false;
 }
+RELOCO_END_UNSAFE_CODE
 
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] constexpr uintptr_t parse_hex_int(string_view hex, size_t *chars_consumed = nullptr) noexcept {
   uintptr_t val = 0;
   size_t count = 0;
@@ -45,6 +52,7 @@ namespace detail {
     *chars_consumed = count;
   return val;
 }
+RELOCO_END_UNSAFE_CODE
 
 [[nodiscard]] constexpr uint64_t parse_thread_id(string_view hex) noexcept {
   if (hex == "-1")
@@ -70,6 +78,9 @@ public:
    * @param out_view Populated with the decoded arguments.
    * @return The identified packet_type, or unknown on failure/unrecognized.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static packet_type decode(string_view payload, scratch_allocator &scratch, client_request_view &out_view) noexcept {
     out_view = {}; // Reset view
     const packet_type type = packet_recognizer::recognize(payload);
@@ -82,6 +93,7 @@ public:
       args = payload.substr(meta.prefix.size());
     }
 
+    // NOLINTNEXTLINE(reloco-enum-switch): most packets need no per-type handling
     switch (type) {
     case packet_type::continue_with_signal:
     case packet_type::step_with_signal:
@@ -163,6 +175,19 @@ public:
       out_view.thread_id = detail::parse_thread_id(args);
       break;
 
+    case packet_type::unknown:
+    case packet_type::enable_extended_mode:
+    case packet_type::halt_reason:
+    case packet_type::continue_exec:
+    case packet_type::step_exec:
+    case packet_type::kill:
+    case packet_type::detach:
+    case packet_type::restart:
+    case packet_type::read_general_registers:
+    case packet_type::query_supported:
+    case packet_type::query_first_thread_info:
+    case packet_type::query_subsequent_thread:
+    case packet_type::query_current_thread:
     default:
       // Pass complex or unparsed fields (like vCont) natively
       out_view.extra_text = args;
@@ -170,9 +195,13 @@ public:
     }
     return type;
   }
+  RELOCO_END_UNSAFE_CODE
 
 private:
   RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static span<const uint8_t> decode_hex_bytes(string_view hex, scratch_allocator &scratch) noexcept {
     if ((hex.size() % 2) != 0) {
       return {};
@@ -194,7 +223,11 @@ private:
 
     return {dest, len};
   }
+  RELOCO_END_UNSAFE_CODE
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static span<const uint8_t> decode_escaped_binary(string_view bin, scratch_allocator &scratch) noexcept {
     // Worst-case size is identical to string_view length. We allocate the max bound.
     uint8_t *dest = scratch.allocate<uint8_t>(bin.size());
@@ -219,6 +252,7 @@ private:
     // Return a precisely sized span over the decoded segment
     return {dest, written};
   }
+  RELOCO_END_UNSAFE_CODE
   RELOCO_END_UNSAFE_BUFFER_USAGE
 };
 
@@ -231,6 +265,9 @@ private:
  */
 class MICROFMT_API_CLASS server_response_decoder {
 public:
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static server_response_type decode(string_view payload, server_response_view &out_view) noexcept {
     out_view = {};
 
@@ -272,11 +309,15 @@ public:
     out_view.text = payload;
     return server_response_type::raw_string;
   }
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Utility for the client to decode a `raw_string` hex response (e.g., memory or register blocks)
    * directly into the scratch allocator.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static span<const uint8_t> decode_hex_data(string_view hex_data, scratch_allocator &scratch) noexcept {
     if ((hex_data.size() % 2) != 0) {
       return {};
@@ -300,6 +341,7 @@ public:
 
     return {dest, len};
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace microfmt::gdb

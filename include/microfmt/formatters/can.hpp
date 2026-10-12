@@ -33,9 +33,12 @@ enum class can_flags : uint8_t {
   esi = 1 << 4       // CAN-FD Error State Indicator
 };
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] constexpr can_flags operator|(can_flags a, can_flags b) noexcept {
   return static_cast<can_flags>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
 }
+RELOCO_END_UNSAFE_CODE
 
 [[nodiscard]] constexpr bool operator&(can_flags a, can_flags b) noexcept {
   return (static_cast<uint8_t>(a) & static_cast<uint8_t>(b)) != 0;

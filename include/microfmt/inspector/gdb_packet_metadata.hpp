@@ -24,6 +24,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER packet_metadata {
  * @brief Compile-time lookup table mapping packet_type to its metadata.
  * Initialized strictly with C++17 positional arguments to ensure compliance.
  */
+// NOLINTNEXTLINE(reloco-no-c-array): fixed-size buffer/table for span APIs
 inline constexpr packet_metadata packet_metadata_table[] = {
     {packet_type::unknown, "unknown", ""},
     {packet_type::halt_reason, "halt_reason", "?"},

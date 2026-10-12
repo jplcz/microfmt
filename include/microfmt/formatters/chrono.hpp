@@ -55,6 +55,8 @@ struct MICROFMT_API_CLASS civil_date {
   uint8_t day{};
 };
 
+// time-field arithmetic converts between C/POSIX integer widths whose ranges are bounded by the format.
+RELOCO_BEGIN_UNSAFE_CODE
 inline constexpr civil_date civil_from_days(int32_t z) noexcept {
   z += 719468;
   const int32_t era = (z >= 0 ? z : z - 146096) / 146097;
@@ -67,6 +69,7 @@ inline constexpr civil_date civil_from_days(int32_t z) noexcept {
   const uint8_t m = static_cast<uint8_t>(mp < 10 ? mp + 3 : mp - 9);
   return {y + (m <= 2 ? 1 : 0), m, d};
 }
+RELOCO_END_UNSAFE_CODE
 
 } // namespace detail
 
@@ -121,6 +124,8 @@ template <typename Duration> struct formatter<std::chrono::time_point<std::chron
     }
   }
 
+  // time-field arithmetic converts between C/POSIX integer widths whose ranges are bounded by the format.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const std::chrono::time_point<std::chrono::system_clock, Duration> &tp, const sink &out) const noexcept {
     using namespace std::chrono;
     const auto dur = tp.time_since_epoch();
@@ -161,6 +166,7 @@ template <typename Duration> struct formatter<std::chrono::time_point<std::chron
       out.put('Z');
     }
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 // ============================================================================

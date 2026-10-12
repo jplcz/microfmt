@@ -35,17 +35,23 @@ struct MICROFMT_API_CLASS RELOCO_POINTER escaped_view {
 }
 
 // From raw const char* buffer / length
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] constexpr escaped_view escaped(const char *str, size_t len, bool quote = true,
                                              bool escape_quotes = true) noexcept {
   return escaped_view{span<const char>(str, len), quote, escape_quotes};
 }
+RELOCO_END_UNSAFE_CODE
 
 // From span of raw bytes (const uint8_t)
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] inline escaped_view escaped(span<const uint8_t> bytes, bool quote = true,
                                           bool escape_quotes = true) noexcept {
   return escaped_view{span<const char>(reinterpret_cast<const char *>(bytes.data()), bytes.size()), quote,
                       escape_quotes};
 }
+RELOCO_END_UNSAFE_CODE
 
 // From C-style string literals / char arrays
 template <size_t N>
@@ -58,11 +64,14 @@ template <size_t N>
 }
 
 // From C-style byte arrays (uint8_t[N])
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <size_t N>
 [[nodiscard]] constexpr escaped_view escaped(const uint8_t (&arr)[N], bool quote = true,
                                              bool escape_quotes = true) noexcept {
   return escaped_view{span<const char>(reinterpret_cast<const char *>(arr), N), quote, escape_quotes};
 }
+RELOCO_END_UNSAFE_CODE
 
 // ============================================================================
 // Formatter Specialization for escaped_view

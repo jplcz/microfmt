@@ -87,12 +87,15 @@ template <typename WordType, size_t N> struct RELOCO_POINTER reg_grid_view {
  * @param desc Static descriptor naming the entries.
  * @return A formattable @ref reg_grid_view.
  */
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename StructOrArray, typename WordType, size_t N>
 [[nodiscard]] constexpr auto make_reg_grid(const StructOrArray &data, const reg_grid_desc<WordType, N> &desc) noexcept {
   static_assert(sizeof(StructOrArray) >= N * sizeof(WordType),
                 "Source structure size is smaller than register grid definition");
   return reg_grid_view<WordType, N>{reinterpret_cast<const WordType *>(&data), &desc};
 }
+RELOCO_END_UNSAFE_CODE
 
 // ============================================================================
 // Formatter for Generic Register Grid

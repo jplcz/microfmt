@@ -47,6 +47,8 @@ public:
   }
 
 private:
+  // bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+  RELOCO_BEGIN_UNSAFE_CODE
   static void write_to_syslog(int priority, microfmt::string_view message) noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
@@ -54,6 +56,7 @@ private:
 
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
+  RELOCO_END_UNSAFE_CODE
 
   static int priority_for(level lvl) noexcept {
     switch (lvl) {

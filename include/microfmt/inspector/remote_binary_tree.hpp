@@ -29,6 +29,9 @@ template <typename Tag> struct remote_binary_tree_dispatch {
   using traits_type = remote_binary_tree_traits<Tag>;
   using context_type = typename traits_type::context_type;
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static bool format(value_ref<const context_type> context, uintptr_t container_addr, const container_options &opts,
                      address_space_ref space, span<std::byte> scratch, const sink &out) noexcept {
     out.write(opts.open_bracket);
@@ -48,6 +51,7 @@ template <typename Tag> struct remote_binary_tree_dispatch {
       out.write(opts.close_bracket);
       return true;
     }
+    // NOLINTNEXTLINE(reloco-borrow-check): bump allocator; remaining_span() is disjoint from node_stack
     span<std::byte> element_scratch = allocator.remaining_span();
 
     uintptr_t root_node = 0;
@@ -100,6 +104,7 @@ template <typename Tag> struct remote_binary_tree_dispatch {
     out.write(opts.close_bracket);
     return true;
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 template <typename Key, typename Value, typename RemotePtr> struct binary_tree_layout_tag {};

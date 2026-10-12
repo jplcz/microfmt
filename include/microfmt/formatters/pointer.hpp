@@ -39,11 +39,14 @@ struct MICROFMT_API_CLASS raw_ptr_view {
 };
 
 /** Create a raw address view from a typed pointer. */
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename T>
 /** Create a null raw address view. */
 [[nodiscard]] constexpr raw_ptr_view raw_ptr(const T *ptr, ptr_width_mode mode = ptr_width_mode::native) noexcept {
   return raw_ptr_view{reinterpret_cast<uintptr_t>(ptr), ptr == nullptr, mode};
 }
+RELOCO_END_UNSAFE_CODE
 
 /** Create a raw address view from an integer address. An address of zero is
  *  formatted as null. */

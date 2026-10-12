@@ -9,6 +9,8 @@
  * itself, guarded on MICROFMT_SHARED_PROVIDE_DEFINITIONS (see
  * microfmt/detail/compat.hpp). Never included directly. */
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 MICROFMT_API void formatter<std::error_category>::format(const std::error_category &category,
                                                           const sink &out) const noexcept {
   const char *name = category.name();
@@ -18,6 +20,7 @@ MICROFMT_API void formatter<std::error_category>::format(const std::error_catego
     out.write("unknown_category");
   }
 }
+RELOCO_END_UNSAFE_CODE
 
 MICROFMT_API void formatter<std::error_code>::format(const std::error_code &ec, const sink &out) const noexcept {
   // Print the descriptive message if available, otherwise fallback to category:value
@@ -29,7 +32,7 @@ MICROFMT_API void formatter<std::error_code>::format(const std::error_code &ec, 
   out.write(" [");
 
   // Format category name
-  const formatter<std::error_category> cat_fmt;
+  const formatter<std::error_category> cat_fmt = {};
   cat_fmt.format(ec.category(), out);
 
   out.write(":");

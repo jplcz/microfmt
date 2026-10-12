@@ -42,6 +42,8 @@ public:
 
   [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND { return log_sink(ring_buffer_log_sink_tag{}, *this); }
 
+  // bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+  RELOCO_BEGIN_UNSAFE_CODE
   void log_impl(const log_msg &msg) const noexcept {
     // Enforce limits via truncation
     const std::size_t name_len = std::min<std::size_t>(msg.logger_name.size(), 64);
@@ -63,6 +65,7 @@ public:
     // Write atomically and evict oldest if necessary
     std::ignore = ring_->try_write_frame_evicting(hdr, spans, validator);
   }
+  RELOCO_END_UNSAFE_CODE
 
 private:
   reloco::detail::unowned_ring_base<char> *ring_{};

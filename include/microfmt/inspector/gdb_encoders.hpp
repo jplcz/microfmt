@@ -16,13 +16,16 @@ namespace microfmt::gdb {
 
 namespace detail {
 inline void emit_hex_bytes(sink target, span<const uint8_t> data) noexcept {
-  static constexpr char hex[] = "0123456789abcdef";
+  static constexpr microfmt::string_view hex = "0123456789abcdef";
   for (uint8_t b : data) {
     target.put(hex[(b >> 4) & 0x0F]);
     target.put(hex[b & 0x0F]);
   }
 }
 
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline void emit_escaped_binary(sink target, span<const uint8_t> data) noexcept {
   for (uint8_t b : data) {
     if (b == '#' || b == '$' || b == '}' || b == '*') {
@@ -33,6 +36,7 @@ inline void emit_escaped_binary(sink target, span<const uint8_t> data) noexcept 
     }
   }
 }
+RELOCO_END_UNSAFE_CODE
 
 inline void write_thread_id(sink target, uint64_t tid) noexcept {
   if (tid == static_cast<uint64_t>(-1)) {
@@ -81,6 +85,7 @@ public:
       target.write(meta.prefix);
     }
 
+    // NOLINTNEXTLINE(reloco-enum-switch): most packets need no per-type handling
     switch (type) {
     case packet_type::continue_with_signal:
     case packet_type::step_with_signal:
@@ -147,6 +152,19 @@ public:
       }
       break;
 
+    case packet_type::unknown:
+    case packet_type::enable_extended_mode:
+    case packet_type::halt_reason:
+    case packet_type::continue_exec:
+    case packet_type::step_exec:
+    case packet_type::kill:
+    case packet_type::detach:
+    case packet_type::restart:
+    case packet_type::read_general_registers:
+    case packet_type::query_first_thread_info:
+    case packet_type::query_subsequent_thread:
+    case packet_type::query_current_thread:
+    case packet_type::query_attached:
     default:
       if (!view.extra_text.empty()) {
         target.write(view.extra_text);
@@ -196,6 +214,9 @@ public:
   /**
    * @brief Formats a GDB response payload into a sink.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static void encode(sink target, server_response_type type, const server_response_view &view) noexcept {
     switch (type) {
     case server_response_type::empty:
@@ -255,6 +276,7 @@ public:
       break;
     }
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace microfmt::gdb

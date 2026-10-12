@@ -35,6 +35,7 @@ enum class level : uint8_t { trace = 0, debug, info, warn, err, critical, off };
     return "error";
   case level::critical:
     return "critical";
+  case level::off:
   default:
     return "off";
   }
@@ -54,6 +55,7 @@ enum class level : uint8_t { trace = 0, debug, info, warn, err, critical, off };
     return "E";
   case level::critical:
     return "C";
+  case level::off:
   default:
     return "O";
   }
@@ -69,6 +71,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER log_msg {
   level lvl{level::info};
   microfmt::instant time{microfmt::instant::now()};
   microfmt::string_view payload{};
+  // NOLINTNEXTLINE(reloco-banned-std-type): portable C++20 interop type
   std::source_location loc{std::source_location::current()};
 };
 

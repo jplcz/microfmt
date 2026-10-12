@@ -59,6 +59,8 @@ struct MICROFMT_API_CLASS RELOCO_POINTER hexdump_view {
 /**
  * @brief Helper for dumping memory via a fault-checked accessor probe.
  */
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] constexpr hexdump_view hexdump_checked(uintptr_t base_addr, size_t total_len, memory_reader_fn_t reader,
                                                      void *ctx = nullptr, uint8_t bytes_per_line = 16,
                                                      bool show_ascii = true) noexcept {
@@ -66,6 +68,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER hexdump_view {
                       reader,     total_len, bytes_per_line == 0 ? static_cast<uint8_t>(16) : bytes_per_line,
                       show_ascii, true,      false};
 }
+RELOCO_END_UNSAFE_CODE
 
 // ============================================================================
 // Formatter Specialization for hexdump_view
@@ -94,13 +97,14 @@ template <> struct formatter<hexdump_view> {
   constexpr void parse(format_parse_context &ctx) noexcept { (void)ctx; }
 
   void format(const hexdump_view &h, const sink &out) const noexcept {
-    uint8_t line_buffer[32]; // Bounded scratch buffer on stack
+    // NOLINTNEXTLINE(reloco-no-c-array): fixed-size buffer/table for span APIs
+    uint8_t line_buffer[32] = {}; // Bounded scratch buffer on stack
     format_hexdump(h, {line_buffer, sizeof(line_buffer)}, out);
   }
 };
 
 inline void hexdump_to(const sink &out, span<const uint8_t> data, uintptr_t base_address = 0) noexcept {
-  const formatter<hexdump_view> f;
+  const formatter<hexdump_view> f = {};
   f.format(hexdump(data, base_address), out);
 }
 

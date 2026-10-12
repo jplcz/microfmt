@@ -48,9 +48,12 @@ enum class attribute : uint8_t {
   reverse = 1 << 5
 };
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] constexpr attribute operator|(attribute a, attribute b) noexcept {
   return static_cast<attribute>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
 }
+RELOCO_END_UNSAFE_CODE
 
 [[nodiscard]] constexpr bool operator&(attribute a, attribute b) noexcept {
   return (static_cast<uint8_t>(a) & static_cast<uint8_t>(b)) != 0;
@@ -60,14 +63,16 @@ enum class attribute : uint8_t {
 // Style Descriptor
 // ============================================================================
 
-struct MICROFMT_API_CLASS style {
+struct MICROFMT_API_CLASS RELOCO_COPYABLE style {
   color fg{color::none};
   color bg{color::none};
   attribute attr{attribute::none};
 
+  // NOLINTNEXTLINE(reloco-mutable-global): process-wide runtime toggle, set once at start-up before formatting
   static bool colors_enabled; // Runtime toggle for serial/non-TTY sinks
 };
 
+// NOLINTNEXTLINE(reloco-mutable-global): see the declaration
 inline bool style::colors_enabled = true;
 
 // Reset

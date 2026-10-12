@@ -347,6 +347,9 @@ struct linear_dependent_value_scanner_tag {};
 template <typename T> struct value_range_scanner_traits<linear_value_range_scanner_tag<T>, T> {
   using context_type = linear_memory_scanner_context;
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static expected<memory_scan_result, address_space_error> scan(value_ref<const context_type> ctx, uintptr_t start_addr,
                                                                 size_t search_length, const T &min_val,
                                                                 const T &max_val, size_t stride) noexcept {
@@ -390,12 +393,16 @@ template <typename T> struct value_range_scanner_traits<linear_value_range_scann
     }
     return memory_scan_result{false, 0};
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 // Dependent Scanner Traits
 template <> struct dependent_value_scanner_traits<linear_dependent_value_scanner_tag> {
   using context_type = linear_memory_scanner_context;
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static expected<memory_scan_result, address_space_error> scan(value_ref<const context_type> ctx, uintptr_t start_addr,
                                                                 size_t search_length, size_t window_size, size_t stride,
                                                                 dependent_predicate_fn predicate,
@@ -442,6 +449,7 @@ template <> struct dependent_value_scanner_traits<linear_dependent_value_scanner
     }
     return memory_scan_result{false, 0};
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace microfmt

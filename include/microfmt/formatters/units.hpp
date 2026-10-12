@@ -93,6 +93,8 @@ template <typename T> struct formatter<unit_view<T>> {
 template <typename T> struct formatter<auto_unit_view<T>> {
   uint8_t parse_precision{255}; // 255 = not set via format string
 
+  // time-field arithmetic converts between C/POSIX integer widths whose ranges are bounded by the format.
+  RELOCO_BEGIN_UNSAFE_CODE
   constexpr void parse(format_parse_context &ctx) noexcept {
     // Parse precision from format string, e.g. "{:.1}" or "{:.3}"
     auto spec = ctx.spec();
@@ -105,6 +107,7 @@ template <typename T> struct formatter<auto_unit_view<T>> {
       }
     }
   }
+  RELOCO_END_UNSAFE_CODE
 
   void format(const auto_unit_view<T> &auv, const sink &out) const noexcept {
     static constexpr reloco::array<string_view, 6> SI_PREFIXES = {"", "k", "M", "G", "T", "P"};

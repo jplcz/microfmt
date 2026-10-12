@@ -188,6 +188,7 @@ public:
    * @brief Constructs an empty buffer sink.
    */
   constexpr buffer_sink() noexcept : detail::buffer_sink_base{m_storage, N, 0} {}
+  ~buffer_sink() = default;
 
   RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   constexpr buffer_sink(const buffer_sink &other) noexcept : detail::buffer_sink_base{m_storage, N, other.m_pos} {
@@ -338,6 +339,9 @@ public:
    * @return A lightweight @ref sink struct configured with a callback to
    * forward writes.
    */
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<iterator_sink<OutputIt> *>(ctx);
@@ -357,6 +361,7 @@ public:
 #endif
                 }};
   }
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Returns the current state of the output iterator.
@@ -389,12 +394,16 @@ public:
    * @return A lightweight @ref sink struct configured to increment the internal
    * counter.
    */
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<counting_sink *>(ctx);
                   self->m_count += sv.size();
                 }};
   }
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Returns the total number of bytes written to the sink.
@@ -482,6 +491,7 @@ public:
    * @brief Constructs an empty, null-terminated string sink.
    */
   constexpr c_string_sink() noexcept : detail::c_string_sink_base{m_storage, N - 1, 0} { m_storage[0] = '\0'; }
+  ~c_string_sink() = default;
 
   RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   constexpr c_string_sink(const c_string_sink &other) noexcept : detail::c_string_sink_base{m_storage, N, other.m_pos} {
@@ -539,7 +549,11 @@ public:
    *
    * @return Pointer to the underlying null-terminated buffer.
    */
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] constexpr const char *c_str() const & noexcept RELOCO_LIFETIMEBOUND { return m_data; }
+  RELOCO_END_UNSAFE_CODE
 
   [[nodiscard]] constexpr const char *c_str() const && = delete;
 
@@ -641,8 +655,8 @@ inline constexpr auto digits_lut = []() {
   array<char, 200> arr{};
   RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   for (int i = 0; i < 100; ++i) {
-    arr.unsafe_at(2 * (size_t)i) = static_cast<char>('0' + (i / 10));
-    arr.unsafe_at(2 * (size_t)i + 1) = static_cast<char>('0' + (i % 10));
+    arr.unsafe_at(2 * static_cast<size_t>(i)) = static_cast<char>('0' + (i / 10));
+    arr.unsafe_at(2 * static_cast<size_t>(i) + 1) = static_cast<char>('0' + (i % 10));
   }
   RELOCO_END_UNSAFE_BUFFER_USAGE;
   return arr;
@@ -664,6 +678,8 @@ inline constexpr reloco::array<char, 16> hex_digits_upper = {'0', '1', '2', '3',
  */
 enum class radix : uint32_t { binary = 2, decimal = 10, hex = 16 };
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <detail::radix Radix>
 RELOCO_ALWAYS_INLINE inline void format_integer_core(const sink &out, uint64_t val, bool is_negative, bool uppercase,
                                                      int min_width) noexcept {
@@ -729,6 +745,7 @@ RELOCO_ALWAYS_INLINE inline void format_integer_core(const sink &out, uint64_t v
 
   out.write(microfmt::string_view(&buf[idx], digits_len));
 }
+RELOCO_END_UNSAFE_CODE
 
 // Dedicated fast path for base-2 formatting. Unlike format_integer_core, this
 // avoids runtime division/modulo (radix is a compile-time power of two here,
@@ -765,6 +782,8 @@ RELOCO_ALWAYS_INLINE inline void format_unsigned(const sink &out, uint64_t val, 
   }
 }
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 RELOCO_ALWAYS_INLINE
 inline void format_signed(const sink &out, int64_t val, int min_width = 0) noexcept {
   if (val < 0) {
@@ -775,6 +794,7 @@ inline void format_signed(const sink &out, int64_t val, int min_width = 0) noexc
     format_integer_core<radix::decimal>(out, static_cast<uint64_t>(val), false, false, min_width);
   }
 }
+RELOCO_END_UNSAFE_CODE
 
 // ============================================================================
 // Shared Debug-Escaping Helper (Rust `{:?}` Debug Flag / `escaped_view`)
@@ -884,16 +904,20 @@ public:
   // --- Element Access ---
   [[nodiscard]] constexpr char front() const noexcept { return m_spec.empty() ? '\0' : m_spec.front(); }
   [[nodiscard]] constexpr char back() const noexcept { return m_spec.empty() ? '\0' : m_spec.back(); }
-  [[nodiscard]] constexpr char operator[](size_type idx) const noexcept {
+  [[nodiscard]] RELOCO_CHECKED constexpr char operator[](size_type idx) const noexcept {
     return idx < m_spec.size() ? m_spec[idx] : '\0';
   }
 
   // --- Parsing & Cursor Advancing Utilities ---
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   constexpr void advance_to(const_iterator it) noexcept {
     if (it >= m_spec.begin() && it <= m_spec.end()) {
       m_spec.remove_prefix(static_cast<size_type>(it - m_spec.begin()));
     }
   }
+  RELOCO_END_UNSAFE_CODE
 
   constexpr void remove_prefix(size_type n) noexcept { m_spec.remove_prefix(n < m_spec.size() ? n : m_spec.size()); }
 
@@ -985,6 +1009,7 @@ template <> struct formatter<microfmt::string_view> {
   }
 };
 
+// NOLINTBEGIN(reloco-banned-std-type): std::string_view interop formatter for user code
 template <> struct formatter<std::string_view> {
 #ifndef MICROFMT_DISABLE_DEBUG_FLAG
   bool debug{false};
@@ -1004,6 +1029,7 @@ template <> struct formatter<std::string_view> {
     out.write(microfmt::string_view(val));
   }
 };
+// NOLINTEND(reloco-banned-std-type)
 
 namespace detail {
 
@@ -1016,6 +1042,9 @@ struct MICROFMT_API_CLASS const_char_like {
   constexpr void parse(format_parse_context &) noexcept {}
 #endif
 
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const char *val, const sink &out) const noexcept {
     const microfmt::string_view sv = val != nullptr ? microfmt::string_view(val) : microfmt::string_view("(null)", 6);
 #ifndef MICROFMT_DISABLE_DEBUG_FLAG
@@ -1026,6 +1055,7 @@ struct MICROFMT_API_CLASS const_char_like {
 #endif
     out.write(sv);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace detail
@@ -1088,6 +1118,8 @@ format_hex_backward(char *ptr, UInt value, bool uppercase) noexcept {
 }
 
 // Low-overhead emission routine with zero-padding and width handling
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 RELOCO_ALWAYS_INLINE
 inline void emit_formatted_int(const sink &out, const char *digits, size_t digits_len, bool is_negative,
                                microfmt::string_view prefix, uint8_t width, bool zero_pad) noexcept {
@@ -1121,6 +1153,7 @@ inline void emit_formatted_int(const sink &out, const char *digits, size_t digit
 
   out.write(microfmt::string_view(digits, digits_len));
 }
+RELOCO_END_UNSAFE_CODE
 
 // Integers (Signed & Unsigned)
 struct MICROFMT_API_CLASS int_formatter_specs {
@@ -1128,12 +1161,14 @@ struct MICROFMT_API_CLASS int_formatter_specs {
 
   // Bitfield backing all boolean state in a single byte
   // C++17 clean bitfields without in-class initializers
+  // NOLINTBEGIN(reloco-member-init): pre-C++20 bit-fields cannot have default member initializers; flags{} zeroes them
   struct flags_t {
     uint8_t alt_form : 1;
     uint8_t zero_pad : 1;
     uint8_t is_hex : 1;
     uint8_t uppercase : 1;
   } flags{}; // Zero-initializes all bit-field members to 0
+  // NOLINTEND(reloco-member-init)
 
   // Out-of-line (see microfmt.ipp). MICROFMT_API_CONSTEXPR (see
   // detail/compat.hpp) keeps this `constexpr` in the default header-only
@@ -1171,6 +1206,9 @@ struct MICROFMT_API_CLASS int_formatter_specs {
   // overload resolution) and also for any other T -- e.g. a >64-bit integer
   // via the wide-integer fallback branch below -- which keeps instantiating
   // normally from this in-header definition exactly as before.
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   template <typename T> void format_int_impl(T val, const sink &out) const noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     constexpr size_t BUF_SIZE = (sizeof(T) <= 4) ? 12 : (sizeof(T) <= 8) ? 24 : 48;
@@ -1207,6 +1245,7 @@ struct MICROFMT_API_CLASS int_formatter_specs {
     detail::emit_formatted_int(out, start, digits_len, is_negative, prefix, width, flags.zero_pad != 0);
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace detail
@@ -1279,10 +1318,14 @@ struct MICROFMT_API_CLASS raw_ptr_format {
     }
   }
 
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void do_format(const void *ptr, const sink &out) const noexcept {
     out.write("0x");
     detail::format_unsigned<detail::radix::hex>(out, reinterpret_cast<uintptr_t>(ptr), false, width);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace detail
@@ -1320,6 +1363,8 @@ template <typename T> struct has_formatter<T, std::void_t<decltype(sizeof(format
 
 template <typename T> inline constexpr bool has_formatter_v = has_formatter<T>::value;
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename T>
 inline void format_type_thunk(const void *val_ptr, microfmt::string_view spec, const sink &out) noexcept {
   // std::decay_t converts char[N] -> const char*, float[] -> float*, etc.
@@ -1365,6 +1410,7 @@ inline void format_type_thunk(const void *val_ptr, microfmt::string_view spec, c
     with_value([&f, &out](const auto &value) { f.format(value, out); });
   }
 }
+RELOCO_END_UNSAFE_CODE
 
 /**
  * @brief Drop-in replacement for a `formatter<T> underlying_formatter;`
@@ -1468,6 +1514,8 @@ template <> struct format_type_table<> {
   static inline constexpr span<const format_fn_t> dynamic_span{};
 };
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 constexpr bool parse_positional_index(microfmt::string_view text, size_t &index) noexcept {
   if (text.empty()) {
     return false;
@@ -1491,6 +1539,7 @@ constexpr bool parse_positional_index(microfmt::string_view text, size_t &index)
   index = value;
   return true;
 }
+RELOCO_END_UNSAFE_CODE
 
 // Represents a pre-parsed action in the format string
 struct MICROFMT_API_CLASS RELOCO_POINTER compiled_piece {
@@ -1570,6 +1619,8 @@ constexpr compiled_format<MaxPieces> compile_format_string(microfmt::string_view
 }
 
 // Helper to extract the N-th argument from a parameter pack
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <size_t TargetIdx, size_t CurIdx, typename T, typename... Rest>
 RELOCO_ALWAYS_INLINE inline const void *get_arg_by_index(const T &first, const Rest &...rest) noexcept {
   if constexpr (TargetIdx == CurIdx) {
@@ -1578,6 +1629,7 @@ RELOCO_ALWAYS_INLINE inline const void *get_arg_by_index(const T &first, const R
     return get_arg_by_index<TargetIdx, CurIdx + 1>(rest...);
   }
 }
+RELOCO_END_UNSAFE_CODE
 
 template <typename StrProvider> struct compiled_string_storage {
   static constexpr auto source = StrProvider::get();
@@ -1715,6 +1767,7 @@ RELOCO_CONSTEXPR20 inline void format_to(const sink &out, microfmt::string_view 
   if constexpr (sizeof...(Args) == 0) {
     vformat_to(out, fmt, {}, {});
   } else {
+    // NOLINTNEXTLINE(reloco-no-c-array): fixed-size buffer/table for span APIs
     const void *const arg_ptrs[] = {static_cast<const void *>(&args)...};
     constexpr auto thunks = detail::format_type_table<detail::fix_type_t<Args>...>::dynamic_span;
 
@@ -1864,6 +1917,7 @@ template <typename... Args> struct RELOCO_POINTER format_args_store {
   }
 
   // Implicit conversion makes passing to vformat_to seamless
+  // NOLINTNEXTLINE(reloco-explicit-conversion): implicit by design so the store passes straight to vformat_to
   RELOCO_CONSTEXPR20 operator format_args() const noexcept RELOCO_LIFETIMEBOUND { return view(); }
 };
 
@@ -1875,6 +1929,7 @@ template <> struct RELOCO_POINTER format_args_store<> {
     return {span<const void *const>{}, span<const format_fn_t>{}};
   }
 
+  // NOLINTNEXTLINE(reloco-explicit-conversion): implicit by design so the store passes straight to vformat_to
   RELOCO_CONSTEXPR20 operator format_args() const noexcept { return view(); }
 };
 

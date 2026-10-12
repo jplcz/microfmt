@@ -326,6 +326,9 @@ private:
 // ============================================================================
 
 template <typename T, typename RemotePtr> struct remote_field_traits<remote_unique_ptr<T, RemotePtr>> {
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static void format(address_space_ref space, const void *field_ptr, span<char> work_buf, const sink &out) noexcept {
     const auto &uptr = *static_cast<const remote_unique_ptr<T, RemotePtr> *>(field_ptr);
     uintptr_t obj_addr = uptr.address();
@@ -337,10 +340,14 @@ template <typename T, typename RemotePtr> struct remote_field_traits<remote_uniq
     remote_unique_ptr_view<T, RemotePtr> view(reinterpret_cast<uintptr_t>(field_ptr), space, scratch_bytes, 0);
     view.format(out);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 template <typename T, typename RemotePtr, typename RemoteRefCount>
 struct remote_field_traits<remote_shared_ptr<T, RemotePtr, RemoteRefCount>> {
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static void format(address_space_ref space, const void *field_ptr, span<char> work_buf, const sink &out) noexcept {
     const auto &sptr = *static_cast<const remote_shared_ptr<T, RemotePtr, RemoteRefCount> *>(field_ptr);
     if (sptr.is_null()) {
@@ -352,10 +359,14 @@ struct remote_field_traits<remote_shared_ptr<T, RemotePtr, RemoteRefCount>> {
         reinterpret_cast<uintptr_t>(field_ptr), space, scratch_bytes, 0, sizeof(RemotePtr), 0, sizeof(RemoteRefCount));
     view.format(out);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 template <typename T, ptrdiff_t RefCountOffset, typename RemotePtr, typename RemoteRefCount>
 struct remote_field_traits<remote_intrusive_ptr<T, RefCountOffset, RemotePtr, RemoteRefCount>> {
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static void format(address_space_ref space, const void *field_ptr, span<char> work_buf, const sink &out) noexcept {
     const auto &iptr =
         *static_cast<const remote_intrusive_ptr<T, RefCountOffset, RemotePtr, RemoteRefCount> *>(field_ptr);
@@ -369,6 +380,7 @@ struct remote_field_traits<remote_intrusive_ptr<T, RefCountOffset, RemotePtr, Re
                                                                  scratch_bytes, 0, RefCountOffset);
     view.format(out);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 // ============================================================================

@@ -124,6 +124,9 @@ public:
    * @param c Incoming character from serial/UART stream.
    * @return status indicating whether a complete packet is ready or an error occurred.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   constexpr status feed(char c) noexcept {
     switch (m_state) {
     case state::waiting_for_start:
@@ -197,6 +200,7 @@ public:
 
     return status::in_progress;
   }
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Returns a non-owning string view over the fully unescaped packet payload.
@@ -217,6 +221,9 @@ private:
   bool m_escaped{false};
   state m_state{state::waiting_for_start};
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] static constexpr bool parse_hex_nibble(char c, uint8_t &out_val) noexcept {
     if (c >= '0' && c <= '9') {
       out_val = static_cast<uint8_t>(c - '0');
@@ -232,6 +239,7 @@ private:
     }
     return false;
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace microfmt::gdb

@@ -41,9 +41,13 @@ struct MICROFMT_API_CLASS RELOCO_POINTER format_parse_context {
   constexpr auto end() const & noexcept { return spec.end(); }
 
   constexpr auto end() const && = delete;
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   constexpr void advance_to(microfmt::string_view::iterator it) noexcept {
     spec.remove_prefix(static_cast<size_t>(it - spec.begin()));
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 // ============================================================================
@@ -65,6 +69,7 @@ public:
     return *this;
   }
 
+  // NOLINTNEXTLINE(reloco-checked-operator): output-iterator proxy; dereferencing returns the iterator itself
   constexpr sink_output_iterator &operator*() noexcept { return *this; }
   constexpr sink_output_iterator &operator++() noexcept { return *this; }
   constexpr sink_output_iterator &operator++(int) noexcept { return *this; }
@@ -96,6 +101,8 @@ template <typename T, typename Char = char, typename Enable = void> struct forma
 // fmt::format_to_n
 // ============================================================================
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename... Args>
 format_to_n_result<char *> format_to_n(char *out, size_t n, microfmt::string_view fmt_str,
                                        const Args &...args) noexcept {
@@ -131,11 +138,14 @@ format_to_n_result<char *> format_to_n(char *out, size_t n, microfmt::string_vie
 
   RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
+RELOCO_END_UNSAFE_CODE
 
 // ============================================================================
 // fmt::format_to (Iterator / Pointer overload)
 // ============================================================================
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename OutputIt, typename... Args,
           std::enable_if_t<std::is_pointer_v<OutputIt> &&
                                std::is_same_v<std::remove_cv_t<std::remove_pointer_t<OutputIt>>, char>,
@@ -157,6 +167,7 @@ OutputIt format_to(OutputIt out, microfmt::string_view fmt_str, const Args &...a
   microfmt::format_to(s, fmt_str, args...);
   return state.ptr;
 }
+RELOCO_END_UNSAFE_CODE
 
 // ============================================================================
 // fmt::format (Stack-Bounded Return Type)
@@ -179,9 +190,15 @@ template <typename... Args> [[nodiscard]] auto format(microfmt::string_view fmt_
 
 RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline void stdout_writer(void *, microfmt::string_view sv) noexcept { std::fwrite(sv.data(), 1, sv.size(), stdout); }
+RELOCO_END_UNSAFE_CODE
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline void stderr_writer(void *, microfmt::string_view sv) noexcept { std::fwrite(sv.data(), 1, sv.size(), stderr); }
+RELOCO_END_UNSAFE_CODE
 
 RELOCO_END_UNSAFE_BUFFER_USAGE
 
@@ -190,12 +207,15 @@ template <typename... Args> void print(microfmt::string_view fmt_str, const Args
   microfmt::format_to(term, fmt_str, args...);
 }
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename... Args> void print(std::FILE *f, microfmt::string_view fmt_str, const Args &...args) noexcept {
   microfmt::sink term{f, [](void *ctx, microfmt::string_view sv) noexcept {
                         std::fwrite(sv.data(), 1, sv.size(), static_cast<std::FILE *>(ctx));
                       }};
   microfmt::format_to(term, fmt_str, args...);
 }
+RELOCO_END_UNSAFE_CODE
 
 template <typename... Args> void println(microfmt::string_view fmt_str, const Args &...args) noexcept {
   microfmt::sink term{nullptr, stdout_writer};
@@ -203,6 +223,8 @@ template <typename... Args> void println(microfmt::string_view fmt_str, const Ar
   term.put('\n');
 }
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename... Args> void println(std::FILE *f, microfmt::string_view fmt_str, const Args &...args) noexcept {
   microfmt::sink term{f, [](void *ctx, microfmt::string_view sv) noexcept {
                         std::fwrite(sv.data(), 1, sv.size(), static_cast<std::FILE *>(ctx));
@@ -210,6 +232,7 @@ template <typename... Args> void println(std::FILE *f, microfmt::string_view fmt
   microfmt::format_to(term, fmt_str, args...);
   term.put('\n');
 }
+RELOCO_END_UNSAFE_CODE
 
 // ============================================================================
 // Range Adapter Bridge

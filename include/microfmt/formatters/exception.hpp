@@ -16,6 +16,9 @@ namespace microfmt {
 template <typename T> struct formatter<T, std::enable_if_t<std::is_base_of_v<std::exception, T>>> {
   constexpr void parse(format_parse_context &) noexcept {}
 
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const T &value, const sink &out) const noexcept {
     const char *msg = value.what();
     if (msg != nullptr) {
@@ -24,11 +27,15 @@ template <typename T> struct formatter<T, std::enable_if_t<std::is_base_of_v<std
       out.write("<unknown exception>");
     }
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 template <> struct formatter<std::system_error> {
   constexpr void parse(format_parse_context &) noexcept {}
 
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const std::system_error &value, const sink &out) const noexcept {
     const char *msg = value.what();
     if (msg != nullptr) {
@@ -46,6 +53,7 @@ template <> struct formatter<std::system_error> {
 
     out.write("]");
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace microfmt

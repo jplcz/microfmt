@@ -119,6 +119,9 @@ inline constexpr unsigned char k_dw_eh_pe_absptr_application = 0x00;
  * @param out_eh_frame_start Receives the decoded `.eh_frame` start address.
  * @return `true` when the header used a supported encoding and was decoded.
  */
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline bool decode_eh_frame_hdr(uintptr_t hdr_start, uintptr_t hdr_end, uintptr_t &out_eh_frame_start) noexcept {
   // 4-byte fixed header + at least a 4-byte encoded eh_frame_ptr field.
   if (hdr_end < hdr_start || hdr_end - hdr_start < 8)
@@ -154,6 +157,7 @@ inline bool decode_eh_frame_hdr(uintptr_t hdr_start, uintptr_t hdr_end, uintptr_
   out_eh_frame_start = (application == k_dw_eh_pe_pcrel) ? field_addr + value : value;
   return true;
 }
+RELOCO_END_UNSAFE_CODE
 
 /**
  * @brief Locates an image's `PT_GNU_EH_FRAME` segment (the `.eh_frame_hdr`),
@@ -219,6 +223,9 @@ struct MICROFMT_API_CLASS RELOCO_POINTER dl_enumerate_state {
  * @brief `dl_iterate_phdr` callback that fills @ref dl_enumerate_state::buffer
  * with one @ref elf_image_info per loaded image, stopping once full.
  */
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline int dl_enumerate_callback(dl_phdr_info *info, size_t, void *data) noexcept {
   auto &state = *static_cast<dl_enumerate_state *>(data);
   if (state.count >= state.buffer.size())
@@ -243,6 +250,7 @@ inline int dl_enumerate_callback(dl_phdr_info *info, size_t, void *data) noexcep
   state.buffer[state.count++] = entry;
   return 0;
 }
+RELOCO_END_UNSAFE_CODE
 
 /**
  * @brief Fills @p out_buffer with every image currently reported by
@@ -278,6 +286,9 @@ struct MICROFMT_API_CLASS dl_find_size_state {
  * available, the `.ARM.exidx`/`.eh_frame` bounds) of the image whose base
  * address matches @ref dl_find_size_state::target_base.
  */
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline int dl_find_size_callback(dl_phdr_info *info, size_t, void *data) noexcept {
   auto &state = *static_cast<dl_find_size_state *>(data);
   uintptr_t base = 0;
@@ -297,6 +308,7 @@ inline int dl_find_size_callback(dl_phdr_info *info, size_t, void *data) noexcep
   }
   return 0;
 }
+RELOCO_END_UNSAFE_CODE
 
 /**
  * @brief Resolves the image owning @p pc via `dladdr`, then cross-references
@@ -306,6 +318,9 @@ inline int dl_find_size_callback(dl_phdr_info *info, size_t, void *data) noexcep
  * @param out_info Receives the owning image record.
  * @return `true` when `dladdr` located an owning image.
  */
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline bool dl_find_by_pc(uintptr_t pc, elf_image_info &out_info) noexcept {
   Dl_info info{};
   // NOLINTNEXTLINE(performance-no-int-to-ptr)
@@ -330,6 +345,7 @@ inline bool dl_find_by_pc(uintptr_t pc, elf_image_info &out_info) noexcept {
   out_info = result;
   return true;
 }
+RELOCO_END_UNSAFE_CODE
 
 } // namespace microfmt::detail
 

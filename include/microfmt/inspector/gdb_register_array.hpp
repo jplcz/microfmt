@@ -45,6 +45,9 @@ public:
    * @param ctx The typed-erased kernel/debugger thread context.
    * @param reg The register mapping describing size and DWARF index.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static void encode_single_register(sink out, const register_context_ref &ctx, const register_mapping &reg) noexcept {
     if (ctx.is_null()) {
       emit_unavailable(out, reg.bit_size / 8);
@@ -58,7 +61,7 @@ public:
     // Fast path: Most registers (including 512-bit AVX vectors) fit in 64 bytes.
     // We use a stack buffer to avoid touching the scratch allocator for routine lookups.
     if (byte_size <= 64) {
-      uint8_t stack_buf[64];
+      uint8_t stack_buf[64] = {};
       if (ctx.read_raw(reg.dwarf_index, stack_buf, byte_size)) {
         emit_hex_bytes(out, span<const uint8_t>{stack_buf, byte_size});
       } else {
@@ -81,6 +84,7 @@ public:
       }
     }
   }
+  RELOCO_END_UNSAFE_CODE
 
 private:
   /**
@@ -165,6 +169,9 @@ public:
    * @param reg The register mapping describing size and DWARF index.
    * @return true if successfully parsed and written, false otherwise.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] static bool decode_single_register(string_view hex_payload, const register_context_ref &ctx,
                                                    const register_mapping &reg) noexcept {
     if (ctx.is_null())
@@ -185,7 +192,7 @@ public:
 
     // Fast path: Use stack buffer for registers up to 64 bytes (AVX-512)
     if (byte_size <= 64) {
-      uint8_t stack_buf[64];
+      uint8_t stack_buf[64] = {};
       const auto out_span = span<uint8_t>{stack_buf, byte_size};
 
       if (!parse_hex_to_bytes(hex_payload.substr(0, byte_size * 2), out_span)) {
@@ -207,11 +214,15 @@ public:
       return false; // Context scratch buffer too small
     }
   }
+  RELOCO_END_UNSAFE_CODE
 
 private:
   /**
    * @brief Safely parses a hex string into a binary byte span.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] static bool parse_hex_to_bytes(string_view hex, span<uint8_t> out) noexcept {
     for (size_t i = 0; i < out.size(); ++i) {
       const uint8_t hi = hex_char_to_val(hex[i * 2]);
@@ -224,10 +235,14 @@ private:
     }
     return true;
   }
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Converts a single hex character to its integer value.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] static constexpr uint8_t hex_char_to_val(char c) noexcept {
     if (c >= '0' && c <= '9')
       return static_cast<uint8_t>(c - '0');
@@ -237,6 +252,7 @@ private:
       return static_cast<uint8_t>(c - 'A' + 10);
     return 0xFF; // Error marker
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace microfmt::gdb

@@ -52,6 +52,7 @@ struct identity_decorator {
 
 template <size_t MaxSinks = 4, size_t MsgBufferCapacity = 256, typename Mutex = detail::null_mutex,
           typename Sink = log_sink, typename Decorator = detail::identity_decorator>
+// NOLINTNEXTLINE(reloco-pointer-annotation): a logger is an owner of its sinks; the name is documented to be static
 class basic_logger {
   // Tiny RAII lock guard so this header doesn't need to pull in <mutex>
   // merely for std::lock_guard; works with any BasicLockable Mutex,
@@ -104,6 +105,8 @@ public:
     dispatch(msg);
   }
 
+  // NOLINTBEGIN(reloco-banned-std-type): std::source_location is the portable C++20 interop type
+  // (reloco::call_location_ref is freestanding-only)
   template <typename... Args> void log(level lvl, microfmt::string_view fmt_str, const Args &...args) const noexcept {
     log_impl(std::source_location::current(), lvl, fmt_str, args...);
   }
@@ -112,6 +115,7 @@ public:
   void log(level lvl, compile_string_holder<StrProvider> fmt_str, const Args &...args) const noexcept {
     log_impl(std::source_location::current(), lvl, fmt_str, args...);
   }
+  // NOLINTEND(reloco-banned-std-type)
 
   template <typename... Args> void trace(microfmt::string_view fmt, const Args &...args) const noexcept {
     log(level::trace, fmt, args...);
@@ -174,6 +178,8 @@ public:
     }
   }
 
+  // NOLINTBEGIN(reloco-banned-std-type): std::source_location is the portable C++20 interop type
+  // (reloco::call_location_ref is freestanding-only)
   template <typename... Args>
   void log_loc(std::source_location loc, level lvl, microfmt::string_view fmt_str, const Args &...args) const noexcept {
     log_impl(loc, lvl, fmt_str, args...);
@@ -201,6 +207,7 @@ private:
 
     dispatch(msg);
   }
+  // NOLINTEND(reloco-banned-std-type)
 
 protected:
   /** @brief The message decorator, e.g. to configure a metadata callback. */
@@ -225,6 +232,7 @@ protected:
 private:
   microfmt::string_view name_{};
   level level_{level::info};
+  // NOLINTNEXTLINE(reloco-mutable-member): logging is logically const; sinks hold their own synchronisation
   mutable microfmt::array<Sink, MaxSinks> sinks_{};
   size_t sink_count_{0};
   mutable Mutex mutex_{};
@@ -233,6 +241,8 @@ private:
 
 using logger = basic_logger<4, 256>;
 
+// The process-default logger API is a nullable `logger *` by contract (nullptr = unset); callers null-check it.
+RELOCO_BEGIN_UNSAFE_CODE
 namespace detail {
 
 inline logger *&configured_default_logger() noexcept {
@@ -387,3 +397,4 @@ inline void critical(compile_string_holder<StrProvider> fmt, const Args &...args
 }
 
 } // namespace microfmt::log
+RELOCO_END_UNSAFE_CODE

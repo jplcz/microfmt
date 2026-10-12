@@ -35,9 +35,12 @@ enum class RELOCO_FLAG_ENUM i2c_flags : uint8_t {
   stop = 1 << 2     // Issue STOP condition after this message
 };
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] constexpr i2c_flags operator|(i2c_flags a, i2c_flags b) noexcept {
   return static_cast<i2c_flags>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
 }
+RELOCO_END_UNSAFE_CODE
 
 [[nodiscard]] constexpr bool operator&(i2c_flags a, i2c_flags b) noexcept {
   return (static_cast<uint8_t>(a) & static_cast<uint8_t>(b)) != 0;

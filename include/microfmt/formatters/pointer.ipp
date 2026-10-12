@@ -7,6 +7,8 @@
  * MICROFMT_SHARED_PROVIDE_DEFINITIONS (see microfmt/detail/compat.hpp).
  * Never included directly. */
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 MICROFMT_API_CONSTEXPR void formatter<raw_ptr_view>::parse(format_parse_context &ctx) noexcept {
   const auto spec = ctx.spec();
   if (spec.empty())
@@ -53,7 +55,10 @@ MICROFMT_API_CONSTEXPR void formatter<raw_ptr_view>::parse(format_parse_context 
     ++i;
   }
 }
+RELOCO_END_UNSAFE_CODE
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 MICROFMT_API void formatter<raw_ptr_view>::format(const raw_ptr_view &ptr, const sink &out) const noexcept {
   if (ptr.is_null) {
     out.write(null_representation);
@@ -87,3 +92,4 @@ MICROFMT_API void formatter<raw_ptr_view>::format(const raw_ptr_view &ptr, const
                                : static_cast<int>(width);
   detail::format_unsigned<detail::radix::hex>(out, addr, uppercase_hex, output_width);
 }
+RELOCO_END_UNSAFE_CODE

@@ -31,6 +31,8 @@ namespace detail {
 void write_errno_string(const sink &out, int value) noexcept;
 #else
 // User-space / Host mode: Implemented using system_error or strerror_r
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline void write_errno_string(const sink &out, int value) noexcept {
 #if MICROFMT_USE_SYSTEM_ERROR
   std::error_code ec(value, std::system_category());
@@ -41,7 +43,7 @@ inline void write_errno_string(const sink &out, int value) noexcept {
     out.write("Unknown error");
   }
 #else
-  char buf[256];
+  char buf[256] = {};
   buf[0] = '\0';
 
 #if defined(_WIN32)
@@ -74,6 +76,7 @@ inline void write_errno_string(const sink &out, int value) noexcept {
   }
 #endif
 }
+RELOCO_END_UNSAFE_CODE
 #endif
 
 } // namespace detail

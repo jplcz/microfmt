@@ -125,6 +125,7 @@ namespace microfmt::md {
  */
 inline void write_metadata_table(writer &w, metadata_map map, span<char> scratch_buf,
                                  string_view title = "Metadata Properties") noexcept {
+  // NOLINTNEXTLINE(reloco-no-c-array): fixed-size buffer/table for span APIs
   static constexpr column cols[2] = {{"Property", 12, align::left}, {"Value", 16, align::left}};
 
   w.h3(title);

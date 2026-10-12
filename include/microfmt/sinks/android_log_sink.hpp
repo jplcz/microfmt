@@ -35,8 +35,10 @@ enum android_LogPriority {
 
 RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 // NOLINTNEXTLINE(reloco-noexcept): declaration mirrors the platform C varargs API
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 inline int __android_log_print(int prio, const char *tag, const char *fmt, ...) {
-  va_list args;
+  va_list args = {};
   va_start(args, fmt);
   std::fprintf(stdout, "[%d] %s: ", prio, tag);
   std::vfprintf(stdout, fmt, args);
@@ -44,6 +46,7 @@ inline int __android_log_print(int prio, const char *tag, const char *fmt, ...) 
   va_end(args);
   return 0;
 }
+RELOCO_END_UNSAFE_CODE
 RELOCO_END_UNSAFE_BUFFER_USAGE
 #endif
 
@@ -86,9 +89,11 @@ public:
   }
 
 private:
+  // bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+  RELOCO_BEGIN_UNSAFE_CODE
   static void write_to_logcat(int priority, microfmt::string_view tag, microfmt::string_view message) noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
-    char tag_buf[64];
+    char tag_buf[64] = {};
     size_t tag_len = std::min(tag.size(), sizeof(tag_buf) - 1);
     std::memcpy(tag_buf, tag.data(), tag_len);
     tag_buf[tag_len] = '\0';
@@ -96,6 +101,7 @@ private:
     ::__android_log_print(priority, tag_buf, "%.*s", static_cast<int>(message.size()), message.data());
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
+  RELOCO_END_UNSAFE_CODE
 
   static int priority_for(level lvl) noexcept {
     switch (lvl) {

@@ -240,6 +240,9 @@ public:
     return *this;
   }
 
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   array_writer &val(const char *v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     prefix();
     if (v == nullptr) {
@@ -249,6 +252,7 @@ public:
     }
     return *this;
   }
+  RELOCO_END_UNSAFE_CODE
 
   template <std::size_t N> array_writer &val(const char (&v)[N]) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     return val(microfmt::string_view(v, N - 1));

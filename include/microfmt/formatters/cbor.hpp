@@ -37,6 +37,8 @@ inline constexpr uint8_t MT_SIMPLE = 0xE0;   // Major 7
 
 inline constexpr uint8_t BREAK_BYTE = 0xFF; // Stop code for indefinite containers
 
+// wire-format encoding: bytes are deliberately converted between char and unsigned byte.
+RELOCO_BEGIN_UNSAFE_CODE
 inline void encode_header(const sink &out, uint8_t major, uint64_t val) noexcept {
   if (val < 24) {
     out.put(static_cast<char>(major | static_cast<uint8_t>(val)));
@@ -60,6 +62,7 @@ inline void encode_header(const sink &out, uint8_t major, uint64_t val) noexcept
     }
   }
 }
+RELOCO_END_UNSAFE_CODE
 } // namespace detail
 
 // ============================================================================
@@ -76,10 +79,13 @@ class array_writer;
  */
 class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) RELOCO_POINTER map_writer {
 public:
+  // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
+  RELOCO_BEGIN_UNSAFE_CODE
   explicit map_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
     // 0xBF: Indefinite-length map
     out_.put(static_cast<char>(detail::MT_MAP | 31));
   }
+  RELOCO_END_UNSAFE_CODE
 
   ~map_writer() noexcept { end(); }
 
@@ -117,6 +123,8 @@ public:
     return *this;
   }
 
+  // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
+  RELOCO_BEGIN_UNSAFE_CODE
   map_writer &kv(microfmt::string_view k, const char *val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     if (val == nullptr) {
@@ -127,6 +135,7 @@ public:
     }
     return *this;
   }
+  RELOCO_END_UNSAFE_CODE
 
   template <std::size_t N>
   map_writer &kv(microfmt::string_view k, const char (&val)[N]) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
@@ -141,17 +150,23 @@ public:
     return *this;
   }
 
+  // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
+  RELOCO_BEGIN_UNSAFE_CODE
   map_writer &kv(microfmt::string_view k, bool val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     out_.put(static_cast<char>(detail::MT_SIMPLE | (val ? 21 : 20))); // 0xF5 (true), 0xF4 (false)
     return *this;
   }
+  RELOCO_END_UNSAFE_CODE
 
+  // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
+  RELOCO_BEGIN_UNSAFE_CODE
   map_writer &kv(microfmt::string_view k, std::nullptr_t) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     out_.put(static_cast<char>(detail::MT_SIMPLE | 22)); // 0xF6 (null)
     return *this;
   }
+  RELOCO_END_UNSAFE_CODE
 
   template <typename T,
             typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value, int>::type = 0>
@@ -213,10 +228,13 @@ private:
  */
 class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) array_writer {
 public:
+  // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
+  RELOCO_BEGIN_UNSAFE_CODE
   explicit array_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
     // 0x9F: Indefinite-length array
     out_.put(static_cast<char>(detail::MT_ARRAY | 31));
   }
+  RELOCO_END_UNSAFE_CODE
 
   ~array_writer() noexcept { end(); }
 
@@ -240,6 +258,8 @@ public:
     return *this;
   }
 
+  // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
+  RELOCO_BEGIN_UNSAFE_CODE
   array_writer &val(const char *v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     if (v == nullptr) {
       out_.put(static_cast<char>(detail::MT_SIMPLE | 22));
@@ -250,6 +270,7 @@ public:
     }
     return *this;
   }
+  RELOCO_END_UNSAFE_CODE
 
   template <std::size_t N> array_writer &val(const char (&v)[N]) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     return val(microfmt::string_view(v, N - 1));
@@ -262,15 +283,21 @@ public:
     return *this;
   }
 
+  // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
+  RELOCO_BEGIN_UNSAFE_CODE
   array_writer &val(bool v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     out_.put(static_cast<char>(detail::MT_SIMPLE | (v ? 21 : 20)));
     return *this;
   }
+  RELOCO_END_UNSAFE_CODE
 
+  // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
+  RELOCO_BEGIN_UNSAFE_CODE
   array_writer &val(std::nullptr_t) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     out_.put(static_cast<char>(detail::MT_SIMPLE | 22));
     return *this;
   }
+  RELOCO_END_UNSAFE_CODE
 
   template <typename T,
             typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value, int>::type = 0>

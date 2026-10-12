@@ -38,7 +38,8 @@ template <typename Tag> struct remote_hash_table_dispatch {
     }
 
     size_t print_count = 0;
-    for (size_t bucket = 0; bucket < bucket_count; ++bucket) {
+    bool stop = false; // set when the print limit is hit or an entry faults
+    for (size_t bucket = 0; bucket < bucket_count && !stop; ++bucket) {
       uintptr_t current_node = 0;
       if (!traits_type::get_bucket_head(context, container_addr, space, scratch, bucket, current_node))
         continue;
@@ -48,14 +49,16 @@ template <typename Tag> struct remote_hash_table_dispatch {
           if (print_count > 0)
             out.write(opts.entry_separator);
           out.write("...");
-          goto finish;
+          stop = true;
+          break;
         }
         if (print_count > 0)
           out.write(opts.entry_separator);
 
         if (!traits_type::format_entry(context, space, scratch, current_node, opts, out)) {
           out.write("<fault>");
-          goto finish;
+          stop = true;
+          break;
         }
         ++print_count;
 
@@ -66,7 +69,6 @@ template <typename Tag> struct remote_hash_table_dispatch {
       }
     }
 
-  finish:
     out.write(opts.close_bracket);
     return true;
   }

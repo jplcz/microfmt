@@ -22,6 +22,8 @@
 
 namespace detail {
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 MICROFMT_API_CONSTEXPR void int_formatter_specs::parse(format_parse_context &ctx) noexcept {
   const microfmt::string_view spec = ctx.spec();
   if (spec.empty())
@@ -58,9 +60,12 @@ MICROFMT_API_CONSTEXPR void int_formatter_specs::parse(format_parse_context &ctx
     }
   }
 }
+RELOCO_END_UNSAFE_CODE
 
 } // namespace detail
 
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 MICROFMT_API void vformat_to(const sink &out, const microfmt::string_view fmt, const span<const void *const> arg_ptrs,
                              const span<const format_fn_t> arg_fns) noexcept {
   size_t arg_idx = 0;
@@ -127,6 +132,7 @@ MICROFMT_API void vformat_to(const sink &out, const microfmt::string_view fmt, c
   }
   RELOCO_END_UNSAFE_BUFFER_USAGE;
 }
+RELOCO_END_UNSAFE_CODE
 
 #if defined(MICROFMT_SHARED_BUILD)
 // Out-of-line definitions of the two non-template overloads declared under

@@ -49,6 +49,9 @@ namespace microfmt {
 template <> struct formatter<remote_memory_diff_view> {
   constexpr void parse(format_parse_context &ctx) noexcept { (void)ctx; }
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const remote_memory_diff_view &diff, const sink &out) const noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
@@ -125,6 +128,7 @@ template <> struct formatter<remote_memory_diff_view> {
 
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
+  RELOCO_END_UNSAFE_CODE
 
 private:
   static void flush_streak(const sink &out, size_t count) noexcept {

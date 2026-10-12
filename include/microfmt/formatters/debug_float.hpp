@@ -41,9 +41,11 @@ namespace detail {
  * @brief Shared `%g`/`%Lg`-based implementation behind every
  * `Debug<float/double/long double>::format` below.
  */
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename T> inline void format_debug_float(T val, const sink &out) noexcept {
-  char buf[64];
-  int written;
+  char buf[64] = {};
+  int written = {};
   if constexpr (std::is_same_v<T, long double>) {
     written = std::snprintf(buf, sizeof(buf), "%Lg", val);
   } else {
@@ -67,6 +69,7 @@ template <typename T> inline void format_debug_float(T val, const sink &out) noe
     out.write(".0");
   }
 }
+RELOCO_END_UNSAFE_CODE
 
 } // namespace detail
 

@@ -5,7 +5,7 @@
 namespace microfmt {
 
 MICROFMT_API void formatter<base64_view, void>::format(const base64_view &bv, const sink &out) const noexcept {
-  static constexpr char B64_TABLE[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  static constexpr microfmt::string_view B64_TABLE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
   const size_t len = bv.data.size();
   size_t i = 0;

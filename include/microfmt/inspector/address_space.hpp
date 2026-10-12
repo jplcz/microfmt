@@ -46,6 +46,9 @@ enum class remote_load_error {
 
 namespace detail {
 
+// decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths checked
+// here.
+RELOCO_BEGIN_UNSAFE_CODE
 constexpr uintptr_t add_address_offset(uintptr_t address, ptrdiff_t offset) noexcept {
   if (offset >= 0)
     return address + static_cast<uintptr_t>(offset);
@@ -53,6 +56,7 @@ constexpr uintptr_t add_address_offset(uintptr_t address, ptrdiff_t offset) noex
   const auto magnitude = static_cast<uintptr_t>(-(offset + 1)) + uintptr_t{1};
   return address - magnitude;
 }
+RELOCO_END_UNSAFE_CODE
 
 template <typename Tag, typename = void> struct has_address_space_write_bytes : std::false_type {};
 
@@ -113,6 +117,9 @@ template <> struct address_space_traits<local_space_tag> {
    * @param size Number of bytes to copy.
    * @return `true` on success, `false` for a null address.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static bool read_bytes(uintptr_t addr, void *dest, size_t size) noexcept {
     if (addr == 0)
       return false;
@@ -123,6 +130,7 @@ template <> struct address_space_traits<local_space_tag> {
     RELOCO_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Copies raw bytes from `src` into `addr`.
@@ -131,6 +139,9 @@ template <> struct address_space_traits<local_space_tag> {
    * @param size Number of bytes to copy.
    * @return `true` on success, `false` for a null address.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static bool write_bytes(uintptr_t addr, const void *src, size_t size) noexcept {
     if (addr == 0)
       return false;
@@ -141,6 +152,7 @@ template <> struct address_space_traits<local_space_tag> {
     RELOCO_END_UNSAFE_BUFFER_USAGE;
     return true;
   }
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Reads a string until a null terminator or the length limit.
@@ -151,6 +163,9 @@ template <> struct address_space_traits<local_space_tag> {
    * @param null_term Receives whether a null terminator was encountered.
    * @return `true` on success, `false` for a null address.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static bool read_string(uintptr_t addr, char *dest, size_t max_len, size_t &out_len, bool &null_term) noexcept {
     if (addr == 0)
       return false;
@@ -173,6 +188,7 @@ template <> struct address_space_traits<local_space_tag> {
     null_term = false;
     return true;
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 // ============================================================================
@@ -596,6 +612,9 @@ public:
    * @brief Loads the object into the scratch buffer.
    * @return A pointer into the scratch buffer, or a precise loading error.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] expected<T *, remote_load_error> load() const noexcept {
     if (addr_ == 0)
       return unexpected(remote_load_error::null_address);
@@ -611,6 +630,7 @@ public:
       return unexpected(remote_load_error::read_failed);
     return out_ptr;
   }
+  RELOCO_END_UNSAFE_CODE
 
 private:
   /// Remote object address.

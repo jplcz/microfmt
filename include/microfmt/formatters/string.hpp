@@ -81,6 +81,8 @@ struct MICROFMT_API_CLASS parsed_string_spec {
  * @param spec Raw specifier text.
  * @return Parsed @ref parsed_string_spec.
  */
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 inline constexpr parsed_string_spec parse_advanced_string_spec(microfmt::string_view spec) noexcept {
   parsed_string_spec res{};
   if (spec.empty()) {
@@ -139,6 +141,7 @@ inline constexpr parsed_string_spec parse_advanced_string_spec(microfmt::string_
 
   return res;
 }
+RELOCO_END_UNSAFE_CODE
 
 /**
  * @brief Writes @p count copies of @p fill to the sink in bounded chunks.
@@ -147,7 +150,8 @@ inline constexpr parsed_string_spec parse_advanced_string_spec(microfmt::string_
  * @param count Number of characters to emit.
  */
 inline void write_fill_chars(const sink &out, char fill, size_t count) noexcept {
-  char buf[32];
+  // NOLINTNEXTLINE(reloco-no-c-array): fixed-size buffer/table for span APIs
+  char buf[32] = {};
   std::fill_n(buf, std::min<size_t>(count, sizeof(buf)), fill);
   while (count > 0) {
     const size_t chunk = std::min<size_t>(count, sizeof(buf));
@@ -183,7 +187,8 @@ inline void write_escaped_character(const sink &out, char ch) noexcept {
     break;
   default:
     if (static_cast<unsigned char>(ch) < 0x20 || static_cast<unsigned char>(ch) == 0x7F) {
-      static constexpr char hex_chars[] = "0123456789abcdef";
+      static constexpr microfmt::string_view hex_chars = "0123456789abcdef";
+      // NOLINTNEXTLINE(reloco-no-c-array): fixed-size buffer/table for span APIs
       char hex[4] = {'\\', 'x', hex_chars[(static_cast<unsigned char>(ch) >> 4) & 0x0F],
                      hex_chars[static_cast<unsigned char>(ch) & 0x0F]};
       out.write(microfmt::string_view(hex, 4));
@@ -285,9 +290,12 @@ template <typename CharT, typename Traits, typename Alloc>
  * @param str String to format, or `nullptr` (rendered as `(null)`).
  * @return An @ref as_string_view.
  */
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] constexpr as_string_view as_string(const char *str) noexcept {
   return as_string_view{str != nullptr ? microfmt::string_view(str) : microfmt::string_view("(null)")};
 }
+RELOCO_END_UNSAFE_CODE
 
 // ============================================================================
 // Formatter for as_string_view

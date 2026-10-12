@@ -27,6 +27,8 @@ using vector = std::pmr::vector<char>;
 // PMR String Factory
 // ============================================================================
 
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename... Args>
 [[nodiscard]] std::pmr::string
 // NOLINTNEXTLINE(reloco-noexcept): std container allocation may throw (std-interop contract)
@@ -41,11 +43,14 @@ format(std::pmr::memory_resource *mr, microfmt::string_view fmt_str, const Args 
   format_to(out_sink, fmt_str, args...);
   return result;
 }
+RELOCO_END_UNSAFE_CODE
 
 // ============================================================================
 // PMR Vector Factory
 // ============================================================================
 
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename... Args>
 [[nodiscard]] std::pmr::vector<char>
 // NOLINTNEXTLINE(reloco-noexcept): std container allocation may throw (std-interop contract)
@@ -60,6 +65,7 @@ format_vector(std::pmr::memory_resource *mr, microfmt::string_view fmt_str, cons
   format_to(out_sink, fmt_str, args...);
   return result;
 }
+RELOCO_END_UNSAFE_CODE
 
 // ============================================================================
 // PMR Monotonic Arena Sink (Direct Stream Allocator)
@@ -124,11 +130,14 @@ public:
   }
 
 private:
+  // NOLINTBEGIN(reloco-pointer-annotation,reloco-no-raw-pointer,reloco-no-c-array): intrusive list node with trailing
+  // storage, living in the memory resource's block
   struct chunk {
     chunk *previous = nullptr;
     std::size_t capacity = 0;
     char data[1]{};
   };
+  // NOLINTEND(reloco-pointer-annotation,reloco-no-raw-pointer,reloco-no-c-array)
 
   [[nodiscard]] static std::size_t allocation_size(std::size_t capacity) noexcept {
     return sizeof(chunk) - sizeof(char) + capacity;

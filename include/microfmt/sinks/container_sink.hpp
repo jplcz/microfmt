@@ -103,6 +103,8 @@ public:
   [[nodiscard]] bool failed() const noexcept { return failed_; }
 
   // Never throws: the sink callback is noexcept, so std container exceptions are caught and recorded.
+  // bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+  RELOCO_BEGIN_UNSAFE_CODE
   void write(microfmt::string_view sv) noexcept {
     if (failed_) {
       return;
@@ -121,6 +123,7 @@ public:
 #endif
     }
   }
+  RELOCO_END_UNSAFE_CODE
 
 private:
   void write_fallible(microfmt::string_view sv) noexcept {
@@ -166,6 +169,8 @@ template <typename Container, typename std::enable_if<is_growable_char_container
 // ============================================================================
 
 // Appends formatted text to an existing growable character container.
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename Container, typename... Args>
 typename std::enable_if<is_growable_char_container<Container>, void>::type
 // NOLINTNEXTLINE(reloco-noexcept): throws std::bad_alloc on growth failure to preserve the std container contract
@@ -179,6 +184,7 @@ format_to_container(Container &dest, microfmt::string_view fmt_str, const Args &
   }
 #endif
 }
+RELOCO_END_UNSAFE_CODE
 
 // Returns a newly allocated container.
 template <typename Container = std::string, typename... Args>

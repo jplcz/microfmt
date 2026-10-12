@@ -22,6 +22,7 @@ inline void format_boost_address_v4(const boost::asio::ip::address_v4 &address, 
 
 inline void format_boost_address_v6(const boost::asio::ip::address_v6 &address, const sink &out) noexcept {
   const auto bytes = address.to_bytes();
+  // NOLINTNEXTLINE(reloco-no-c-array): fixed-size buffer/table for span APIs
   uint16_t words[8]{};
   RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   for (std::size_t index = 0; index < 8; ++index) {

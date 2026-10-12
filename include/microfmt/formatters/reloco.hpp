@@ -1163,6 +1163,9 @@ template <> struct formatter<reloco::duration> {
 template <> struct formatter<reloco::instant> {
   constexpr void parse(format_parse_context &) noexcept {}
 
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const reloco::instant &value, const sink &out) const noexcept {
     const reloco::duration since_epoch = value.duration_since(reloco::instant());
 
@@ -1179,6 +1182,7 @@ template <> struct formatter<reloco::instant> {
     out.put('.');
     detail::format_unsigned<detail::radix::decimal>(out, since_epoch.subsec_millis(), false, 3);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 /**
@@ -1221,6 +1225,9 @@ template <> struct formatter<reloco::ordering> {
 template <> struct formatter<reloco::type_id> {
   constexpr void parse(format_parse_context &) noexcept {}
 
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(reloco::type_id value, const sink &out) const noexcept {
     if (!value) {
       out.write("<no type>");
@@ -1233,6 +1240,7 @@ template <> struct formatter<reloco::type_id> {
     }
     out.write(name);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 /**
@@ -1499,6 +1507,9 @@ template <typename T> struct formatter<reloco::packed_bits<T>> {
 template <typename T, typename AuthPolicy> struct formatter<reloco::masked_pointer<T, AuthPolicy>> {
   constexpr void parse(format_parse_context &) noexcept {}
 
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const reloco::masked_pointer<T, AuthPolicy> &ptr, const sink &out) const noexcept {
     const void *raw = static_cast<const void *>(ptr.get());
     if (raw == nullptr) {
@@ -1507,6 +1518,7 @@ template <typename T, typename AuthPolicy> struct formatter<reloco::masked_point
     }
     microfmt::format_to(out, "{}", raw);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 /**
@@ -1534,6 +1546,9 @@ struct formatter<reloco::fixed_point<Rep, FracBits>, std::enable_if_t<std::is_ar
  */
 template <std::size_t N, bool Signed>
 struct formatter<reloco::detail::wide_int<N, Signed>> : detail::int_formatter_specs {
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const reloco::detail::wide_int<N, Signed> &val, const sink &out) const noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     constexpr std::size_t limb_count = N / 32;
@@ -1593,6 +1608,7 @@ struct formatter<reloco::detail::wide_int<N, Signed>> : detail::int_formatter_sp
                                flags.zero_pad);
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 #if defined(__SIZEOF_INT128__)

@@ -20,6 +20,8 @@ namespace microfmt {
 // FILE* Sink Adapter
 // ============================================================================
 
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] inline sink file_sink(std::FILE *file) noexcept {
   return sink{file, [](void *ctx, microfmt::string_view sv) noexcept {
                 if (ctx != nullptr && !sv.empty()) {
@@ -29,6 +31,7 @@ namespace microfmt {
                 }
               }};
 }
+RELOCO_END_UNSAFE_CODE
 
 [[nodiscard]] inline sink stdout_sink() noexcept { return file_sink(stdout); }
 
@@ -39,6 +42,8 @@ namespace microfmt {
 // ============================================================================
 
 #if MICROFMT_HAS_POSIX_FD
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 [[nodiscard]] inline sink fd_sink(int fd) noexcept {
   // Store fd inside the pointer context value without allocation
   return sink{reinterpret_cast<void *>(static_cast<intptr_t>(fd)), [](void *ctx, microfmt::string_view sv) noexcept {
@@ -61,6 +66,7 @@ namespace microfmt {
                 RELOCO_END_UNSAFE_BUFFER_USAGE;
               }};
 }
+RELOCO_END_UNSAFE_CODE
 #endif
 
 // =============================================================================
@@ -98,32 +104,44 @@ template <typename... Args> inline void println(microfmt::string_view fmt_str, c
 // =============================================================================
 
 // Compile-time FILE* overloads
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename StrProvider, typename... Args>
 inline void print(std::FILE *file, compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
   auto s = file_sink(file);
   format_to(s, fmt, args...);
 }
+RELOCO_END_UNSAFE_CODE
 
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename StrProvider, typename... Args>
 inline void println(std::FILE *file, compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
   auto s = file_sink(file);
   format_to(s, fmt, args...);
   s.put('\n');
 }
+RELOCO_END_UNSAFE_CODE
 
 // Runtime FILE* overloads
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename... Args>
 inline void print(std::FILE *file, microfmt::string_view fmt_str, const Args &...args) noexcept {
   auto s = file_sink(file);
   format_to(s, fmt_str, args...);
 }
+RELOCO_END_UNSAFE_CODE
 
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 template <typename... Args>
 inline void println(std::FILE *file, microfmt::string_view fmt_str, const Args &...args) noexcept {
   auto s = file_sink(file);
   format_to(s, fmt_str, args...);
   s.put('\n');
 }
+RELOCO_END_UNSAFE_CODE
 
 // =============================================================================
 // Target POSIX FD printing
@@ -191,7 +209,10 @@ inline void println(sink s) noexcept { s.put('\n'); }
 
 inline void println() noexcept { stdout_sink().put('\n'); }
 
+// bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+RELOCO_BEGIN_UNSAFE_CODE
 inline void println(std::FILE *file) noexcept { file_sink(file).put('\n'); }
+RELOCO_END_UNSAFE_CODE
 
 #if MICROFMT_HAS_POSIX_FD
 inline void println(int fd) noexcept { fd_sink(fd).put('\n'); }

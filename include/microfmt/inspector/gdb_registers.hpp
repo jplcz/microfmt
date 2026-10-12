@@ -25,6 +25,9 @@ struct MICROFMT_API_CLASS RELOCO_POINTER register_mapping {
  * traits.
  */
 template <typename Traits> struct register_traits_base {
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] static constexpr const register_mapping *find_by_gdb(uint32_t index) noexcept {
     for (const auto &reg : Traits::arch_layout) {
       if (reg.gdb_index == index)
@@ -40,7 +43,11 @@ template <typename Traits> struct register_traits_base {
     }
     return nullptr;
   }
+  RELOCO_END_UNSAFE_CODE
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] static constexpr const register_mapping *find_by_dwarf(uint32_t index) noexcept {
     for (const auto &reg : Traits::arch_layout) {
       if (reg.dwarf_index == index)
@@ -56,7 +63,11 @@ template <typename Traits> struct register_traits_base {
     }
     return nullptr;
   }
+  RELOCO_END_UNSAFE_CODE
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] static constexpr const register_mapping *find_by_name(string_view name) noexcept {
     for (const auto &reg : Traits::arch_layout) {
       if (reg.name == name)
@@ -72,6 +83,7 @@ template <typename Traits> struct register_traits_base {
     }
     return nullptr;
   }
+  RELOCO_END_UNSAFE_CODE
 
   [[nodiscard]] static constexpr span<const register_mapping> layout() noexcept {
     return span<const register_mapping>{Traits::arch_layout.data(), Traits::arch_layout.size()};

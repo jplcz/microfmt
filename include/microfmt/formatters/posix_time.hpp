@@ -113,6 +113,8 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timespec_v<T>>> {
    * @param ts The value to format (read-only via @p tv_sec/@p tv_nsec).
    * @param out Destination sink.
    */
+  // time-field arithmetic converts between C/POSIX integer widths whose ranges are bounded by the format.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const T &ts, const sink &out) const noexcept {
     int64_t sec = static_cast<int64_t>(ts.tv_sec);
     uint32_t nsec = static_cast<uint32_t>(ts.tv_nsec);
@@ -137,6 +139,7 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timespec_v<T>>> {
       out.put('s');
     }
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 // ============================================================================
@@ -185,6 +188,8 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timeval_v<T>>> {
    * @param tv The value to format (read-only via @p tv_sec/@p tv_usec).
    * @param out Destination sink.
    */
+  // time-field arithmetic converts between C/POSIX integer widths whose ranges are bounded by the format.
+  RELOCO_BEGIN_UNSAFE_CODE
   void format(const T &tv, const sink &out) const noexcept {
     int64_t sec = static_cast<int64_t>(tv.tv_sec);
     uint32_t usec = static_cast<uint32_t>(tv.tv_usec);
@@ -207,6 +212,7 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timeval_v<T>>> {
       out.put('s');
     }
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace microfmt

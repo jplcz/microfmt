@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 namespace microfmt::ansi {
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 MICROFMT_API void emit_style(const style &s, const sink &out) noexcept {
   if (!style::colors_enabled) {
     return;
@@ -49,6 +51,7 @@ MICROFMT_API void emit_style(const style &s, const sink &out) noexcept {
 
   out.put('m');
 }
+RELOCO_END_UNSAFE_CODE
 
 MICROFMT_API void emit_reset(const sink &out) noexcept {
   if (style::colors_enabled) {

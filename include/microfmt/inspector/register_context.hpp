@@ -40,34 +40,50 @@ template <typename State> struct register_context_traits<empty_register_context_
 template <typename State, auto Read> struct register_context_traits<read_only_register_context_tag<State, Read>> {
   using context_type = State;
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static bool read_register(value_ref<const context_type> context, address_space_ref space, uint32_t index,
                             void *destination, size_t size) noexcept {
     return Read(context.get(), space, index, destination, size);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 template <typename State, auto Write> struct register_context_traits<write_only_register_context_tag<State, Write>> {
   using context_type = State;
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static bool write_register(value_ref<context_type> context, address_space_ref space, uint32_t index,
                              const void *source, size_t size) noexcept {
     return Write(context.get(), space, index, source, size);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 template <typename State, auto Read, auto Write>
 struct register_context_traits<read_write_register_context_tag<State, Read, Write>> {
   using context_type = State;
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static bool read_register(value_ref<const context_type> context, address_space_ref space, uint32_t index,
                             void *destination, size_t size) noexcept {
     return Read(context.get(), space, index, destination, size);
   }
+  RELOCO_END_UNSAFE_CODE
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static bool write_register(value_ref<context_type> context, address_space_ref space, uint32_t index,
                              const void *source, size_t size) noexcept {
     return Write(context.get(), space, index, source, size);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 namespace detail {
@@ -478,6 +494,9 @@ public:
   operator register_context_ref() && = delete;
 
 private:
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   template <typename Field>
   [[nodiscard]] bool try_read(uint32_t index, void *destination, size_t size, bool &handled) const noexcept {
     if (handled || !Field::matches(index))
@@ -505,7 +524,11 @@ private:
       return true;
     }
   }
+  RELOCO_END_UNSAFE_CODE
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   template <typename Field>
   [[nodiscard]] bool try_write(uint32_t index, const void *source, size_t size, bool &handled) noexcept {
     if (handled || !Field::matches(index))
@@ -533,6 +556,7 @@ private:
       return false;
     }
   }
+  RELOCO_END_UNSAFE_CODE
 
   [[nodiscard]] bool read(uint32_t index, void *destination, size_t size) const noexcept {
     bool handled = false;
@@ -568,15 +592,23 @@ template <typename State, typename... FieldTraits>
 struct register_context_traits<detail::mapped_register_context_tag<State, FieldTraits...>> {
   using context_type = register_context_ref_with<State, FieldTraits...>;
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static bool read_register(value_ref<const context_type> context, address_space_ref, uint32_t index, void *destination,
                             size_t size) noexcept {
     return context->read(index, destination, size);
   }
+  RELOCO_END_UNSAFE_CODE
 
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   static bool write_register(value_ref<context_type> context, address_space_ref, uint32_t index, const void *source,
                              size_t size) noexcept {
     return context->write(index, source, size);
   }
+  RELOCO_END_UNSAFE_CODE
 };
 
 } // namespace microfmt

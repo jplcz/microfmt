@@ -74,9 +74,13 @@ public:
   using base::base;
   using base::log;
 
+  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
+  // here.
+  RELOCO_BEGIN_UNSAFE_CODE
   void set_meta_callback(log_meta_callback cb, void *user = nullptr) noexcept {
     this->decorator().set_callback(cb, user);
   }
+  RELOCO_END_UNSAFE_CODE
 
   /** @brief Dispatches a caller-built record with explicit metadata. */
   void log(const extended_log_msg &msg) const noexcept {

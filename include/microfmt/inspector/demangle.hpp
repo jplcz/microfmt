@@ -121,6 +121,9 @@ private:
   /**
    * @brief Parses a base-10 number into @p val.
    */
+  // decodes raw bytes of a target address space; casts, pointers and offsets are bounded by the explicit lengths
+  // checked here.
+  RELOCO_BEGIN_UNSAFE_CODE
   bool parse_number(size_t &val) noexcept {
     if (eof() || peek() < '0' || peek() > '9')
       return false;
@@ -130,6 +133,7 @@ private:
     }
     return true;
   }
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Parses `<encoding>`: name plus optional bare-function-type.

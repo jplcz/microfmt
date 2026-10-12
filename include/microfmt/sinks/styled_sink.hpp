@@ -65,6 +65,8 @@ public:
   }
 
 private:
+  // bridges to a C/platform API (FILE*, syslog, android log, raw chunk storage) that takes raw pointers.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] constexpr char apply_char(char c) const noexcept {
     switch (transform_) {
     case char_transform::to_upper:
@@ -85,6 +87,7 @@ private:
       return c;
     }
   }
+  RELOCO_END_UNSAFE_CODE
 
   sink target_;
   char_transform transform_{char_transform::none};

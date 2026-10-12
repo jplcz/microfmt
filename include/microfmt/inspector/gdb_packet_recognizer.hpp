@@ -62,12 +62,12 @@ public:
 
 #define __INSPECTOR_GDB_PACKET_TYPE_X(name, str)                                                                       \
   if constexpr (sizeof(str) > 2) {                                                                                     \
-    unsigned char c = static_cast<unsigned char>((str)[0]);                                                            \
+    const unsigned char c = static_cast<unsigned char>((str)[0]);                                                      \
     if (c < 128) {                                                                                                     \
       table[c] = packet_type::_multi_char_marker;                                                                      \
     }                                                                                                                  \
   } else if constexpr (sizeof(str) == 2) {                                                                             \
-    unsigned char c = static_cast<unsigned char>((str)[0]);                                                            \
+    const unsigned char c = static_cast<unsigned char>((str)[0]);                                                      \
     if (c < 128) {                                                                                                     \
       table[c] = packet_type::name;                                                                                    \
     }                                                                                                                  \
