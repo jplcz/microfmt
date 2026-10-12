@@ -30,8 +30,8 @@ enum class address_space_error {
 };
 
 struct MICROFMT_API_CLASS string_chunk {
-  size_t length;
-  bool null_terminated;
+  size_t length{};
+  bool null_terminated{};
 };
 
 template <typename Tag> struct address_space_traits;
@@ -386,7 +386,7 @@ public:
   /**
    * @brief Reports whether the bound backend provides write access.
    */
-  [[nodiscard]] constexpr bool can_write() const noexcept { return vtbl_ && vtbl_->write_bytes; }
+  [[nodiscard]] constexpr bool can_write() const noexcept { return vtbl_ != nullptr && vtbl_->write_bytes != nullptr; }
 
 private:
   template <typename Tag> [[nodiscard]] static constexpr auto write_bytes_entry() noexcept {
@@ -669,8 +669,8 @@ template <> struct formatter<remote_string_view> {
 
       const size_t chunk_len = chunk->length;
       if (chunk_len > 0) {
-        size_t limit_left = view.max_limit() - total;
-        size_t to_write = (chunk_len > limit_left) ? limit_left : chunk_len;
+        const size_t limit_left = view.max_limit() - total;
+        const size_t to_write = (chunk_len > limit_left) ? limit_left : chunk_len;
         const auto scratch = view.scratch();
         out.write(microfmt::string_view(scratch.data(), to_write));
         total += to_write;

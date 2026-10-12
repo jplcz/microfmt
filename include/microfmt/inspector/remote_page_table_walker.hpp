@@ -81,18 +81,18 @@ public:
   [[nodiscard]] constexpr size_t level_count() const noexcept { return callbacks_.level_count; }
 
   [[nodiscard]] bool describe_level(size_t level, remote_page_table_level &description) const noexcept {
-    return callbacks_.describe_level && level < callbacks_.level_count &&
+    return callbacks_.describe_level != nullptr && level < callbacks_.level_count &&
            callbacks_.describe_level(state_.get(), level, description);
   }
 
   [[nodiscard]] bool decode_entry(size_t level, uint64_t raw_entry,
                                   remote_page_table_decoded_entry &entry) const noexcept {
-    return callbacks_.decode_entry && level < callbacks_.level_count &&
+    return callbacks_.decode_entry != nullptr && level < callbacks_.level_count &&
            callbacks_.decode_entry(state_.get(), level, raw_entry, entry);
   }
 
   [[nodiscard]] constexpr explicit operator bool() const noexcept {
-    return callbacks_.level_count != 0 && callbacks_.describe_level && callbacks_.decode_entry;
+    return callbacks_.level_count != 0 && callbacks_.describe_level != nullptr && callbacks_.decode_entry != nullptr;
   }
 
 private:
@@ -114,7 +114,7 @@ struct MICROFMT_API_CLASS remote_page_table_walk_step {
 /**
  * @brief Caller-owned bounded storage for page-table walk diagnostics.
  */
-class MICROFMT_API_CLASS remote_page_table_walk_trace {
+class MICROFMT_API_CLASS RELOCO_POINTER remote_page_table_walk_trace {
 public:
   constexpr explicit remote_page_table_walk_trace(span<remote_page_table_walk_step> storage) noexcept
       : storage_(storage) {}
@@ -123,9 +123,11 @@ public:
   constexpr explicit remote_page_table_walk_trace(remote_page_table_walk_step (&storage)[N]) noexcept
       : storage_(storage, N) {}
 
-  [[nodiscard]] constexpr span<const remote_page_table_walk_step> steps() const noexcept {
+  [[nodiscard]] constexpr span<const remote_page_table_walk_step> steps() const & noexcept {
     return span<const remote_page_table_walk_step>(storage_.data(), size_);
   }
+
+  [[nodiscard]] constexpr span<const remote_page_table_walk_step> steps() const && = delete;
 
   [[nodiscard]] constexpr size_t size() const noexcept { return size_; }
 
@@ -229,7 +231,7 @@ public:
       const uintptr_t entry_address = table_address + entry_offset;
 
       array<std::byte, 8> entry_bytes{};
-      auto read_result = physical_space_.read_bytes(entry_address, entry_bytes.data(), description.entry_size);
+      const auto read_result = physical_space_.read_bytes(entry_address, entry_bytes.data(), description.entry_size);
       if (!read_result)
         return unexpected(remote_page_table_walk_error::read_failed);
 
@@ -262,8 +264,9 @@ public:
       }
 
       const uintptr_t physical_address = decoded.output_address + (virtual_address & (decoded.page_size - 1));
-      translation_attributes attributes{physical_address, decoded.space_id,   decoded.is_secure,      decoded.readable,
-                                        decoded.writable, decoded.executable, decoded.user_accessible};
+      const translation_attributes attributes{physical_address,       decoded.space_id, decoded.is_secure,
+                                              decoded.readable,       decoded.writable, decoded.executable,
+                                              decoded.user_accessible};
       return remote_page_table_walk_result{physical_address, decoded.page_size, attributes};
     }
 

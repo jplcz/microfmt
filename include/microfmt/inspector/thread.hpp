@@ -75,7 +75,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER thread_info {
   /**
    * @brief Stack iteration state supporting phase transition from core to extended properties.
    */
-  struct metadata_state {
+  struct RELOCO_POINTER metadata_state {
     const thread_info *thread{nullptr};
     int step{0};
     bool in_extended{false};
@@ -159,7 +159,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER thread_info {
 
       // Phase 2: Forward to extended metadata callback if configured
       if (s->in_extended) {
-        if (s->thread->extended_metadata_fn && s->thread->extended_metadata_ctx) {
+        if (s->thread->extended_metadata_fn != nullptr && s->thread->extended_metadata_ctx != nullptr) {
           return s->thread->extended_metadata_fn(s->thread->extended_metadata_ctx, out);
         }
       }

@@ -10,9 +10,9 @@
 
 namespace microfmt::dwarf {
 
-struct MICROFMT_API_CLASS register_descriptor {
+struct MICROFMT_API_CLASS RELOCO_POINTER register_descriptor {
   microfmt::string_view name;
-  uint32_t index;
+  uint32_t index{};
 };
 
 namespace generic_timer {

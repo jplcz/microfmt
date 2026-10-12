@@ -27,7 +27,7 @@ template <size_t MaxImages = 16> struct multi_elf_registry_tag {};
 /**
  * @brief Describes a loaded ELF image and the locations of its unwind tables.
  */
-struct elf_image_info {
+struct RELOCO_POINTER elf_image_info {
   /**
    * @brief Human-readable image/module name.
    */
@@ -218,7 +218,9 @@ public:
     return elf_image_enumerator_ref(Tag{}, context_);
   }
 
-  [[nodiscard]] constexpr operator elf_image_enumerator_ref() const & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
+  [[nodiscard]] explicit constexpr operator elf_image_enumerator_ref() const & noexcept RELOCO_LIFETIMEBOUND {
+    return ref();
+  }
 
   value_ref<context_type> context() && = delete;
   value_ref<const context_type> context() const && = delete;

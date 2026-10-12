@@ -37,10 +37,11 @@ inline bool dl_resolve_symbol(uintptr_t addr, raw_resolved_symbol &out_raw) noex
     return false;
 
   raw_resolved_symbol result{};
-  result.image_name = (info.dli_fname && info.dli_fname[0] != '\0') ? string_view(info.dli_fname) : string_view("");
+  result.image_name =
+      (info.dli_fname != nullptr && info.dli_fname[0] != '\0') ? string_view(info.dli_fname) : string_view("");
   result.image_load_base = reinterpret_cast<uintptr_t>(info.dli_fbase);
 
-  if (info.dli_sname && info.dli_sname[0] != '\0' && info.dli_saddr != nullptr) {
+  if (info.dli_sname != nullptr && info.dli_sname[0] != '\0' && info.dli_saddr != nullptr) {
     result.symbol_name = string_view(info.dli_sname);
     result.symbol_base = reinterpret_cast<uintptr_t>(info.dli_saddr);
     result.is_exact = (result.symbol_base == addr);

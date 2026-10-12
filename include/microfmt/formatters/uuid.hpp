@@ -19,7 +19,7 @@ namespace microfmt {
 // UUID View Definition
 // ============================================================================
 
-struct MICROFMT_API_CLASS uuid_view {
+struct MICROFMT_API_CLASS RELOCO_POINTER uuid_view {
   span<const uint8_t> bytes{}; // 16 bytes
   bool uppercase{false};
   bool braced{false}; // Wrap in { ... }

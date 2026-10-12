@@ -210,7 +210,7 @@ inline bool dl_phdr_eh_frame_bounds(const dl_phdr_info &info, uintptr_t &out_sta
 /**
  * @brief Mutable state threaded through @ref dl_enumerate_callback.
  */
-struct MICROFMT_API_CLASS dl_enumerate_state {
+struct MICROFMT_API_CLASS RELOCO_POINTER dl_enumerate_state {
   span<elf_image_info> buffer;
   size_t count{0};
 };
@@ -230,7 +230,8 @@ inline int dl_enumerate_callback(dl_phdr_info *info, size_t, void *data) noexcep
     return 0; // No PT_LOAD segments (e.g. the Linux VDSO on some ABIs); skip.
 
   elf_image_info entry{};
-  entry.image_name = (info->dlpi_name && info->dlpi_name[0] != '\0') ? string_view(info->dlpi_name) : string_view("");
+  entry.image_name =
+      (info->dlpi_name != nullptr && info->dlpi_name[0] != '\0') ? string_view(info->dlpi_name) : string_view("");
   entry.load_base = base;
   entry.image_size = size;
 #if defined(PT_ARM_EXIDX)
@@ -263,7 +264,7 @@ inline bool dl_enumerate_images(span<elf_image_info> out_buffer, size_t &out_cou
  * image whose load base was already resolved via `dladdr`.
  */
 struct MICROFMT_API_CLASS dl_find_size_state {
-  uintptr_t target_base;
+  uintptr_t target_base{};
   uintptr_t size{0};
   uintptr_t exidx_start{0};
   uintptr_t exidx_end{0};
@@ -312,7 +313,8 @@ inline bool dl_find_by_pc(uintptr_t pc, elf_image_info &out_info) noexcept {
     return false;
 
   elf_image_info result{};
-  result.image_name = (info.dli_fname && info.dli_fname[0] != '\0') ? string_view(info.dli_fname) : string_view("");
+  result.image_name =
+      (info.dli_fname != nullptr && info.dli_fname[0] != '\0') ? string_view(info.dli_fname) : string_view("");
   result.load_base = reinterpret_cast<uintptr_t>(info.dli_fbase);
 
   dl_find_size_state size_state{result.load_base};

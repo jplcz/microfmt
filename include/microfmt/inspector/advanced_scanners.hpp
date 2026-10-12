@@ -155,7 +155,9 @@ public:
     return value_range_scanner_ref<T>(Tag{}, context_);
   }
 
-  [[nodiscard]] constexpr operator value_range_scanner_ref<T>() const & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
+  [[nodiscard]] explicit constexpr operator value_range_scanner_ref<T>() const & noexcept RELOCO_LIFETIMEBOUND {
+    return ref();
+  }
 
   value_ref<context_type> context() && = delete;
   value_ref<const context_type> context() const && = delete;
@@ -311,7 +313,9 @@ public:
     return dependent_value_scanner_ref(Tag{}, context_);
   }
 
-  [[nodiscard]] constexpr operator dependent_value_scanner_ref() const & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
+  [[nodiscard]] explicit constexpr operator dependent_value_scanner_ref() const & noexcept RELOCO_LIFETIMEBOUND {
+    return ref();
+  }
 
   value_ref<context_type> context() && = delete;
   value_ref<const context_type> context() const && = delete;
@@ -411,12 +415,12 @@ template <> struct dependent_value_scanner_traits<linear_dependent_value_scanner
     size_t remaining = search_length;
 
     while (remaining >= window_size) {
-      size_t to_read = (remaining < ctx->scratch.size()) ? remaining : ctx->scratch.size();
+      const size_t to_read = (remaining < ctx->scratch.size()) ? remaining : ctx->scratch.size();
       auto read_res = ctx->space.read_bytes(current_addr, ctx->scratch.data(), to_read);
       if (!read_res)
         return unexpected(read_res.error());
 
-      size_t search_limit = to_read - window_size;
+      const size_t search_limit = to_read - window_size;
       for (size_t offset = 0; offset <= search_limit; offset += stride) {
         RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
         const void *window = ctx->scratch.data() + offset;
@@ -429,7 +433,7 @@ template <> struct dependent_value_scanner_traits<linear_dependent_value_scanner
         }
       }
 
-      size_t advance = ((search_limit) / stride) * stride + stride;
+      const size_t advance = ((search_limit) / stride) * stride + stride;
       if (current_addr > std::numeric_limits<uintptr_t>::max() - advance) {
         return unexpected(address_space_error::invalid_address);
       }

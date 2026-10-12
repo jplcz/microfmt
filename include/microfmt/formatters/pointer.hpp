@@ -71,7 +71,7 @@ template <typename T> [[nodiscard]] constexpr raw_ptr_view raw_ptr32(const T *pt
 }
 
 /** Non-owning contiguous range of values addressed by raw pointers. */
-template <typename T> struct raw_range_view {
+template <typename T> struct RELOCO_POINTER raw_range_view {
   const T *begin_ptr{nullptr};
   const T *end_ptr{nullptr};
   microfmt::string_view separator{", "};

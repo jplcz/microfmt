@@ -38,7 +38,7 @@ enum class spi_status : uint8_t { ok = 0, timeout, crc_err, overrun };
 // ============================================================================
 
 /** @brief Non-owning simplex or full-duplex SPI transfer descriptor. */
-struct MICROFMT_API_CLASS spi_transfer_view {
+struct MICROFMT_API_CLASS RELOCO_POINTER spi_transfer_view {
   span<const uint8_t> mosi{}; // TX data (can be empty for half-duplex RX)
   span<const uint8_t> miso{}; // RX data (can be empty for half-duplex TX)
   uint8_t cs_pin{0};          // Chip select index (CS0, CS1, etc.)
@@ -129,7 +129,7 @@ template <> struct formatter<spi_transfer_view> {
   void format(const spi_transfer_view &tx, const sink &out) const noexcept {
     const auto &hex = uppercase_hex ? detail::hex_digits_upper : detail::hex_digits_lower;
 
-    auto print_bytes = [&](span<const uint8_t> s) noexcept {
+    const auto print_bytes = [&](span<const uint8_t> s) noexcept {
       for (size_t i = 0; i < s.size(); ++i) {
         if (i > 0)
           out.put(' ');

@@ -154,7 +154,7 @@ public:
       m_running_sum += static_cast<uint8_t>(c);
 
       if (m_escaped) {
-        char decoded = static_cast<char>(c ^ 0x20);
+        const char decoded = static_cast<char>(c ^ 0x20);
         if (m_pos >= m_buf.size()) {
           m_state = state::waiting_for_start;
           return status::error_overflow;

@@ -32,8 +32,10 @@ TEST(I2cFormatterTest, FormatsTenBitReadFailureAndMasksAddress) {
                                                       microfmt::i2c_status::timeout));
 
   EXPECT_EQ(formatted.view(), "I2C [0x2AB] 10b RD (2 B) DATA: DE AD -> TIMEOUT");
-  EXPECT_EQ(microfmt::format<128>("{:c}", microfmt::i2c_10bit(0x06AB, microfmt::i2c_dir::read, microfmt::span(payload),
-                                                              microfmt::i2c_status::timeout))
-                .view(),
-            "0x2AB:R[DE AD]!(TIMEOUT)");
+  {
+    const auto result0 =
+        microfmt::format<128>("{:c}", microfmt::i2c_10bit(0x06AB, microfmt::i2c_dir::read, microfmt::span(payload),
+                                                          microfmt::i2c_status::timeout));
+    EXPECT_EQ(result0.view(), "0x2AB:R[DE AD]!(TIMEOUT)");
+  }
 }

@@ -63,7 +63,7 @@ protected:
    * non-empty, otherwise this sink's configured default tag.
    */
   [[nodiscard]] microfmt::string_view resolve_tag(microfmt::string_view logger_name,
-                                                  char (&scratch)[TagCapacity]) const noexcept {
+                                                  char (&scratch)[TagCapacity]) const & noexcept {
     if (logger_name.empty()) {
       return microfmt::string_view(tag_, tag_size_);
     }
@@ -83,6 +83,9 @@ protected:
     RELOCO_END_UNSAFE_BUFFER_USAGE;
     return microfmt::string_view(scratch, n);
   }
+
+  [[nodiscard]] microfmt::string_view resolve_tag(microfmt::string_view logger_name,
+                                                  char (&scratch)[TagCapacity]) const && = delete;
 
   char tag_[TagCapacity]{};
   std::size_t tag_size_{0};

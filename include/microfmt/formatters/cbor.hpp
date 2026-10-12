@@ -74,7 +74,7 @@ class array_writer;
  * transitions the map to `consumed`, after which Clang's `-Wconsumed` flags
  * any further `key`/`kv`/`nested_*` call as a compile-time diagnostic.
  */
-class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) map_writer {
+class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) RELOCO_POINTER map_writer {
 public:
   explicit map_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
     // 0xBF: Indefinite-length map
@@ -91,33 +91,33 @@ public:
   }
 
   // Helper for Clang if object state is unknown
-  map_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown") RELOCO_RETURN_TYPESTATE(unconsumed) {
+  map_writer &as_known() & noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown") RELOCO_RETURN_TYPESTATE(unconsumed) {
     RELOCO_ASSERT(!closed_, "Attempt to reuse consumed state");
     return *this;
   }
 
   // Key emitters (supports both Text keys and Integer/Tag keys for compact
   // frames)
-  map_writer &key(microfmt::string_view k) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  map_writer &key(microfmt::string_view k) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     detail::encode_header(out_, detail::MT_TEXT, k.size());
     out_.write(k);
     return *this;
   }
 
-  map_writer &key(uint32_t int_key) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  map_writer &key(uint32_t int_key) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     detail::encode_header(out_, detail::MT_UNSIGNED, int_key);
     return *this;
   }
 
   // Key-Value primitives (String Key)
-  map_writer &kv(microfmt::string_view k, microfmt::string_view val) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  map_writer &kv(microfmt::string_view k, microfmt::string_view val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     detail::encode_header(out_, detail::MT_TEXT, val.size());
     out_.write(val);
     return *this;
   }
 
-  map_writer &kv(microfmt::string_view k, const char *val) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  map_writer &kv(microfmt::string_view k, const char *val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     if (val == nullptr) {
       out_.put(static_cast<char>(detail::MT_SIMPLE | 22));
@@ -129,11 +129,11 @@ public:
   }
 
   template <std::size_t N>
-  map_writer &kv(microfmt::string_view k, const char (&val)[N]) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  map_writer &kv(microfmt::string_view k, const char (&val)[N]) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     return kv(k, microfmt::string_view(val, N - 1));
   }
 
-  map_writer &kv(microfmt::string_view k, span<const uint8_t> bytes) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  map_writer &kv(microfmt::string_view k, span<const uint8_t> bytes) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     detail::encode_header(out_, detail::MT_BYTES, bytes.size());
     for (uint8_t b : bytes)
@@ -141,13 +141,13 @@ public:
     return *this;
   }
 
-  map_writer &kv(microfmt::string_view k, bool val) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  map_writer &kv(microfmt::string_view k, bool val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     out_.put(static_cast<char>(detail::MT_SIMPLE | (val ? 21 : 20))); // 0xF5 (true), 0xF4 (false)
     return *this;
   }
 
-  map_writer &kv(microfmt::string_view k, std::nullptr_t) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  map_writer &kv(microfmt::string_view k, std::nullptr_t) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     out_.put(static_cast<char>(detail::MT_SIMPLE | 22)); // 0xF6 (null)
     return *this;
@@ -155,7 +155,7 @@ public:
 
   template <typename T,
             typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value, int>::type = 0>
-  map_writer &kv(microfmt::string_view k, T val) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  map_writer &kv(microfmt::string_view k, T val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     if constexpr (std::is_signed_v<T>) {
       if (val < 0) {
@@ -172,7 +172,7 @@ public:
   // Key-Value primitives (Compact Integer Key)
   template <typename T,
             typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value, int>::type = 0>
-  map_writer &kv(uint32_t k, T val) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  map_writer &kv(uint32_t k, T val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     if constexpr (std::is_signed_v<T>) {
       if (val < 0) {
@@ -228,18 +228,19 @@ public:
   }
 
   // Helper for Clang if object state is unknown
-  array_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown") RELOCO_RETURN_TYPESTATE(unconsumed) {
+  array_writer &as_known() & noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown")
+      RELOCO_RETURN_TYPESTATE(unconsumed) {
     RELOCO_ASSERT(!closed_, "Attempt to reuse consumed state");
     return *this;
   }
 
-  array_writer &val(microfmt::string_view v) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(microfmt::string_view v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     detail::encode_header(out_, detail::MT_TEXT, v.size());
     out_.write(v);
     return *this;
   }
 
-  array_writer &val(const char *v) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(const char *v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     if (v == nullptr) {
       out_.put(static_cast<char>(detail::MT_SIMPLE | 22));
     } else {
@@ -250,30 +251,30 @@ public:
     return *this;
   }
 
-  template <std::size_t N> array_writer &val(const char (&v)[N]) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  template <std::size_t N> array_writer &val(const char (&v)[N]) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     return val(microfmt::string_view(v, N - 1));
   }
 
-  array_writer &val(span<const uint8_t> bytes) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(span<const uint8_t> bytes) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     detail::encode_header(out_, detail::MT_BYTES, bytes.size());
     for (uint8_t b : bytes)
       out_.put(static_cast<char>(b));
     return *this;
   }
 
-  array_writer &val(bool v) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(bool v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     out_.put(static_cast<char>(detail::MT_SIMPLE | (v ? 21 : 20)));
     return *this;
   }
 
-  array_writer &val(std::nullptr_t) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(std::nullptr_t) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     out_.put(static_cast<char>(detail::MT_SIMPLE | 22));
     return *this;
   }
 
   template <typename T,
             typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value, int>::type = 0>
-  array_writer &val(T v) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(T v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     if constexpr (std::is_signed_v<T>) {
       if (v < 0) {
         detail::encode_header(out_, detail::MT_NEGATIVE, static_cast<uint64_t>(-1 - v));

@@ -24,7 +24,7 @@
 namespace microfmt {
 
 /** Non-owning range plus predicate configuration for filtered formatting. */
-template <typename Range, typename Predicate> struct filtered_range_view {
+template <typename Range, typename Predicate> struct RELOCO_POINTER filtered_range_view {
   const Range &range;
   Predicate predicate;
   char open_delim{'['};
@@ -33,7 +33,7 @@ template <typename Range, typename Predicate> struct filtered_range_view {
 };
 
 /** Non-owning pointer/count range plus predicate configuration. */
-template <typename T, typename Predicate> struct filtered_pointer_range_view {
+template <typename T, typename Predicate> struct RELOCO_POINTER filtered_pointer_range_view {
   const T *data{nullptr};
   size_t count{0};
   Predicate predicate;

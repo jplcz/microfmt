@@ -73,8 +73,11 @@ TEST(MetadataMap, IteratesAndFormatsGeneratedEntries) {
   };
   generator_state state{entries, 3, 0};
   const microfmt::metadata_map map(&state, next_property);
+  {
+    const auto result4 = microfmt::format<64>("{}", map);
 
-  EXPECT_EQ(microfmt::format<64>("{}", map).view(), "{\"first\": 7, \"second\": 11, \"missing\": null}");
+    EXPECT_EQ(result4.view(), "{\"first\": 7, \"second\": 11, \"missing\": null}");
+  }
 
   microfmt::property_entry entry;
   EXPECT_FALSE(map.get_next(entry));
@@ -107,7 +110,10 @@ TEST(ConcreteMetadataMap, UpdatesExistingKeyAndValueType) {
   EXPECT_EQ(map.size(), 1U);
 
   microfmt::concrete_metadata_map::span_iteration_state state;
-  EXPECT_EQ(microfmt::format<32>("{}", map.make_view(state)).view(), "{\"state\": ready}");
+  {
+    const auto result3 = microfmt::format<32>("{}", map.make_view(state));
+    EXPECT_EQ(result3.view(), "{\"state\": ready}");
+  }
 }
 
 TEST(ConcreteMetadataMap, BorrowsValuesAndResetsIterationState) {
@@ -120,18 +126,27 @@ TEST(ConcreteMetadataMap, BorrowsValuesAndResetsIterationState) {
   ASSERT_TRUE(map.set("active", microfmt::value_ref(active)));
 
   microfmt::concrete_metadata_map::span_iteration_state state;
-  EXPECT_EQ(microfmt::format<48>("{}", map.make_view(state)).view(), "{\"count\": 4, \"active\": true}");
+  {
+    const auto result2 = microfmt::format<48>("{}", map.make_view(state));
+    EXPECT_EQ(result2.view(), "{\"count\": 4, \"active\": true}");
+  }
 
   count = 9;
   active = false;
-  EXPECT_EQ(microfmt::format<48>("{}", map.make_view(state)).view(), "{\"count\": 9, \"active\": false}");
+  {
+    const auto result1 = microfmt::format<48>("{}", map.make_view(state));
+    EXPECT_EQ(result1.view(), "{\"count\": 9, \"active\": false}");
+  }
 }
 
 TEST(ConcreteMetadataMap, FormatsEmptyStorage) {
   microfmt::concrete_metadata_map map(microfmt::span<microfmt::property_entry>{});
   microfmt::concrete_metadata_map::span_iteration_state state;
+  {
+    const auto result0 = microfmt::format<8>("{}", map.make_view(state));
 
-  EXPECT_EQ(microfmt::format<8>("{}", map.make_view(state)).view(), "{}");
+    EXPECT_EQ(result0.view(), "{}");
+  }
 }
 
 } // namespace

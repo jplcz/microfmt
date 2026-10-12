@@ -18,7 +18,7 @@ template <typename T> struct formatter<T, std::enable_if_t<std::is_base_of_v<std
 
   void format(const T &value, const sink &out) const noexcept {
     const char *msg = value.what();
-    if (msg) {
+    if (msg != nullptr) {
       out.write(msg);
     } else {
       out.write("<unknown exception>");
@@ -31,17 +31,17 @@ template <> struct formatter<std::system_error> {
 
   void format(const std::system_error &value, const sink &out) const noexcept {
     const char *msg = value.what();
-    if (msg) {
+    if (msg != nullptr) {
       out.write(msg);
     }
 
-    auto ec = value.code();
+    const auto ec = value.code();
     out.write(" [");
     out.write(ec.category().name());
     out.write(":");
 
     // Directly format the error value as an integer
-    formatter<int> int_fmt;
+    const formatter<int> int_fmt;
     int_fmt.format(ec.value(), out);
 
     out.write("]");

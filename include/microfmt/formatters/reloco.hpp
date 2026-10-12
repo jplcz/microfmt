@@ -1,7 +1,7 @@
 #pragma once
-#include <microfmt/microfmt.hpp>
 #include <microfmt/formatters/floating.hpp>
 #include <microfmt/formatters/variant.hpp>
+#include <microfmt/microfmt.hpp>
 #include <reloco/binary_heap.hpp>
 #include <reloco/boxed_slice.hpp>
 #include <reloco/call_location.hpp>
@@ -1417,13 +1417,13 @@ template <typename T> struct formatter<reloco::external_vector<T>> {
  * `outline_ring_buffer`, `inline_ring_buffer`, `sso_ring_buffer`,
  * `ring_buffer_ref`): `[val1, val2, ...]` from oldest to newest element.
  */
-#define MICROFMT_RELOCO_RING_FORMATTER(TEMPLATE_HEAD, TYPE)                                                       \
-  TEMPLATE_HEAD struct formatter<TYPE> {                                                                         \
-    detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;                                         \
-    constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }                \
-    void format(const TYPE &ring, const sink &out) const noexcept {                                              \
-      detail::format_reloco_sequence(underlying_formatter, ring, out);                                           \
-    }                                                                                                            \
+#define MICROFMT_RELOCO_RING_FORMATTER(TEMPLATE_HEAD, TYPE)                                                            \
+  TEMPLATE_HEAD struct formatter<TYPE> {                                                                               \
+    detail::element_formatter<std::remove_cv_t<T>> underlying_formatter;                                               \
+    constexpr void parse(format_parse_context &ctx) noexcept { underlying_formatter.parse(ctx); }                      \
+    void format(const TYPE &ring, const sink &out) const noexcept {                                                    \
+      detail::format_reloco_sequence(underlying_formatter, ring, out);                                                 \
+    }                                                                                                                  \
   }
 
 #define MICROFMT_COMMA ,

@@ -15,9 +15,9 @@ namespace microfmt::log {
  * guarantees we only have one dynamic payload span to append.
  */
 struct alignas(4) ring_buffer_log_header {
-  uint16_t payload_len;    // Max 65,535 bytes
-  uint8_t logger_name_len; // Max 64 bytes
-  uint8_t lvl;             // Severity level encoded as an 8-bit integer
+  uint16_t payload_len{};    // Max 65,535 bytes
+  uint8_t logger_name_len{}; // Max 64 bytes
+  uint8_t lvl{};             // Severity level encoded as an 8-bit integer
 };
 
 class ring_buffer_log_sink;
@@ -49,8 +49,8 @@ public:
         std::min<std::size_t>(msg.payload.size(), static_cast<size_t>(std::numeric_limits<uint16_t>::max()));
 
     // Pack the 4-byte header
-    ring_buffer_log_header hdr{static_cast<uint16_t>(payload_len), static_cast<uint8_t>(name_len),
-                               static_cast<uint8_t>(msg.lvl)};
+    const ring_buffer_log_header hdr{static_cast<uint16_t>(payload_len), static_cast<uint8_t>(name_len),
+                                     static_cast<uint8_t>(msg.lvl)};
 
     // Validator derives total_bytes dynamically!
     auto validator = [](const ring_buffer_log_header &h) -> std::pair<bool, std::size_t> {
@@ -65,7 +65,7 @@ public:
   }
 
 private:
-  reloco::detail::unowned_ring_base<char> *ring_;
+  reloco::detail::unowned_ring_base<char> *ring_{};
 };
 
 inline void log_sink_traits<ring_buffer_log_sink_tag>::log(const value_ref<context_type> ctx,
@@ -76,7 +76,7 @@ inline void log_sink_traits<ring_buffer_log_sink_tag>::log(const value_ref<conte
 /**
  * @brief Represents string data that may cross the circular array boundary.
  */
-struct split_string_view {
+struct RELOCO_POINTER split_string_view {
   reloco::span<const char> first;
   reloco::span<const char> second;
 
@@ -128,7 +128,7 @@ public:
    * @brief Consumes the bytes from the underlying ring buffer permanently.
    */
   void commit() noexcept RELOCO_SET_TYPESTATE(consumed) {
-    if (ring_) {
+    if (ring_ != nullptr) {
       ring_->consume(total_bytes_);
       ring_ = nullptr;
     }
@@ -183,7 +183,7 @@ public:
       return {};
     }
 
-    std::size_t total_bytes = header_elems + hdr_opt->logger_name_len + hdr_opt->payload_len;
+    const std::size_t total_bytes = header_elems + hdr_opt->logger_name_len + hdr_opt->payload_len;
 
     // Self-heal from massive corruption dynamically
     if (total_bytes > ring_->capacity() || hdr_opt->logger_name_len > 64) {
@@ -202,12 +202,12 @@ public:
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     // Helper to perfectly slice out split spans using mathematical offsets
-    auto slice_spans = [p1, p2](std::size_t offset, std::size_t len) {
-      std::size_t p1_avail = (offset < p1.size()) ? p1.size() - offset : 0;
-      std::size_t out1_len = std::min(len, p1_avail);
+    const auto slice_spans = [p1, p2](std::size_t offset, std::size_t len) {
+      const std::size_t p1_avail = (offset < p1.size()) ? p1.size() - offset : 0;
+      const std::size_t out1_len = std::min(len, p1_avail);
 
-      std::size_t out2_len = len - out1_len;
-      std::size_t s2_offset = (offset > p1.size()) ? offset - p1.size() : 0;
+      const std::size_t out2_len = len - out1_len;
+      const std::size_t s2_offset = (offset > p1.size()) ? offset - p1.size() : 0;
 
       return split_string_view{reloco::span<const char>(p1.data() + offset, out1_len),
                                reloco::span<const char>(p2.data() + s2_offset, out2_len)};
@@ -225,7 +225,7 @@ public:
   [[nodiscard]] reloco::optional<log_record_tx> next_impl() noexcept { return try_read(); }
 
 private:
-  reloco::detail::unowned_ring_base<char> *ring_;
+  reloco::detail::unowned_ring_base<char> *ring_{};
 };
 
 } // namespace microfmt::log

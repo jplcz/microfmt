@@ -29,7 +29,7 @@ public:
   /// Constructs a null pointer.
   constexpr compat32_ptr() noexcept : raw_addr_(0) {}
   /// Constructs a null pointer.
-  constexpr compat32_ptr(std::nullptr_t) noexcept : raw_addr_(0) {}
+  explicit constexpr compat32_ptr(std::nullptr_t) noexcept : raw_addr_(0) {}
   /// Constructs a pointer from a 32-bit address.
   constexpr explicit compat32_ptr(uint32_t addr) noexcept : raw_addr_(addr) {}
 

@@ -140,7 +140,7 @@ MICROFMT_API void emit_reset(const sink &out) noexcept;
 // Styled Value Wrapper
 // ============================================================================
 
-template <typename T> struct styled_view {
+template <typename T> struct RELOCO_POINTER styled_view {
   const T &value;
   style st;
 };

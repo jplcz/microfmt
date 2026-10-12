@@ -93,7 +93,7 @@ inline constexpr parsed_string_spec parse_advanced_string_spec(microfmt::string_
   // Fill & Align: [[fill]align] (e.g. ">10", "*^10", "<5")
   if (pos + 1 < len && (spec[pos + 1] == '<' || spec[pos + 1] == '>' || spec[pos + 1] == '^')) {
     res.fill = spec[pos++];
-    char a = spec[pos++];
+    const char a = spec[pos++];
     if (a == '<')
       res.align = string_align::left;
     else if (a == '>')
@@ -101,7 +101,7 @@ inline constexpr parsed_string_spec parse_advanced_string_spec(microfmt::string_
     else if (a == '^')
       res.align = string_align::center;
   } else if (pos < len && (spec[pos] == '<' || spec[pos] == '>' || spec[pos] == '^')) {
-    char a = spec[pos++];
+    const char a = spec[pos++];
     if (a == '<')
       res.align = string_align::left;
     else if (a == '>')
@@ -150,7 +150,7 @@ inline void write_fill_chars(const sink &out, char fill, size_t count) noexcept 
   char buf[32];
   std::fill_n(buf, std::min<size_t>(count, sizeof(buf)), fill);
   while (count > 0) {
-    size_t chunk = std::min<size_t>(count, sizeof(buf));
+    const size_t chunk = std::min<size_t>(count, sizeof(buf));
     out.write(microfmt::string_view(buf, chunk));
     count -= chunk;
   }
@@ -232,7 +232,7 @@ inline size_t calculate_escaped_len(microfmt::string_view sv) noexcept {
 /**
  * @brief Non-owning string view supporting advanced format specifiers.
  */
-class MICROFMT_API_CLASS as_string_view {
+class MICROFMT_API_CLASS RELOCO_POINTER as_string_view {
 public:
   /**
    * @brief Constructs the view over a string_view.
@@ -244,7 +244,9 @@ public:
    * @brief Returns the underlying string view.
    * @return Referenced text.
    */
-  [[nodiscard]] constexpr microfmt::string_view get() const noexcept { return str_; }
+  [[nodiscard]] constexpr microfmt::string_view get() const & noexcept { return str_; }
+
+  [[nodiscard]] constexpr microfmt::string_view get() const && = delete;
 
 private:
   /// Referenced text.
@@ -284,7 +286,7 @@ template <typename CharT, typename Traits, typename Alloc>
  * @return An @ref as_string_view.
  */
 [[nodiscard]] constexpr as_string_view as_string(const char *str) noexcept {
-  return as_string_view{str ? microfmt::string_view(str) : microfmt::string_view("(null)")};
+  return as_string_view{str != nullptr ? microfmt::string_view(str) : microfmt::string_view("(null)")};
 }
 
 // ============================================================================
@@ -329,7 +331,7 @@ template <> struct formatter<as_string_view> {
     const size_t visible_len = spec_.debug_escaped ? detail::calculate_escaped_len(sv) : sv.size();
     const size_t total_pad = (spec_.width > visible_len) ? (spec_.width - visible_len) : 0;
 
-    auto emit_body = [&]() {
+    const auto emit_body = [&]() {
       if (spec_.debug_escaped) {
         out.write("\"");
         for (char ch : sv) {

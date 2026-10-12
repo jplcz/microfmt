@@ -8,13 +8,13 @@
  * Never included directly. */
 
 MICROFMT_API_CONSTEXPR void formatter<raw_ptr_view>::parse(format_parse_context &ctx) noexcept {
-  auto spec = ctx.spec();
+  const auto spec = ctx.spec();
   if (spec.empty())
     return;
 
   size_t i = 0;
   while (i < spec.size()) {
-    char c = spec[i];
+    const char c = spec[i];
     if (c == '3' && (i + 1) < spec.size() && spec[i + 1] == '2') {
       // Specifier "32" -> force compat 32-bit mode
       mode = ptr_width_mode::compat32;

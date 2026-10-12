@@ -8,7 +8,7 @@
  * Never included directly. */
 
 MICROFMT_API_CONSTEXPR void formatter<styled_str_view>::parse(format_parse_context &ctx) noexcept {
-  auto spec = ctx.spec();
+  const auto spec = ctx.spec();
   if (spec.empty())
     return;
 
@@ -51,7 +51,7 @@ MICROFMT_API_CONSTEXPR void formatter<styled_str_view>::parse(format_parse_conte
 
   // Flags: casing ('u', 'l'), quotes ('q', 'b'), truncation ('.N')
   for (; i < spec.size(); ++i) {
-    char c = spec[i];
+    const char c = spec[i];
     if (c == 'u' || c == 'U')
       cfg.casing = text_case::upper;
     else if (c == 'l' || c == 'L')

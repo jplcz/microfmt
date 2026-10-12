@@ -127,7 +127,7 @@ public:
    * record's own level check and this sink's configured threshold.
    */
   void log(const log_msg &msg) noexcept {
-    if (vtbl_ && msg.lvl >= lvl_) {
+    if (vtbl_ != nullptr && msg.lvl >= lvl_) {
       vtbl_->log(ctx_.get(), msg);
     }
   }
@@ -135,7 +135,7 @@ public:
   /**
    * @brief Reports whether the bound backend supports `flush`.
    */
-  [[nodiscard]] constexpr bool can_flush() const noexcept { return vtbl_ && vtbl_->flush; }
+  [[nodiscard]] constexpr bool can_flush() const noexcept { return vtbl_ != nullptr && vtbl_->flush != nullptr; }
 
   /**
    * @brief Flushes buffered output. A no-op when @ref can_flush is `false`.
@@ -205,7 +205,7 @@ template <size_t LineBufCap = 256> class stdout_color_sink {
 public:
   stdout_color_sink() noexcept = default;
 
-  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] log_sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return log_sink(stdout_color_sink_tag<LineBufCap>{}, *this);
   }
 

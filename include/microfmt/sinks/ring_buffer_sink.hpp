@@ -33,7 +33,7 @@ public:
   // microfmt::sink Bridge
   // ==========================================================================
 
-  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{this,
                 [](void *ctx, microfmt::string_view sv) noexcept { static_cast<ring_buffer_sink *>(ctx)->write(sv); }};
   }
@@ -76,7 +76,7 @@ public:
   // Crash Dump / Post-Mortem Slices
   // ==========================================================================
 
-  struct dump_slices {
+  struct RELOCO_POINTER dump_slices {
     microfmt::string_view first;
     microfmt::string_view second; // Empty if buffer hasn't wrapped
   };

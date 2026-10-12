@@ -34,7 +34,7 @@ using memory_reader_fn_t = size_t (*)(void *ctx, uintptr_t src_addr, uint8_t *ds
 // Hex Dump Configuration & Descriptor
 // ============================================================================
 
-struct MICROFMT_API_CLASS hexdump_view {
+struct MICROFMT_API_CLASS RELOCO_POINTER hexdump_view {
   uintptr_t base_addr{0};
   span<const uint8_t> direct_data{};
   void *reader_ctx{nullptr};
@@ -100,7 +100,7 @@ template <> struct formatter<hexdump_view> {
 };
 
 inline void hexdump_to(const sink &out, span<const uint8_t> data, uintptr_t base_address = 0) noexcept {
-  formatter<hexdump_view> f;
+  const formatter<hexdump_view> f;
   f.format(hexdump(data, base_address), out);
 }
 

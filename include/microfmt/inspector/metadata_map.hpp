@@ -30,7 +30,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER property_entry {
    * @brief Formats the underlying property value using its type-erased thunk.
    */
   void format_value(const sink &out) const noexcept {
-    if (print_fn && val_ptr) {
+    if (print_fn != nullptr && val_ptr) {
       print_fn(val_ptr.get(), out);
     } else {
       out.write("null");
@@ -71,7 +71,7 @@ public:
    * @return `true` if an entry was populated, `false` when iteration ends.
    */
   [[nodiscard]] constexpr bool get_next(property_entry &out) const noexcept {
-    if (m_next_fn && m_ctx) {
+    if (m_next_fn != nullptr && m_ctx) {
       return m_next_fn(m_ctx.get(), out);
     }
     return false;

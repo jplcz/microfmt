@@ -29,9 +29,9 @@ namespace microfmt {
  */
 struct MICROFMT_API_CLASS memory_scan_result {
   /** @brief True if the pattern or condition was successfully found. */
-  bool found;
+  bool found{};
   /** @brief The absolute memory address where the match begins (valid only if found is true). */
-  uintptr_t address;
+  uintptr_t address{};
 };
 
 // ============================================================================
@@ -206,7 +206,7 @@ public:
 struct linear_memory_scanner_tag {};
 
 /** @brief State retained by the standard linear memory scanner. */
-struct MICROFMT_API_CLASS linear_memory_scanner_context {
+struct MICROFMT_API_CLASS RELOCO_POINTER linear_memory_scanner_context {
   /** @brief Target memory address space to scan. */
   address_space_ref space;
   /** @brief Caller-provided chunk buffer used for the sliding window. */
@@ -244,7 +244,7 @@ template <> struct memory_pattern_scanner_traits<linear_memory_scanner_tag> {
 
     // Iterate through memory using the scratch buffer as a sliding window
     while (remaining_search >= pattern.size()) {
-      size_t to_read = (remaining_search < ctx->scratch.size()) ? remaining_search : ctx->scratch.size();
+      const size_t to_read = (remaining_search < ctx->scratch.size()) ? remaining_search : ctx->scratch.size();
 
       auto read_res = ctx->space.read_bytes(current_addr, ctx->scratch.data(), to_read);
       if (!read_res) {
@@ -252,7 +252,7 @@ template <> struct memory_pattern_scanner_traits<linear_memory_scanner_tag> {
         return unexpected(read_res.error());
       }
 
-      size_t search_limit = to_read - pattern.size();
+      const size_t search_limit = to_read - pattern.size();
       for (size_t i = 0; i <= search_limit; ++i) {
         if (check_match(ctx->scratch.subspan(i), pattern, mask)) {
           if (current_addr > std::numeric_limits<uintptr_t>::max() - i) {
@@ -263,7 +263,7 @@ template <> struct memory_pattern_scanner_traits<linear_memory_scanner_tag> {
       }
 
       // Advance the window, keeping (pattern.size() - 1) overlap to catch cross-chunk matches
-      size_t advance = to_read - pattern.size() + 1;
+      const size_t advance = to_read - pattern.size() + 1;
       if (current_addr > std::numeric_limits<uintptr_t>::max() - advance) {
         return unexpected(address_space_error::invalid_address);
       }

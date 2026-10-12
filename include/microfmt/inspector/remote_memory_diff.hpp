@@ -17,14 +17,14 @@ namespace microfmt {
 /**
  * @brief Non-owning view representing a byte-level comparison between two remote address spaces.
  */
-struct MICROFMT_API_CLASS remote_memory_diff_view {
+struct MICROFMT_API_CLASS RELOCO_POINTER remote_memory_diff_view {
   address_space_ref old_space;
-  uintptr_t old_address;
+  uintptr_t old_address{};
 
   address_space_ref new_space;
-  uintptr_t new_address;
+  uintptr_t new_address{};
 
-  size_t size;
+  size_t size{};
   span<std::byte> scratch; // Caller-owned scratch buffer for safe chunk reads
   uint8_t bytes_per_row{16};
 };
@@ -69,8 +69,8 @@ template <> struct formatter<remote_memory_diff_view> {
       const size_t current_chunk_size = std::min(row_size, diff.size - offset);
 
       // Read remote/target chunks safely using address_space_ref
-      auto old_read = diff.old_space.read_bytes(diff.old_address + offset, old_chunk_buf, current_chunk_size);
-      auto new_read = diff.new_space.read_bytes(diff.new_address + offset, new_chunk_buf, current_chunk_size);
+      const auto old_read = diff.old_space.read_bytes(diff.old_address + offset, old_chunk_buf, current_chunk_size);
+      const auto new_read = diff.new_space.read_bytes(diff.new_address + offset, new_chunk_buf, current_chunk_size);
 
       if (!old_read || !new_read) {
         // Handle read fault gracefully
@@ -85,8 +85,8 @@ template <> struct formatter<remote_memory_diff_view> {
         continue;
       }
 
-      span<const std::byte> old_chunk(old_chunk_buf, current_chunk_size);
-      span<const std::byte> new_chunk(new_chunk_buf, current_chunk_size);
+      const span<const std::byte> old_chunk(old_chunk_buf, current_chunk_size);
+      const span<const std::byte> new_chunk(new_chunk_buf, current_chunk_size);
 
       // Compare chunks
       bool rows_match = true;

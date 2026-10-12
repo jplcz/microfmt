@@ -2,10 +2,10 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause
 
+#include <chrono>
 #include <gtest/gtest.h>
 #include <microfmt/log/extended_logger.hpp>
 #include <microfmt/log/extended_sink.hpp>
-#include <chrono>
 #include <thread>
 
 namespace {

@@ -56,7 +56,7 @@ inline void write_errno_string(const sink &out, int value) noexcept {
   RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   const char *err_msg = strerror_r(value, buf, sizeof(buf));
   RELOCO_END_UNSAFE_BUFFER_USAGE;
-  if (err_msg) {
+  if (err_msg != nullptr) {
     out.write(err_msg);
     return;
   }
@@ -79,7 +79,7 @@ inline void write_errno_string(const sink &out, int value) noexcept {
 } // namespace detail
 
 struct MICROFMT_API_CLASS posix_errno {
-  int value;
+  int value{};
 };
 
 constexpr inline posix_errno format_errno(int val) noexcept { return {val}; }
@@ -96,7 +96,7 @@ template <> struct formatter<posix_errno> {
     // Append the numeric code format: " (os:13)"
     out.write(" (os:");
 
-    formatter<int> int_fmt;
+    const formatter<int> int_fmt;
     int_fmt.format(e.value, out);
 
     out.write(")");

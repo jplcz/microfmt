@@ -78,7 +78,7 @@ inline constexpr parsed_float_spec parse_float_spec(microfmt::string_view spec) 
 
   // Type presentation: [f|F|e|E|g|G|a|A]
   if (pos < len) {
-    char ch = spec[pos];
+    const char ch = spec[pos];
     if (ch == 'f' || ch == 'F' || ch == 'e' || ch == 'E' || ch == 'g' || ch == 'G' || ch == 'a' || ch == 'A') {
       res.type = ch;
     }
@@ -152,7 +152,7 @@ RELOCO_UNSAFE_BUFFER_USAGE inline void format_float_via_printf(T val, const pars
       // Stack buffer overflow fallback (rare for extreme precision)
       size_t heap_size = static_cast<size_t>(written) + 1;
       auto *heap_buf = new (std::nothrow) char[heap_size];
-      if (heap_buf) {
+      if (heap_buf != nullptr) {
         (void)print_float(heap_buf, heap_size);
         out.write(microfmt::string_view(heap_buf, static_cast<size_t>(written)));
         delete[] heap_buf;

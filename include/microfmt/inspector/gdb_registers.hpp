@@ -12,11 +12,11 @@ namespace microfmt::gdb {
 /**
  * @brief Maps a single register between GDB and DWARF definitions.
  */
-struct MICROFMT_API_CLASS register_mapping {
+struct MICROFMT_API_CLASS RELOCO_POINTER register_mapping {
   string_view name;
-  uint32_t gdb_index;
-  uint32_t dwarf_index;
-  uint32_t bit_size;
+  uint32_t gdb_index{};
+  uint32_t dwarf_index{};
+  uint32_t bit_size{};
   string_view gdb_type;
 };
 

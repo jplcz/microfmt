@@ -63,7 +63,7 @@ struct MICROFMT_API_CLASS extended_log_msg : log_msg {
   log_meta meta{};
 
   constexpr extended_log_msg() = default;
-  constexpr extended_log_msg(const log_msg &base, const log_meta &m = {}) : log_msg(base), meta(m) {}
+  explicit constexpr extended_log_msg(const log_msg &base, const log_meta &m = {}) : log_msg(base), meta(m) {}
 };
 
 } // namespace microfmt::log

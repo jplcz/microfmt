@@ -82,7 +82,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER task_info {
   /**
    * @brief Stack iteration state supporting phase transition from classic fields to extended task metadata.
    */
-  struct metadata_state {
+  struct RELOCO_POINTER metadata_state {
     const task_info *task{nullptr};
     int step{0};
     bool in_extended{false};
@@ -158,7 +158,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER task_info {
 
       // Phase 2: Forward to task extended metadata callback
       if (s->in_extended) {
-        if (s->task->extended_metadata_fn && s->task->extended_metadata_ctx) {
+        if (s->task->extended_metadata_fn != nullptr && s->task->extended_metadata_ctx != nullptr) {
           return s->task->extended_metadata_fn(s->task->extended_metadata_ctx, out);
         }
       }
@@ -173,7 +173,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER task_info {
    * @brief Fetches the next thread belonging to this task using the abstract thread generator.
    */
   [[nodiscard]] constexpr bool get_next_thread(thread_info &out_thread) const noexcept {
-    if (thread_next_fn && thread_next_ctx) {
+    if (thread_next_fn != nullptr && thread_next_ctx != nullptr) {
       return thread_next_fn(thread_next_ctx, out_thread);
     }
     return false;

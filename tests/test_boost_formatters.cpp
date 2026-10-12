@@ -35,9 +35,14 @@ struct described_record {
 BOOST_DESCRIBE_STRUCT(described_record, (), (id, ready))
 
 TEST(BoostFormattersTest, FormatsDescribedEnumsAndStructs) {
-  EXPECT_EQ(microfmt::format<32>("{} {}", described_state::running, static_cast<described_state>(9)).view(),
-            "running static_cast<uint8_t>(9)");
-  EXPECT_EQ(microfmt::format<64>("{}", described_record{7, true}).view(), "{id: 7, ready: true}");
+  {
+    const auto result1 = microfmt::format<32>("{} {}", described_state::running, static_cast<described_state>(9));
+    EXPECT_EQ(result1.view(), "running static_cast<uint8_t>(9)");
+  }
+  {
+    const auto result0 = microfmt::format<64>("{}", described_record{7, true});
+    EXPECT_EQ(result0.view(), "{id: 7, ready: true}");
+  }
 }
 
 TEST(BoostFormattersTest, FormatsOptionalVariantAndOutcome) {

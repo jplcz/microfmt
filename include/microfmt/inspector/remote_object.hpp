@@ -31,10 +31,10 @@ using remote_field_format_fn = void (*)(address_space_ref space, const void *fie
 /**
  * @brief Static descriptor for a single field in a remote structure layout.
  */
-struct MICROFMT_API_CLASS remote_field_desc {
-  const char *name;
-  size_t offset;
-  remote_field_format_fn format_fn;
+struct MICROFMT_API_CLASS RELOCO_POINTER remote_field_desc {
+  const char *name{};
+  size_t offset{};
+  remote_field_format_fn format_fn{};
 };
 
 // ============================================================================
@@ -91,9 +91,12 @@ public:
    * @param max_limit Maximum character render limit.
    */
   [[nodiscard]] constexpr foreign_string_view as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND,
-                                                      size_t max_limit = 4096) const noexcept {
+                                                      size_t max_limit = 4096) const & noexcept {
     return foreign_string_view(addr_, space, scratch, max_limit);
   }
+
+  [[nodiscard]] constexpr foreign_string_view as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND,
+                                                      size_t max_limit = 4096) const && = delete;
 
 private:
   uintptr_t addr_{0};
@@ -107,8 +110,8 @@ inline void remote_field_traits<string_ptr>::format(address_space_ref space, con
     out.write("(null)");
     return;
   }
-  foreign_string_view fsv = sptr.as_view(space, work_buf);
-  formatter<foreign_string_view> fmt;
+  const foreign_string_view fsv = sptr.as_view(space, work_buf);
+  const formatter<foreign_string_view> fmt;
   fmt.format(fsv, out);
 }
 
@@ -138,9 +141,12 @@ public:
    * @param max_limit Maximum character render limit.
    */
   [[nodiscard]] constexpr foreign_string_view as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND,
-                                                      size_t max_limit = 4096) const noexcept {
+                                                      size_t max_limit = 4096) const & noexcept {
     return foreign_string_view(address(), space, scratch, max_limit);
   }
+
+  [[nodiscard]] constexpr foreign_string_view as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND,
+                                                      size_t max_limit = 4096) const && = delete;
 
 private:
   uint32_t addr_{0};
@@ -153,8 +159,8 @@ inline void remote_field_traits<string32_ptr>::format(address_space_ref space, c
     out.write("(null)");
     return;
   }
-  foreign_string_view fsv = sptr.as_view(space, work_buf);
-  formatter<foreign_string_view> fmt;
+  const foreign_string_view fsv = sptr.as_view(space, work_buf);
+  const formatter<foreign_string_view> fmt;
   fmt.format(fsv, out);
 }
 
@@ -272,9 +278,9 @@ template <> struct formatter<remote_object_view> {
     }
 
     out.write("{ ");
-    auto fields = view.fields();
+    const auto fields = view.fields();
 
-    auto scratch = view.scratch();
+    const auto scratch = view.scratch();
     span<char> work_buf;
     if (scratch.size() > view.struct_size()) {
       RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;

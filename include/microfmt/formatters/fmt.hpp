@@ -32,11 +32,15 @@ template <typename OutputIt> struct format_to_n_result {
 using string_view = microfmt::string_view;
 
 // Parse context emulating fmt::format_parse_context
-struct MICROFMT_API_CLASS format_parse_context {
+struct MICROFMT_API_CLASS RELOCO_POINTER format_parse_context {
   microfmt::string_view spec;
 
-  constexpr auto begin() const noexcept { return spec.begin(); }
-  constexpr auto end() const noexcept { return spec.end(); }
+  constexpr auto begin() const & noexcept { return spec.begin(); }
+
+  constexpr auto begin() const && = delete;
+  constexpr auto end() const & noexcept { return spec.end(); }
+
+  constexpr auto end() const && = delete;
   constexpr void advance_to(microfmt::string_view::iterator it) noexcept {
     spec.remove_prefix(static_cast<size_t>(it - spec.begin()));
   }
@@ -70,13 +74,15 @@ private:
 };
 
 // Minimal emulated format_context
-class MICROFMT_API_CLASS format_context {
+class MICROFMT_API_CLASS RELOCO_POINTER format_context {
 public:
   using iterator = sink_output_iterator;
 
   constexpr explicit format_context(iterator out) noexcept : out_(out) {}
 
-  constexpr iterator out() const noexcept { return out_; }
+  constexpr iterator out() const & noexcept { return out_; }
+
+  constexpr iterator out() const && = delete;
   constexpr void advance_to(iterator it) noexcept { out_ = it; }
 
 private:

@@ -33,8 +33,11 @@ TEST(RemoteBasicString, RendersPointerAndSizeLayoutInChunks) {
   const auto layout = microfmt::remote_basic_string_traits::pointer_size_layout<uintptr_t, size_t>(
       offsetof(pointer_string, data), offsetof(pointer_string, size));
   const auto view = microfmt::make_remote_basic_string_view(address_of(value), local_space(), scratch, layout);
+  {
+    const auto result5 = microfmt::format<32>("{}", view);
 
-  EXPECT_EQ(microfmt::format<32>("{}", view).view(), "remote string");
+    EXPECT_EQ(result5.view(), "remote string");
+  }
 }
 
 TEST(RemoteBasicString, PreservesEmbeddedNullCharacters) {
@@ -64,8 +67,11 @@ TEST(RemoteBasicString, SelectsInlineStorageAndTruncates) {
       offsetof(size_selected_string, data), offsetof(size_selected_string, size),
       offsetof(size_selected_string, inline_data), 7);
   const auto view = microfmt::make_remote_basic_string_view(address_of(value), local_space(), scratch, layout, 4);
+  {
+    const auto result4 = microfmt::format<16>("{}", view);
 
-  EXPECT_EQ(microfmt::format<16>("{}", view).view(), "inli...");
+    EXPECT_EQ(result4.view(), "inli...");
+  }
 }
 
 TEST(RemoteBasicString, SelectsHeapStorageAndReportsFaults) {
@@ -76,10 +82,19 @@ TEST(RemoteBasicString, SelectsHeapStorageAndReportsFaults) {
       offsetof(size_selected_string, data), offsetof(size_selected_string, size),
       offsetof(size_selected_string, inline_data), 7);
   const auto view = microfmt::make_remote_basic_string_view(address_of(value), local_space(), scratch, layout);
-  EXPECT_EQ(microfmt::format<32>("{}", view).view(), "heap backed");
+  {
+    const auto result3 = microfmt::format<32>("{}", view);
+    EXPECT_EQ(result3.view(), "heap backed");
+  }
 
   value.data = 0;
-  EXPECT_EQ(microfmt::format<32>("{}", view).view(), microfmt::format<32>("<fault@{:#x}>", address_of(value)).view());
+  {
+    const auto result1 = microfmt::format<32>("<fault@{:#x}>", address_of(value));
+    {
+      const auto result2 = microfmt::format<32>("{}", view);
+      EXPECT_EQ(result2.view(), result1.view());
+    }
+  }
 }
 
 TEST(RemoteBasicString, SupportsExplicitLayoutCallbacks) {
@@ -100,8 +115,11 @@ TEST(RemoteBasicString, SupportsExplicitLayoutCallbacks) {
         return static_cast<bool>(space.read(object_address + static_cast<uintptr_t>(state.data_offset), data_address));
       });
   const auto view = microfmt::make_remote_basic_string_view(address_of(value), local_space(), scratch, layout);
+  {
+    const auto result0 = microfmt::format<16>("{}", view);
 
-  EXPECT_EQ(microfmt::format<16>("{}", view).view(), "callback");
+    EXPECT_EQ(result0.view(), "callback");
+  }
 }
 
 } // namespace

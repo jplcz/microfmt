@@ -22,7 +22,7 @@ namespace microfmt {
 /**
  * @brief Describes a single bitfield within a register.
  */
-struct MICROFMT_API_CLASS reg_field {
+struct MICROFMT_API_CLASS RELOCO_POINTER reg_field {
   /**
    * @brief Human-readable field name.
    */
@@ -30,11 +30,11 @@ struct MICROFMT_API_CLASS reg_field {
   /**
    * @brief Bit offset of the field within the register word.
    */
-  uint8_t bit_offset;
+  uint8_t bit_offset{};
   /**
    * @brief Bit width of the field.
    */
-  uint8_t bit_width;
+  uint8_t bit_width{};
   /**
    * @brief When `true` (single-bit flag), render as `+NAME`/`!NAME`.
    */
@@ -48,7 +48,7 @@ struct MICROFMT_API_CLASS reg_field {
  *
  * @tparam N Number of described fields.
  */
-template <size_t N> struct reg_descriptor {
+template <size_t N> struct RELOCO_POINTER reg_descriptor {
   /**
    * @brief Register name.
    */
@@ -78,7 +78,7 @@ reg_descriptor(microfmt::string_view, size_t, Fields...) -> reg_descriptor<sizeo
  * @tparam N Number of described fields.
  * @tparam UInt Underlying unsigned register word type.
  */
-template <size_t N, typename UInt = uint32_t> struct reg_view {
+template <size_t N, typename UInt = uint32_t> struct RELOCO_POINTER reg_view {
   /**
    * @brief Raw register value.
    */
@@ -179,7 +179,7 @@ template <size_t N, typename UInt> struct formatter<reg_view<N, UInt>> {
         if (printed_count++ > 0)
           out.write(", ");
 
-        if (val) {
+        if (val != 0) {
           out.write(f.name);
         } else {
           out.put('!');

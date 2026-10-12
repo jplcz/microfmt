@@ -14,7 +14,7 @@
 namespace microfmt {
 namespace detail {
 
-template <typename Container> struct boost_sequence_formatter {
+template <typename Container> struct RELOCO_POINTER boost_sequence_formatter {
   microfmt::string_view element_spec{};
 
   constexpr void parse(format_parse_context &ctx) noexcept { element_spec = ctx.spec(); }

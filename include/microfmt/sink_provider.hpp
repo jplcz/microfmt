@@ -137,7 +137,7 @@ public:
    * @param sv String view containing characters to write.
    */
   void write(microfmt::string_view sv) const noexcept {
-    if (vtbl_ && !sv.empty()) {
+    if (vtbl_ != nullptr && !sv.empty()) {
       vtbl_->write(ctx_.get(), sv);
     }
   }
@@ -145,7 +145,7 @@ public:
   /**
    * @brief Reports whether the bound backend supports `flush`.
    */
-  [[nodiscard]] constexpr bool can_flush() const noexcept { return vtbl_ && vtbl_->flush; }
+  [[nodiscard]] constexpr bool can_flush() const noexcept { return vtbl_ != nullptr && vtbl_->flush != nullptr; }
 
   /**
    * @brief Flushes buffered output. A no-op when @ref can_flush is `false`.
@@ -169,7 +169,7 @@ public:
    * stays alive; the returned `sink` borrows the same context pointer.
    */
   [[nodiscard]] constexpr sink as_sink() const noexcept RELOCO_LIFETIMEBOUND {
-    return sink{ctx_.get(), vtbl_ ? vtbl_->write : nullptr};
+    return sink{ctx_.get(), vtbl_ != nullptr ? vtbl_->write : nullptr};
   }
 
 private:
@@ -292,7 +292,7 @@ template <> struct sink_provider_traits<null_sink_provider_tag> {
  */
 struct span_sink_provider_tag {};
 
-struct MICROFMT_API_CLASS span_sink_provider_context {
+struct MICROFMT_API_CLASS RELOCO_POINTER span_sink_provider_context {
   span<char> buffer;
   size_t pos{0};
 };

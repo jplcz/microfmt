@@ -73,25 +73,57 @@ TEST(AnsiFormatter, EmitsStylesAttributesAndScopedValues) {
       microfmt::ansi::attribute::bold | microfmt::ansi::attribute::dim | microfmt::ansi::attribute::italic |
           microfmt::ansi::attribute::underline | microfmt::ansi::attribute::blink | microfmt::ansi::attribute::reverse,
   };
-  EXPECT_EQ(microfmt::format<64>("{}text{}", combined, microfmt::ansi::reset).view(),
-            "\033[1;2;3;4;5;7;31;44mtext\033[0m");
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::ansi::green(42)).view(), "\033[32m42\033[0m");
+  {
+    const auto result18 = microfmt::format<64>("{}text{}", combined, microfmt::ansi::reset);
+    EXPECT_EQ(result18.view(), "\033[1;2;3;4;5;7;31;44mtext\033[0m");
+  }
+  {
+    const auto result17 = microfmt::format<64>("{}", microfmt::ansi::green(42));
+    EXPECT_EQ(result17.view(), "\033[32m42\033[0m");
+  }
 
   microfmt::ansi::style::colors_enabled = false;
-  EXPECT_EQ(microfmt::format<32>("{}plain{}", microfmt::ansi::fg_red, microfmt::ansi::reset).view(), "plain");
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::ansi::blue("value")).view(), "value");
+  {
+    const auto result16 = microfmt::format<32>("{}plain{}", microfmt::ansi::fg_red, microfmt::ansi::reset);
+    EXPECT_EQ(result16.view(), "plain");
+  }
+  {
+    const auto result15 = microfmt::format<32>("{}", microfmt::ansi::blue("value"));
+    EXPECT_EQ(result15.view(), "value");
+  }
 
   microfmt::ansi::style::colors_enabled = previous;
 }
 
 TEST(FloatingFormatter, SupportsTypesSignsPrecisionAndAlternateForm) {
-  EXPECT_EQ(microfmt::format<32>("{:.2f}", 1.25).view(), "1.25");
-  EXPECT_EQ(microfmt::format<32>("{:+.1f}", 2.0F).view(), "+2.0");
-  EXPECT_EQ(microfmt::format<32>("{:#.0f}", 2.0).view(), "2.");
-  EXPECT_EQ(microfmt::format<32>("{:.2e}", 12.0).view(), "1.20e+01");
-  EXPECT_EQ(microfmt::format<32>("{:.1E}", 12.0).view(), "1.2E+01");
-  EXPECT_EQ(microfmt::format<32>("{:.1a}", 1.0).view(), "0x1.0p+0");
-  EXPECT_EQ(microfmt::format<32>("{:.2f}", static_cast<long double>(1.5L)).view(), "1.50");
+  {
+    const auto result14 = microfmt::format<32>("{:.2f}", 1.25);
+    EXPECT_EQ(result14.view(), "1.25");
+  }
+  {
+    const auto result13 = microfmt::format<32>("{:+.1f}", 2.0F);
+    EXPECT_EQ(result13.view(), "+2.0");
+  }
+  {
+    const auto result12 = microfmt::format<32>("{:#.0f}", 2.0);
+    EXPECT_EQ(result12.view(), "2.");
+  }
+  {
+    const auto result11 = microfmt::format<32>("{:.2e}", 12.0);
+    EXPECT_EQ(result11.view(), "1.20e+01");
+  }
+  {
+    const auto result10 = microfmt::format<32>("{:.1E}", 12.0);
+    EXPECT_EQ(result10.view(), "1.2E+01");
+  }
+  {
+    const auto result9 = microfmt::format<32>("{:.1a}", 1.0);
+    EXPECT_EQ(result9.view(), "0x1.0p+0");
+  }
+  {
+    const auto result8 = microfmt::format<32>("{:.2f}", static_cast<long double>(1.5L));
+    EXPECT_EQ(result8.view(), "1.50");
+  }
 }
 
 TEST(FloatingFormatter, HandlesLargePrecisionWithoutTruncation) {
@@ -102,18 +134,42 @@ TEST(FloatingFormatter, HandlesLargePrecisionWithoutTruncation) {
 
 TEST(BinaryTimeFormatter, FormatsAllPrecisionsSignsAndRawMode) {
   const bintime_like positive{1, UINT64_C(0x8000000000000000)};
-  EXPECT_EQ(microfmt::format<32>("{}", positive).view(), "1.500000000s");
-  EXPECT_EQ(microfmt::format<32>("{:m}", positive).view(), "1.500s");
-  EXPECT_EQ(microfmt::format<32>("{:6R}", positive).view(), "1.500000");
-  EXPECT_EQ(microfmt::format<32>("{:p}", positive).view(), "1.500000000000s");
+  {
+    const auto result7 = microfmt::format<32>("{}", positive);
+    EXPECT_EQ(result7.view(), "1.500000000s");
+  }
+  {
+    const auto result6 = microfmt::format<32>("{:m}", positive);
+    EXPECT_EQ(result6.view(), "1.500s");
+  }
+  {
+    const auto result5 = microfmt::format<32>("{:6R}", positive);
+    EXPECT_EQ(result5.view(), "1.500000");
+  }
+  {
+    const auto result4 = microfmt::format<32>("{:p}", positive);
+    EXPECT_EQ(result4.view(), "1.500000000000s");
+  }
 
   const bintime_like negative{-2, UINT64_C(0x8000000000000000)};
-  EXPECT_EQ(microfmt::format<32>("{:3}", negative).view(), "-2.500s");
+  {
+    const auto result3 = microfmt::format<32>("{:3}", negative);
+    EXPECT_EQ(result3.view(), "-2.500s");
+  }
 
   const int64_t positive_sbt = (INT64_C(1) << 32) | INT64_C(0x80000000);
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::as_sbintime(positive_sbt)).view(), "1.500000s");
-  EXPECT_EQ(microfmt::format<32>("{:mr}", microfmt::as_sbintime(-positive_sbt)).view(), "-1.500");
-  EXPECT_EQ(microfmt::format<32>("{:n}", microfmt::as_sbintime(positive_sbt)).view(), "1.500000000s");
+  {
+    const auto result2 = microfmt::format<32>("{}", microfmt::as_sbintime(positive_sbt));
+    EXPECT_EQ(result2.view(), "1.500000s");
+  }
+  {
+    const auto result1 = microfmt::format<32>("{:mr}", microfmt::as_sbintime(-positive_sbt));
+    EXPECT_EQ(result1.view(), "-1.500");
+  }
+  {
+    const auto result0 = microfmt::format<32>("{:n}", microfmt::as_sbintime(positive_sbt));
+    EXPECT_EQ(result0.view(), "1.500000000s");
+  }
 }
 
 TEST(BinaryTimeFormatter, ConvertsFractionalBoundaries) {
@@ -131,65 +187,133 @@ TEST(BinaryTimeFormatter, ConvertsFractionalBoundaries) {
 TEST(EscapedFormatter, CoversEveryControlEscapeAndQuoteMode) {
   const char controls[] = {'\0', '\a', '\b', '\t', '\n', '\v', '\f', '\r', '\\', '"', '\x1F', '\x7F'};
   const auto view = microfmt::escaped(microfmt::string_view(controls, sizeof(controls)));
-  EXPECT_EQ(microfmt::format<128>("{}", view).view(), "\"\\0\\a\\b\\t\\n\\v\\f\\r\\\\\\\"\\x1f\\x7f\"");
+  {
+    const auto result18 = microfmt::format<128>("{}", view);
+    EXPECT_EQ(result18.view(), "\"\\0\\a\\b\\t\\n\\v\\f\\r\\\\\\\"\\x1f\\x7f\"");
+  }
+  {
+    const auto result17 = microfmt::format<32>("{}", microfmt::escaped("\"", /*quote=*/false,
+                                                                       /*escape_quotes=*/false));
 
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::escaped("\"", /*quote=*/false,
-                                                         /*escape_quotes=*/false))
-                .view(),
-            "\"");
+    EXPECT_EQ(result17.view(), "\"");
+  }
 }
 
 TEST(FormatHelpers, FormatsExplicitRadicesAndByteUnits) {
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::hex(0x2A, 4, true)).view(), "0x002a");
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::hex(0xAB, 4, true, true)).view(), "0X00AB");
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::bin(uint8_t{5}, 8, true)).view(), "0b00000101");
+  {
+    const auto result16 = microfmt::format<32>("{}", microfmt::hex(0x2A, 4, true));
+    EXPECT_EQ(result16.view(), "0x002a");
+  }
+  {
+    const auto result15 = microfmt::format<32>("{}", microfmt::hex(0xAB, 4, true, true));
+    EXPECT_EQ(result15.view(), "0X00AB");
+  }
+  {
+    const auto result14 = microfmt::format<32>("{}", microfmt::bin(uint8_t{5}, 8, true));
+    EXPECT_EQ(result14.view(), "0b00000101");
+  }
+  {
+    const auto result13 = microfmt::format<32>("{}", microfmt::bytes(0));
 
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::bytes(0)).view(), "0 B");
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::bytes(1024)).view(), "1 KiB");
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::bytes(1536)).view(), "1.5 KiB");
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::bytes(UINT64_MAX)).view(), "16383.9 PiB");
+    EXPECT_EQ(result13.view(), "0 B");
+  }
+  {
+    const auto result12 = microfmt::format<32>("{}", microfmt::bytes(1024));
+    EXPECT_EQ(result12.view(), "1 KiB");
+  }
+  {
+    const auto result11 = microfmt::format<32>("{}", microfmt::bytes(1536));
+    EXPECT_EQ(result11.view(), "1.5 KiB");
+  }
+  {
+    const auto result10 = microfmt::format<32>("{}", microfmt::bytes(UINT64_MAX));
+    EXPECT_EQ(result10.view(), "16383.9 PiB");
+  }
 }
 
 TEST(FormatHelpers, FormatsAddressRangesAlignmentAndJoins) {
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::addr_offset(0x1140, 0x1000)).view(), "0x1000+0x140");
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::addr_offset(0x0F00, 0x1000)).view(), "0x1000-0x100");
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::mem_range(0x1000, 0x1400)).view(), "[0x1000..0x1400] (1 KiB)");
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::mem_range(0x1400, 0x1000)).view(), "[0x1400..0x1000] (invalid)");
+  {
+    const auto result9 = microfmt::format<64>("{}", microfmt::addr_offset(0x1140, 0x1000));
+    EXPECT_EQ(result9.view(), "0x1000+0x140");
+  }
+  {
+    const auto result8 = microfmt::format<64>("{}", microfmt::addr_offset(0x0F00, 0x1000));
+    EXPECT_EQ(result8.view(), "0x1000-0x100");
+  }
+  {
+    const auto result7 = microfmt::format<64>("{}", microfmt::mem_range(0x1000, 0x1400));
+    EXPECT_EQ(result7.view(), "[0x1000..0x1400] (1 KiB)");
+  }
+  {
+    const auto result6 = microfmt::format<64>("{}", microfmt::mem_range(0x1400, 0x1000));
+    EXPECT_EQ(result6.view(), "[0x1400..0x1000] (invalid)");
+  }
+  {
+    const auto result5 = microfmt::format<16>("{}", microfmt::align("x", 4));
 
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::align("x", 4)).view(), "x   ");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::align("x", 4, microfmt::align_mode::right, '.')).view(), "...x");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::align("xy", 5, microfmt::align_mode::center, '.')).view(), ".xy..");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::align("long", 2)).view(), "long");
+    EXPECT_EQ(result5.view(), "x   ");
+  }
+  {
+    const auto result4 = microfmt::format<16>("{}", microfmt::align("x", 4, microfmt::align_mode::right, '.'));
+    EXPECT_EQ(result4.view(), "...x");
+  }
+  {
+    const auto result3 = microfmt::format<16>("{}", microfmt::align("xy", 5, microfmt::align_mode::center, '.'));
+    EXPECT_EQ(result3.view(), ".xy..");
+  }
+  {
+    const auto result2 = microfmt::format<16>("{}", microfmt::align("long", 2));
+    EXPECT_EQ(result2.view(), "long");
+  }
 
   const int values[] = {1, 2, 3};
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::join(microfmt::span<const int>(values), "|")).view(), "1|2|3");
-  EXPECT_TRUE(microfmt::format<8>("{}", microfmt::join(microfmt::span<const int>{}, "|")).view().empty());
+  {
+    const auto result1 = microfmt::format<32>("{}", microfmt::join(microfmt::span<const int>(values), "|"));
+    EXPECT_EQ(result1.view(), "1|2|3");
+  }
+  {
+    const auto result0 = microfmt::format<8>("{}", microfmt::join(microfmt::span<const int>{}, "|"));
+    EXPECT_TRUE(result0.view().empty());
+  }
 }
 
 TEST(GridFormatter, FormatsRowsTitlesDefaultsAndNullViews) {
   const uint16_t values[] = {1, 0xAF, 0};
   const microfmt::reg_grid_desc<uint16_t, 3> description{"REGS", 2, {"CTRL", "STATUS", "X"}};
-  EXPECT_EQ(microfmt::format<128>("{}", microfmt::make_reg_grid(values, description)).view(),
-            "=== REGS ===\n"
-            "CTRL = 0x0001  STATUS= 0x00AF\n"
-            "X    = 0x0000\n");
+  {
+    const auto result18 = microfmt::format<128>("{}", microfmt::make_reg_grid(values, description));
+    EXPECT_EQ(result18.view(), "=== REGS ===\n"
+                               "CTRL = 0x0001  STATUS= 0x00AF\n"
+                               "X    = 0x0000\n");
+  }
 
   const microfmt::reg_grid_desc<uint16_t, 3> default_columns{"", 0, {"A", "B", "C"}};
-  EXPECT_EQ(microfmt::format<128>("{}", microfmt::make_reg_grid(values, default_columns)).view(),
-            "A    = 0x0001  B    = 0x00AF  C    = 0x0000\n");
+  {
+    const auto result17 = microfmt::format<128>("{}", microfmt::make_reg_grid(values, default_columns));
+    EXPECT_EQ(result17.view(), "A    = 0x0001  B    = 0x00AF  C    = 0x0000\n");
+  }
+  {
+    const auto result16 = microfmt::format<16>("{}", microfmt::reg_grid_view<uint16_t, 3>{});
 
-  EXPECT_TRUE(microfmt::format<16>("{}", microfmt::reg_grid_view<uint16_t, 3>{}).view().empty());
+    EXPECT_TRUE(result16.view().empty());
+  }
 }
 
 TEST(HexdumpFormatter, FormatsDirectMemoryAndOptions) {
   const uint8_t bytes[] = {'A', 0, 0x7F};
   auto dump = microfmt::hexdump(microfmt::span<const uint8_t>(bytes), 0, 4);
   dump.show_address = false;
-  EXPECT_EQ(microfmt::format<64>("{}", dump).view(), "41 00 7f     |A.. |\n");
+  {
+    const auto result15 = microfmt::format<64>("{}", dump);
+    EXPECT_EQ(result15.view(), "41 00 7f     |A.. |\n");
+  }
 
   dump.uppercase = true;
   dump.show_ascii = false;
-  EXPECT_EQ(microfmt::format<64>("{}", dump).view(), "41 00 7F    \n");
+  {
+    const auto result14 = microfmt::format<64>("{}", dump);
+    EXPECT_EQ(result14.view(), "41 00 7F    \n");
+  }
 
   microfmt::buffer_sink<128> output;
   microfmt::hexdump_to(output.as_sink(), microfmt::span<const uint8_t>(bytes), 0x10);
@@ -200,7 +324,10 @@ TEST(HexdumpFormatter, MarksUnreadableCheckedMemory) {
   checked_reader_context reader{0x1000, {0x10, 0x11, 0x12, 0x13}, 2};
   auto dump = microfmt::hexdump_checked(reader.base, reader.bytes.size(), checked_reader, &reader, 4, true);
   dump.show_address = false;
-  EXPECT_EQ(microfmt::format<64>("{}", dump).view(), "10 11 ?? ??  |..??|\n");
+  {
+    const auto result13 = microfmt::format<64>("{}", dump);
+    EXPECT_EQ(result13.view(), "10 11 ?? ??  |..??|\n");
+  }
 
   microfmt::buffer_sink<16> output;
   uint8_t scratch[4] = {};
@@ -212,67 +339,134 @@ TEST(HexdumpFormatter, MarksUnreadableCheckedMemory) {
 
 TEST(NetworkFormatter, FormatsMac48AndEui64Variants) {
   const uint8_t mac48[] = {0x00, 0x1A, 0x2B, 0xCC, 0xDD, 0xEF};
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::mac(mac48)).view(), "00:1a:2b:cc:dd:ef");
-  EXPECT_EQ(microfmt::format<32>("{:X-}", microfmt::mac(mac48)).view(), "00-1A-2B-CC-DD-EF");
-  EXPECT_EQ(microfmt::format<32>("{:x.}", microfmt::mac(mac48, '-', true)).view(), "00.1a.2b.cc.dd.ef");
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::mac(microfmt::span<const uint8_t>(mac48), '\0')).view(),
-            "001a2bccddef");
+  {
+    const auto result12 = microfmt::format<32>("{}", microfmt::mac(mac48));
+    EXPECT_EQ(result12.view(), "00:1a:2b:cc:dd:ef");
+  }
+  {
+    const auto result11 = microfmt::format<32>("{:X-}", microfmt::mac(mac48));
+    EXPECT_EQ(result11.view(), "00-1A-2B-CC-DD-EF");
+  }
+  {
+    const auto result10 = microfmt::format<32>("{:x.}", microfmt::mac(mac48, '-', true));
+    EXPECT_EQ(result10.view(), "00.1a.2b.cc.dd.ef");
+  }
+  {
+    const auto result9 = microfmt::format<32>("{}", microfmt::mac(microfmt::span<const uint8_t>(mac48), '\0'));
+    EXPECT_EQ(result9.view(), "001a2bccddef");
+  }
 
   const std::array<uint8_t, 8> eui64 = {0, 1, 2, 3, 4, 5, 6, 7};
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::mac(eui64, '_', true)).view(), "00_01_02_03_04_05_06_07");
+  {
+    const auto result8 = microfmt::format<32>("{}", microfmt::mac(eui64, '_', true));
+    EXPECT_EQ(result8.view(), "00_01_02_03_04_05_06_07");
+  }
 
   const uint8_t invalid[] = {1, 2, 3};
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::mac(microfmt::span<const uint8_t>(invalid))).view(),
-            "00:00:00:00:00:00");
+  {
+    const auto result7 = microfmt::format<32>("{}", microfmt::mac(microfmt::span<const uint8_t>(invalid)));
+    EXPECT_EQ(result7.view(), "00:00:00:00:00:00");
+  }
 }
 
 TEST(PosixTimeFormatter, FormatsTimespecPrecisionAndUnits) {
   const timespec_like positive{12, 345678901};
-  EXPECT_EQ(microfmt::format<32>("{}", positive).view(), "12.345678901s");
-  EXPECT_EQ(microfmt::format<32>("{:m}", positive).view(), "12.345s");
-  EXPECT_EQ(microfmt::format<32>("{:6R}", positive).view(), "12.345678");
+  {
+    const auto result6 = microfmt::format<32>("{}", positive);
+    EXPECT_EQ(result6.view(), "12.345678901s");
+  }
+  {
+    const auto result5 = microfmt::format<32>("{:m}", positive);
+    EXPECT_EQ(result5.view(), "12.345s");
+  }
+  {
+    const auto result4 = microfmt::format<32>("{:6R}", positive);
+    EXPECT_EQ(result4.view(), "12.345678");
+  }
 
   const timespec_like negative{-3, 7};
-  EXPECT_EQ(microfmt::format<32>("{:n}", negative).view(), "-3.000000007s");
+  {
+    const auto result3 = microfmt::format<32>("{:n}", negative);
+    EXPECT_EQ(result3.view(), "-3.000000007s");
+  }
 }
 
 TEST(PosixTimeFormatter, FormatsTimevalPrecisionAndUnits) {
   const timeval_like positive{12, 345678};
-  EXPECT_EQ(microfmt::format<32>("{}", positive).view(), "12.345678s");
-  EXPECT_EQ(microfmt::format<32>("{:3r}", positive).view(), "12.345");
+  {
+    const auto result2 = microfmt::format<32>("{}", positive);
+    EXPECT_EQ(result2.view(), "12.345678s");
+  }
+  {
+    const auto result1 = microfmt::format<32>("{:3r}", positive);
+    EXPECT_EQ(result1.view(), "12.345");
+  }
 
   const timeval_like negative{-3, 7};
-  EXPECT_EQ(microfmt::format<32>("{:u}", negative).view(), "-3.000007s");
+  {
+    const auto result0 = microfmt::format<32>("{:u}", negative);
+    EXPECT_EQ(result0.view(), "-3.000007s");
+  }
 }
 
 TEST(RegisterFormatter, FormatsDetailedShortNakedAndWideFields) {
   const microfmt::reg_descriptor<4> description{
       "CTRL", 4, {{"READY", 0, 1, true}, {"ERROR", 1, 1, true}, {"MODE", 4, 4, false}, {"ALL", 0, 64, false}}};
+  {
+    const auto result10 = microfmt::format<128>("{}", microfmt::format_reg(uint32_t{0xA1}, description));
 
-  EXPECT_EQ(microfmt::format<128>("{}", microfmt::format_reg(uint32_t{0xA1}, description)).view(),
-            "CTRL=0x000000A1 [READY, !ERROR, MODE=0xa, ALL=0xa1]");
-  EXPECT_EQ(microfmt::format<128>("{:s}", microfmt::format_reg(uint32_t{0xA0}, description)).view(),
-            "CTRL=0x000000A0 [MODE=0xa, ALL=0xa0]");
-  EXPECT_EQ(microfmt::format<128>("{:N}", microfmt::format_reg(uint32_t{0}, description)).view(),
-            "CTRL=0x00000000 !READY, !ERROR, MODE=0, ALL=0");
+    EXPECT_EQ(result10.view(), "CTRL=0x000000A1 [READY, !ERROR, MODE=0xa, ALL=0xa1]");
+  }
+  {
+    const auto result9 = microfmt::format<128>("{:s}", microfmt::format_reg(uint32_t{0xA0}, description));
+    EXPECT_EQ(result9.view(), "CTRL=0x000000A0 [MODE=0xa, ALL=0xa0]");
+  }
+  {
+    const auto result8 = microfmt::format<128>("{:N}", microfmt::format_reg(uint32_t{0}, description));
+    EXPECT_EQ(result8.view(), "CTRL=0x00000000 !READY, !ERROR, MODE=0, ALL=0");
+  }
+  {
+    const auto result7 = microfmt::format<16>("{}", microfmt::reg_view<4, uint32_t>{0, nullptr});
 
-  EXPECT_TRUE(microfmt::format<16>("{}", microfmt::reg_view<4, uint32_t>{0, nullptr}).view().empty());
+    EXPECT_TRUE(result7.view().empty());
+  }
 }
 
 TEST(StringFormatter, FormatsOwningStringsAlignmentAndPrecision) {
   const std::string owned = "value";
-  EXPECT_EQ(microfmt::format<16>("{}", owned).view(), "value");
-  EXPECT_EQ(microfmt::format<16>("{:8}", microfmt::as_string(owned)).view(), "value   ");
-  EXPECT_EQ(microfmt::format<16>("{:>8.3}", microfmt::as_string("abcdef")).view(), "     abc");
-  EXPECT_EQ(microfmt::format<16>("{:*^7}", microfmt::as_string("abc")).view(), "**abc**");
-  EXPECT_EQ(microfmt::format<16>("{:<2}", microfmt::as_string("long")).view(), "long");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::as_string(nullptr)).view(), "(null)");
+  {
+    const auto result6 = microfmt::format<16>("{}", owned);
+    EXPECT_EQ(result6.view(), "value");
+  }
+  {
+    const auto result5 = microfmt::format<16>("{:8}", microfmt::as_string(owned));
+    EXPECT_EQ(result5.view(), "value   ");
+  }
+  {
+    const auto result4 = microfmt::format<16>("{:>8.3}", microfmt::as_string("abcdef"));
+    EXPECT_EQ(result4.view(), "     abc");
+  }
+  {
+    const auto result3 = microfmt::format<16>("{:*^7}", microfmt::as_string("abc"));
+    EXPECT_EQ(result3.view(), "**abc**");
+  }
+  {
+    const auto result2 = microfmt::format<16>("{:<2}", microfmt::as_string("long"));
+    EXPECT_EQ(result2.view(), "long");
+  }
+  {
+    const auto result1 = microfmt::format<16>("{}", microfmt::as_string(nullptr));
+    EXPECT_EQ(result1.view(), "(null)");
+  }
 }
 
 TEST(StringFormatter, DebugEscapesControlsAndUsesChunkedFill) {
   const char raw[] = {'a', '\n', '\r', '\t', '\\', '"', '\0', '\x01', '\x7F'};
   const auto escaped = microfmt::as_string(microfmt::string_view(raw, sizeof(raw)));
-  EXPECT_EQ(microfmt::format<64>("{:?}", escaped).view(), "\"a\\n\\r\\t\\\\\\\"\\0\\x01\\x7f\"");
+  {
+    const auto result0 = microfmt::format<64>("{:?}", escaped);
+    EXPECT_EQ(result0.view(), "\"a\\n\\r\\t\\\\\\\"\\0\\x01\\x7f\"");
+  }
 
   const auto padded = microfmt::format<64>("{:*>40}", microfmt::as_string("x"));
   EXPECT_EQ(padded.size(), 40U);

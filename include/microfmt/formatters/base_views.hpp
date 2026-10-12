@@ -18,7 +18,7 @@ namespace microfmt {
 // Base64 Stream View
 // ============================================================================
 
-struct MICROFMT_API_CLASS base64_view {
+struct MICROFMT_API_CLASS RELOCO_POINTER base64_view {
   span<const uint8_t> data;
 };
 

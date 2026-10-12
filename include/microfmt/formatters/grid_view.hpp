@@ -28,7 +28,7 @@ namespace microfmt {
  * @tparam WordType Underlying register word type.
  * @tparam N Number of register entries described.
  */
-template <typename WordType, size_t N> struct reg_grid_desc {
+template <typename WordType, size_t N> struct RELOCO_POINTER reg_grid_desc {
   /**
    * @brief Optional grid title rendered as `=== title ===`.
    */
@@ -65,7 +65,7 @@ reg_grid_desc(reg_grid_type_tag<WordType>, microfmt::string_view, uint8_t, Names
  * @tparam WordType Underlying register word type.
  * @tparam N Number of register entries.
  */
-template <typename WordType, size_t N> struct reg_grid_view {
+template <typename WordType, size_t N> struct RELOCO_POINTER reg_grid_view {
   /**
    * @brief Pointer to the contiguous array of register words.
    */

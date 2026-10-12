@@ -24,7 +24,7 @@
 namespace microfmt {
 
 /** Non-owning repetition configuration wrapping a decayed value copy. */
-template <typename T> struct repeated_view {
+template <typename T> struct RELOCO_POINTER repeated_view {
   T value;
   size_t count{0};
   microfmt::string_view separator{""};

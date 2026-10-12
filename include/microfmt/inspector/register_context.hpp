@@ -472,7 +472,7 @@ public:
     return register_context_ref(tag{}, *this, space_, scratch_);
   }
 
-  [[nodiscard]] constexpr operator register_context_ref() & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
+  [[nodiscard]] explicit constexpr operator register_context_ref() & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
 
   register_context_ref ref() && = delete;
   operator register_context_ref() && = delete;

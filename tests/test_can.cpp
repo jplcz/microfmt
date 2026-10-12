@@ -27,8 +27,17 @@ TEST(CanFormatterTest, FormatsExtendedRemoteFrame) {
 TEST(CanFormatterTest, FormatsCanFdCandumpFlagsAndLowercase) {
   const uint8_t payload[] = {0xDE, 0xAD, 0xBE, 0xEF};
   const auto frame = microfmt::can_fd(0x18DAF110, microfmt::span(payload), true, true, true);
+  {
+    const auto result2 = microfmt::format<128>("{}", frame);
 
-  EXPECT_EQ(microfmt::format<128>("{}", frame).view(), "CAN-FD [0x18DAF110] EXT BRS ESI DLC=4 DATA: DE AD BE EF");
-  EXPECT_EQ(microfmt::format<128>("{:c}", frame).view(), "18DAF110##3DEADBEEF");
-  EXPECT_EQ(microfmt::format<128>("{:cx}", frame).view(), "18daf110##3deadbeef");
+    EXPECT_EQ(result2.view(), "CAN-FD [0x18DAF110] EXT BRS ESI DLC=4 DATA: DE AD BE EF");
+  }
+  {
+    const auto result1 = microfmt::format<128>("{:c}", frame);
+    EXPECT_EQ(result1.view(), "18DAF110##3DEADBEEF");
+  }
+  {
+    const auto result0 = microfmt::format<128>("{:cx}", frame);
+    EXPECT_EQ(result0.view(), "18daf110##3deadbeef");
+  }
 }

@@ -85,7 +85,7 @@ template <> struct formatter<std::source_location> {
   constexpr void parse(format_parse_context &) noexcept {}
 
   void format(const std::source_location &loc, const sink &out) const noexcept {
-    formatter<std_source_loc_view> f;
+    const formatter<std_source_loc_view> f;
     f.format(source_loc(loc), out);
   }
 };
@@ -96,7 +96,7 @@ template <> struct formatter<boost::source_location> {
   constexpr void parse(format_parse_context &) noexcept {}
 
   void format(const boost::source_location &loc, const sink &out) const noexcept {
-    formatter<boost_source_loc_view> f;
+    const formatter<boost_source_loc_view> f;
     f.format(source_loc(loc), out);
   }
 };

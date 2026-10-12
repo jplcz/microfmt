@@ -19,7 +19,7 @@ namespace microfmt {
 /**
  * @brief Zero-allocation Itanium (GCC/Clang) name demangler.
  */
-class MICROFMT_API_CLASS itanium_demangler {
+class MICROFMT_API_CLASS RELOCO_POINTER itanium_demangler {
 public:
   /**
    * @brief Constructs a demangler over an Itanium-mangled symbol.
@@ -370,31 +370,31 @@ private:
 
     // Type qualifiers & pointer/reference modifiers
     if (match('P')) {
-      bool ok = parse_type(out);
+      const bool ok = parse_type(out);
       out.write("*");
       --depth_;
       return ok;
     }
     if (match('R')) {
-      bool ok = parse_type(out);
+      const bool ok = parse_type(out);
       out.write("&");
       --depth_;
       return ok;
     }
     if (match('O')) {
-      bool ok = parse_type(out);
+      const bool ok = parse_type(out);
       out.write("&&");
       --depth_;
       return ok;
     }
     if (match('K')) {
-      bool ok = parse_type(out);
+      const bool ok = parse_type(out);
       out.write(" const");
       --depth_;
       return ok;
     }
     if (match('V')) {
-      bool ok = parse_type(out);
+      const bool ok = parse_type(out);
       out.write(" volatile");
       --depth_;
       return ok;
@@ -497,7 +497,7 @@ private:
     }
 
     // Compound / nested / substituted type name
-    bool ok = parse_name(out);
+    const bool ok = parse_name(out);
     --depth_;
     return ok;
   }
@@ -506,7 +506,7 @@ private:
 /**
  * @brief Formattable view over a demangled symbol.
  */
-struct MICROFMT_API_CLASS demangle_view {
+struct MICROFMT_API_CLASS RELOCO_POINTER demangle_view {
   /// Mangled symbol.
   microfmt::string_view symbol;
 };

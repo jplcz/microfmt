@@ -98,7 +98,7 @@ class array_writer;
  * transitions the object to `consumed`, after which Clang's `-Wconsumed`
  * flags any further `key`/`kv`/`nested_*` call as a compile-time diagnostic.
  */
-class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) object_writer {
+class MICROFMT_API_CLASS RELOCO_CONSUMABLE(unconsumed) RELOCO_POINTER object_writer {
 public:
   explicit object_writer(sink out) noexcept RELOCO_RETURN_TYPESTATE(unconsumed) : out_(std::move(out)) {
     out_.put('{');
@@ -119,26 +119,27 @@ public:
   }
 
   // Helper for Clang if object state is unknown
-  object_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown") RELOCO_RETURN_TYPESTATE(unconsumed) {
+  object_writer &as_known() & noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown")
+      RELOCO_RETURN_TYPESTATE(unconsumed) {
     RELOCO_ASSERT(!closed_, "Attempt to reuse consumed state");
     return *this;
   }
 
   // Key-Value primitives
-  object_writer &key(microfmt::string_view k) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  object_writer &key(microfmt::string_view k) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     prefix();
     write_escaped_string(out_, k);
     out_.put(':');
     return *this;
   }
 
-  object_writer &kv(microfmt::string_view k, microfmt::string_view val) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  object_writer &kv(microfmt::string_view k, microfmt::string_view val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     write_escaped_string(out_, val);
     return *this;
   }
 
-  object_writer &kv(microfmt::string_view k, const char *val) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  object_writer &kv(microfmt::string_view k, const char *val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     if (val == nullptr) {
       out_.write("null");
@@ -149,17 +150,17 @@ public:
   }
 
   template <std::size_t N>
-  object_writer &kv(microfmt::string_view k, const char (&val)[N]) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  object_writer &kv(microfmt::string_view k, const char (&val)[N]) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     return kv(k, microfmt::string_view(val, N - 1));
   }
 
-  object_writer &kv(microfmt::string_view k, bool val) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  object_writer &kv(microfmt::string_view k, bool val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     out_.write(val ? "true" : "false");
     return *this;
   }
 
-  object_writer &kv(microfmt::string_view k, std::nullptr_t) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  object_writer &kv(microfmt::string_view k, std::nullptr_t) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     out_.write("null");
     return *this;
@@ -167,7 +168,7 @@ public:
 
   template <typename T,
             typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value, int>::type = 0>
-  object_writer &kv(microfmt::string_view k, T val) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  object_writer &kv(microfmt::string_view k, T val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     detail::write_integer(out_, val);
     return *this;
@@ -227,18 +228,19 @@ public:
   }
 
   // Helper for Clang if object state is unknown
-  array_writer &as_known() noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown") RELOCO_RETURN_TYPESTATE(unconsumed) {
+  array_writer &as_known() & noexcept RELOCO_CALLABLE_WHEN("unconsumed", "unknown")
+      RELOCO_RETURN_TYPESTATE(unconsumed) {
     RELOCO_ASSERT(!closed_, "Attempt to reuse consumed state");
     return *this;
   }
 
-  array_writer &val(microfmt::string_view v) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(microfmt::string_view v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     prefix();
     write_escaped_string(out_, v);
     return *this;
   }
 
-  array_writer &val(const char *v) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(const char *v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     prefix();
     if (v == nullptr) {
       out_.write("null");
@@ -248,17 +250,17 @@ public:
     return *this;
   }
 
-  template <std::size_t N> array_writer &val(const char (&v)[N]) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  template <std::size_t N> array_writer &val(const char (&v)[N]) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     return val(microfmt::string_view(v, N - 1));
   }
 
-  array_writer &val(bool v) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(bool v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     prefix();
     out_.write(v ? "true" : "false");
     return *this;
   }
 
-  array_writer &val(std::nullptr_t) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(std::nullptr_t) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     prefix();
     out_.write("null");
     return *this;
@@ -266,7 +268,7 @@ public:
 
   template <typename T,
             typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value, int>::type = 0>
-  array_writer &val(T v) noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
+  array_writer &val(T v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     prefix();
     detail::write_integer(out_, v);
     return *this;

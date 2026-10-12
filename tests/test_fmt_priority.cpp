@@ -104,38 +104,62 @@ template <> struct microfmt::formatter<formatter_and_display> {
 };
 
 TEST(FmtPriorityTest, PlainPlaceholderFallsBackToDisplayWhenNoFormatter) {
-  EXPECT_EQ(microfmt::format<64>("{}", display_only{1}).view(), "display_only::display");
+  {
+    const auto result7 = microfmt::format<64>("{}", display_only{1});
+    EXPECT_EQ(result7.view(), "display_only::display");
+  }
 }
 
 TEST(FmtPriorityTest, PlainPlaceholderFallsBackToDebugWhenNoFormatterOrDisplay) {
-  EXPECT_EQ(microfmt::format<64>("{}", debug_only{1}).view(), "debug_only::debug");
+  {
+    const auto result6 = microfmt::format<64>("{}", debug_only{1});
+    EXPECT_EQ(result6.view(), "debug_only::debug");
+  }
 }
 
 TEST(FmtPriorityTest, PlainPlaceholderPrefersDisplayOverDebugWhenNoFormatter) {
-  EXPECT_EQ(microfmt::format<64>("{}", display_and_debug{1}).view(), "display_and_debug::display");
+  {
+    const auto result5 = microfmt::format<64>("{}", display_and_debug{1});
+    EXPECT_EQ(result5.view(), "display_and_debug::display");
+  }
 }
 
 TEST(FmtPriorityTest, PlainPlaceholderPrefersFormatterOverDisplayAndDebug) {
-  EXPECT_EQ(microfmt::format<64>("{}", all_three{1}).view(), "all_three::formatter");
+  {
+    const auto result4 = microfmt::format<64>("{}", all_three{1});
+    EXPECT_EQ(result4.view(), "all_three::formatter");
+  }
 }
 
 TEST(FmtPriorityTest, AsDebugPrefersDebugOverEverything) {
   all_three v{1};
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::as_debug(v)).view(), "all_three::debug");
+  {
+    const auto result3 = microfmt::format<64>("{}", microfmt::as_debug(v));
+    EXPECT_EQ(result3.view(), "all_three::debug");
+  }
 }
 
 TEST(FmtPriorityTest, AsDebugFallsBackToDisplayWhenOnlyDisplayExists) {
   display_only v{1};
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::as_debug(v)).view(), "display_only::display");
+  {
+    const auto result2 = microfmt::format<64>("{}", microfmt::as_debug(v));
+    EXPECT_EQ(result2.view(), "display_only::display");
+  }
 }
 
 TEST(FmtPriorityTest, AsDebugPrefersFormatterOverDisplayWhenNoDebug) {
   formatter_and_display v{1};
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::as_debug(v)).view(), "formatter_and_display::formatter");
+  {
+    const auto result1 = microfmt::format<64>("{}", microfmt::as_debug(v));
+    EXPECT_EQ(result1.view(), "formatter_and_display::formatter");
+  }
 }
 
 TEST(FmtPriorityTest, AsDebugUsesFormatterOverDisplayWhenBothExistButNoDebug) {
   // int has formatter<int> but neither reloco::Display<int> nor reloco::Debug<int>.
   int value = 42;
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::as_debug(value)).view(), "42");
+  {
+    const auto result0 = microfmt::format<64>("{}", microfmt::as_debug(value));
+    EXPECT_EQ(result0.view(), "42");
+  }
 }

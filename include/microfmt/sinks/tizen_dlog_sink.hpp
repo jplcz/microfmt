@@ -61,7 +61,7 @@ public:
   explicit tizen_dlog_sink(microfmt::string_view tag = "microfmt", write_fn_t write_fn = write_to_dlog) noexcept
       : tag_base(tag), write_fn_(write_fn) {}
 
-  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] log_sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return log_sink(tizen_dlog_sink_tag<TagCapacity>{}, *this);
   }
 

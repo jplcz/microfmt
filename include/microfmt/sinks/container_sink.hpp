@@ -9,10 +9,10 @@
 /** @file container_sink.hpp @brief Growable character-container sink adapter. */
 
 #include "../microfmt.hpp"
-#include <reloco/allocator.hpp>
-#include <reloco/error.hpp>
 #include <cstddef>
 #include <new>
+#include <reloco/allocator.hpp>
+#include <reloco/error.hpp>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -26,8 +26,8 @@ namespace detail {
 template <typename Container, typename = void> struct has_data_size_impl : std::false_type {};
 
 template <typename Container>
-struct has_data_size_impl<Container, std::void_t<decltype(std::declval<Container &>().data()),
-                                                 decltype(std::declval<Container &>().size())>>
+struct has_data_size_impl<
+    Container, std::void_t<decltype(std::declval<Container &>().data()), decltype(std::declval<Container &>().size())>>
     : std::integral_constant<
           bool, std::is_convertible<decltype(std::declval<Container &>().data()), const char *>::value &&
                     std::is_convertible<decltype(std::declval<Container &>().size()), std::size_t>::value> {};
@@ -42,15 +42,15 @@ struct has_std_push_back<Container, std::void_t<decltype(std::declval<Container 
 template <typename Container, typename = void> struct has_try_push_back : std::false_type {};
 
 template <typename Container>
-struct has_try_push_back<Container, std::void_t<decltype(static_cast<bool>(std::declval<Container &>().try_push_back(char{})))>>
+struct has_try_push_back<Container,
+                         std::void_t<decltype(static_cast<bool>(std::declval<Container &>().try_push_back(char{})))>>
     : std::true_type {};
 
 template <typename Container, typename = void> struct has_try_append : std::false_type {};
 
 template <typename Container>
-struct has_try_append<Container, std::void_t<decltype(static_cast<bool>(
-                                     std::declval<Container &>().try_append(microfmt::string_view{})))>>
-    : std::true_type {};
+struct has_try_append<Container, std::void_t<decltype(static_cast<bool>(std::declval<Container &>().try_append(
+                                     microfmt::string_view{})))>> : std::true_type {};
 
 template <typename Container>
 struct is_growable_char_container_impl

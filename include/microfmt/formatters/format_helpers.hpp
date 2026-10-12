@@ -174,7 +174,7 @@ template <> struct formatter<memory_range_view> {
 
 enum class align_mode : uint8_t { left, right, center };
 
-struct MICROFMT_API_CLASS aligned_text_view {
+struct MICROFMT_API_CLASS RELOCO_POINTER aligned_text_view {
   microfmt::string_view text{};
   size_t width{0};
   align_mode mode{align_mode::left};
@@ -230,7 +230,7 @@ template <> struct formatter<aligned_text_view> {
  * @brief Formats a contiguous array/span of values separated by a custom
  * delimiter. Example: `join(span, ", ")` -> `0x10, 0x20, 0x30`
  */
-template <typename T> struct joined_span_view {
+template <typename T> struct RELOCO_POINTER joined_span_view {
   span<const T> items{};
   microfmt::string_view delimiter{", "};
 };

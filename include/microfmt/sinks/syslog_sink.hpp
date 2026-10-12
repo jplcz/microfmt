@@ -28,7 +28,7 @@ public:
 
   explicit constexpr syslog_sink(write_fn_t write_fn = write_to_syslog) noexcept : write_fn_(write_fn) {}
 
-  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] log_sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return log_sink(syslog_sink_tag<Capacity>{}, *this);
   }
 

@@ -17,7 +17,7 @@ namespace microfmt::gdb {
  */
 class MICROFMT_API_CLASS packet_recognizer {
 public:
-  struct packet_entry {
+  struct RELOCO_POINTER packet_entry {
     microfmt::string_view prefix;
     packet_type type;
 
@@ -88,12 +88,12 @@ public:
       return packet_type::unknown;
     }
 
-    unsigned char first_char = static_cast<unsigned char>(payload[0]);
+    const unsigned char first_char = static_cast<unsigned char>(payload[0]);
     if (first_char >= 128) {
       return packet_type::unknown;
     }
 
-    packet_type match = k_first_byte_table[first_char];
+    const packet_type match = k_first_byte_table[first_char];
 
     // Level 1: O(1) Direct match for single-character commands
     if (match != packet_type::_multi_char_marker) {

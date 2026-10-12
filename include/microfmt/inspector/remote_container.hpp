@@ -22,7 +22,7 @@ class remote_container_view;
 /**
  * @brief Configuration options for formatting container views.
  */
-struct MICROFMT_API_CLASS container_options {
+struct MICROFMT_API_CLASS RELOCO_POINTER container_options {
   /// Whether key components of entries are rendered.
   bool print_key{true};
   /// Whether value components of entries are rendered.
@@ -78,12 +78,14 @@ public:
    * @brief Returns the mutable traversal state.
    * @return Reference to the stored state.
    */
-  [[nodiscard]] constexpr IteratorState &state() noexcept { return state_; }
+  [[nodiscard]] constexpr IteratorState &state() & noexcept { return state_; }
   /**
    * @brief Returns the traversal state.
    * @return Const reference to the stored state.
    */
-  [[nodiscard]] constexpr const IteratorState &state() const noexcept { return state_; }
+  [[nodiscard]] constexpr const IteratorState &state() const & noexcept { return state_; }
+
+  [[nodiscard]] constexpr const IteratorState &state() const && = delete;
 
 private:
   IteratorState state_;

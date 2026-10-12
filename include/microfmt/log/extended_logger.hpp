@@ -26,7 +26,7 @@ namespace microfmt::log {
 using log_meta_callback = log_meta (*)(void *user, const log_msg &msg) noexcept;
 
 /** @brief Decorator turning a plain @ref log_msg into an @ref extended_log_msg. */
-class meta_decorator {
+class RELOCO_POINTER meta_decorator {
 public:
   void set_callback(log_meta_callback cb, void *user = nullptr) noexcept {
     cb_ = cb;

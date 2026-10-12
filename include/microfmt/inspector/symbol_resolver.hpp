@@ -23,7 +23,7 @@ namespace microfmt {
 /**
  * @brief Raw resolution result as returned by a resolver backend.
  */
-struct MICROFMT_API_CLASS raw_resolved_symbol {
+struct MICROFMT_API_CLASS RELOCO_POINTER raw_resolved_symbol {
   /**
    * @brief Nearest symbol name (may be empty when stripped).
    */
@@ -50,7 +50,7 @@ struct MICROFMT_API_CLASS raw_resolved_symbol {
 /**
  * @brief Derived symbol info with precomputed relative offsets.
  */
-struct MICROFMT_API_CLASS resolved_symbol_info {
+struct MICROFMT_API_CLASS RELOCO_POINTER resolved_symbol_info {
   /**
    * @brief Nearest symbol name (may be empty when stripped).
    */
@@ -389,7 +389,7 @@ template <> struct formatter<remote_symbol_view> {
    * @param ctx Format parse context exposing the specifier text.
    */
   constexpr void parse(format_parse_context &ctx) noexcept {
-    auto spec = ctx.spec();
+    const auto spec = ctx.spec();
     if (!spec.empty() && spec.front() == '#') {
       mode = '#';
     }
@@ -414,7 +414,7 @@ template <> struct formatter<remote_symbol_view> {
     auto &context = view.context();
     context.raw = {};
     context.resolved = {};
-    bool ok = view.resolver().resolve(view.address(), context);
+    const bool ok = view.resolver().resolve(view.address(), context);
     const auto &info = context.resolved;
 
     // 1. Unresolved fallback

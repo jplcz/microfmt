@@ -39,9 +39,9 @@
 #include "sink.hpp"
 #include "sync.hpp"
 #include <atomic>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <concepts>
 #include <type_traits>
 
 namespace microfmt::log {
@@ -58,10 +58,10 @@ template <typename Tag> struct extended_log_sink_traits;
 namespace detail {
 
 template <typename Tag>
-concept has_extended_full = requires(value_ref<typename extended_log_sink_traits<Tag>::context_type> ctx,
-                                     const extended_log_msg &msg) {
-  { extended_log_sink_traits<Tag>::full(ctx, msg) } -> std::convertible_to<bool>;
-};
+concept has_extended_full =
+    requires(value_ref<typename extended_log_sink_traits<Tag>::context_type> ctx, const extended_log_msg &msg) {
+      { extended_log_sink_traits<Tag>::full(ctx, msg) } -> std::convertible_to<bool>;
+    };
 
 template <typename Tag>
 concept has_extended_flush = requires(value_ref<typename extended_log_sink_traits<Tag>::context_type> ctx) {
@@ -155,8 +155,7 @@ private:
     }
   }
 
-  template <typename Tag>
-  static constexpr vtable s_vtbl{&log_entry<Tag>, full_entry<Tag>(), flush_entry<Tag>()};
+  template <typename Tag> static constexpr vtable s_vtbl{&log_entry<Tag>, full_entry<Tag>(), flush_entry<Tag>()};
 
   value_ptr<void> ctx_{};
   const vtable *vtbl_{nullptr};
@@ -211,7 +210,7 @@ template <std::size_t MaxSinks, typename Channel> struct fanout_log_sink_tag {};
 template <std::size_t MaxSinks, typename Channel = null_wait_channel> class fanout_log_sink {
   static_assert(MaxSinks > 0, "fanout_log_sink needs room for at least one sink");
 
-  struct channel_guard {
+  struct RELOCO_POINTER channel_guard {
     explicit channel_guard(Channel &c) noexcept : c_(c) { c_.lock(); }
     ~channel_guard() noexcept { c_.unlock(); }
     channel_guard(const channel_guard &) = delete;
@@ -245,7 +244,7 @@ public:
   void set_wait_timeout_us(std::uint64_t us) noexcept { timeout_us_.store(us, std::memory_order_relaxed); }
 
   /** @brief Handle for use as a sink (e.g. by `extended_logger`). */
-  [[nodiscard]] extended_log_sink as_sink(level lvl = level::trace) noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] extended_log_sink as_sink(level lvl = level::trace) & noexcept RELOCO_LIFETIMEBOUND {
     return extended_log_sink(tag{}, *this, lvl);
   }
 
@@ -256,7 +255,7 @@ public:
   }
 
   /** @brief @ref notify_space as a callback for a pin's consumer. */
-  [[nodiscard]] space_notifier notifier() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] space_notifier notifier() & noexcept RELOCO_LIFETIMEBOUND {
     return space_notifier(this, [](void *self) noexcept { static_cast<fanout_log_sink *>(self)->notify_space(); });
   }
 

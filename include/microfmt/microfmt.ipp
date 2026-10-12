@@ -23,7 +23,7 @@
 namespace detail {
 
 MICROFMT_API_CONSTEXPR void int_formatter_specs::parse(format_parse_context &ctx) noexcept {
-  microfmt::string_view spec = ctx.spec();
+  const microfmt::string_view spec = ctx.spec();
   if (spec.empty())
     return;
 
@@ -106,7 +106,7 @@ MICROFMT_API void vformat_to(const sink &out, const microfmt::string_view fmt, c
           const void *ptr = arg_ptrs.unsafe_at(selected_arg);
           // UNSAFE: Explicit validation in if above
           const format_fn_t fn = arg_fns.unsafe_at(selected_arg);
-          if (fn && ptr) {
+          if (fn != nullptr && ptr != nullptr) {
             fn(ptr, spec, out);
           }
         } else {

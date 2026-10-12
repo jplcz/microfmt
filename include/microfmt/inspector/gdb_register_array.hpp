@@ -68,7 +68,7 @@ public:
     // Slow path: Scalable Vector Extensions (SVE) can exceed 64 bytes.
     // Fall back to the execution context's attached scratch memory.
     else {
-      auto scratch = ctx.scratch();
+      const auto scratch = ctx.scratch();
       if (byte_size <= scratch.size()) {
         if (ctx.read_raw(reg.dwarf_index, scratch.data(), byte_size)) {
           emit_hex_bytes(out, span<const uint8_t>{reinterpret_cast<const uint8_t *>(scratch.data()), byte_size});
@@ -186,7 +186,7 @@ public:
     // Fast path: Use stack buffer for registers up to 64 bytes (AVX-512)
     if (byte_size <= 64) {
       uint8_t stack_buf[64];
-      auto out_span = span<uint8_t>{stack_buf, byte_size};
+      const auto out_span = span<uint8_t>{stack_buf, byte_size};
 
       if (!parse_hex_to_bytes(hex_payload.substr(0, byte_size * 2), out_span)) {
         return false;
@@ -195,9 +195,9 @@ public:
     }
     // Slow path: Fallback to context scratch buffer for massive vectors (SVE)
     else {
-      auto scratch = ctx.scratch();
+      const auto scratch = ctx.scratch();
       if (byte_size <= scratch.size()) {
-        auto out_span = span<uint8_t>{reinterpret_cast<uint8_t *>(scratch.data()), byte_size};
+        const auto out_span = span<uint8_t>{reinterpret_cast<uint8_t *>(scratch.data()), byte_size};
 
         if (!parse_hex_to_bytes(hex_payload.substr(0, byte_size * 2), out_span)) {
           return false;
@@ -214,8 +214,8 @@ private:
    */
   [[nodiscard]] static bool parse_hex_to_bytes(string_view hex, span<uint8_t> out) noexcept {
     for (size_t i = 0; i < out.size(); ++i) {
-      uint8_t hi = hex_char_to_val(hex[i * 2]);
-      uint8_t lo = hex_char_to_val(hex[i * 2 + 1]);
+      const uint8_t hi = hex_char_to_val(hex[i * 2]);
+      const uint8_t lo = hex_char_to_val(hex[i * 2 + 1]);
 
       if (hi == 0xFF || lo == 0xFF) {
         return false; // Invalid hex character encountered

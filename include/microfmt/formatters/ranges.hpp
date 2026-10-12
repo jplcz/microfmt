@@ -30,7 +30,8 @@ template <size_t N> struct fixed_string {
 
   RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 
-  constexpr fixed_string(const char (&str)[N + 1]) noexcept {
+  // Implicit on purpose: a string literal must convert to the class-type NTTP (`join_as<", ">(r)`).
+  constexpr fixed_string(const char (&str)[N + 1]) noexcept { // NOLINT(reloco-explicit-conversion)
     for (size_t i = 0; i < N; ++i) {
       buf[i] = str[i];
     }
@@ -39,7 +40,9 @@ template <size_t N> struct fixed_string {
 
   RELOCO_END_UNSAFE_BUFFER_USAGE
 
-  [[nodiscard]] constexpr microfmt::string_view view() const noexcept { return microfmt::string_view(buf, N); }
+  [[nodiscard]] constexpr microfmt::string_view view() const & noexcept { return microfmt::string_view(buf, N); }
+
+  [[nodiscard]] constexpr microfmt::string_view view() const && = delete;
 };
 
 template <size_t N> fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
@@ -51,7 +54,7 @@ template <size_t N> fixed_string(const char (&)[N]) -> fixed_string<N - 1>;
 // Join View Adapter (Iterator Pair or Range Reference)
 // ============================================================================
 
-template <typename It, typename Sentinel = It> struct join_view {
+template <typename It, typename Sentinel = It> struct RELOCO_POINTER join_view {
   It first;
   Sentinel last;
   microfmt::string_view delimiter{", "};

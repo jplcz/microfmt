@@ -28,7 +28,7 @@ enum class scale_base : uint16_t {
 
 // Auto-scaled View (e.g., 1048576 B -> "1.00 MiB" or 50000000 Hz -> "50.00
 // MHz")
-template <typename T> struct auto_unit_view {
+template <typename T> struct RELOCO_POINTER auto_unit_view {
   T value{0};
   microfmt::string_view unit_symbol{};
   scale_base base{scale_base::decimal};
@@ -36,7 +36,7 @@ template <typename T> struct auto_unit_view {
 };
 
 // Explicit Fixed Unit View (e.g., 42 "mA" -> "42 mA")
-template <typename T> struct unit_view {
+template <typename T> struct RELOCO_POINTER unit_view {
   T value{0};
   microfmt::string_view unit_symbol{};
 };

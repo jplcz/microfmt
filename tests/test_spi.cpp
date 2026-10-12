@@ -29,7 +29,13 @@ TEST(SpiFormatterTest, FormatsCompactLowercaseTransfer) {
 TEST(SpiFormatterTest, FormatsSimplexReadFailure) {
   const uint8_t miso[] = {0x00, 0x00};
   const auto transfer = microfmt::spi_read(miso, 2, microfmt::spi_mode::mode1, microfmt::spi_status::crc_err);
+  {
+    const auto result1 = microfmt::format<128>("{}", transfer);
 
-  EXPECT_EQ(microfmt::format<128>("{}", transfer).view(), "SPI [CS2, Mode 1] (2 B) MISO: 00 00 -> CRC_ERR");
-  EXPECT_EQ(microfmt::format<128>("{:c}", transfer).view(), "CS2:RX[00 00]!(CRC_ERR)");
+    EXPECT_EQ(result1.view(), "SPI [CS2, Mode 1] (2 B) MISO: 00 00 -> CRC_ERR");
+  }
+  {
+    const auto result0 = microfmt::format<128>("{:c}", transfer);
+    EXPECT_EQ(result0.view(), "CS2:RX[00 00]!(CRC_ERR)");
+  }
 }

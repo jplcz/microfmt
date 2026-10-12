@@ -54,7 +54,7 @@ class basic_logger {
   // Tiny RAII lock guard so this header doesn't need to pull in <mutex>
   // merely for std::lock_guard; works with any BasicLockable Mutex,
   // including std::mutex if the caller already includes <mutex>.
-  struct lock_guard {
+  struct RELOCO_POINTER lock_guard {
     explicit lock_guard(Mutex &m) noexcept : m_(m) { m_.lock(); }
     ~lock_guard() noexcept { m_.unlock(); }
     lock_guard(const lock_guard &) = delete;
@@ -81,7 +81,9 @@ public:
 
   void set_level(level l) noexcept { level_ = l; }
   [[nodiscard]] constexpr level get_level() const noexcept { return level_; }
-  [[nodiscard]] constexpr microfmt::string_view name() const noexcept { return name_; }
+  [[nodiscard]] constexpr microfmt::string_view name() const & noexcept { return name_; }
+
+  [[nodiscard]] constexpr microfmt::string_view name() const && = delete;
 
   [[nodiscard]] bool should_log(level l) const noexcept { return l >= level_; }
 
@@ -200,8 +202,10 @@ private:
 
 protected:
   /** @brief The message decorator, e.g. to configure a metadata callback. */
-  [[nodiscard]] Decorator &decorator() noexcept { return decorator_; }
-  [[nodiscard]] const Decorator &decorator() const noexcept { return decorator_; }
+  [[nodiscard]] Decorator &decorator() & noexcept { return decorator_; }
+  [[nodiscard]] const Decorator &decorator() const & noexcept { return decorator_; }
+
+  [[nodiscard]] const Decorator &decorator() const && = delete;
 
   /**
    * @brief Decorates @p msg (see @p Decorator) and hands it to every sink

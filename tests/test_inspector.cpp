@@ -1070,28 +1070,38 @@ TEST(RegisterContextView, UsesArchitectureSystemRegisterTraits) {
   sparse_register_state arm_state{microfmt::dwarf::arm32::cntvct, 0x1234, 4};
   auto arm_context =
       microfmt::make_read_only_register_context_ref<read_sparse_register>(arm_state, local_space(), scratch);
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::register_context_view<microfmt::arm_abi_traits>(arm_context)).view(),
-            "CNTVCT=0x00001234");
+  {
+    const auto result18 =
+        microfmt::format<64>("{}", microfmt::register_context_view<microfmt::arm_abi_traits>(arm_context));
+    EXPECT_EQ(result18.view(), "CNTVCT=0x00001234");
+  }
 
   sparse_register_state aarch64_state{microfmt::dwarf::aarch64::cnthctl_el2, UINT64_C(0x1122334455667788), 8};
   auto aarch64_context =
       microfmt::make_read_only_register_context_ref<read_sparse_register>(aarch64_state, local_space(), scratch);
-  EXPECT_EQ(
-      microfmt::format<64>("{}", microfmt::register_context_view<microfmt::aarch64_abi_traits>(aarch64_context)).view(),
-      "CNTHCTL_EL2=0x1122334455667788");
+  {
+    const auto result17 =
+        microfmt::format<64>("{}", microfmt::register_context_view<microfmt::aarch64_abi_traits>(aarch64_context));
+    EXPECT_EQ(result17.view(), "CNTHCTL_EL2=0x1122334455667788");
+  }
 
   sparse_register_state x86_state{microfmt::dwarf::x86::cr3, 0x12345000, 4};
   auto x86_context =
       microfmt::make_read_only_register_context_ref<read_sparse_register>(x86_state, local_space(), scratch);
-  EXPECT_EQ(microfmt::format<64>("{}", microfmt::register_context_view<microfmt::x86_abi_traits>(x86_context)).view(),
-            "CR3=0x12345000");
+  {
+    const auto result16 =
+        microfmt::format<64>("{}", microfmt::register_context_view<microfmt::x86_abi_traits>(x86_context));
+    EXPECT_EQ(result16.view(), "CR3=0x12345000");
+  }
 
   sparse_register_state riscv_state{microfmt::dwarf::riscv::satp, UINT64_C(0x8000000000012345), 8};
   auto riscv_context =
       microfmt::make_read_only_register_context_ref<read_sparse_register>(riscv_state, local_space(), scratch);
-  EXPECT_EQ(
-      microfmt::format<64>("{}", microfmt::register_context_view<microfmt::riscv64_abi_traits>(riscv_context)).view(),
-      "satp=0x8000000000012345");
+  {
+    const auto result15 =
+        microfmt::format<64>("{}", microfmt::register_context_view<microfmt::riscv64_abi_traits>(riscv_context));
+    EXPECT_EQ(result15.view(), "satp=0x8000000000012345");
+  }
 }
 
 TEST(RegisterContextView, GroupsRegistersByArchitectureWidth) {
@@ -1100,16 +1110,21 @@ TEST(RegisterContextView, GroupsRegistersByArchitectureWidth) {
   register_range_state arm_state{microfmt::dwarf::arm32::r3, 1, 4};
   auto arm_context =
       microfmt::make_read_only_register_context_ref<read_register_range>(arm_state, local_space(), scratch);
-  EXPECT_EQ(microfmt::format<128>("{}", microfmt::register_context_view<microfmt::arm_abi_traits>(arm_context)).view(),
-            "R0=0x00000001  R1=0x00000001  R2=0x00000001\nR3=0x00000001");
+  {
+    const auto result14 =
+        microfmt::format<128>("{}", microfmt::register_context_view<microfmt::arm_abi_traits>(arm_context));
+    EXPECT_EQ(result14.view(), "R0=0x00000001  R1=0x00000001  R2=0x00000001\nR3=0x00000001");
+  }
 
   register_range_state aarch64_state{microfmt::dwarf::aarch64::x2, 1, 8};
   auto aarch64_context =
       microfmt::make_read_only_register_context_ref<read_register_range>(aarch64_state, local_space(), scratch);
-  EXPECT_EQ(microfmt::format<128>("{}", microfmt::register_context_view<microfmt::aarch64_abi_traits>(aarch64_context))
-                .view(),
-            "X0=0x0000000000000001  X1=0x0000000000000001\n"
-            "X2=0x0000000000000001");
+  {
+    const auto result13 =
+        microfmt::format<128>("{}", microfmt::register_context_view<microfmt::aarch64_abi_traits>(aarch64_context));
+    EXPECT_EQ(result13.view(), "X0=0x0000000000000001  X1=0x0000000000000001\n"
+                               "X2=0x0000000000000001");
+  }
 }
 
 TEST(RegisterContextRef, ReportsNullAndSupportedOperations) {
@@ -1310,7 +1325,10 @@ TEST(InspectorContainer, InvokesTypeErasedContextAndReportsFailures) {
   EXPECT_TRUE(view.format(out.as_sink()));
   EXPECT_TRUE(invoked);
   EXPECT_EQ(out.view(), "[7|]");
-  EXPECT_EQ(microfmt::format<32>("{}", view).view(), "[7|]");
+  {
+    const auto result12 = microfmt::format<32>("{}", view);
+    EXPECT_EQ(result12.view(), "[7|]");
+  }
 
   auto failing_context = microfmt::make_container_context(0, [](int &, const microfmt::container_options &,
                                                                 microfmt::address_space_ref, microfmt::span<std::byte>,
@@ -1318,12 +1336,18 @@ TEST(InspectorContainer, InvokesTypeErasedContextAndReportsFailures) {
   microfmt::remote_container_view failing_view(address_of(container), local_space(), scratch,
                                                microfmt::value_ref(failing_context));
   EXPECT_FALSE(failing_view.format(out.as_sink()));
-  EXPECT_EQ(microfmt::format<32>("{}", failing_view).view(), "<fault>");
+  {
+    const auto result11 = microfmt::format<32>("{}", failing_view);
+    EXPECT_EQ(result11.view(), "<fault>");
+  }
 
   microfmt::remote_container_view empty_view;
   EXPECT_FALSE(empty_view);
   EXPECT_TRUE(empty_view.is_null());
-  EXPECT_EQ(microfmt::format<32>("{}", empty_view).view(), "<null>");
+  {
+    const auto result10 = microfmt::format<32>("{}", empty_view);
+    EXPECT_EQ(result10.view(), "<null>");
+  }
 }
 
 TEST(InspectorVector, RendersVectorAndCArrayLayoutsAndHandlesReadFaults) {
@@ -1343,7 +1367,10 @@ TEST(InspectorVector, RendersVectorAndCArrayLayoutsAndHandlesReadFaults) {
   microfmt::container_options options;
   options.max_print = 2;
   auto vector_view = vector.view(space, scratch, options);
-  EXPECT_EQ(microfmt::format<64>("{}", vector_view).view(), "{10, 20, ...}");
+  {
+    const auto result9 = microfmt::format<64>("{}", vector_view);
+    EXPECT_EQ(result9.view(), "{10, 20, ...}");
+  }
 
   int carray[] = {4, 5};
   auto carray_container = microfmt::make_remote_carray<int>(address_of(carray), 2);
@@ -1351,13 +1378,19 @@ TEST(InspectorVector, RendersVectorAndCArrayLayoutsAndHandlesReadFaults) {
   carray_options.open_bracket = "[";
   carray_options.close_bracket = "]";
   auto carray_view = carray_container.view(space, scratch, carray_options);
-  EXPECT_EQ(microfmt::format<32>("{}", carray_view).view(), "[4, 5]");
+  {
+    const auto result8 = microfmt::format<32>("{}", carray_view);
+    EXPECT_EQ(result8.view(), "[4, 5]");
+  }
 
   vector_storage unreadable_elements{0, 1, 1};
   auto fault_container = microfmt::make_remote_vector<int>(
       address_of(unreadable_elements), offsetof(vector_storage, data), offsetof(vector_storage, size));
   auto fault_view = fault_container.view(space, scratch);
-  EXPECT_EQ(microfmt::format<32>("{}", fault_view).view(), "{<fault>}");
+  {
+    const auto result7 = microfmt::format<32>("{}", fault_view);
+    EXPECT_EQ(result7.view(), "{<fault>}");
+  }
 }
 
 TEST(InspectorForwardList, TraversesNodesAndHandlesElementReadFaults) {
@@ -1376,13 +1409,19 @@ TEST(InspectorForwardList, TraversesNodesAndHandlesElementReadFaults) {
   auto container = microfmt::make_remote_forward_list<int>(address_of(storage), offsetof(list, head),
                                                            offsetof(node, next), offsetof(node, value));
   auto view = container.view(local_space(), scratch);
-  EXPECT_EQ(microfmt::format<32>("{}", view).view(), "{11, 22}");
+  {
+    const auto result6 = microfmt::format<32>("{}", view);
+    EXPECT_EQ(result6.view(), "{11, 22}");
+  }
 
   alignas(std::max_align_t) std::byte too_small[1]{};
   auto fault_container = microfmt::make_remote_forward_list<int>(address_of(storage), offsetof(list, head),
                                                                  offsetof(node, next), offsetof(node, value));
   auto fault_view = fault_container.view(local_space(), too_small);
-  EXPECT_EQ(microfmt::format<32>("{}", fault_view).view(), "{<fault>}");
+  {
+    const auto result5 = microfmt::format<32>("{}", fault_view);
+    EXPECT_EQ(result5.view(), "{<fault>}");
+  }
 }
 
 TEST(InspectorHashTable, TraversesBucketsAndCollisionChains) {
@@ -1406,8 +1445,11 @@ TEST(InspectorHashTable, TraversesBucketsAndCollisionChains) {
                                                               offsetof(table, bucket_count), offsetof(node, next),
                                                               offsetof(node, key), offsetof(node, value));
   auto view = container.view(local_space(), scratch);
+  {
+    const auto result4 = microfmt::format<64>("{}", view);
 
-  EXPECT_EQ(microfmt::format<64>("{}", view).view(), "{1: 10, 2: 20, 3: 30}");
+    EXPECT_EQ(result4.view(), "{1: 10, 2: 20, 3: 30}");
+  }
 }
 
 TEST(InspectorBinaryTree, RendersOrderedEntriesAndBoundsOrFaults) {
@@ -1433,14 +1475,20 @@ TEST(InspectorBinaryTree, RendersOrderedEntriesAndBoundsOrFaults) {
   microfmt::container_options options;
   options.max_print = 2;
   auto view = container.view(local_space(), scratch, options);
-  EXPECT_EQ(microfmt::format<64>("{}", view).view(), "{1: 10, 2: 20, ...}");
+  {
+    const auto result3 = microfmt::format<64>("{}", view);
+    EXPECT_EQ(result3.view(), "{1: 10, 2: 20, ...}");
+  }
 
   alignas(std::max_align_t) std::byte too_small[16]{};
   auto fault_container =
       microfmt::make_remote_binary_tree<int, int>(address_of(storage), offsetof(tree, root), offsetof(node, left),
                                                   offsetof(node, right), offsetof(node, key), offsetof(node, value));
   auto fault_view = fault_container.view(local_space(), too_small);
-  EXPECT_EQ(microfmt::format<32>("{}", fault_view).view(), "{<fault>}");
+  {
+    const auto result2 = microfmt::format<32>("{}", fault_view);
+    EXPECT_EQ(result2.view(), "{<fault>}");
+  }
 }
 
 TEST(InspectorForwardList, DispatchesTraitsAndRetainsContextState) {
@@ -1456,7 +1504,10 @@ TEST(InspectorForwardList, DispatchesTraitsAndRetainsContextState) {
   alignas(std::max_align_t) std::byte scratch[32]{};
 
   auto view = container.view(local_space(), scratch);
-  EXPECT_EQ(microfmt::format<32>("{}", view).view(), "{15, 18}");
+  {
+    const auto result1 = microfmt::format<32>("{}", view);
+    EXPECT_EQ(result1.view(), "{15, 18}");
+  }
 
   const auto context = container.context();
   EXPECT_EQ(context->head_calls, 1U);
@@ -1489,32 +1540,65 @@ TEST(InspectorSmartPointers, FormatsViewsAndPointerLayoutWrappers) {
       address_of(shared), space, scratch, offsetof(shared_storage, pointer), offsetof(shared_storage, control_block),
       offsetof(control_block, use_count), offsetof(control_block, weak_count));
   microfmt::remote_intrusive_ptr_view<int> intrusive(address_of(intrusive_storage), space, scratch, 0, 0);
-  EXPECT_EQ(microfmt::format<32>("{}", unique).view(), "42");
-  EXPECT_EQ(microfmt::format<64>("{}", shared_view).view(), "shared_ptr(42, use_count=3, weak_count=1)");
-  EXPECT_EQ(microfmt::format<64>("{}", intrusive).view(), "intrusive_ptr(42, ref_count=42)");
+  {
+    const auto result11 = microfmt::format<64>("{}", shared_view);
+    {
+      const auto result0 = microfmt::format<32>("{}", unique);
+      EXPECT_EQ(result0.view(), "42");
+    }
+    EXPECT_EQ(result11.view(), "shared_ptr(42, use_count=3, weak_count=1)");
+  }
+  {
+    const auto result10 = microfmt::format<64>("{}", intrusive);
+    EXPECT_EQ(result10.view(), "intrusive_ptr(42, ref_count=42)");
+  }
 
   uintptr_t null_storage = 0;
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::remote_unique_ptr_view<int>(address_of(null_storage), space, scratch))
-                .view(),
-            "nullptr");
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::remote_shared_ptr_view<int>(address_of(null_storage), space, scratch,
-                                                                             0, sizeof(uintptr_t), 0, sizeof(int32_t)))
-                .view(),
-            "shared_ptr(nullptr)");
-  EXPECT_EQ(microfmt::format<32>(
-                "{}", microfmt::remote_intrusive_ptr_view<int>(address_of(null_storage), space, scratch, 0, 0))
-                .view(),
-            "intrusive_ptr(nullptr)");
+  {
+    const auto result9 =
+        microfmt::format<32>("{}", microfmt::remote_unique_ptr_view<int>(address_of(null_storage), space, scratch));
+    EXPECT_EQ(result9.view(), "nullptr");
+  }
+  {
+    const auto result8 =
+        microfmt::format<32>("{}", microfmt::remote_shared_ptr_view<int>(address_of(null_storage), space, scratch, 0,
+                                                                         sizeof(uintptr_t), 0, sizeof(int32_t)));
+    EXPECT_EQ(result8.view(), "shared_ptr(nullptr)");
+  }
+  {
+    const auto result7 = microfmt::format<32>(
+        "{}", microfmt::remote_intrusive_ptr_view<int>(address_of(null_storage), space, scratch, 0, 0));
+    EXPECT_EQ(result7.view(), "intrusive_ptr(nullptr)");
+  }
 
   microfmt::remote_unique_ptr<int> unique_wrapper(address_of(value));
   microfmt::remote_intrusive_ptr<int> intrusive_wrapper(address_of(value));
-  EXPECT_EQ(microfmt::format<32>("{}", unique_wrapper).view(),
-            microfmt::format<32>("0x{:x}", address_of(value)).view());
-  EXPECT_EQ(microfmt::format<32>("{}", intrusive_wrapper).view(),
-            microfmt::format<32>("0x{:x}", address_of(value)).view());
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::remote_unique_ptr<int>{}).view(), "nullptr");
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::remote_shared_ptr<int>{}).view(), "shared_ptr(nullptr)");
-  EXPECT_EQ(microfmt::format<32>("{}", microfmt::remote_intrusive_ptr<int>{}).view(), "intrusive_ptr(nullptr)");
+  {
+    const auto result5 = microfmt::format<32>("0x{:x}", address_of(value));
+    {
+      const auto result6 = microfmt::format<32>("{}", unique_wrapper);
+      EXPECT_EQ(result6.view(), result5.view());
+    }
+  }
+  {
+    const auto result3 = microfmt::format<32>("0x{:x}", address_of(value));
+    {
+      const auto result4 = microfmt::format<32>("{}", intrusive_wrapper);
+      EXPECT_EQ(result4.view(), result3.view());
+    }
+  }
+  {
+    const auto result2 = microfmt::format<32>("{}", microfmt::remote_unique_ptr<int>{});
+    EXPECT_EQ(result2.view(), "nullptr");
+  }
+  {
+    const auto result1 = microfmt::format<32>("{}", microfmt::remote_shared_ptr<int>{});
+    EXPECT_EQ(result1.view(), "shared_ptr(nullptr)");
+  }
+  {
+    const auto result0 = microfmt::format<32>("{}", microfmt::remote_intrusive_ptr<int>{});
+    EXPECT_EQ(result0.view(), "intrusive_ptr(nullptr)");
+  }
 }
 
 struct fake_fp_abi {

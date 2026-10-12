@@ -23,7 +23,8 @@
 namespace microfmt {
 
 /** Non-owning map range and its key/value extraction configuration. */
-template <typename KeyExtractor, typename ValExtractor, typename Iterator, typename Sentinel> struct map_range_view {
+template <typename KeyExtractor, typename ValExtractor, typename Iterator, typename Sentinel>
+struct RELOCO_POINTER map_range_view {
   Iterator first;
   Sentinel last;
   KeyExtractor key_fn;

@@ -72,7 +72,7 @@ public:
   /**
    * @brief Required stack state structure to drive iteration safely.
    */
-  struct span_iteration_state {
+  struct RELOCO_POINTER span_iteration_state {
     const property_entry *current{nullptr};
     const property_entry *end{nullptr};
   };

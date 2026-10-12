@@ -61,20 +61,53 @@ static_assert(!can_make_metadata_from_rvalue<microfmt::task_info>::value);
 static_assert(!can_make_metadata_from_rvalue<microfmt::thread_info>::value);
 
 TEST(TaskState, FormatsEveryState) {
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::task_state::ready).view(), "READY");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::task_state::running).view(), "RUNNING");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::task_state::suspended).view(), "SUSPENDED");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::task_state::waiting).view(), "WAITING");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::task_state::terminated).view(), "TERMINATED");
+  {
+    const auto result12 = microfmt::format<16>("{}", microfmt::task_state::ready);
+    EXPECT_EQ(result12.view(), "READY");
+  }
+  {
+    const auto result11 = microfmt::format<16>("{}", microfmt::task_state::running);
+    EXPECT_EQ(result11.view(), "RUNNING");
+  }
+  {
+    const auto result10 = microfmt::format<16>("{}", microfmt::task_state::suspended);
+    EXPECT_EQ(result10.view(), "SUSPENDED");
+  }
+  {
+    const auto result9 = microfmt::format<16>("{}", microfmt::task_state::waiting);
+    EXPECT_EQ(result9.view(), "WAITING");
+  }
+  {
+    const auto result8 = microfmt::format<16>("{}", microfmt::task_state::terminated);
+    EXPECT_EQ(result8.view(), "TERMINATED");
+  }
 }
 
 TEST(ThreadState, FormatsEveryState) {
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::thread_state::ready).view(), "READY");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::thread_state::running).view(), "RUNNING");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::thread_state::suspended).view(), "SUSPENDED");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::thread_state::waiting).view(), "WAITING");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::thread_state::sleeping).view(), "SLEEPING");
-  EXPECT_EQ(microfmt::format<16>("{}", microfmt::thread_state::terminated).view(), "TERMINATED");
+  {
+    const auto result7 = microfmt::format<16>("{}", microfmt::thread_state::ready);
+    EXPECT_EQ(result7.view(), "READY");
+  }
+  {
+    const auto result6 = microfmt::format<16>("{}", microfmt::thread_state::running);
+    EXPECT_EQ(result6.view(), "RUNNING");
+  }
+  {
+    const auto result5 = microfmt::format<16>("{}", microfmt::thread_state::suspended);
+    EXPECT_EQ(result5.view(), "SUSPENDED");
+  }
+  {
+    const auto result4 = microfmt::format<16>("{}", microfmt::thread_state::waiting);
+    EXPECT_EQ(result4.view(), "WAITING");
+  }
+  {
+    const auto result3 = microfmt::format<16>("{}", microfmt::thread_state::sleeping);
+    EXPECT_EQ(result3.view(), "SLEEPING");
+  }
+  {
+    const auto result2 = microfmt::format<16>("{}", microfmt::thread_state::terminated);
+    EXPECT_EQ(result2.view(), "TERMINATED");
+  }
 }
 
 TEST(ThreadInfo, ExposesCoreAndExtendedMetadata) {
@@ -90,11 +123,13 @@ TEST(ThreadInfo, ExposesCoreAndExtendedMetadata) {
   thread.extended_metadata_fn = next_extra_metadata;
   thread.extended_metadata_ctx = &extra;
   microfmt::thread_info::metadata_state state;
+  {
+    const auto result1 = microfmt::format<256>("{}", thread.make_metadata_view(state));
 
-  EXPECT_EQ(microfmt::format<256>("{}", thread.make_metadata_view(state)).view(),
-            "{\"thread_id\": 17, \"name\": \"worker\", \"priority\": 8, "
-            "\"state\": RUNNING, \"cpu_ticks\": 120, \"stack_size_bytes\": "
-            "4096, \"stack_usage_bytes\": 1536, \"core\": 3}");
+    EXPECT_EQ(result1.view(), "{\"thread_id\": 17, \"name\": \"worker\", \"priority\": 8, "
+                              "\"state\": RUNNING, \"cpu_ticks\": 120, \"stack_size_bytes\": "
+                              "4096, \"stack_usage_bytes\": 1536, \"core\": 3}");
+  }
 }
 
 TEST(TaskInfo, ExposesCoreAndExtendedMetadata) {
@@ -109,11 +144,13 @@ TEST(TaskInfo, ExposesCoreAndExtendedMetadata) {
   task.extended_metadata_fn = next_extra_metadata;
   task.extended_metadata_ctx = &extra;
   microfmt::task_info::metadata_state state;
+  {
+    const auto result0 = microfmt::format<256>("{}", task.make_metadata_view(state));
 
-  EXPECT_EQ(microfmt::format<256>("{}", task.make_metadata_view(state)).view(),
-            "{\"team_id\": 41, \"name\": \"telemetry\", \"state\": WAITING, "
-            "\"priority\": 5, \"cpu_ticks\": 900, \"memory_usage\": 32768, "
-            "\"core\": 2}");
+    EXPECT_EQ(result0.view(), "{\"team_id\": 41, \"name\": \"telemetry\", \"state\": WAITING, "
+                              "\"priority\": 5, \"cpu_ticks\": 900, \"memory_usage\": 32768, "
+                              "\"core\": 2}");
+  }
 }
 
 TEST(TaskInfo, IteratesThreadsAndHandlesMissingGenerator) {

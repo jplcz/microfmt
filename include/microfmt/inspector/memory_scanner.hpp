@@ -99,7 +99,7 @@ private:
  * The scanner borrows @ref symbol_scratch for each symbol lookup and never
  * allocates a symbol-name buffer on its stack.
  */
-struct MICROFMT_API_CLASS memory_scanner_options {
+struct MICROFMT_API_CLASS RELOCO_POINTER memory_scanner_options {
   /// Maximum number of bytes dumped for a readable data address.
   size_t dump_bytes{80};
   /// Resolver used for addresses classified as code or data.
@@ -115,7 +115,7 @@ struct MICROFMT_API_CLASS memory_scanner_options {
  * constrained. A context may be reused between scans but must not be shared by
  * concurrent scans.
  */
-struct MICROFMT_API_CLASS memory_scanner_context {
+struct MICROFMT_API_CLASS RELOCO_POINTER memory_scanner_context {
   memory_scanner_options options{};
   /// Caller-owned scratch storage passed to the symbol resolver.
   span<char> symbol_scratch{};
@@ -182,7 +182,7 @@ private:
   static void process_address(address_space_ref space, memory_classifier_ref classifier, size_t index, uintptr_t addr,
                               memory_scanner_context &context, const sink &out) noexcept {
     context.region_info = {};
-    bool classified = classifier && classifier.classify_address(addr, context.region_info);
+    const bool classified = classifier && classifier.classify_address(addr, context.region_info);
     const auto &info = context.region_info;
 
     microfmt::format_to(out, "  #{:<2} addr={:#018x} | type=", index, addr);
@@ -244,7 +244,8 @@ private:
         bytes_to_dump = bytes_in_region;
     }
 
-    auto reader = [](void *reader_context, uintptr_t source_address, uint8_t *buffer, size_t size) noexcept -> size_t {
+    const auto reader = [](void *reader_context, uintptr_t source_address, uint8_t *buffer,
+                           size_t size) noexcept -> size_t {
       if (!reader_context)
         return 0;
       const auto &target_space = *static_cast<const address_space_ref *>(reader_context);

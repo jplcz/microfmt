@@ -41,7 +41,7 @@ namespace detail {
     val = (val << 4) | n;
     count++;
   }
-  if (chars_consumed)
+  if (chars_consumed != nullptr)
     *chars_consumed = count;
   return val;
 }
@@ -72,7 +72,7 @@ public:
    */
   static packet_type decode(string_view payload, scratch_allocator &scratch, client_request_view &out_view) noexcept {
     out_view = {}; // Reset view
-    packet_type type = packet_recognizer::recognize(payload);
+    const packet_type type = packet_recognizer::recognize(payload);
     if (type == packet_type::unknown)
       return type;
 
@@ -104,14 +104,15 @@ public:
       if (type == packet_type::search_memory && args.starts_with(":")) {
         args = args.substr(1);
       }
-      size_t sep1 = args.find(type == packet_type::search_memory ? ';' : ',');
-      size_t sep2 = args.find(type == packet_type::search_memory ? ';' : ':', sep1 != string_view::npos ? sep1 + 1 : 0);
+      const size_t sep1 = args.find(type == packet_type::search_memory ? ';' : ',');
+      const size_t sep2 =
+          args.find(type == packet_type::search_memory ? ';' : ':', sep1 != string_view::npos ? sep1 + 1 : 0);
 
       if (sep1 != string_view::npos && sep2 != string_view::npos) {
         out_view.addr = detail::parse_hex_int(args.substr(0, sep1));
         out_view.length = static_cast<size_t>(detail::parse_hex_int(args.substr(sep1 + 1, sep2 - sep1 - 1)));
 
-        string_view data_str = args.substr(sep2 + 1);
+        const string_view data_str = args.substr(sep2 + 1);
         if (type == packet_type::write_memory_binary) {
           out_view.data = decode_escaped_binary(data_str, scratch);
         } else {
@@ -126,7 +127,7 @@ public:
       break;
 
     case packet_type::write_single_register: {
-      size_t eq = args.find('=');
+      const size_t eq = args.find('=');
       if (eq != string_view::npos) {
         out_view.reg_index = static_cast<uint32_t>(detail::parse_hex_int(args.substr(0, eq)));
         out_view.data = decode_hex_bytes(args.substr(eq + 1), scratch);
@@ -142,8 +143,8 @@ public:
     case packet_type::remove_break_watch: {
       if (args.size() > 0)
         out_view.bp_type = static_cast<uint8_t>(args[0] - '0');
-      size_t c1 = args.find(',');
-      size_t c2 = args.find(',', c1 != string_view::npos ? c1 + 1 : 0);
+      const size_t c1 = args.find(',');
+      const size_t c2 = args.find(',', c1 != string_view::npos ? c1 + 1 : 0);
       if (c1 != string_view::npos && c2 != string_view::npos) {
         out_view.addr = detail::parse_hex_int(args.substr(c1 + 1, c2 - c1 - 1));
         out_view.bp_kind = static_cast<uint32_t>(detail::parse_hex_int(args.substr(c2 + 1)));
@@ -240,7 +241,7 @@ public:
     if (payload == "l")
       return server_response_type::thread_list_end;
 
-    char prefix = payload[0];
+    const char prefix = payload[0];
 
     if (prefix == 'E' && payload.size() >= 3) {
       out_view.status_code = static_cast<uint8_t>(detail::parse_hex_int(payload.substr(1, 2)));

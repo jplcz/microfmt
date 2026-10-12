@@ -35,7 +35,7 @@ enum class char_transform : uint8_t {
  *  replaces ASCII control characters except newline, carriage return, and tab
  *  with a period.
  */
-class MICROFMT_API_CLASS transform_sink {
+class MICROFMT_API_CLASS RELOCO_POINTER transform_sink {
 public:
   /** Create a transform adapter that forwards to @p target. */
   explicit constexpr transform_sink(sink target RELOCO_LIFETIME_CAPTURE_BY_THIS,
@@ -48,7 +48,7 @@ public:
   transform_sink &operator=(transform_sink &&) noexcept = default;
 
   /** Return a type-erased sink suitable for @ref format_to. */
-  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{this,
                 [](void *ctx, microfmt::string_view sv) noexcept { static_cast<transform_sink *>(ctx)->write(sv); }};
   }
@@ -96,7 +96,7 @@ private:
  *  line. This preserves line state when formatting is split across multiple
  *  calls.
  */
-class MICROFMT_API_CLASS prefix_sink {
+class MICROFMT_API_CLASS RELOCO_POINTER prefix_sink {
 public:
   /** Create a line-prefix adapter that forwards to @p target. */
   explicit constexpr prefix_sink(sink target RELOCO_LIFETIME_CAPTURE_BY_THIS,
@@ -109,7 +109,7 @@ public:
   prefix_sink &operator=(prefix_sink &&) noexcept = default;
 
   /** Return a type-erased sink suitable for @ref format_to. */
-  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept { static_cast<prefix_sink *>(ctx)->write(sv); }};
   }
 
@@ -142,7 +142,7 @@ private:
 };
 
 /** A sink adapter that discards output after a fixed number of bytes. */
-class MICROFMT_API_CLASS limit_sink {
+class MICROFMT_API_CLASS RELOCO_POINTER limit_sink {
 public:
   /** Create an adapter that forwards at most @p max_bytes to @p target. */
   explicit constexpr limit_sink(sink target RELOCO_LIFETIME_CAPTURE_BY_THIS, size_t max_bytes) noexcept
@@ -154,7 +154,7 @@ public:
   limit_sink &operator=(limit_sink &&) noexcept = default;
 
   /** Return a type-erased sink suitable for @ref format_to. */
-  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept { static_cast<limit_sink *>(ctx)->write(sv); }};
   }
 

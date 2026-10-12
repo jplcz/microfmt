@@ -141,10 +141,10 @@ private:
 
 namespace detail {
 
-struct MICROFMT_API_CLASS buffer_sink_base {
-  char *m_data;
-  std::size_t m_capacity;
-  std::size_t m_pos;
+struct MICROFMT_API_CLASS RELOCO_POINTER buffer_sink_base {
+  char *m_data{};
+  std::size_t m_capacity{};
+  std::size_t m_pos{};
 
   constexpr buffer_sink_base(char *ptr, std::size_t cap, size_t pos) noexcept
       : m_data(ptr), m_capacity(cap), m_pos(pos) {}
@@ -232,7 +232,7 @@ public:
    * @return A lightweight @ref sink struct configured with a callback to append
    * to this buffer.
    */
-  [[nodiscard]] RELOCO_CONSTEXPR20 sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] RELOCO_CONSTEXPR20 sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, &detail::buffer_sink_base::write_thunk};
   }
 
@@ -241,9 +241,11 @@ public:
    *
    * @return Non-owning view of the formatted output.
    */
-  [[nodiscard]] constexpr microfmt::string_view view() const noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr microfmt::string_view view() const & noexcept RELOCO_LIFETIMEBOUND {
     return microfmt::string_view(m_data, m_pos);
   }
+
+  [[nodiscard]] constexpr microfmt::string_view view() const && = delete;
 
   /**
    * @brief Returns the total number of characters written so far.
@@ -272,13 +274,15 @@ public:
    *
    * @return Span containing the written characters.
    */
-  [[nodiscard]] constexpr span<const char> as_span() const noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr span<const char> as_span() const & noexcept RELOCO_LIFETIMEBOUND {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     return span<const char>(m_data, m_pos);
 
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
+
+  [[nodiscard]] constexpr span<const char> as_span() const && = delete;
 
 #if RELOCO_HAS_STD_SPAN
   // std-interop-begin: opt-in conversion to std::span for interop with
@@ -289,13 +293,15 @@ public:
    *
    * @return Standard span containing the written characters.
    */
-  [[nodiscard]] constexpr std::span<const char> as_std_span() const noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr std::span<const char> as_std_span() const & noexcept RELOCO_LIFETIMEBOUND {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     return std::span<const char>(m_data, m_pos);
 
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
+
+  [[nodiscard]] constexpr std::span<const char> as_std_span() const && = delete;
   // std-interop-end
 #endif
 
@@ -332,7 +338,7 @@ public:
    * @return A lightweight @ref sink struct configured with a callback to
    * forward writes.
    */
-  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<iterator_sink<OutputIt> *>(ctx);
 // Guard against std::terminate in the noexcept callback
@@ -383,7 +389,7 @@ public:
    * @return A lightweight @ref sink struct configured to increment the internal
    * counter.
    */
-  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept {
                   auto *self = static_cast<counting_sink *>(ctx);
                   self->m_count += sv.size();
@@ -428,9 +434,9 @@ public:
 namespace detail {
 
 struct MICROFMT_API_CLASS RELOCO_POINTER c_string_sink_base {
-  char *m_data;
-  std::size_t m_max_payload; // N - 1
-  std::size_t m_pos;
+  char *m_data{};
+  std::size_t m_max_payload{}; // N - 1
+  std::size_t m_pos{};
 
   constexpr c_string_sink_base(char *ptr RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS, size_t max,
                                size_t pos) noexcept
@@ -524,7 +530,7 @@ public:
    * @return A lightweight @ref sink struct configured to append and
    * null-terminate.
    */
-  [[nodiscard]] sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return sink{this, &detail::c_string_sink_base::write_thunk};
   }
 
@@ -533,7 +539,9 @@ public:
    *
    * @return Pointer to the underlying null-terminated buffer.
    */
-  [[nodiscard]] constexpr const char *c_str() const noexcept RELOCO_LIFETIMEBOUND { return m_data; }
+  [[nodiscard]] constexpr const char *c_str() const & noexcept RELOCO_LIFETIMEBOUND { return m_data; }
+
+  [[nodiscard]] constexpr const char *c_str() const && = delete;
 
   /**
    * @brief Returns a string view over the characters written (excluding null
@@ -541,9 +549,11 @@ public:
    *
    * @return Non-owning view of formatted text.
    */
-  [[nodiscard]] constexpr microfmt::string_view view() const noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] constexpr microfmt::string_view view() const & noexcept RELOCO_LIFETIMEBOUND {
     return microfmt::string_view(m_data, m_pos);
   }
+
+  [[nodiscard]] constexpr microfmt::string_view view() const && = delete;
 
   /**
    * @brief Returns the length of the string in bytes (excluding null
@@ -890,7 +900,7 @@ public:
   constexpr char consume() noexcept {
     if (m_spec.empty())
       return '\0';
-    char ch = m_spec.front();
+    const char ch = m_spec.front();
     m_spec.remove_prefix(1);
     return ch;
   }
@@ -1007,7 +1017,7 @@ struct MICROFMT_API_CLASS const_char_like {
 #endif
 
   void format(const char *val, const sink &out) const noexcept {
-    microfmt::string_view sv = val ? microfmt::string_view(val) : microfmt::string_view("(null)", 6);
+    const microfmt::string_view sv = val != nullptr ? microfmt::string_view(val) : microfmt::string_view("(null)", 6);
 #ifndef MICROFMT_DISABLE_DEBUG_FLAG
     if (debug) {
       detail::write_debug_quoted(out, sv, '"');
@@ -1184,17 +1194,17 @@ struct MICROFMT_API_CLASS int_formatter_specs {
     }
 
     microfmt::string_view prefix{};
-    if (flags.is_hex) {
+    if (flags.is_hex != 0) {
       start = detail::format_hex_backward(end, uval, flags.uppercase);
-      if (flags.alt_form) {
-        prefix = flags.uppercase ? microfmt::string_view("0X") : microfmt::string_view("0x");
+      if (flags.alt_form != 0) {
+        prefix = flags.uppercase != 0 ? microfmt::string_view("0X") : microfmt::string_view("0x");
       }
     } else {
       start = detail::format_dec_backward(end, uval);
     }
 
     const size_t digits_len = static_cast<size_t>(end - start);
-    detail::emit_formatted_int(out, start, digits_len, is_negative, prefix, width, flags.zero_pad);
+    detail::emit_formatted_int(out, start, digits_len, is_negative, prefix, width, flags.zero_pad != 0);
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 };
@@ -1259,7 +1269,7 @@ struct MICROFMT_API_CLASS raw_ptr_format {
   int width{0};
 
   constexpr void parse(format_parse_context &ctx) noexcept {
-    microfmt::string_view s = ctx.spec();
+    const microfmt::string_view s = ctx.spec();
     size_t p = 0;
     if (!s.empty() && s[p] == '0')
       ++p;
@@ -1483,7 +1493,7 @@ constexpr bool parse_positional_index(microfmt::string_view text, size_t &index)
 }
 
 // Represents a pre-parsed action in the format string
-struct MICROFMT_API_CLASS compiled_piece {
+struct MICROFMT_API_CLASS RELOCO_POINTER compiled_piece {
   microfmt::string_view literal{}; // Static literal text to emit directly
   microfmt::string_view spec{};    // Format specifier (e.g. ":08x")
   size_t arg_index{0};             // Which argument index to format
@@ -1615,7 +1625,7 @@ namespace detail {
  * its own beyond a reference to the wrapped value; all the priority logic
  * lives in `formatter<debug_view<T>>::format` below.
  */
-template <typename T> struct debug_view {
+template <typename T> struct RELOCO_POINTER debug_view {
   const T &value;
 };
 
@@ -1729,7 +1739,9 @@ template <size_t N, typename... Args>
 template <typename Provider> struct compile_string_holder {
   using provider_type = Provider;
 
-  [[nodiscard]] constexpr microfmt::string_view get() const noexcept { return Provider::get(); }
+  [[nodiscard]] constexpr microfmt::string_view get() const & noexcept { return Provider::get(); }
+
+  [[nodiscard]] constexpr microfmt::string_view get() const && = delete;
 };
 
 // Creates a unique static provider for C++17 compatibility
