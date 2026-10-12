@@ -108,7 +108,7 @@ MICROFMT_API void formatter<styled_str_view>::format(const styled_str_view &inpu
   }
 
   // Calculate visible length with quotes and ellipsis
-  size_t visible_len = raw.size() + (truncated ? 3 : 0);
+  size_t visible_len = raw.size() + (truncated ? size_t{3} : size_t{0});
   if (s.quote != quote_style::none)
     visible_len += 2;
 

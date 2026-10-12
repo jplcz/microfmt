@@ -53,7 +53,7 @@ template <> struct formatter<remote_memory_diff_view> {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
 
     // Scratch buffer must be at least large enough to hold two rows (old and new chunks)
-    const size_t row_size = (diff.bytes_per_row > 0) ? diff.bytes_per_row : 16;
+    const size_t row_size = (diff.bytes_per_row > 0) ? size_t{diff.bytes_per_row} : size_t{16};
     if (diff.scratch.size() < row_size * 2) {
       out.write(string_view("[ERROR: Scratch buffer too small for remote_memory_diff]"));
       return;

@@ -56,7 +56,7 @@ public:
    * @param initial_state Initial state used by @p formatter.
    * @param formatter Callable that renders the container.
    */
-  constexpr container_context(IteratorState initial_state, FormatterFn formatter)
+  constexpr container_context(IteratorState initial_state, FormatterFn formatter) noexcept
       : state_(initial_state), formatter_fn_(formatter) {}
 
   /**

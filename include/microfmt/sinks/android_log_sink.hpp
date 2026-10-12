@@ -34,6 +34,7 @@ enum android_LogPriority {
 };
 
 RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
+// NOLINTNEXTLINE(reloco-noexcept): declaration mirrors the platform C varargs API
 inline int __android_log_print(int prio, const char *tag, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);

@@ -28,8 +28,9 @@ using vector = std::pmr::vector<char>;
 // ============================================================================
 
 template <typename... Args>
-[[nodiscard]] std::pmr::string format(std::pmr::memory_resource *mr, microfmt::string_view fmt_str,
-                                      const Args &...args) {
+[[nodiscard]] std::pmr::string
+// NOLINTNEXTLINE(reloco-noexcept): std container allocation may throw (std-interop contract)
+format(std::pmr::memory_resource *mr, microfmt::string_view fmt_str, const Args &...args) {
   std::pmr::string result(mr);
 
   auto out_sink = sink{&result, [](void *ctx, microfmt::string_view sv) noexcept {
@@ -46,8 +47,9 @@ template <typename... Args>
 // ============================================================================
 
 template <typename... Args>
-[[nodiscard]] std::pmr::vector<char> format_vector(std::pmr::memory_resource *mr, microfmt::string_view fmt_str,
-                                                   const Args &...args) {
+[[nodiscard]] std::pmr::vector<char>
+// NOLINTNEXTLINE(reloco-noexcept): std container allocation may throw (std-interop contract)
+format_vector(std::pmr::memory_resource *mr, microfmt::string_view fmt_str, const Args &...args) {
   std::pmr::vector<char> result(mr);
 
   auto out_sink = sink{&result, [](void *ctx, microfmt::string_view sv) noexcept {
@@ -65,7 +67,7 @@ template <typename... Args>
 
 class MICROFMT_API_CLASS RELOCO_POINTER arena_sink {
 public:
-  explicit arena_sink(std::pmr::memory_resource *mr RELOCO_LIFETIMEBOUND, std::size_t initial_chunk_size = 128)
+  explicit arena_sink(std::pmr::memory_resource *mr RELOCO_LIFETIMEBOUND, std::size_t initial_chunk_size = 128) noexcept
       : mr_(mr) {
     assert(mr_);
     assert(initial_chunk_size != 0);
@@ -101,7 +103,7 @@ public:
     return sink{this, [](void *ctx, microfmt::string_view sv) noexcept { static_cast<arena_sink *>(ctx)->write(sv); }};
   }
 
-  void put(char c) {
+  void put(char c) noexcept {
     if (size_ >= current_cap_) {
       grow();
     }
@@ -111,7 +113,7 @@ public:
     RELOCO_END_UNSAFE_BUFFER_USAGE;
   }
 
-  void write(microfmt::string_view sv) {
+  void write(microfmt::string_view sv) noexcept {
     for (char c : sv) {
       put(c);
     }
@@ -132,14 +134,14 @@ private:
     return sizeof(chunk) - sizeof(char) + capacity;
   }
 
-  void allocate_chunk(std::size_t capacity) {
+  void allocate_chunk(std::size_t capacity) noexcept {
     void *storage = mr_->allocate(allocation_size(capacity), alignof(chunk));
     current_chunk_ = ::new (storage) chunk{current_chunk_, capacity, {}};
     current_cap_ = capacity;
     size_ = 0;
   }
 
-  void grow() {
+  void grow() noexcept {
     const std::size_t new_capacity = current_cap_ * 2;
     chunk *previous_chunk = current_chunk_;
     const std::size_t previous_size = size_;

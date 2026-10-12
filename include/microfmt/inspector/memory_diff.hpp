@@ -101,7 +101,7 @@ template <> struct formatter<memory_diff_view> {
   void format(const memory_diff_view &diff, const sink &out) const noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     const size_t total_size = std::min(diff.old_data.size(), diff.new_data.size());
-    const size_t row_size = (diff.bytes_per_row > 0) ? diff.bytes_per_row : 16;
+    const size_t row_size = (diff.bytes_per_row > 0) ? size_t{diff.bytes_per_row} : size_t{16};
 
     size_t identical_rows_streak = 0;
     size_t offset = 0;

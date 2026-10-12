@@ -44,7 +44,7 @@ MICROFMT_API void emit_style(const style &s, const sink &out) noexcept {
 
   // Background color (standard +10, bright +10)
   if (s.bg != color::none) {
-    emit_code(static_cast<uint8_t>(s.bg) + 10);
+    emit_code(static_cast<uint8_t>(static_cast<uint8_t>(s.bg) + 10U));
   }
 
   out.put('m');

@@ -134,8 +134,8 @@ inline bool decode_eh_frame_hdr(uintptr_t hdr_start, uintptr_t hdr_end, uintptr_
   if (version != 1 || eh_frame_ptr_enc == k_dw_eh_pe_omit)
     return false;
 
-  const unsigned char format = eh_frame_ptr_enc & k_dw_eh_pe_format_mask;
-  const unsigned char application = eh_frame_ptr_enc & k_dw_eh_pe_application_mask;
+  const unsigned char format = static_cast<unsigned char>(eh_frame_ptr_enc & k_dw_eh_pe_format_mask);
+  const unsigned char application = static_cast<unsigned char>(eh_frame_ptr_enc & k_dw_eh_pe_application_mask);
   if (application != k_dw_eh_pe_pcrel && application != k_dw_eh_pe_absptr_application)
     return false; // Uncommon application; not worth mis-decoding.
   if (format != k_dw_eh_pe_udata4 && format != k_dw_eh_pe_sdata4)

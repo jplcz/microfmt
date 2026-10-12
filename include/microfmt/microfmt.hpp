@@ -167,7 +167,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER buffer_sink_base {
     }
   }
 
-  RELOCO_REINITIALIZES void reset() { m_pos = 0; }
+  RELOCO_REINITIALIZES void reset() noexcept { m_pos = 0; }
 };
 
 } // namespace detail
@@ -716,7 +716,7 @@ RELOCO_ALWAYS_INLINE inline void format_integer_core(const sink &out, uint64_t v
   const size_t digits_len = buf.size() - idx;
 
   if (min_width > 0) {
-    const size_t total_needed = digits_len + (is_negative ? 1 : 0);
+    const size_t total_needed = digits_len + (is_negative ? size_t{1} : size_t{0});
     if (is_negative) {
       out.put('-');
     }
@@ -1092,7 +1092,7 @@ RELOCO_ALWAYS_INLINE
 inline void emit_formatted_int(const sink &out, const char *digits, size_t digits_len, bool is_negative,
                                microfmt::string_view prefix, uint8_t width, bool zero_pad) noexcept {
   const size_t prefix_len = prefix.size();
-  const size_t total_content_len = digits_len + prefix_len + (is_negative ? 1 : 0);
+  const size_t total_content_len = digits_len + prefix_len + (is_negative ? size_t{1} : size_t{0});
   const size_t pad_len = (width > total_content_len) ? (width - total_content_len) : 0;
 
   if (zero_pad) {
@@ -1808,7 +1808,9 @@ template <size_t N, typename StrProvider, typename... Args>
  * @return TargetContainer Populated container with the formatted result.
  */
 template <typename TargetContainer, typename... Args>
-[[nodiscard]] inline TargetContainer format_as(string_view fmt, const Args &...args) {
+[[nodiscard]] inline TargetContainer
+// NOLINTNEXTLINE(reloco-noexcept): std container allocation may throw (std-interop contract)
+format_as(string_view fmt, const Args &...args) {
   TargetContainer result;
   format_to(std::back_inserter(result), fmt, args...);
   return result;
@@ -1819,7 +1821,9 @@ template <typename TargetContainer, typename... Args>
  * checked format string holder.
  */
 template <typename TargetContainer, typename StrProvider, typename... Args>
-[[nodiscard]] inline TargetContainer format_as(compile_string_holder<StrProvider> fmt, const Args &...args) {
+[[nodiscard]] inline TargetContainer
+// NOLINTNEXTLINE(reloco-noexcept): std container allocation may throw (std-interop contract)
+format_as(compile_string_holder<StrProvider> fmt, const Args &...args) {
   TargetContainer result;
   format_to(std::back_inserter(result), fmt, args...);
   return result;
@@ -1912,7 +1916,9 @@ inline void vformat_args_to(const sink &out, microfmt::string_view fmt, format_a
  * @return TargetContainer Populated container with the formatted result.
  */
 template <typename TargetContainer>
-[[nodiscard]] inline TargetContainer vformat_args_as(microfmt::string_view fmt, format_args args) {
+[[nodiscard]] inline TargetContainer
+// NOLINTNEXTLINE(reloco-noexcept): std container allocation may throw (std-interop contract)
+vformat_args_as(microfmt::string_view fmt, format_args args) {
   TargetContainer result;
   auto it = std::back_inserter(result);
   iterator_sink<decltype(it)> isink(it);

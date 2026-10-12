@@ -14,7 +14,7 @@ MICROFMT_API void format_hexdump(const hexdump_view &h, span<uint8_t> line_buffe
     return;
   }
 
-  const size_t requested_bpl = h.bytes_per_line == 0 ? 16 : h.bytes_per_line;
+  const size_t requested_bpl = h.bytes_per_line == 0 ? size_t{16} : size_t{h.bytes_per_line};
   const size_t bpl = std::min<size_t>(std::min<size_t>(requested_bpl, 32), line_buffer.size());
 
   size_t offset = 0;

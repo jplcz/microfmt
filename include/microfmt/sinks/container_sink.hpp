@@ -96,7 +96,7 @@ public:
                 [](void *ctx, microfmt::string_view sv) noexcept { static_cast<container_sink *>(ctx)->write(sv); }};
   }
 
-  void put(char c) { write(microfmt::string_view(&c, 1)); }
+  void put(char c) noexcept { write(microfmt::string_view(&c, 1)); }
 
   /// True if the container failed to grow (reloco `try_*` error, or an exception from a std container
   /// when exceptions are enabled); output was truncated from that point.
@@ -138,6 +138,7 @@ private:
     }
   }
 
+  // NOLINTNEXTLINE(reloco-noexcept): std container growth may throw; the caller (write) catches and records it
   void write_std(microfmt::string_view sv) {
     if constexpr (detail::has_append<Container>::value) {
       target_->append(sv.data(), sv.size());
@@ -167,6 +168,7 @@ template <typename Container, typename std::enable_if<is_growable_char_container
 // Appends formatted text to an existing growable character container.
 template <typename Container, typename... Args>
 typename std::enable_if<is_growable_char_container<Container>, void>::type
+// NOLINTNEXTLINE(reloco-noexcept): throws std::bad_alloc on growth failure to preserve the std container contract
 format_to_container(Container &dest, microfmt::string_view fmt_str, const Args &...args) {
   container_sink<Container> cs(dest);
   auto out = cs.as_sink();
@@ -181,6 +183,7 @@ format_to_container(Container &dest, microfmt::string_view fmt_str, const Args &
 // Returns a newly allocated container.
 template <typename Container = std::string, typename... Args>
 [[nodiscard]] typename std::enable_if<is_growable_char_container<Container>, Container>::type
+// NOLINTNEXTLINE(reloco-noexcept): throws std::bad_alloc on growth failure to preserve the std container contract
 format_as_container(microfmt::string_view fmt_str, const Args &...args) {
   Container result;
   format_to_container(result, fmt_str, args...);
@@ -194,6 +197,7 @@ template <typename Container, typename... Args>
 [[nodiscard]] typename std::enable_if<is_growable_char_container<Container> &&
                                           std::is_constructible<Container, reloco::allocator_ref>::value,
                                       reloco::result<Container>>::type
+// NOLINTNEXTLINE(reloco-noexcept): throws std::bad_alloc on growth failure to preserve the std container contract
 try_format_as_container(reloco::allocator_ref alloc, microfmt::string_view fmt_str, const Args &...args) {
   Container result(alloc);
   container_sink<Container> cs(result);
@@ -207,6 +211,7 @@ try_format_as_container(reloco::allocator_ref alloc, microfmt::string_view fmt_s
 // Appends to an existing container; the container's own allocator is used.
 template <typename Container, typename... Args>
 [[nodiscard]] typename std::enable_if<is_growable_char_container<Container>, reloco::result<void>>::type
+// NOLINTNEXTLINE(reloco-noexcept): throws std::bad_alloc on growth failure to preserve the std container contract
 try_format_to_container(Container &dest, microfmt::string_view fmt_str, const Args &...args) {
   container_sink<Container> cs(dest);
   format_to(cs.as_sink(), fmt_str, args...);
