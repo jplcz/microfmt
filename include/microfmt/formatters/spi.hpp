@@ -129,7 +129,7 @@ template <> struct formatter<spi_transfer_view> {
   void format(const spi_transfer_view &tx, const sink &out) const noexcept {
     const auto &hex = uppercase_hex ? detail::hex_digits_upper : detail::hex_digits_lower;
 
-    const auto print_bytes = [&](span<const uint8_t> s) noexcept {
+    const auto print_bytes = [&out, &hex](span<const uint8_t> s) noexcept {
       for (size_t i = 0; i < s.size(); ++i) {
         if (i > 0)
           out.put(' ');

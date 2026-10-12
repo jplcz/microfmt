@@ -95,7 +95,7 @@ class RELOCO_POINTER RELOCO_CONSUMABLE(unconsumed) log_record_tx {
 
   friend class ring_buffer_log_reader;
 
-  log_record_tx(reloco::detail::unowned_ring_base<char> *ring, level lvl, split_string_view name,
+  log_record_tx(reloco::detail::unowned_ring_base<char> *ring RELOCO_LIFETIMEBOUND, level lvl, split_string_view name,
                 split_string_view payload, std::size_t total_bytes) noexcept RELOCO_RETURN_TYPESTATE(unconsumed)
       : ring_(ring), lvl_(lvl), logger_name_(name), payload_(payload), total_bytes_(total_bytes) {}
 

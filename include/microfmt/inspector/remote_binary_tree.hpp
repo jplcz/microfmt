@@ -43,7 +43,7 @@ template <typename Tag> struct remote_binary_tree_dispatch {
     const size_t stack_capacity = std::min(available_elements / 2, max_tree_stack_depth);
     scratch_allocator allocator(scratch);
     uintptr_t *node_stack = allocator.allocate<uintptr_t>(stack_capacity);
-    if (!node_stack) {
+    if (node_stack == nullptr) {
       out.write("<fault>");
       out.write(opts.close_bracket);
       return true;

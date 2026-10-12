@@ -40,7 +40,9 @@ template <size_t N> struct fixed_string {
 
   RELOCO_END_UNSAFE_BUFFER_USAGE
 
-  [[nodiscard]] constexpr microfmt::string_view view() const & noexcept { return microfmt::string_view(buf, N); }
+  [[nodiscard]] constexpr microfmt::string_view view() const & noexcept RELOCO_LIFETIMEBOUND {
+    return microfmt::string_view(buf, N);
+  }
 
   [[nodiscard]] constexpr microfmt::string_view view() const && = delete;
 };

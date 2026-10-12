@@ -331,7 +331,7 @@ template <> struct formatter<as_string_view> {
     const size_t visible_len = spec_.debug_escaped ? detail::calculate_escaped_len(sv) : sv.size();
     const size_t total_pad = (spec_.width > visible_len) ? (spec_.width - visible_len) : 0;
 
-    const auto emit_body = [&]() {
+    const auto emit_body = [this, &out, &sv]() {
       if (spec_.debug_escaped) {
         out.write("\"");
         for (char ch : sv) {

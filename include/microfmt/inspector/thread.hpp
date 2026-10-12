@@ -93,7 +93,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER thread_info {
 
     return metadata_map(&the_state, [](void *ctx, property_entry &out) noexcept -> bool {
       auto *s = static_cast<metadata_state *>(ctx);
-      if (!s || !s->thread)
+      if (s == nullptr || s->thread == nullptr)
         return false;
 
       // Phase 1: Stream core thread properties

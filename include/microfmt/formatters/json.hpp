@@ -274,7 +274,8 @@ public:
     return *this;
   }
 
-  [[nodiscard]] object_writer obj() noexcept RELOCO_CALLABLE_WHEN("unconsumed") RELOCO_RETURN_TYPESTATE(unconsumed) {
+  [[nodiscard]] object_writer obj() & noexcept RELOCO_LIFETIMEBOUND RELOCO_CALLABLE_WHEN("unconsumed")
+      RELOCO_RETURN_TYPESTATE(unconsumed) {
     prefix();
     return object_writer(out_);
   }

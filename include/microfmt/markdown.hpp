@@ -236,7 +236,7 @@ public:
 
   writer &table_row_end() & noexcept { return newline(); }
 
-  [[nodiscard]] constexpr sink get_sink() const & noexcept { return m_sink; }
+  [[nodiscard]] constexpr sink get_sink() const & noexcept RELOCO_LIFETIMEBOUND { return m_sink; }
 
   [[nodiscard]] constexpr sink get_sink() const && = delete;
 
@@ -280,8 +280,8 @@ public:
 
   template <typename... Args>
   writer &hexdump_block(microfmt::string_view summary, span<const uint8_t> data) & noexcept {
-    return details(*this, summary, [&](writer &w) {
-      w.code_block("text", [&](writer &cw) { format_to(cw.get_sink(), "{}", microfmt::hexdump(data)); });
+    return details(*this, summary, [&data](writer &w) {
+      w.code_block("text", [&data](writer &cw) { format_to(cw.get_sink(), "{}", microfmt::hexdump(data)); });
     });
   }
 
@@ -390,7 +390,7 @@ namespace microfmt::md {
 
 class MICROFMT_API_CLASS RELOCO_POINTER details_guard {
 public:
-  explicit details_guard(writer &w, microfmt::string_view summary, bool open = false) noexcept;
+  explicit details_guard(writer &w RELOCO_LIFETIMEBOUND, microfmt::string_view summary, bool open = false) noexcept;
   ~details_guard() noexcept;
 
   details_guard(const details_guard &) = delete;
@@ -430,14 +430,14 @@ inline writer &details(writer &w, microfmt::string_view summary, Callable &&body
 
 template <size_t NumCols> class RELOCO_POINTER table_writer {
 public:
-  table_writer(writer &w, span<const column> cols) noexcept : m_writer(w), m_cols(cols) {
+  table_writer(writer &w RELOCO_LIFETIMEBOUND, span<const column> cols) noexcept : m_writer(w), m_cols(cols) {
     m_writer.table_header(m_cols);
   }
 
   template <typename... Cells> table_writer &row(const Cells &...cells) & noexcept {
     m_writer.table_row_begin();
     size_t col_idx = 0;
-    auto format_cell = [&](const auto &cell) {
+    auto format_cell = [this, &col_idx](const auto &cell) {
       if constexpr (std::is_convertible_v<decltype(cell), microfmt::string_view>) {
         m_writer.table_cell(static_cast<microfmt::string_view>(cell), m_cols[col_idx++]);
       } else {

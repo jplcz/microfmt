@@ -121,7 +121,7 @@ public:
   constexpr register_context_ref(Tag, State &&, address_space_ref, span<std::byte>) = delete;
 
   [[nodiscard]] constexpr bool is_null() const noexcept {
-    return !state_ || !vtable_ || (!vtable_->read_register && !vtable_->write_register);
+    return !state_ || vtable_ == nullptr || (vtable_->read_register == nullptr && vtable_->write_register == nullptr);
   }
 
   [[nodiscard]] constexpr explicit operator bool() const noexcept { return !is_null(); }
@@ -130,7 +130,7 @@ public:
    * @brief Reads a register directly into a typed integer or float variable.
    */
   template <typename T> [[nodiscard]] bool read(uint32_t dwarf_reg_index, T &out_value) const noexcept {
-    if (!vtable_ || !vtable_->read_register)
+    if (vtable_ == nullptr || vtable_->read_register == nullptr)
       return false;
     return vtable_->read_register(state_.get(), space_, dwarf_reg_index, &out_value, sizeof(T));
   }
@@ -139,7 +139,7 @@ public:
    * @brief Reads raw register bytes into a buffer.
    */
   [[nodiscard]] bool read_raw(uint32_t dwarf_reg_index, void *dest, size_t size) const noexcept {
-    if (!vtable_ || !vtable_->read_register)
+    if (vtable_ == nullptr || vtable_->read_register == nullptr)
       return false;
     return vtable_->read_register(state_.get(), space_, dwarf_reg_index, dest, size);
   }
@@ -148,7 +148,7 @@ public:
    * @brief Writes a typed value into a register by its DWARF index.
    */
   template <typename T> [[nodiscard]] bool write(uint32_t dwarf_reg_index, const T &value) const noexcept {
-    if (!vtable_ || !vtable_->write_register)
+    if (vtable_ == nullptr || vtable_->write_register == nullptr)
       return false;
     if (!mutable_state_)
       return false;
@@ -159,7 +159,7 @@ public:
    * @brief Writes raw bytes from a source buffer into a register.
    */
   [[nodiscard]] bool write_raw(uint32_t dwarf_reg_index, const void *src, size_t size) const noexcept {
-    if (!vtable_ || !vtable_->write_register)
+    if (vtable_ == nullptr || vtable_->write_register == nullptr)
       return false;
     if (!mutable_state_)
       return false;
@@ -171,8 +171,8 @@ public:
 
 private:
   struct vtable {
-    bool (*read_register)(const void *, address_space_ref, uint32_t, void *, size_t) noexcept;
-    bool (*write_register)(void *, address_space_ref, uint32_t, const void *, size_t) noexcept;
+    bool (*read_register)(const void *, address_space_ref, uint32_t, void *, size_t) noexcept = nullptr;
+    bool (*write_register)(void *, address_space_ref, uint32_t, const void *, size_t) noexcept = nullptr;
   };
 
   template <typename Tag> [[nodiscard]] static constexpr auto read_entry() noexcept {
@@ -484,7 +484,7 @@ private:
       return false;
 
     handled = true;
-    if (!destination || size != sizeof(typename Field::value_type))
+    if (destination == nullptr || size != sizeof(typename Field::value_type))
       return false;
 
     if constexpr (detail::has_register_field_read<Field, State>::value) {
@@ -512,7 +512,7 @@ private:
       return false;
 
     handled = true;
-    if (!mutable_state_ || !source || size != sizeof(typename Field::value_type))
+    if (!mutable_state_ || source == nullptr || size != sizeof(typename Field::value_type))
       return false;
 
     if constexpr (detail::has_register_field_write<Field, State>::value) {

@@ -146,7 +146,7 @@ struct MICROFMT_API_CLASS RELOCO_POINTER buffer_sink_base {
   std::size_t m_capacity{};
   std::size_t m_pos{};
 
-  constexpr buffer_sink_base(char *ptr, std::size_t cap, size_t pos) noexcept
+  constexpr buffer_sink_base(char *ptr RELOCO_LIFETIMEBOUND, std::size_t cap, size_t pos) noexcept
       : m_data(ptr), m_capacity(cap), m_pos(pos) {}
 
   // Derived classes **MUST** provide proper overrides
@@ -740,7 +740,7 @@ RELOCO_ALWAYS_INLINE
 inline void format_binary(const sink &out, uint64_t val, int min_width = 0) noexcept {
   // Number of significant bits (at least 1, so that val == 0 still emits "0").
   int bits = 1;
-  for (uint64_t v = val; v >>= 1;) {
+  for (uint64_t v = val; (v >>= 1) != 0;) {
     ++bits;
   }
 
@@ -1329,7 +1329,7 @@ inline void format_type_thunk(const void *val_ptr, microfmt::string_view spec, c
   // expects, exactly as before: for a bounded array argument, that's the
   // decayed pointer to its first element; for anything else, the
   // dereferenced `DecayedT` object itself.
-  auto with_value = [&](auto &&handle) {
+  auto with_value = [&val_ptr](auto &&handle) {
     if constexpr (std::is_array_v<std::remove_reference_t<T>>) {
       const auto *decayed_val = static_cast<const std::remove_all_extents_t<std::remove_reference_t<T>> *>(val_ptr);
       handle(decayed_val);
@@ -1349,11 +1349,11 @@ inline void format_type_thunk(const void *val_ptr, microfmt::string_view spec, c
     formatter<DecayedT> f;
     format_parse_context ctx(spec);
     f.parse(ctx);
-    with_value([&](const auto &value) { f.format(value, out); });
+    with_value([&f, &out](const auto &value) { f.format(value, out); });
   } else if constexpr (reloco::has_display_v<DecayedT>) {
-    with_value([&](const auto &value) { reloco::Display<DecayedT>::format(value, out); });
+    with_value([&out](const auto &value) { reloco::Display<DecayedT>::format(value, out); });
   } else if constexpr (reloco::has_debug_v<DecayedT>) {
-    with_value([&](const auto &value) { reloco::Debug<DecayedT>::format(value, out); });
+    with_value([&out](const auto &value) { reloco::Debug<DecayedT>::format(value, out); });
   } else {
     // No formatter<T>, Display<T>, or Debug<T> found for T: instantiate
     // formatter<DecayedT> anyway so the caller gets the same
@@ -1362,7 +1362,7 @@ inline void format_type_thunk(const void *val_ptr, microfmt::string_view spec, c
     formatter<DecayedT> f;
     format_parse_context ctx(spec);
     f.parse(ctx);
-    with_value([&](const auto &value) { f.format(value, out); });
+    with_value([&f, &out](const auto &value) { f.format(value, out); });
   }
 }
 
@@ -1739,7 +1739,7 @@ template <size_t N, typename... Args>
 template <typename Provider> struct compile_string_holder {
   using provider_type = Provider;
 
-  [[nodiscard]] constexpr microfmt::string_view get() const & noexcept { return Provider::get(); }
+  [[nodiscard]] constexpr microfmt::string_view get() const & noexcept RELOCO_LIFETIMEBOUND { return Provider::get(); }
 
   [[nodiscard]] constexpr microfmt::string_view get() const && = delete;
 };

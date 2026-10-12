@@ -123,9 +123,9 @@ public:
 
 private:
   struct chunk {
-    chunk *previous;
-    std::size_t capacity;
-    char data[1];
+    chunk *previous = nullptr;
+    std::size_t capacity = 0;
+    char data[1]{};
   };
 
   [[nodiscard]] static std::size_t allocation_size(std::size_t capacity) noexcept {

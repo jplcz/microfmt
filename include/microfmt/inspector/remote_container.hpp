@@ -78,12 +78,12 @@ public:
    * @brief Returns the mutable traversal state.
    * @return Reference to the stored state.
    */
-  [[nodiscard]] constexpr IteratorState &state() & noexcept { return state_; }
+  [[nodiscard]] constexpr IteratorState &state() & noexcept RELOCO_LIFETIMEBOUND { return state_; }
   /**
    * @brief Returns the traversal state.
    * @return Const reference to the stored state.
    */
-  [[nodiscard]] constexpr const IteratorState &state() const & noexcept { return state_; }
+  [[nodiscard]] constexpr const IteratorState &state() const & noexcept RELOCO_LIFETIMEBOUND { return state_; }
 
   [[nodiscard]] constexpr const IteratorState &state() const && = delete;
 
@@ -220,7 +220,7 @@ public:
    * formatter failure.
    */
   bool format(const sink &out) const noexcept {
-    if (!format_fn_ || !ctx_)
+    if (format_fn_ == nullptr || !ctx_)
       return false;
     return format_fn_(ctx_.get(), space_, scratch_, out, options_);
   }

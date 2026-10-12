@@ -287,7 +287,8 @@ public:
     return *this;
   }
 
-  [[nodiscard]] map_writer map() noexcept RELOCO_CALLABLE_WHEN("unconsumed") RELOCO_RETURN_TYPESTATE(unconsumed) {
+  [[nodiscard]] map_writer map() & noexcept RELOCO_LIFETIMEBOUND RELOCO_CALLABLE_WHEN("unconsumed")
+      RELOCO_RETURN_TYPESTATE(unconsumed) {
     return map_writer(out_);
   }
 

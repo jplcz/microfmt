@@ -46,7 +46,7 @@ template <typename Tuple, size_t... Is>
 void format_tuple_impl(const Tuple &t, const sink &out, microfmt::string_view sep, microfmt::string_view spec,
                        std::index_sequence<Is...>) noexcept {
   size_t idx = 0;
-  auto format_elem = [&](const auto &elem) noexcept {
+  auto format_elem = [&idx, &out, &sep, &spec](const auto &elem) noexcept {
     if (idx++ > 0) {
       out.write(sep);
     }

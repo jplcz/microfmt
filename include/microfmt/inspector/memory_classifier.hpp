@@ -93,7 +93,7 @@ public:
      * @return `true` if the address was successfully classified, `false`
      * otherwise.
      */
-    bool (*classify_address)(const void *ctx, uintptr_t virt_addr, memory_region_info &out_info) noexcept;
+    bool (*classify_address)(const void *ctx, uintptr_t virt_addr, memory_region_info &out_info) noexcept = nullptr;
   };
 
   /**
@@ -143,7 +143,7 @@ public:
    * @return `true` on successful classification, `false` otherwise.
    */
   [[nodiscard]] bool classify_address(uintptr_t virt_addr, memory_region_info &out_info) const noexcept {
-    if (!vtbl_ || !vtbl_->classify_address)
+    if (vtbl_ == nullptr || vtbl_->classify_address == nullptr)
       return false;
     return vtbl_->classify_address(ctx_.get(), virt_addr, out_info);
   }

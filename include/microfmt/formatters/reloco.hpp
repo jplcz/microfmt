@@ -115,7 +115,7 @@ template <typename T> struct formatter<reloco::collection_view<T>> {
     bool is_first = true;
 
     // Type-erased visit across the container's elements
-    view.for_each([&](const T &elem) noexcept {
+    view.for_each([this, &is_first, &out](const T &elem) noexcept {
       if (!is_first) {
         out.write(", ");
       }
@@ -163,7 +163,7 @@ template <typename T> struct formatter<reloco::detail::mutable_sequence_containe
     out.put('[');
     bool is_first = true;
 
-    cref.for_each([&](T &elem) noexcept {
+    cref.for_each([this, &is_first, &out](T &elem) noexcept {
       if (!is_first) {
         out.write(", ");
       }
@@ -198,7 +198,7 @@ template <typename T, typename Key> struct formatter<reloco::detail::mutable_ass
     out.put('{');
     bool is_first = true;
 
-    cref.for_each([&](const Key &key, T &value) noexcept {
+    cref.for_each([this, &is_first, &out](const Key &key, T &value) noexcept {
       if (!is_first) {
         out.write(", ");
       }

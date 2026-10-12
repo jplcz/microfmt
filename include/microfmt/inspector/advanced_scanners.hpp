@@ -208,7 +208,7 @@ public:
     expected<memory_scan_result, address_space_error> (*scan)(const void *ctx, uintptr_t start_addr,
                                                               size_t search_length, size_t window_size, size_t stride,
                                                               dependent_predicate_fn predicate,
-                                                              void *user_context) noexcept;
+                                                              void *user_context) noexcept = nullptr;
   };
 
   constexpr dependent_value_scanner_ref() noexcept = default;
@@ -254,7 +254,7 @@ public:
                                                                        size_t window_size, size_t stride,
                                                                        dependent_predicate_fn predicate,
                                                                        void *user_context = nullptr) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return unexpected(address_space_error::invalid_handle);
     return vtbl_->scan(ctx_.get(), start_addr, search_length, window_size, stride, predicate, user_context);
   }
@@ -408,7 +408,7 @@ template <> struct dependent_value_scanner_traits<linear_dependent_value_scanner
       return unexpected(address_space_error::invalid_buffer);
     if (!ctx->space)
       return unexpected(address_space_error::invalid_handle);
-    if (!predicate)
+    if (predicate == nullptr)
       return unexpected(address_space_error::invalid_buffer);
 
     uintptr_t current_addr = start_addr;

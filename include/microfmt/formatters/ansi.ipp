@@ -16,7 +16,7 @@ MICROFMT_API void emit_style(const style &s, const sink &out) noexcept {
   out.write("\033[");
   bool first = true;
 
-  const auto emit_code = [&](uint8_t code) noexcept {
+  const auto emit_code = [&first, &out](uint8_t code) noexcept {
     if (!first)
       out.put(';');
     first = false;

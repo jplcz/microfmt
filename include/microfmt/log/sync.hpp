@@ -116,7 +116,7 @@ public:
   using callback = void (*)(void *) noexcept;
 
   constexpr space_notifier() noexcept = default;
-  constexpr space_notifier(void *ctx, callback cb) noexcept : ctx_(ctx), cb_(cb) {}
+  constexpr space_notifier(void *ctx RELOCO_LIFETIMEBOUND, callback cb) noexcept : ctx_(ctx), cb_(cb) {}
 
   void notify() const noexcept {
     if (cb_ != nullptr) {

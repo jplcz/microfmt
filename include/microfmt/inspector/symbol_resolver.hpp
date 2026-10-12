@@ -138,7 +138,8 @@ public:
     /**
      * @brief Resolves an address. See @ref symbol_resolver_ref::resolve.
      */
-    bool (*resolve)(const void *ctx, uintptr_t addr, span<char> scratch, raw_resolved_symbol &out_raw) noexcept;
+    bool (*resolve)(const void *ctx, uintptr_t addr, span<char> scratch,
+                    raw_resolved_symbol &out_raw) noexcept = nullptr;
   };
 
   /**
@@ -225,7 +226,7 @@ public:
    */
   [[nodiscard]] bool resolve(uintptr_t addr, span<char> scratch, raw_resolved_symbol &raw_storage,
                              resolved_symbol_info &out_info) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return false;
 
     raw_storage = {};

@@ -59,7 +59,7 @@ template <> struct formatter<register_context_view<x86_64_abi_traits>> {
     uint64_t val = 0;
     size_t printed = 0;
 
-    const auto format_registers = [&](const auto &registers) noexcept {
+    const auto format_registers = [&reg_ctx, &val, &out, &printed](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
@@ -91,7 +91,7 @@ template <> struct formatter<register_context_view<x86_abi_traits>> {
     uint32_t val = 0;
     size_t printed = 0;
 
-    const auto format_registers = [&](const auto &registers) noexcept {
+    const auto format_registers = [&reg_ctx, &val, &out, &printed](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
@@ -123,7 +123,7 @@ template <> struct formatter<register_context_view<aarch64_abi_traits>> {
     uint64_t val = 0;
     size_t printed = 0;
 
-    const auto format_registers = [&](const auto &registers) noexcept {
+    const auto format_registers = [&reg_ctx, &val, &out, &printed](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
@@ -160,7 +160,7 @@ template <> struct formatter<register_context_view<arm_abi_traits>> {
     uint32_t val = 0;
     size_t printed = 0;
 
-    const auto format_registers = [&](const auto &registers) noexcept {
+    const auto format_registers = [&reg_ctx, &val, &out, &printed](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
@@ -192,7 +192,7 @@ template <> struct formatter<register_context_view<riscv32_abi_traits>> {
     uint32_t val = 0;
     size_t printed = 0;
 
-    const auto format_registers = [&](const auto &registers) noexcept {
+    const auto format_registers = [&reg_ctx, &val, &out, &printed](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;
@@ -224,7 +224,7 @@ template <> struct formatter<register_context_view<riscv64_abi_traits>> {
     uint64_t val = 0;
     size_t printed = 0;
 
-    const auto format_registers = [&](const auto &registers) noexcept {
+    const auto format_registers = [&reg_ctx, &val, &out, &printed](const auto &registers) noexcept {
       for (const auto &reg : registers) {
         if (!reg_ctx.read_raw(reg.index, &val, sizeof(val)))
           continue;

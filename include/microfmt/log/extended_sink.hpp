@@ -77,11 +77,11 @@ concept has_extended_flush = requires(value_ref<typename extended_log_sink_trait
 class MICROFMT_API_CLASS RELOCO_POINTER extended_log_sink {
 public:
   struct vtable {
-    void (*log)(void *ctx, const extended_log_msg &msg) noexcept;
+    void (*log)(void *ctx, const extended_log_msg &msg) noexcept = nullptr;
     /** @brief `nullptr` when the backend cannot report fullness. */
-    bool (*full)(void *ctx, const extended_log_msg &msg) noexcept;
+    bool (*full)(void *ctx, const extended_log_msg &msg) noexcept = nullptr;
     /** @brief `nullptr` when the backend cannot flush. */
-    void (*flush)(void *ctx) noexcept;
+    void (*flush)(void *ctx) noexcept = nullptr;
   };
 
   constexpr extended_log_sink() noexcept = default;
@@ -273,9 +273,9 @@ public:
       channel_guard g(channel_);
       const std::uint32_t ticket = next_ticket_++;
       // Strict arrival order: sleep (never spin) until every earlier writer finished.
-      (void)channel_.wait_for(wait_forever, [&] { return serving_ == ticket; });
-      accepted = !any_full(msg) ||
-                 channel_.wait_for(timeout_us_.load(std::memory_order_relaxed), [&] { return !any_full(msg); });
+      (void)channel_.wait_for(wait_forever, [this, ticket] { return serving_ == ticket; });
+      accepted = !any_full(msg) || channel_.wait_for(timeout_us_.load(std::memory_order_relaxed),
+                                                     [this, &msg] { return !any_full(msg); });
     }
 
     if (accepted) {

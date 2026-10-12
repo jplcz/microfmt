@@ -111,12 +111,12 @@ public:
      * @brief Fills a caller buffer with loaded images. See
      * @ref elf_image_enumerator_ref::enumerate.
      */
-    bool (*enumerate)(const void *ctx, span<elf_image_info> out_buffer, size_t &out_count) noexcept;
+    bool (*enumerate)(const void *ctx, span<elf_image_info> out_buffer, size_t &out_count) noexcept = nullptr;
     /**
      * @brief Locates the image owning a PC. See
      * @ref elf_image_enumerator_ref::find_by_pc.
      */
-    bool (*find_by_pc)(const void *ctx, uintptr_t pc, elf_image_info &out_info) noexcept;
+    bool (*find_by_pc)(const void *ctx, uintptr_t pc, elf_image_info &out_info) noexcept = nullptr;
   };
 
   /**
@@ -155,7 +155,7 @@ public:
    * @return `true` on success, `false` if the handle is empty.
    */
   [[nodiscard]] bool enumerate(span<elf_image_info> out_buffer, size_t &out_count) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return false;
     return vtbl_->enumerate(ctx_.get(), out_buffer, out_count);
   }
@@ -167,7 +167,7 @@ public:
    * @return `true` when an owning image was found.
    */
   [[nodiscard]] bool find_by_pc(uintptr_t pc, elf_image_info &out_info) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return false;
     return vtbl_->find_by_pc(ctx_.get(), pc, out_info);
   }

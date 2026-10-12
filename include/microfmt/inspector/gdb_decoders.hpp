@@ -180,7 +180,7 @@ private:
     const size_t len = hex.size() / 2;
 
     uint8_t *dest = scratch.allocate<uint8_t>(len);
-    if (!dest) {
+    if (dest == nullptr) {
       return {}; // Scratch memory exhausted
     }
 
@@ -198,7 +198,7 @@ private:
   static span<const uint8_t> decode_escaped_binary(string_view bin, scratch_allocator &scratch) noexcept {
     // Worst-case size is identical to string_view length. We allocate the max bound.
     uint8_t *dest = scratch.allocate<uint8_t>(bin.size());
-    if (!dest) {
+    if (dest == nullptr) {
       return {}; // Scratch memory exhausted
     }
 
@@ -284,7 +284,7 @@ public:
     const size_t len = hex_data.size() / 2;
 
     uint8_t *dest = scratch.allocate<uint8_t>(len);
-    if (!dest) {
+    if (dest == nullptr) {
       return {}; // Scratch memory exhausted
     }
 

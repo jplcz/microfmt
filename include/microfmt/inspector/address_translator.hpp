@@ -77,7 +77,7 @@ public:
      * @return `true` if translation succeeded and the page is present, `false`
      * otherwise.
      */
-    bool (*translate)(const void *ctx, uintptr_t virt_addr, translation_attributes &out_attrs) noexcept;
+    bool (*translate)(const void *ctx, uintptr_t virt_addr, translation_attributes &out_attrs) noexcept = nullptr;
   };
 
   /**
@@ -130,7 +130,7 @@ public:
    * fails.
    */
   [[nodiscard]] bool translate(uintptr_t virt_addr, translation_attributes &out_attrs) const noexcept {
-    if (!vtbl_ || !vtbl_->translate)
+    if (vtbl_ == nullptr || vtbl_->translate == nullptr)
       return false;
     return vtbl_->translate(ctx_.get(), virt_addr, out_attrs);
   }

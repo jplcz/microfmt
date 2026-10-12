@@ -48,7 +48,7 @@ public:
   static address_source_ref make(Context &&) = delete;
 
   [[nodiscard]] bool next(uintptr_t &out_addr) const noexcept {
-    if (!next_fn_ || !ctx_)
+    if (next_fn_ == nullptr || !ctx_)
       return false;
     return next_fn_(ctx_.get(), out_addr);
   }
@@ -246,7 +246,7 @@ private:
 
     const auto reader = [](void *reader_context, uintptr_t source_address, uint8_t *buffer,
                            size_t size) noexcept -> size_t {
-      if (!reader_context)
+      if (reader_context == nullptr)
         return 0;
       const auto &target_space = *static_cast<const address_space_ref *>(reader_context);
       return target_space.read_bytes(source_address, buffer, size) ? size : 0;

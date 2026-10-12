@@ -138,7 +138,7 @@ RELOCO_UNSAFE_BUFFER_USAGE inline void format_float_via_printf(T val, const pars
   build_printf_float_format<T>(fmt_buf, spec);
 
   char buf[128];
-  const auto print_float = [&](char *dest, size_t size) noexcept {
+  const auto print_float = [&spec, &fmt_buf, &val](char *dest, size_t size) noexcept {
     if (spec.precision >= 0)
       return std::snprintf(dest, size, fmt_buf, spec.precision, val);
     return std::snprintf(dest, size, fmt_buf, val);

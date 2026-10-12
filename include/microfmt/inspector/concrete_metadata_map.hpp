@@ -91,7 +91,7 @@ public:
 
     return metadata_map(&state, [](void *ctx, property_entry &out) noexcept -> bool {
       auto *s = static_cast<span_iteration_state *>(ctx);
-      if (!s || s->current >= s->end) {
+      if (s == nullptr || s->current >= s->end) {
         return false;
       }
       out = *s->current++;

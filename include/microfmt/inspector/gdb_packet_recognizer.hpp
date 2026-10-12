@@ -18,8 +18,9 @@ namespace microfmt::gdb {
 class MICROFMT_API_CLASS packet_recognizer {
 public:
   struct RELOCO_POINTER packet_entry {
+    // Aggregate used by the enclosing class's constexpr tables: a default member initializer cannot be used there.
     microfmt::string_view prefix;
-    packet_type type;
+    packet_type type; // NOLINT(reloco-member-init)
 
     constexpr bool operator<(const packet_entry &other) const noexcept { return prefix < other.prefix; }
   };
@@ -49,8 +50,8 @@ public:
   }();
 
   struct dispatch_entry {
-    packet_type type;
-    bool is_multi_char;
+    packet_type type;   // NOLINT(reloco-member-init)
+    bool is_multi_char; // NOLINT(reloco-member-init)
   };
 
   static constexpr auto k_first_byte_table = []() {

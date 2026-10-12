@@ -63,7 +63,7 @@ public:
   struct vtable {
     expected<memory_scan_result, address_space_error> (*scan)(const void *ctx, uintptr_t start_addr,
                                                               size_t search_length, span<const std::byte> pattern,
-                                                              span<const std::byte> mask) noexcept;
+                                                              span<const std::byte> mask) noexcept = nullptr;
   };
 
   /** @brief Constructs an empty (invalid) handle. */
@@ -119,7 +119,7 @@ public:
   [[nodiscard]] expected<memory_scan_result, address_space_error> scan(uintptr_t start_addr, size_t search_length,
                                                                        span<const std::byte> pattern,
                                                                        span<const std::byte> mask = {}) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return unexpected(address_space_error::invalid_handle);
     return vtbl_->scan(ctx_.get(), start_addr, search_length, pattern, mask);
   }

@@ -43,7 +43,9 @@ namespace detail {
 
 /** @brief Default message decorator: forwards the record unchanged. */
 struct identity_decorator {
-  [[nodiscard]] constexpr const log_msg &operator()(const log_msg &msg) const noexcept { return msg; }
+  [[nodiscard]] constexpr const log_msg &operator()(const log_msg &msg) const noexcept RELOCO_LIFETIMEBOUND {
+    return msg;
+  }
 };
 
 } // namespace detail
@@ -81,7 +83,7 @@ public:
 
   void set_level(level l) noexcept { level_ = l; }
   [[nodiscard]] constexpr level get_level() const noexcept { return level_; }
-  [[nodiscard]] constexpr microfmt::string_view name() const & noexcept { return name_; }
+  [[nodiscard]] constexpr microfmt::string_view name() const & noexcept RELOCO_LIFETIMEBOUND { return name_; }
 
   [[nodiscard]] constexpr microfmt::string_view name() const && = delete;
 
@@ -202,8 +204,8 @@ private:
 
 protected:
   /** @brief The message decorator, e.g. to configure a metadata callback. */
-  [[nodiscard]] Decorator &decorator() & noexcept { return decorator_; }
-  [[nodiscard]] const Decorator &decorator() const & noexcept { return decorator_; }
+  [[nodiscard]] Decorator &decorator() & noexcept RELOCO_LIFETIMEBOUND { return decorator_; }
+  [[nodiscard]] const Decorator &decorator() const & noexcept RELOCO_LIFETIMEBOUND { return decorator_; }
 
   [[nodiscard]] const Decorator &decorator() const && = delete;
 
@@ -307,79 +309,79 @@ namespace microfmt::log {
 inline void set_default_logger(logger *instance) noexcept { detail::configured_default_logger() = instance; }
 
 template <typename... Args> inline void trace(microfmt::string_view fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->trace(fmt, args...);
   }
 }
 
 template <typename StrProvider, typename... Args>
 inline void trace(compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->trace(fmt, args...);
   }
 }
 
 template <typename... Args> inline void debug(microfmt::string_view fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->debug(fmt, args...);
   }
 }
 
 template <typename StrProvider, typename... Args>
 inline void debug(compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->debug(fmt, args...);
   }
 }
 
 template <typename... Args> inline void info(microfmt::string_view fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->info(fmt, args...);
   }
 }
 
 template <typename StrProvider, typename... Args>
 inline void info(compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->info(fmt, args...);
   }
 }
 
 template <typename... Args> inline void warn(microfmt::string_view fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->warn(fmt, args...);
   }
 }
 
 template <typename StrProvider, typename... Args>
 inline void warn(compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->warn(fmt, args...);
   }
 }
 
 template <typename... Args> inline void error(microfmt::string_view fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->error(fmt, args...);
   }
 }
 
 template <typename StrProvider, typename... Args>
 inline void error(compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->error(fmt, args...);
   }
 }
 
 template <typename... Args> inline void critical(microfmt::string_view fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->critical(fmt, args...);
   }
 }
 
 template <typename StrProvider, typename... Args>
 inline void critical(compile_string_holder<StrProvider> fmt, const Args &...args) noexcept {
-  if (logger *instance = default_logger()) {
+  if (logger *instance = default_logger(); instance != nullptr) {
     instance->critical(fmt, args...);
   }
 }

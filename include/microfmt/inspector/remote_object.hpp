@@ -91,7 +91,7 @@ public:
    * @param max_limit Maximum character render limit.
    */
   [[nodiscard]] constexpr foreign_string_view as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND,
-                                                      size_t max_limit = 4096) const & noexcept {
+                                                      size_t max_limit = 4096) const & noexcept RELOCO_LIFETIMEBOUND {
     return foreign_string_view(addr_, space, scratch, max_limit);
   }
 
@@ -141,7 +141,7 @@ public:
    * @param max_limit Maximum character render limit.
    */
   [[nodiscard]] constexpr foreign_string_view as_view(address_space_ref space, span<char> scratch RELOCO_LIFETIMEBOUND,
-                                                      size_t max_limit = 4096) const & noexcept {
+                                                      size_t max_limit = 4096) const & noexcept RELOCO_LIFETIMEBOUND {
     return foreign_string_view(address(), space, scratch, max_limit);
   }
 

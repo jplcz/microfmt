@@ -194,16 +194,16 @@ public:
     /**
      * @brief Reads raw bytes. See @ref address_space_ref::read_bytes.
      */
-    bool (*read_bytes)(const void *ctx, uintptr_t addr, void *dest, size_t size) noexcept;
+    bool (*read_bytes)(const void *ctx, uintptr_t addr, void *dest, size_t size) noexcept = nullptr;
     /**
      * @brief Writes raw bytes. See @ref address_space_ref::write_bytes.
      */
-    bool (*write_bytes)(const void *ctx, uintptr_t addr, const void *src, size_t size) noexcept;
+    bool (*write_bytes)(const void *ctx, uintptr_t addr, const void *src, size_t size) noexcept = nullptr;
     /**
      * @brief Reads a string. See @ref address_space_ref::read_string_chunk.
      */
     bool (*read_string)(const void *ctx, uintptr_t addr, char *dest, size_t max_len, size_t &out_len,
-                        bool &null_term) noexcept;
+                        bool &null_term) noexcept = nullptr;
   };
 
   /**
@@ -276,11 +276,11 @@ public:
    * backend read failure.
    */
   [[nodiscard]] expected<void, address_space_error> read_bytes(uintptr_t addr, void *dest, size_t size) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return unexpected(address_space_error::invalid_handle);
     if (addr == 0)
       return unexpected(address_space_error::invalid_address);
-    if (!dest && size != 0)
+    if (dest == nullptr && size != 0)
       return unexpected(address_space_error::invalid_buffer);
     if (!vtbl_->read_bytes(ctx_.get(), addr, dest, size))
       return unexpected(address_space_error::read_failed);
@@ -328,13 +328,13 @@ public:
    */
   [[nodiscard]] expected<void, address_space_error> write_bytes(uintptr_t addr, const void *src,
                                                                 size_t size) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return unexpected(address_space_error::invalid_handle);
     if (addr == 0)
       return unexpected(address_space_error::invalid_address);
-    if (!src && size != 0)
+    if (src == nullptr && size != 0)
       return unexpected(address_space_error::invalid_buffer);
-    if (!vtbl_->write_bytes)
+    if (vtbl_->write_bytes == nullptr)
       return unexpected(address_space_error::write_unsupported);
     if (!vtbl_->write_bytes(ctx_.get(), addr, src, size))
       return unexpected(address_space_error::write_failed);
@@ -363,7 +363,7 @@ public:
    */
   [[nodiscard]] expected<string_chunk, address_space_error> read_string_chunk(uintptr_t addr,
                                                                               span<char> buffer) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return unexpected(address_space_error::invalid_handle);
     if (addr == 0)
       return unexpected(address_space_error::invalid_address);

@@ -88,12 +88,12 @@ public:
      * so @ref as_sink can hand this function pointer straight to a `sink`
      * with no adapter.
      */
-    void (*write)(void *ctx, microfmt::string_view sv) noexcept;
+    void (*write)(void *ctx, microfmt::string_view sv) noexcept = nullptr;
     /**
      * @brief Flushes buffered output. `nullptr` for backends whose traits
      * omit `flush`. See @ref sink_provider_ref::flush.
      */
-    void (*flush)(void *ctx) noexcept;
+    void (*flush)(void *ctx) noexcept = nullptr;
   };
 
   /**

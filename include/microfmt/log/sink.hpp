@@ -77,12 +77,12 @@ public:
    */
   struct vtable {
     /** @brief Emits a record. See @ref log_sink::log. */
-    void (*log)(void *ctx, const log_msg &msg) noexcept;
+    void (*log)(void *ctx, const log_msg &msg) noexcept = nullptr;
     /**
      * @brief Flushes buffered output. `nullptr` for backends whose traits
      * omit `flush`. See @ref log_sink::flush.
      */
-    void (*flush)(void *ctx) noexcept;
+    void (*flush)(void *ctx) noexcept = nullptr;
   };
 
   /**
