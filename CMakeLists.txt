@@ -631,6 +631,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_platform_log_sinks.cpp
         tests/test_pointer.cpp
         tests/test_logger_override.cpp
+        tests/test_extended_log.cpp
         tests/test_sbuf_sink.cpp
         tests/test_c_string_span_sink.cpp
         tests/test_memory_buffer.cpp

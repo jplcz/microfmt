@@ -31,6 +31,7 @@ Start with the guide that matches what you are building:
 | [Inspector framework](docs/inspector.md) | Remote memory, objects, containers, symbols, registers, and stack unwinding |
 | [Writing low-stack renderers](docs/renderer-guide.md) | Caller-owned scratch storage and small formatter/view design |
 | [Extending microfmt](docs/extending.md) | Copy-paste templates for custom formatters, sinks, and inspector providers |
+| [Forked log pipeline](docs/log-fanout.md) | One shared write point, per-pin storage and readers, FIFO-ordered writers |
 | [Lifetime safety](docs/lifetime-safety.md) | Borrowed values and pointers, lifetime annotations, and compiler diagnostics |
 | [Bare-metal hardware sinks](docs/bare-metal.md) | PL011 UART and ARM semihosting `microfmt::sink` adapters |
 | [GDB pretty printers](docs/gdb-pretty-printers.md) | Formatting microfmt sinks, buffers, and the logger in GDB: source, auto-load, or embed |

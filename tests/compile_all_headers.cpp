@@ -98,6 +98,7 @@
 #include <microfmt/sinks/tee_sink.hpp>
 
 #if MICROFMT_HEADER_CHECK_STANDARD >= 20
+#include <microfmt/log/extended_logger.hpp>
 #include <microfmt/log/logger.hpp>
 #include <microfmt/log/macros.hpp>
 #include <microfmt/sinks/android_log_sink.hpp>

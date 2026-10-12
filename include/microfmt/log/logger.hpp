@@ -8,25 +8,12 @@
 
 #include "../reloco.hpp"
 #include "sink.hpp"
+#include "sync.hpp"
 #include <cstddef>
 #include <string_view>
 #include <utility>
 
 namespace microfmt::log {
-
-namespace detail {
-
-/**
- * @brief No-op mutex used as `basic_logger`'s default `Mutex` so
- * single-threaded usage pays zero synchronization cost.
- */
-struct MICROFMT_API_CLASS null_mutex {
-  constexpr void lock() noexcept {}
-  constexpr void unlock() noexcept {}
-  [[nodiscard]] constexpr bool try_lock() noexcept { return true; }
-};
-
-} // namespace detail
 
 /**
  * @brief Fixed-capacity logger that formats records before dispatching to sinks.
@@ -38,6 +25,10 @@ struct MICROFMT_API_CLASS null_mutex {
  * concurrent callers may interleave ("slice") sink writes; pass e.g.
  * `std::mutex` to serialize them instead when a single logger instance is
  * shared across threads doing normal (non-signal-handler) logging.
+ * @tparam Sink Sink handle type stored by the logger (`log_sink` by default;
+ * see `extended_logger` for advanced sinks).
+ * @tparam Decorator Callable mapping the formatted `log_msg` to what sinks
+ * receive (identity by default; `extended_logger` adds execution metadata).
  *
  * @warning `basic_logger` is intended for normal program operation only, and
  * must never be reused from a signal/crash handler regardless of `Mutex`
@@ -48,7 +39,18 @@ struct MICROFMT_API_CLASS null_mutex {
  * async-signal-safe primitive such as `fd_sink` (see `crash_handler_demo.cpp`)
  * instead of routing through an application's `basic_logger`.
  */
-template <size_t MaxSinks = 4, size_t MsgBufferCapacity = 256, typename Mutex = detail::null_mutex> class basic_logger {
+namespace detail {
+
+/** @brief Default message decorator: forwards the record unchanged. */
+struct identity_decorator {
+  [[nodiscard]] constexpr const log_msg &operator()(const log_msg &msg) const noexcept { return msg; }
+};
+
+} // namespace detail
+
+template <size_t MaxSinks = 4, size_t MsgBufferCapacity = 256, typename Mutex = detail::null_mutex,
+          typename Sink = log_sink, typename Decorator = detail::identity_decorator>
+class basic_logger {
   // Tiny RAII lock guard so this header doesn't need to pull in <mutex>
   // merely for std::lock_guard; works with any BasicLockable Mutex,
   // including std::mutex if the caller already includes <mutex>.
@@ -69,7 +71,7 @@ public:
   explicit constexpr basic_logger(microfmt::string_view name, Sinks... sinks) noexcept
       : name_(name), sinks_{sinks...}, sink_count_(sizeof...(Sinks)) {}
 
-  bool add_sink(log_sink s) noexcept {
+  bool add_sink(Sink s) noexcept {
     lock_guard guard(mutex_);
     if (sink_count_ >= MaxSinks)
       return false;
@@ -95,10 +97,7 @@ public:
     if (!should_log(msg.lvl) || sink_count_ == 0) {
       return;
     }
-    lock_guard guard(mutex_);
-    for (size_t i = 0; i < sink_count_; ++i) {
-      sinks_[i].log(msg);
-    }
+    dispatch(msg);
   }
 
   template <typename... Args> void log(level lvl, microfmt::string_view fmt_str, const Args &...args) const noexcept {
@@ -196,17 +195,34 @@ private:
 
     log_msg msg{.logger_name = name_, .lvl = lvl, .time = microfmt::instant::now(), .payload = buf.view(), .loc = loc};
 
+    dispatch(msg);
+  }
+
+protected:
+  /** @brief The message decorator, e.g. to configure a metadata callback. */
+  [[nodiscard]] Decorator &decorator() noexcept { return decorator_; }
+  [[nodiscard]] const Decorator &decorator() const noexcept { return decorator_; }
+
+  /**
+   * @brief Decorates @p msg (see @p Decorator) and hands it to every sink
+   * under the logger's lock. Decoration runs before locking so a callback
+   * may read thread-local state cheaply.
+   */
+  template <typename Msg> void dispatch(const Msg &msg) const noexcept {
+    decltype(auto) decorated = decorator_(msg);
     lock_guard guard(mutex_);
     for (size_t i = 0; i < sink_count_; ++i) {
-      sinks_[i].log(msg);
+      sinks_[i].log(decorated);
     }
   }
 
+private:
   microfmt::string_view name_{};
   level level_{level::info};
-  mutable microfmt::array<log_sink, MaxSinks> sinks_{};
+  mutable microfmt::array<Sink, MaxSinks> sinks_{};
   size_t sink_count_{0};
   mutable Mutex mutex_{};
+  Decorator decorator_{};
 };
 
 using logger = basic_logger<4, 256>;

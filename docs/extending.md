@@ -574,3 +574,45 @@ Notes:
   not both); the two constructor overloads above are already mutually
   exclusive on `std::is_void_v<typename Traits::context_type>`, so a given
   `Tag` can only ever match one of them.
+
+## 4. Extended log records, advanced sinks, and back-pressure
+
+`extended_log_msg` (`log/extended_msg.hpp`) derives from `log_msg` and adds
+`log_meta`: `pid`, `tid`, `cpu`, and `flags` (`log_flag::can_wait` plus 16
+user bits). `extended_logger` (`log/extended_logger.hpp`) derives from
+`basic_logger` and stamps every record through a metadata callback, which is
+where the context decides whether it may block (`can_wait`).
+
+Advanced sinks (`extended_log_sink`, `log/extended_sink.hpp`) are separate
+from legacy `log_sink` and do not share its API. Specialize
+`extended_log_sink_traits<Tag>` with a mandatory `log` and optional `full`
+and `flush`.
+
+`fanout_log_sink<N, Channel>` holds up to N advanced sinks, orders thread
+writers FIFO without busy-waiting, and applies back-pressure:
+
+```cpp
+// Thread writers queue FIFO and sleep on a condition variable.
+microfmt::log::fanout_log_sink<2, microfmt::log::condition_variable_wait_channel> fan;
+fan.add_sink(ring_a);          // each sink keeps its own internal lock
+fan.add_sink(ring_b);
+fan.set_wait_timeout_us(5000); // max wait for space per record
+
+microfmt::log::extended_logger<> logger("kern", fan.as_sink());
+logger.set_meta_callback(&describe_context); // sets log_flag::can_wait (false in IRQ)
+
+// Reader side: drain a sink under that sink's lock, then wake waiting writers.
+fan.notify_space();
+```
+
+* `can_wait` clear (IRQ): highest priority. Written straight to the sinks
+  without queuing or sleeping; a full sink overwrites its oldest data (or
+  drops).
+* `can_wait` set: the writer takes a ticket and sleeps until its turn (FIFO),
+  then, if some sink is full, sleeps up to the timeout and discards the
+  record (see `dropped()`).
+* Lock order: channel lock → sink lock. Call `notify_space()` after releasing
+  the sink lock.
+* Wait channels (`sync.hpp`) pair the lock with the sleep/wake primitive; port
+  it to e.g. FreeBSD `mtx(9)` + `cv(9)`. See
+  [Forked log pipeline](log-fanout.md) for the full guide.
