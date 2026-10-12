@@ -258,3 +258,5 @@ Use `null_wait_channel` when writers must never sleep (discard on full).
   releasing it.
 * Watch `fan.dropped()` to size pins and the timeout.
 * A nested `fanout_log_sink` is itself a valid pin (it reports `full`).
+* For ready-to-copy sink templates (ring, console, filter, batch) see
+  [Log sink templates](log-sinks-guide.md).
