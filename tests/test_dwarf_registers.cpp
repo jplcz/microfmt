@@ -3,10 +3,14 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 // System headers (windows.h via gtest) use names such as X0/PC/SP as struct members, so they must come first.
-#include <gtest/gtest.h>
 #ifdef _WIN32
+// windows.h would otherwise define min/max macros that break std::numeric_limits<T>::max() in reloco headers.
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <windows.h>
 #endif
+#include <gtest/gtest.h>
 
 #define RAX 0xBAD
 #define FP 0xBAD

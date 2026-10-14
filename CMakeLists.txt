@@ -639,6 +639,8 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
     target_link_libraries(jplcz_microfmt_tests PRIVATE jplcz_microfmt GTest::gtest_main
         nlohmann_json::nlohmann_json)
     target_compile_features(jplcz_microfmt_tests PRIVATE cxx_std_20)
+    # gtest pulls in <windows.h> before reloco can define NOMINMAX; its min/max macros break reloco headers.
+    target_compile_definitions(jplcz_microfmt_tests PRIVATE $<$<PLATFORM_ID:Windows>:NOMINMAX>)
     jplcz_microfmt_enable_warnings(jplcz_microfmt_tests)
     if(NOT MSVC)
         target_sources(jplcz_microfmt_tests PRIVATE
