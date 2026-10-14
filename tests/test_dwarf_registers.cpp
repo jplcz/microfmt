@@ -4,6 +4,9 @@
 
 // System headers (windows.h via gtest) use names such as X0/PC/SP as struct members, so they must come first.
 #include <gtest/gtest.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 #define RAX 0xBAD
 #define FP 0xBAD

@@ -29,7 +29,7 @@ enum class log_flag : std::uint32_t {
 };
 
 /** @brief Execution-context metadata attached to an @ref extended_log_msg. */
-struct log_meta {
+struct RELOCO_COPYABLE log_meta {
   /** @brief Bit position of the first user-defined flag in @ref flags. */
   static constexpr unsigned user_flags_shift = 16;
 
