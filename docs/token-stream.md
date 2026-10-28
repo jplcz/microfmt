@@ -324,6 +324,47 @@ For a custom loop use `recover_to(ts, sync)` directly: it consumes tokens until
 the next one matches a sync point (left unconsumed) or the input ends, and
 returns how many it skipped.
 
+### Blocks: balanced recovery
+
+`recover_to` stops at the first sync token, even one inside a nested `{ ... }`.
+After a broken statement header such as `server x { a = 1; b = 2; }`, recovery
+would resume in the middle of the block and report bogus follow-up errors for
+`b = 2;` and the stray `}`. `recover_balanced` treats bracket pairs as one unit
+and honours sync tokens only outside them.
+
+```cpp
+// Which tokens open and close a nested region. Matching is by kind and exact spelling.
+constexpr microfmt::bracket_pair kBraces[] = {
+    {microfmt::token_kind::punctuation, "{", microfmt::token_kind::punctuation, "}"}};
+
+// Drop-in overload of parse_statements that recovers with recover_balanced.
+size_t good = microfmt::parse_statements(ts, kSemicolon, kBraces, errors, statement);
+
+// Or in a hand-written loop; the optional 4th argument caps nesting (default 64):
+// beyond it recovery stops at the current token, so hostile input costs linear time.
+(void)microfmt::recover_balanced(ts, kSemicolon, kBraces);
+```
+
+A closing bracket with no opener is skipped unless it is itself a sync token. An
+unmatched opener simply runs to the end of input.
+
+Limit: recovery is token-level. If the error happens *inside* a block (after its
+`{` was consumed), recovery resumes at depth 0 inside that block. To keep
+recovering within blocks, parse the block body with its own `parse_statements`
+call in your block rule.
+
+### Several accepted kinds
+
+`expect_one_of` consumes one token of any listed kind and otherwise fails with
+your message, so errors can say what was really allowed.
+
+```cpp
+constexpr microfmt::token_kind kValue[] = {
+    microfmt::token_kind::integer, microfmt::token_kind::string, microfmt::token_kind::identifier};
+// The message is a literal (errors borrow static text; nothing allocates).
+auto value = microfmt::expect_one_of(ts, kValue, "expected an integer, string or identifier");
+```
+
 ## Showing errors
 
 `<microfmt/parsing/token_stream_formatters.hpp>` renders a `parse_error` with

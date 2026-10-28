@@ -678,3 +678,61 @@ TEST(Repeat, UntilStopsAtTerminatorAndRejectsMissingOrBadItems) {
   ASSERT_FALSE(stalled);
   EXPECT_EQ(stalled.error().message, "item consumed no input");
 }
+
+namespace {
+
+constexpr microfmt::bracket_pair kBraces[] = {{token_kind::punctuation, "{", token_kind::punctuation, "}"}};
+
+} // namespace
+
+TEST(BalancedRecovery, IgnoresSyncTokensInsideNestedBrackets) {
+  token_stream ts{"x { a; { b; } c; } ; y", lexer_rules{}};
+  EXPECT_EQ(microfmt::recover_balanced(ts, kStatementEnd, kBraces), 11u);
+  EXPECT_EQ(ts.peek().text, ";");
+
+  // A stray closer at depth 0 is skipped, not treated as an opener.
+  token_stream stray{"} ; z", lexer_rules{}};
+  EXPECT_EQ(microfmt::recover_balanced(stray, kStatementEnd, kBraces), 1u);
+  EXPECT_EQ(stray.peek().text, ";");
+}
+
+TEST(BalancedRecovery, UnmatchedOpenerEndsAtEndOfInputAndDepthIsCapped) {
+  token_stream open{"{ a ;", lexer_rules{}};
+  EXPECT_EQ(microfmt::recover_balanced(open, kStatementEnd, kBraces), 3u);
+  EXPECT_TRUE(open.at_end());
+
+  token_stream deep{"{ { { ;", lexer_rules{}};
+  EXPECT_EQ(microfmt::recover_balanced(deep, kStatementEnd, kBraces, 2), 2u);
+  EXPECT_EQ(deep.peek().text, "{");
+}
+
+TEST(BalancedRecovery, ParseStatementsDoesNotResumeInsideABlock) {
+  // The broken header `a b` is followed by a block whose inner ';' used to end recovery early.
+  constexpr string_view source = "a b { c; d; } e;";
+  microfmt::error_list<8> plain;
+  token_stream first{source, lexer_rules{}};
+  (void)microfmt::parse_statements(first, kStatementEnd, plain, name_statement);
+  EXPECT_GT(plain.total(), 1u);
+
+  microfmt::error_list<8> balanced;
+  token_stream second{source, lexer_rules{}};
+  EXPECT_EQ(microfmt::parse_statements(second, kStatementEnd, kBraces, balanced, name_statement), 0u);
+  EXPECT_EQ(balanced.total(), 1u);
+}
+
+TEST(ExpectOneOf, MatchesAnyKindOrReportsTheGivenMessage) {
+  constexpr token_kind kinds[] = {token_kind::integer, token_kind::string};
+  token_stream ts{"7 \"s\" name", lexer_rules{}};
+  auto first = microfmt::expect_one_of(ts, kinds, "expected integer or string");
+  ASSERT_TRUE(first);
+  EXPECT_EQ(first.value().text, "7");
+  EXPECT_TRUE(microfmt::expect_one_of(ts, kinds, "expected integer or string"));
+
+  auto bad = microfmt::expect_one_of(ts, kinds, "expected integer or string");
+  ASSERT_FALSE(bad);
+  EXPECT_EQ(bad.error().message, "expected integer or string");
+  EXPECT_EQ(bad.error().at.text, "name");
+  EXPECT_EQ(ts.peek().text, "name");
+
+  EXPECT_FALSE(microfmt::expect_one_of(ts, span_none<token_kind>(), "nothing allowed"));
+}

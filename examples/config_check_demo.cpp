@@ -19,6 +19,9 @@ constexpr microfmt::string_view kOperators[] = {"="};
 // Where to resume after a broken statement: the next ';'.
 constexpr microfmt::token_sync kStatementEnd[] = {{token_kind::punctuation, ";"}};
 
+// Recovery treats `{ ... }` as one unit, so a ';' inside a block never ends it early.
+constexpr microfmt::bracket_pair kBraces[] = {{token_kind::punctuation, "{", token_kind::punctuation, "}"}};
+
 // setting := identifier '=' ( integer | string | identifier ) ';'
 reloco::expected<void, microfmt::parse_error> setting(microfmt::token_stream &ts) {
   if (auto key = ts.expect(token_kind::identifier, "expected a setting name"); !key) {
@@ -27,19 +30,10 @@ reloco::expected<void, microfmt::parse_error> setting(microfmt::token_stream &ts
   if (auto eq = ts.expect(token_kind::op, "=", "expected '='"); !eq) {
     return reloco::unexpected<microfmt::parse_error>(eq.error());
   }
-  // A value is one of three alternatives; parse_choice tries each from the same position.
-  auto value_of = [](token_kind kind) {
-    return [kind](microfmt::token_stream &s) -> reloco::expected<void, microfmt::parse_error> {
-      if (!s.skip(kind)) {
-        return reloco::unexpected<microfmt::parse_error>(s.error_here("expected a value"));
-      }
-      return {};
-    };
-  };
-  if (auto value = microfmt::parse_choice(ts, value_of(token_kind::integer), value_of(token_kind::string),
-                                          value_of(token_kind::identifier));
-      !value) {
-    return value;
+  // A value is one of three token kinds; the message lists them all.
+  constexpr token_kind kValueKinds[] = {token_kind::integer, token_kind::string, token_kind::identifier};
+  if (auto value = microfmt::expect_one_of(ts, kValueKinds, "expected an integer, string or identifier"); !value) {
+    return reloco::unexpected<microfmt::parse_error>(value.error());
   }
   if (auto semi = ts.expect(token_kind::punctuation, ";", "expected ';'"); !semi) {
     return reloco::unexpected<microfmt::parse_error>(semi.error());
@@ -82,7 +76,7 @@ reloco::expected<void, microfmt::parse_error> statement(microfmt::token_stream &
 } // namespace
 
 int main() {
-  constexpr microfmt::string_view source = "name = \"demo\";\nretries 3;\nport = ;\ndebug = on;\nlevel = 2 2;\nnet { port = 80; host = local; }\n";
+  constexpr microfmt::string_view source = "name = \"demo\";\nretries 3;\nport = ;\ndebug = on;\nlevel = 2 2;\nnet { port = 80; host = local; }\nserver x { a = 1; b = 2; }\n";
 
   microfmt::lexer_rules rules;
   rules.operators = kOperators;
@@ -90,7 +84,7 @@ int main() {
 
   // Room for 8 errors; any more are only counted (overflowed() reports that).
   microfmt::error_list<8> errors;
-  const size_t good = microfmt::parse_statements(ts, kStatementEnd, errors, statement);
+  const size_t good = microfmt::parse_statements(ts, kStatementEnd, kBraces, errors, statement);
 
   microfmt::buffer_sink<1024> out;
   microfmt::format_to(out.as_sink(), "{} statements ok, {} errors\n", good, errors.total());

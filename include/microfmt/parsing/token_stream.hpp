@@ -536,6 +536,58 @@ struct RELOCO_POINTER token_sync {
   return skipped;
 }
 
+/** A bracket pair that `recover_balanced` treats as one unit. */
+struct RELOCO_POINTER bracket_pair {
+  token_kind open_kind{token_kind::end};
+  microfmt::string_view open{};
+  token_kind close_kind{token_kind::end};
+  microfmt::string_view close{};
+};
+
+/**
+ * @brief Like `recover_to`, but sync tokens inside nested brackets are ignored.
+ *
+ * Why: a `;` inside `{ ... }` is not the end of the outer statement. Skipping the whole bracketed
+ * region stops recovery from resuming in the middle of a block and reporting bogus follow-up errors.
+ * Sync points are only honoured at depth 0; a closing bracket with no opener is skipped unless it is
+ * itself a sync point. If nesting would exceed `max_depth` recovery stops at the current token,
+ * which keeps the work linear in the token count for hostile input.
+ *
+ * @return Number of tokens skipped.
+ */
+[[nodiscard]] inline size_t recover_balanced(token_stream &ts, span<const token_sync> sync,
+                                             span<const bracket_pair> brackets, size_t max_depth = 64) noexcept {
+  size_t skipped = 0;
+  size_t depth = 0;
+  while (!ts.at_end()) {
+    const token tok = ts.peek();
+    if (depth == 0) {
+      for (size_t i = 0; i < sync.size(); ++i) {
+        if (sync[i].kind == tok.kind && (sync[i].text.empty() || sync[i].text == tok.text)) {
+          return skipped;
+        }
+      }
+    }
+    bool opens = false;
+    bool closes = false;
+    for (size_t i = 0; i < brackets.size(); ++i) {
+      opens = opens || (brackets[i].open_kind == tok.kind && brackets[i].open == tok.text);
+      closes = closes || (brackets[i].close_kind == tok.kind && brackets[i].close == tok.text);
+    }
+    if (opens) {
+      if (depth >= max_depth) {
+        return skipped;
+      }
+      ++depth;
+    } else if (closes && depth > 0) {
+      --depth;
+    }
+    ts.next();
+    ++skipped;
+  }
+  return skipped;
+}
+
 // ============================================================================
 // Statement sequences with bounded error collection
 // ============================================================================
@@ -579,6 +631,33 @@ private:
   size_t total_{0};
 };
 
+namespace detail {
+
+template <size_t N, typename Statement, typename Recover>
+size_t statements_loop(token_stream &ts, error_list<N> &errors, Statement &statement, Recover &&recover) noexcept {
+  size_t parsed = 0;
+  while (!ts.at_end()) {
+    const size_t start = ts.peek().offset;
+    auto result = statement(ts);
+    if (result) {
+      ++parsed;
+      if (!ts.at_end() && ts.peek().offset == start) {
+        ts.next();
+      }
+      continue;
+    }
+    errors.add(result.error());
+    recover(ts);
+    if (ts.at_end()) {
+      break;
+    }
+    ts.next();
+  }
+  return parsed;
+}
+
+} // namespace detail
+
 /**
  * @brief Runs `statement(ts)` until the input ends, collecting every error instead of stopping at the first.
  *
@@ -594,25 +673,34 @@ private:
 template <size_t N, typename Statement>
 [[nodiscard]] size_t parse_statements(token_stream &ts, span<const token_sync> sync, error_list<N> &errors,
                                       Statement &&statement) noexcept {
-  size_t parsed = 0;
-  while (!ts.at_end()) {
-    const size_t start = ts.peek().offset;
-    auto result = statement(ts);
-    if (result) {
-      ++parsed;
-      if (!ts.at_end() && ts.peek().offset == start) {
-        ts.next();
-      }
-      continue;
+  return detail::statements_loop(ts, errors, statement, [sync](token_stream &s) { (void)recover_to(s, sync); });
+}
+
+/**
+ * @brief `parse_statements` that recovers with `recover_balanced`, so a sync token inside a nested
+ * bracket pair never ends recovery early. Use it when statements can contain `{ ... }` blocks.
+ */
+template <size_t N, typename Statement>
+[[nodiscard]] size_t parse_statements(token_stream &ts, span<const token_sync> sync, span<const bracket_pair> brackets,
+                                      error_list<N> &errors, Statement &&statement) noexcept {
+  return detail::statements_loop(ts, errors, statement,
+                                 [sync, brackets](token_stream &s) { (void)recover_balanced(s, sync, brackets); });
+}
+
+/**
+ * @brief Consumes one token of any of `kinds`; the error uses the caller's static `message`.
+ *
+ * Why: a rule that accepts several kinds ("integer, string or identifier") can say exactly that. The
+ * message is a literal rather than generated text because errors borrow static storage and nothing allocates.
+ */
+[[nodiscard]] RELOCO_CONSTEXPR20 inline reloco::expected<token, parse_error>
+expect_one_of(token_stream &ts, span<const token_kind> kinds, microfmt::string_view message) noexcept {
+  for (size_t i = 0; i < kinds.size(); ++i) {
+    if (ts.check(kinds[i])) {
+      return ts.next();
     }
-    errors.add(result.error());
-    (void)recover_to(ts, sync);
-    if (ts.at_end()) {
-      break;
-    }
-    ts.next();
   }
-  return parsed;
+  return reloco::unexpected<parse_error>(ts.error_here(message));
 }
 
 /**
