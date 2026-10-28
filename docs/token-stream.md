@@ -157,7 +157,8 @@ Operators are matched by spelling against `op` and `keyword` tokens (so `and`
 or `mod` work if they are keywords). The stream is left after the expression;
 check `ts.at_end()` yourself if trailing input is an error. A missing operand,
 a missing `)` or nesting deeper than the limit returns a `parse_error`.
-See [`examples/calc_demo.cpp`](../examples/calc_demo.cpp) for a full calculator.
+See [`examples/calc_demo.cpp`](../examples/calc_demo.cpp) for a full calculator, and
+[the mini language example](mini-language.md) for a complete program that combines every helper.
 
 ### Postfix operators: calls, indexing, `x!`
 

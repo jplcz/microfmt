@@ -29,6 +29,7 @@ Start with the guide that matches what you are building:
 | [Formatter guide](docs/formatters.md) | Binary and diagnostic values, ranges, time, units, protocols, structured output, and presentation |
 | [Lexer guide](docs/lexer.md) | Base tokenizer engine, keyword tables, presets, and ANSI highlighting |
 | [Token stream guide](docs/token-stream.md) | Lookahead stream, expression, list, multi-error statement and recovery helpers, caret error reports and recursion guard for hand-written parsers |
+| [Mini language example](docs/mini-language.md) | A complete small language (variables, calls, `?:`, blocks, multi-error reports) that shows how all the token stream helpers fit together |
 | [Reflection support](docs/reflection.md) | Experimental P2996/`-freflection` (GCC 16+ trunk): automatic enum/struct formatting via `formatters/reflection.hpp`, without Boost |
 | [Inspector framework](docs/inspector.md) | Remote memory, objects, containers, symbols, registers, and stack unwinding |
 | [Writing low-stack renderers](docs/renderer-guide.md) | Caller-owned scratch storage and small formatter/view design |
