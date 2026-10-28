@@ -184,8 +184,11 @@ TEST(TokenStream, DepthLimitStopsHostileNesting) {
 namespace {
 
 constexpr string_view kCalcOps[] = {"+", "-", "*", "/", "^"};
-constexpr binary_op kBinary[] = {{"+", 10, assoc::left}, {"-", 10, assoc::left}, {"*", 20, assoc::left},
-                                 {"/", 20, assoc::left}, {"^", 40, assoc::right}};
+constexpr binary_op kBinary[] = {{"+", 10, assoc::left},
+                                 {"-", 10, assoc::left},
+                                 {"*", 20, assoc::left},
+                                 {"/", 20, assoc::left},
+                                 {"^", 40, assoc::right}};
 constexpr prefix_op kPrefix[] = {{"-", 30}};
 
 using calc_result = reloco::expected<int64_t, parse_error>;
@@ -349,7 +352,7 @@ TEST(Expression, PostfixOperatorsRespectPrecedence) {
   EXPECT_EQ(calc_post("-3#", 50).value(), -103); // # binds tighter than prefix -: -(3#)
   EXPECT_EQ(calc_post("-3#", 10).value(), 97);   // # looser than prefix -: (-3)#
   EXPECT_EQ(calc_post("1 + 2#", 50).value(), 103);
-  EXPECT_EQ(calc_post("5[2]", 50).value(), 52);  // callback consumes the index and ']'
+  EXPECT_EQ(calc_post("5[2]", 50).value(), 52); // callback consumes the index and ']'
   EXPECT_EQ(calc_post("5[2][3]", 50).value(), 523);
 }
 
@@ -499,6 +502,100 @@ TEST(Mixfix, MissingOptionalCallbackIsAnErrorOnlyWhenUsed) {
   EXPECT_EQ(r.error().message, "no make_mixfix callback");
 }
 
+TEST(Spans, PreviousTracksLastConsumedTokenAndSurvivesBacktracking) {
+  token_stream ts{"a b c", lexer_rules{}};
+  EXPECT_EQ(ts.previous().kind, token_kind::end); // nothing consumed yet
+  ts.next();
+  EXPECT_EQ(ts.previous().text, "a");
+  auto failed = microfmt::attempt(ts, [](token_stream &s) -> reloco::expected<void, parse_error> {
+    s.next();
+    return reloco::unexpected<parse_error>(s.error_here("nope"));
+  });
+  EXPECT_FALSE(failed.has_value());
+  EXPECT_EQ(ts.previous().text, "a"); // restored with the stream
+}
+
+TEST(Spans, SpanCoversTextWithoutSurroundingWhitespaceAndComments) {
+  lexer_rules rules;
+  rules.line_comment = "//";
+  token_stream ts{"  first // note\n   second  \"str\" tail", rules};
+  const microfmt::token start = ts.peek();
+  ts.next();
+  ts.next();
+  ts.next(); // the string token
+  const microfmt::source_span span = microfmt::span_from(ts, start);
+  EXPECT_EQ(span.text, "first // note\n   second  \"str\"");
+  EXPECT_EQ(span.offset, 2u);
+  EXPECT_EQ(span.line, 1u);
+  EXPECT_EQ(span.column, 3u);
+
+  const microfmt::token tail = ts.peek();
+  const microfmt::source_span empty = microfmt::span_from(ts, tail); // nothing consumed after `tail`
+  EXPECT_TRUE(empty.text.empty());
+  EXPECT_EQ(empty.offset, tail.offset);
+}
+
+TEST(Spans, ParseSpannedPairsValueWithSpanAndPassesErrorsThrough) {
+  token_stream ts{"x\n  42 y", lexer_rules{}};
+  auto number = [](token_stream &s) -> reloco::expected<int64_t, parse_error> {
+    (void)s.next(); // x
+    auto n = s.expect(token_kind::integer, "expected a number");
+    if (!n) {
+      return reloco::unexpected<parse_error>(n.error());
+    }
+    return microfmt::parse<int64_t>(n.value().text).value();
+  };
+  auto ok = microfmt::parse_spanned(ts, number);
+  ASSERT_TRUE(ok.has_value());
+  EXPECT_EQ(ok.value().value, 42);
+  EXPECT_EQ(ok.value().span.text, "x\n  42");
+  EXPECT_EQ(ok.value().span.line, 1u);
+
+  auto bad = microfmt::parse_spanned(ts, number); // "y" then end: expected a number
+  ASSERT_FALSE(bad.has_value());
+  EXPECT_EQ(bad.error().message, "expected a number");
+}
+
+namespace {
+
+using text_result = reloco::expected<int64_t, parse_error>;
+
+text_result chain(string_view text, size_t max_items = static_cast<size_t>(-1)) {
+  lexer_rules rules;
+  rules.operators = kCalcOps;
+  token_stream ts{text, rules};
+  auto item = [](token_stream &s) -> text_result {
+    auto n = s.expect(token_kind::integer, "expected a number");
+    if (!n) {
+      return reloco::unexpected<parse_error>(n.error());
+    }
+    return microfmt::parse<int64_t>(n.value().text).value();
+  };
+  auto fold = [](const microfmt::token &, int64_t l, int64_t r) -> text_result { return l - r; };
+  return microfmt::parse_chain<int64_t>(ts, token_kind::op, "-", item, fold, max_items);
+}
+
+} // namespace
+
+TEST(Chain, FoldsLeftToRight) {
+  EXPECT_EQ(chain("7").value(), 7);
+  EXPECT_EQ(chain("10 - 3 - 2").value(), 5); // (10 - 3) - 2, not 10 - (3 - 2)
+}
+
+TEST(Chain, ReportsMissingItemsAndEnforcesTheLimit) {
+  auto dangling = chain("1 - ");
+  ASSERT_FALSE(dangling.has_value());
+  EXPECT_EQ(dangling.error().message, "expected a number");
+  EXPECT_EQ(dangling.error().at.kind, token_kind::end);
+
+  EXPECT_FALSE(chain("x - 1").has_value()); // first item fails
+
+  EXPECT_EQ(chain("1 - 1 - 1", 3).value(), -1);
+  auto too_many = chain("1 - 1 - 1 - 1", 3);
+  ASSERT_FALSE(too_many.has_value());
+  EXPECT_EQ(too_many.error().message, "too many items in chain");
+}
+
 TEST(Recovery, CollectsSeveralErrorsAndTerminates) {
   // statement := name ';'
   token_stream ts{"a; b b; c d; e;", lexer_rules{}};
@@ -575,10 +672,10 @@ calc_result calc_ternary(string_view text) {
 TEST(Expression, TernarySelectsAndNestsToTheRight) {
   EXPECT_EQ(calc_ternary("1 ? 10 : 20").value(), 10);
   EXPECT_EQ(calc_ternary("0 ? 10 : 20").value(), 20);
-  EXPECT_EQ(calc_ternary("0 ? 1 : 0 ? 2 : 3").value(), 3);    // a ? b : (c ? d : e)
-  EXPECT_EQ(calc_ternary("1 ? 0 ? 1 : 2 : 3").value(), 2);    // nested in the middle operand
-  EXPECT_EQ(calc_ternary("1 + 0 ? 5 : 6").value(), 5);        // binary binds tighter: (1 + 0) ? 5 : 6
-  EXPECT_EQ(calc_ternary("0 ? 5 : 1 + 1").value(), 2);        // else part is a full binary expression
+  EXPECT_EQ(calc_ternary("0 ? 1 : 0 ? 2 : 3").value(), 3); // a ? b : (c ? d : e)
+  EXPECT_EQ(calc_ternary("1 ? 0 ? 1 : 2 : 3").value(), 2); // nested in the middle operand
+  EXPECT_EQ(calc_ternary("1 + 0 ? 5 : 6").value(), 5);     // binary binds tighter: (1 + 0) ? 5 : 6
+  EXPECT_EQ(calc_ternary("0 ? 5 : 1 + 1").value(), 2);     // else part is a full binary expression
 }
 
 TEST(Expression, TernaryReportsMissingColon) {
@@ -782,8 +879,8 @@ TEST(Repeat, EnforcesMinMaxAndReportsFailureAfterConsumption) {
 TEST(Repeat, NoProgressItemTerminates) {
   token_stream ts{"a b", lexer_rules{}};
   size_t calls = 0;
-  auto count = microfmt::parse_repeat(ts, {}, [](token_stream &) -> reloco::expected<int, parse_error> { return 1; },
-                                      [&](int &&) { ++calls; });
+  auto count = microfmt::parse_repeat(
+      ts, {}, [](token_stream &) -> reloco::expected<int, parse_error> { return 1; }, [&](int &&) { ++calls; });
   ASSERT_TRUE(count);
   EXPECT_EQ(count.value(), 0u);
   EXPECT_EQ(calls, 0u);
@@ -810,8 +907,8 @@ TEST(Repeat, UntilStopsAtTerminatorAndRejectsMissingOrBadItems) {
 
   token_stream stuck{"a ;", lexer_rules{}};
   auto stalled = microfmt::parse_until(
-      stuck, token_kind::punctuation, ";",
-      [](token_stream &) -> reloco::expected<int, parse_error> { return 1; }, [](int &&) {});
+      stuck, token_kind::punctuation, ";", [](token_stream &) -> reloco::expected<int, parse_error> { return 1; },
+      [](int &&) {});
   ASSERT_FALSE(stalled);
   EXPECT_EQ(stalled.error().message, "item consumed no input");
 }

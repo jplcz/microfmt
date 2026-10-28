@@ -57,7 +57,7 @@ class RELOCO_POINTER token_stream {
 public:
   /** @param source Text to tokenize; must outlive the stream. @param rules Language description (copied). */
   explicit constexpr token_stream(microfmt::string_view source RELOCO_LIFETIMEBOUND, const lexer_rules &rules) noexcept
-      : lexer_(source, rules), first_(lexer_.next()), second_(lexer_.next()) {}
+      : source_(source), lexer_(source, rules), first_(lexer_.next()), second_(lexer_.next()) {}
   template <typename S, std::enable_if_t<std::is_same_v<S, std::string>, int> = 0>
   explicit token_stream(S &&, const lexer_rules &) = delete;
 
@@ -70,10 +70,19 @@ public:
   /** Consumes and returns the next token (`end` forever once exhausted). */
   constexpr token next() noexcept {
     const token result = first_;
+    if (result.kind != token_kind::end) {
+      previous_ = result;
+    }
     first_ = second_;
     second_ = lexer_.next();
     return result;
   }
+
+  /** The last token consumed, or a default (`end`) token when nothing has been consumed yet. */
+  [[nodiscard]] constexpr token previous() const noexcept { return previous_; }
+
+  /** The whole text being parsed (what `source_span::text` is sliced from). */
+  [[nodiscard]] constexpr microfmt::string_view source() const noexcept { return source_; }
 
   /** True when the next token is `end`. */
   [[nodiscard]] constexpr bool at_end() const noexcept { return first_.kind == token_kind::end; }
@@ -141,9 +150,11 @@ public:
   }
 
 private:
+  microfmt::string_view source_;
   lexer lexer_;
   token first_;
   token second_;
+  token previous_{};
 };
 
 /**
@@ -600,6 +611,103 @@ parse_expression(token_stream &ts, const expression_grammar &grammar, Actions &a
                         primary,  make_binary,    make_prefix,    make_postfix,    make_ternary,
                         max_depth, grammar.mixfix, &adapter};
   return parser.parse(0);
+}
+
+// ============================================================================
+// Source spans
+// ============================================================================
+
+/**
+ * The source range a rule consumed: exact text (no surrounding whitespace or comments) plus the
+ * offset, line and column of its first token. `text` borrows from the parsed source.
+ */
+struct RELOCO_POINTER source_span {
+  microfmt::string_view text{};
+  size_t offset{0};
+  uint32_t line{1};
+  uint32_t column{1};
+};
+
+/**
+ * @brief Span from `first` to the end of the last token consumed since.
+ *
+ * Why: a node built by a rule needs its source range for later diagnostics. Capture
+ * `ts.peek()` before the rule, call this after it. Nothing consumed gives an empty span at `first`.
+ */
+[[nodiscard]] constexpr source_span span_from(const token_stream &ts, const token &first) noexcept {
+  const token last = ts.previous();
+  const size_t last_end = last.offset + last.text.size();
+  if (last.kind == token_kind::end || last.offset < first.offset || last_end > ts.source().size() ||
+      first.offset > ts.source().size()) {
+    return source_span{{}, first.offset, first.line, first.column};
+  }
+  return source_span{ts.source().substr(first.offset, last_end - first.offset), first.offset, first.line,
+                     first.column};
+}
+
+/** A rule's value together with the source range it consumed. */
+template <typename T> struct RELOCO_POINTER spanned {
+  T value;
+  source_span span;
+};
+
+/**
+ * @brief Runs `rule(ts)` and pairs its value with the span it consumed; errors pass through unchanged.
+ *
+ * @param rule `expected<T, parse_error>(token_stream &)`.
+ */
+template <typename Rule>
+[[nodiscard]] RELOCO_CONSTEXPR20 auto parse_spanned(token_stream &ts, Rule &&rule) noexcept
+    -> reloco::expected<spanned<typename std::decay_t<decltype(rule(ts))>::value_type>, parse_error> {
+  using value_type = typename std::decay_t<decltype(rule(ts))>::value_type;
+  const token first = ts.peek();
+  auto result = rule(ts);
+  if (!result) {
+    return reloco::unexpected<parse_error>(result.error());
+  }
+  return spanned<value_type>{std::move(result).value(), span_from(ts, first)};
+}
+
+/**
+ * @brief Parses `item (separator item)*` and folds left to right: `a.b.c` is `((a . b) . c)`.
+ *
+ * Why: chains such as paths (`a.b.c`), unions (`x | y`) or scopes (`f::g`) are a loop, not a
+ * precedence problem. A separator that is not followed by an item is an error at that item
+ * (the separator is consumed, so there is no silent fall-back to a shorter chain).
+ *
+ * @param item `expected<T, parse_error>(token_stream &)`.
+ * @param fold `expected<T, parse_error>(const token &separator, T left, T right)`.
+ * @param max_items Limit on the number of items; more fails with "too many items in chain".
+ */
+template <typename T, typename Item, typename Fold>
+[[nodiscard]] RELOCO_CONSTEXPR20 reloco::expected<T, parse_error>
+parse_chain(token_stream &ts, token_kind separator_kind, microfmt::string_view separator, Item &&item, Fold &&fold,
+            size_t max_items = static_cast<size_t>(-1)) noexcept {
+  auto first = item(ts);
+  if (!first) {
+    return first;
+  }
+  T value = std::move(first).value();
+  size_t items = 1;
+  for (;;) {
+    const reloco::optional<token> sep = ts.accept(separator_kind, separator);
+    if (!sep) {
+      return value;
+    }
+    if (items >= max_items) {
+      return reloco::unexpected<parse_error>(parse_error{"too many items in chain", *sep});
+    }
+    auto next_item = item(ts);
+    if (!next_item) {
+      return next_item;
+    }
+    auto folded = fold(*sep, std::move(value), std::move(next_item).value());
+    if (!folded) {
+      return folded;
+    }
+    value = std::move(folded).value();
+    ++items;
+  }
 }
 
 // ============================================================================

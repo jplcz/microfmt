@@ -268,6 +268,46 @@ Notes:
   `else` branch swallows `+ 1` in `if a then b else c + 1`; with a high one the `+ 1` applies to the whole `if`.
 * This API needs no AST: `T` can be a number, a node index, anything movable.
 
+## Source spans
+
+Why: a parse that only returns a value cannot say *where* the value came from. Anything that keeps a
+node around (an AST, a symbol table, a later "unknown key" error) needs the source range of what the
+rule consumed. The stream now remembers the last consumed token (`previous()`) and the whole text
+(`source()`), which is all that `span_from` needs.
+
+```cpp
+// Remember where the rule starts, run it, then ask for the range it consumed.
+const microfmt::token first = ts.peek();
+auto value = my_rule(ts);
+microfmt::source_span where = microfmt::span_from(ts, first);
+// where.text   -> exact source text, e.g. "config.server.port" (no surrounding whitespace/comments)
+// where.offset -> byte offset of the first token; where.line / where.column -> its 1-based position
+
+// Shortcut: parse_spanned runs the rule and pairs its value with the span; errors pass through as-is.
+auto path = microfmt::parse_spanned(ts, my_rule);   // expected<spanned<T>, parse_error>
+// path.value().value  is the rule's result, path.value().span is the source_span.
+```
+
+Nothing consumed gives an empty span at `first`. Backtracking (`attempt`, `parse_choice`) restores
+`previous()` together with the stream, so spans stay correct after a failed alternative.
+
+## Chains: `item (separator item)*`
+
+Why: paths (`a.b.c`), unions (`x | y`) and scopes (`f::g`) are a loop, not a precedence problem.
+`parse_list` drops the separators and `parse_expression` needs operator tables for what is a plain loop.
+
+```cpp
+// item(ts)            parses one segment, e.g. a name
+// fold(sep, l, r)     combines the chain so far (l) with the new item (r); `sep` is the separator token
+// "." is matched by kind + spelling; 4 is the maximum number of items (default: unlimited).
+auto value = microfmt::parse_chain<T>(ts, microfmt::token_kind::punctuation, ".", item, fold, 4);
+```
+
+The fold is left to right: `10 - 3 - 2` with a subtracting fold is `(10 - 3) - 2`. A separator that
+is not followed by an item is an error at that token (the separator is consumed; there is no silent
+fall-back to a shorter chain), and exceeding the limit fails with "too many items in chain". See
+[`examples/spans_demo.cpp`](../examples/spans_demo.cpp) for both helpers together.
+
 ## Delimited lists
 
 Arrays, call arguments and objects repeat the same loop (open bracket,
