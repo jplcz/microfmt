@@ -2089,3 +2089,50 @@ TEST(Streaming, EndStatementClearsPerStatementStateButKeepsStrings) {
   EXPECT_EQ(pool.view(id.value()), "a");
   EXPECT_EQ(ts.peek().text, "b");
 }
+
+namespace {
+
+struct paren_actions {
+  using result = reloco::expected<int, microfmt::parse_error>;
+  result primary(microfmt::token_stream &s) const {
+    auto number = s.expect(microfmt::token_kind::integer, "expected a number");
+    if (!number) {
+      return reloco::unexpected<microfmt::parse_error>(number.error());
+    }
+    return static_cast<int>(number.value().text[0] - '0');
+  }
+  result make_binary(const microfmt::binary_op &, int l, int r) const { return l + r; }
+  // Only used by the second test: a parenthesised value is tripled, and a trailing "!" is consumed here.
+  result make_paren(const microfmt::token &, int inner, microfmt::token_stream &s) const {
+    (void)s.skip(microfmt::token_kind::op, "!");
+    return inner * 3;
+  }
+};
+
+struct plain_actions {
+  using result = reloco::expected<int, microfmt::parse_error>;
+  result primary(microfmt::token_stream &s) const { return paren_actions{}.primary(s); }
+  result make_binary(const microfmt::binary_op &, int l, int r) const { return l + r; }
+};
+
+} // namespace
+
+TEST(ParseExpression, ParenHookSeesParenthesisedOperandsAndMaySkipSuffixes) {
+  constexpr microfmt::binary_op kPlus[] = {{"+", 10}};
+  constexpr microfmt::string_view kPlusBang[] = {"+", "!"};
+  microfmt::lexer_rules rules;
+  rules.operators = kPlusBang;
+  const microfmt::expression_grammar grammar{kPlus, {}, {}, {}, {}};
+
+  microfmt::token_stream hooked{"(1 + 2)! + 4", rules};
+  paren_actions with_hook;
+  auto value = microfmt::parse_expression<int>(hooked, grammar, with_hook);
+  ASSERT_TRUE(value);
+  EXPECT_EQ(value.value(), 13); // (1 + 2) * 3 + 4, and the "!" was consumed by the hook
+
+  microfmt::token_stream plain{"(1 + 2) + 4", rules};
+  plain_actions without_hook;
+  auto unchanged = microfmt::parse_expression<int>(plain, grammar, without_hook);
+  ASSERT_TRUE(unchanged);
+  EXPECT_EQ(unchanged.value(), 7); // no make_paren: the inner value is used as is
+}

@@ -508,6 +508,22 @@ template <typename A, typename... X> using prefix_call_t = decltype(std::declval
 template <typename A, typename... X> using postfix_call_t = decltype(std::declval<A &>().make_postfix(std::declval<X>()...));
 template <typename A, typename... X> using ternary_call_t = decltype(std::declval<A &>().make_ternary(std::declval<X>()...));
 template <typename A, typename... X> using mixfix_call_t = decltype(std::declval<A &>().make_mixfix(std::declval<X>()...));
+template <typename A, typename... X> using paren_call_t = decltype(std::declval<A &>().make_paren(std::declval<X>()...));
+
+/** Forwards to `actions.make_paren`, or returns the inner value unchanged when the actions object has none. */
+template <typename T, typename Actions> struct RELOCO_POINTER paren_forwarder {
+  Actions *actions;
+  reloco::expected<T, parse_error> operator()(const token &open, T inner, token_stream &s) const noexcept {
+    if constexpr (is_detected_v<paren_call_t, Actions, const token &, T, token_stream &>) {
+      return actions->make_paren(open, std::move(inner), s);
+    } else {
+      (void)actions;
+      (void)open;
+      (void)s;
+      return inner;
+    }
+  }
+};
 
 /** Forwards to `actions.make_mixfix`, or fails when the actions object has none. */
 template <typename T, typename Actions> struct RELOCO_POINTER mixfix_forwarder {
@@ -524,17 +540,17 @@ template <typename T, typename Actions> struct RELOCO_POINTER mixfix_forwarder {
 };
 
 template <typename T, typename Primary, typename MakeBinary, typename MakePrefix, typename MakePostfix,
-          typename MakeTernary, typename MakeMixfix = no_mixfix<T>>
+          typename MakeTernary, typename MakeMixfix = no_mixfix<T>, typename MakeParen = void>
 class RELOCO_POINTER expression_parser {
 public:
   expression_parser(token_stream &ts, span<const binary_op> binary, span<const prefix_op> prefix,
                     span<const postfix_op> postfix, const reloco::optional<ternary_op> &ternary RELOCO_LIFETIMEBOUND, Primary &primary,
                     MakeBinary &make_binary, MakePrefix &make_prefix, MakePostfix &make_postfix,
                     MakeTernary &make_ternary, size_t max_depth, span<const mixfix_op> mixfix = {},
-                    MakeMixfix *make_mixfix = nullptr) noexcept
+                    MakeMixfix *make_mixfix = nullptr, MakeParen *make_paren = nullptr) noexcept
       : ts_(ts), binary_(binary), prefix_(prefix), postfix_(postfix), mixfix_(mixfix), ternary_(ternary),
         primary_(primary), make_binary_(make_binary), make_prefix_(make_prefix), make_postfix_(make_postfix),
-        make_ternary_(make_ternary), make_mixfix_(make_mixfix), max_depth_(max_depth) {}
+        make_ternary_(make_ternary), make_mixfix_(make_mixfix), make_paren_(make_paren), max_depth_(max_depth) {}
 
   [[nodiscard]] reloco::expected<T, parse_error> parse(unsigned min_precedence) noexcept {
     const depth_guard guard{depth_, max_depth_};
@@ -676,7 +692,8 @@ private:
       }
       return make_prefix_(*op, std::move(operand).value());
     }
-    if (ts_.skip(token_kind::punctuation, "(")) {
+    if (ts_.check(token_kind::punctuation, "(")) {
+      const token open = ts_.next();
       auto inner = parse(0);
       if (!inner) {
         return inner;
@@ -684,6 +701,12 @@ private:
       if (auto close = ts_.expect(token_kind::punctuation, ")", "expected ')'"); !close) {
         return reloco::unexpected<parse_error>(close.error());
       }
+      if constexpr (!std::is_void_v<MakeParen>) {
+        if (make_paren_ != nullptr) {
+          return (*make_paren_)(open, std::move(inner).value(), ts_);
+        }
+      }
+      (void)open;
       return inner;
     }
     return primary_(ts_);
@@ -701,6 +724,7 @@ private:
   MakePostfix &make_postfix_;
   MakeTernary &make_ternary_;
   MakeMixfix *make_mixfix_;
+  [[maybe_unused]] MakeParen *make_paren_;
   size_t max_depth_;
   size_t depth_{0};
 };
@@ -798,7 +822,10 @@ parse_expression(token_stream &ts, span<const binary_op> binary, span<const pref
  *  - `primary(ts)` is required;
  *  - `make_binary(op, l, r)` and `make_prefix(op, v)` are required when those tables are non-empty;
  *  - `make_postfix(op, v, ts)`, `make_ternary(op, c, t, e)` and `make_mixfix(op, ts, expr)` may be omitted;
- *    if the grammar uses the matching feature anyway, parsing fails with an error at that token.
+ *    if the grammar uses the matching feature anyway, parsing fails with an error at that token;
+ *  - `make_paren(open_token, v, ts)` is optional too: it is called after `( expr )` with the inner value and the
+ *    stream just past the `)`, so a language can record that the operand was parenthesised or continue with
+ *    suffixes (`(f or g)(x)`). Without it the inner value is used as is.
  * A mixfix keyword takes priority over `primary`, so it cannot also be a variable name.
  */
 template <typename T, typename Actions>
@@ -844,11 +871,13 @@ parse_expression(token_stream &ts, const expression_grammar &grammar, Actions &a
   };
   using adapted_parser = detail::expression_parser<T, decltype(primary), decltype(make_binary), decltype(make_prefix),
                                                    decltype(make_postfix), decltype(make_ternary),
-                                                   detail::mixfix_forwarder<T, Actions>>;
+                                                   detail::mixfix_forwarder<T, Actions>,
+                                                   detail::paren_forwarder<T, Actions>>;
   detail::mixfix_forwarder<T, Actions> adapter{&actions, &ts};
+  detail::paren_forwarder<T, Actions> paren_adapter{&actions};
   adapted_parser parser{ts,       grammar.binary, grammar.prefix, grammar.postfix, grammar.ternary,
                         primary,  make_binary,    make_prefix,    make_postfix,    make_ternary,
-                        max_depth, grammar.mixfix, &adapter};
+                        max_depth, grammar.mixfix, &adapter, &paren_adapter};
   return parser.parse(0);
 }
 
