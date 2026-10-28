@@ -5,7 +5,8 @@
 #pragma once
 
 // A tiny scripting language that uses every token_stream helper in one place. See docs/mini-language.md
-// for the walkthrough. The grammar is parsed and evaluated in a single pass (no syntax tree).
+// for the walkthrough. Each expression is parsed into a small tree stored in a node_pool, evaluated, and the pool is
+// rolled back; statements run one by one.
 //
 //   program    := statement*
 //   statement  := let | print | block
@@ -20,12 +21,14 @@
 #include <cstdint>
 
 #include <microfmt/microfmt.hpp>
+#include <microfmt/parsing/ast_pool.hpp>
 #include <microfmt/parsing/number_parse.hpp>
 #include <microfmt/parsing/token_stream_formatters.hpp>
 
 namespace mini_lang {
 
 using microfmt::bracket_pair;
+using microfmt::node_id;
 using microfmt::parse_error;
 using microfmt::string_view;
 using microfmt::token;
@@ -52,6 +55,29 @@ inline constexpr bracket_pair kBraces[] = {{token_kind::punctuation, "{", token_
 inline constexpr size_t kMaxVariables = 16;
 inline constexpr size_t kMaxArguments = 8;
 inline constexpr size_t kMaxDepth = 32;
+// Nodes of one expression; more is an error ("node pool full"). The first 32 live inside the interpreter.
+inline constexpr size_t kMaxNodes = 128;
+
+enum class node_kind : uint8_t { number, variable, binary, negate, ternary, call };
+enum class function_id : uint8_t { abs, max, min };
+
+// One syntax-tree node. Children are handles into the interpreter's node_pool, not pointers. `at` is the token
+// errors are reported at (the literal, the variable, the divisor, the callee).
+struct RELOCO_POINTER node {
+  node_kind kind{node_kind::number};
+  char op{0};                                         // binary: one of + - * / > <
+  function_id function{function_id::abs};             // call
+  size_t slot{0};                                     // variable: index in the variable table
+  int64_t value{0};                                   // number
+  token at{};
+  node_id<node> a{};                                  // operand / condition
+  node_id<node> b{};                                  // right operand / then branch
+  node_id<node> c{};                                  // else branch
+  reloco::array<node_id<node>, kMaxArguments> args{}; // call arguments
+  size_t arg_count{0};
+};
+
+using node_result = reloco::expected<node_id<node>, parse_error>;
 
 namespace detail {
 
@@ -164,49 +190,41 @@ private:
     return {};
   }
 
-  // The callbacks that turn parsed pieces into values; parse_expression looks them up by name.
+  // Builds nodes: parse_expression looks these callbacks up by name. Nothing is evaluated here.
   struct RELOCO_POINTER expression_actions {
     interpreter *self;
-    token_stream *stream;
 
-    value_result primary(token_stream &s) const noexcept { return self->parse_primary(s); }
+    node_result primary(token_stream &s) const noexcept { return self->parse_primary(s); }
 
-    value_result make_binary(const microfmt::binary_op &op, int64_t l, int64_t r) const noexcept {
-      const auto a = static_cast<uint64_t>(l);
-      const auto b = static_cast<uint64_t>(r);
-      switch (op.text[0]) {
-      case '+':
-        return detail::wrap(a + b);
-      case '-':
-        return detail::wrap(a - b);
-      case '*':
-        return detail::wrap(a * b);
-      case '>':
-        return l > r ? 1 : 0;
-      case '<':
-        return l < r ? 1 : 0;
-      default:
-        if (r == 0) {
-          return reloco::unexpected<parse_error>(stream->error_here("division by zero"));
-        }
-        return r == -1 ? detail::wrap(0 - a) : l / r; // INT64_MIN / -1 would overflow
-      }
+    node_result make_binary(const microfmt::binary_op &op, node_id<node> l, node_id<node> r) const noexcept {
+      node n;
+      n.kind = node_kind::binary;
+      n.op = op.text[0];
+      n.a = l;
+      n.b = r;
+      // A division by zero is reported at the divisor.
+      n.at = self->pool_.get(r)->at;
+      return self->pool_.make(n.at, n);
     }
 
-    value_result make_prefix(const microfmt::prefix_op &, int64_t v) const noexcept {
-      return detail::wrap(0 - static_cast<uint64_t>(v));
+    node_result make_prefix(const microfmt::prefix_op &, node_id<node> v) const noexcept {
+      node n;
+      n.kind = node_kind::negate;
+      n.a = v;
+      n.at = self->pool_.get(v)->at;
+      return self->pool_.make(n.at, n);
     }
 
-    // Both branches of `?:` are already evaluated; that is fine because expressions have no side effects.
-    value_result make_ternary(const microfmt::ternary_op &, int64_t c, int64_t t, int64_t e) const noexcept {
-      return c != 0 ? t : e;
+    node_result make_ternary(const microfmt::ternary_op &, node_id<node> c, node_id<node> t,
+                             node_id<node> e) const noexcept {
+      return self->make_ternary_node(c, t, e);
     }
 
     // `if cond then a else b`: the helper consumed "if"; we parse the three parts by re-entering the
     // expression parser (expr.parse) and consume `then` / `else` ourselves. The else branch is parsed at the
     // mixfix precedence, so `if a then b else c + 1` is `if ... else (c + 1)`.
     template <typename Expr>
-    value_result make_mixfix(const microfmt::mixfix_op &op, token_stream &s, Expr &expr) const noexcept {
+    node_result make_mixfix(const microfmt::mixfix_op &op, token_stream &s, Expr &expr) const noexcept {
       auto cond = expr.parse(0);
       if (!cond) {
         return cond;
@@ -214,47 +232,78 @@ private:
       if (auto kw = s.expect(token_kind::identifier, "then", "expected 'then'"); !kw) {
         return reloco::unexpected<parse_error>(kw.error());
       }
-      auto then_value = expr.parse(0);
-      if (!then_value) {
-        return then_value;
+      auto then_node = expr.parse(0);
+      if (!then_node) {
+        return then_node;
       }
       if (auto kw = s.expect(token_kind::identifier, "else", "expected 'else'"); !kw) {
         return reloco::unexpected<parse_error>(kw.error());
       }
-      auto else_value = expr.parse(op.precedence);
-      if (!else_value) {
-        return else_value;
+      auto else_node = expr.parse(op.precedence);
+      if (!else_node) {
+        return else_node;
       }
-      return cond.value() != 0 ? then_value.value() : else_value.value();
+      return self->make_ternary_node(cond.value(), then_node.value(), else_node.value());
     }
   };
 
-  value_result expression(token_stream &ts) noexcept {
-    expression_actions actions{this, &ts};
+  node_result make_ternary_node(node_id<node> c, node_id<node> t, node_id<node> e) noexcept {
+    node n;
+    n.kind = node_kind::ternary;
+    n.a = c;
+    n.b = t;
+    n.c = e;
+    n.at = pool_.get(c)->at;
+    return pool_.make(n.at, n);
+  }
+
+  // Parses one expression into the pool and returns its root. Names are resolved here, so an unknown variable
+  // or function is reported while parsing (and, in a call, together with the other bad arguments).
+  node_result parse_tree(token_stream &ts) noexcept {
+    expression_actions actions{this};
     const microfmt::expression_grammar grammar{kBinary, kPrefix, {}, kMixfix, microfmt::ternary_op{}};
-    return microfmt::parse_expression<int64_t>(ts, grammar, actions);
+    return microfmt::parse_expression<node_id<node>>(ts, grammar, actions);
+  }
+
+  // Parse, evaluate, then give the nodes back: the tree is only needed for the one statement that uses it.
+  value_result expression(token_stream &ts) noexcept {
+    const microfmt::pool_mark before = pool_.mark();
+    auto tree = parse_tree(ts);
+    if (!tree) {
+      pool_.rollback(before);
+      return reloco::unexpected<parse_error>(tree.error());
+    }
+    auto value = evaluate(tree.value());
+    pool_.rollback(before);
+    return value;
   }
 
   // The leaves of an expression: a number, a variable or a call. "(" expression ")" never reaches here.
-  value_result parse_primary(token_stream &ts) noexcept {
+  node_result parse_primary(token_stream &ts) noexcept {
     constexpr token_kind kKinds[] = {token_kind::integer, token_kind::identifier};
     auto tok = microfmt::expect_one_of(ts, kKinds, "expected a number, variable or call");
     if (!tok) {
       return reloco::unexpected<parse_error>(tok.error());
     }
+    node n;
+    n.at = tok.value();
     if (tok.value().kind == token_kind::integer) {
       auto number = microfmt::parse<int64_t>(tok.value().text);
       if (!number) {
         return reloco::unexpected<parse_error>(parse_error{"number out of range", tok.value()});
       }
-      return number.value();
+      n.kind = node_kind::number;
+      n.value = number.value();
+      return pool_.make(n.at, n);
     }
     if (ts.check(token_kind::punctuation, "(")) {
       return parse_call(ts, tok.value());
     }
     for (size_t i = 0; i < variable_count_; ++i) {
       if (variables_[i].name == tok.value().text) {
-        return variables_[i].value;
+        n.kind = node_kind::variable;
+        n.slot = i;
+        return pool_.make(n.at, n);
       }
     }
     return reloco::unexpected<parse_error>(parse_error{"unknown variable", tok.value()});
@@ -262,22 +311,23 @@ private:
 
   // NAME "(" [expression {"," expression}] ")": parse_list_recovering handles the brackets, the commas
   // and skipping a bad argument.
-  value_result parse_call(token_stream &ts, const token &name) noexcept {
+  node_result parse_call(token_stream &ts, const token &name) noexcept {
     microfmt::depth_guard guard{depth_, kMaxDepth};
     if (!guard) {
       return reloco::unexpected<parse_error>(ts.error_here("nesting too deep"));
     }
-    reloco::array<int64_t, kMaxArguments> args{};
-    size_t count = 0;
-    auto item = [this, &args, &count](token_stream &s) -> status {
-      auto value = expression(s);
-      if (!value) {
-        return reloco::unexpected<parse_error>(value.error());
+    node call;
+    call.kind = node_kind::call;
+    call.at = name;
+    auto item = [this, &call](token_stream &s) -> status {
+      auto arg = parse_tree(s);
+      if (!arg) {
+        return reloco::unexpected<parse_error>(arg.error());
       }
-      if (count == args.size()) {
+      if (call.arg_count == call.args.size()) {
         return reloco::unexpected<parse_error>(s.error_here("too many arguments"));
       }
-      args[count++] = value.value();
+      call.args[call.arg_count++] = arg.value();
       return {};
     };
     const microfmt::list_options options{"(", ")", ",", false};
@@ -290,23 +340,101 @@ private:
       // The individual errors are already listed; this one marks the call itself as unusable.
       return reloco::unexpected<parse_error>(parse_error{"call has invalid arguments", name});
     }
-    return apply(name, args, count);
+    const bool is_abs = name.text == "abs";
+    const bool is_max = name.text == "max";
+    const bool is_min = name.text == "min";
+    if (!(is_abs || is_max || is_min)) {
+      return reloco::unexpected<parse_error>(parse_error{"unknown function", name});
+    }
+    if (call.arg_count == 0 || (is_abs && call.arg_count != 1)) {
+      return reloco::unexpected<parse_error>(parse_error{"wrong number of arguments", name});
+    }
+    call.function = is_abs ? function_id::abs : (is_max ? function_id::max : function_id::min);
+    return pool_.make(name, call);
   }
 
-  static value_result apply(const token &name, const reloco::array<int64_t, kMaxArguments> &args,
-                            size_t count) noexcept {
-    if (name.text == "abs" && count == 1) {
+  // Walks the tree. The pool is not changed while this runs, so the borrowed node stays valid.
+  value_result evaluate(node_id<node> id) noexcept {
+    const auto ref = pool_.get(id);
+    const node &n = *ref;
+    switch (n.kind) {
+    case node_kind::number:
+      return n.value;
+    case node_kind::variable:
+      return variables_[n.slot].value;
+    case node_kind::negate: {
+      auto v = evaluate(n.a);
+      if (!v) {
+        return v;
+      }
+      return detail::wrap(0 - static_cast<uint64_t>(v.value()));
+    }
+    case node_kind::binary: {
+      auto l = evaluate(n.a);
+      if (!l) {
+        return l;
+      }
+      auto r = evaluate(n.b);
+      if (!r) {
+        return r;
+      }
+      return apply_binary(n, l.value(), r.value());
+    }
+    case node_kind::ternary: {
+      // Only the chosen branch runs, which is the point of having a tree.
+      auto cond = evaluate(n.a);
+      if (!cond) {
+        return cond;
+      }
+      return evaluate(cond.value() != 0 ? n.b : n.c);
+    }
+    case node_kind::call: {
+      reloco::array<int64_t, kMaxArguments> values{};
+      for (size_t i = 0; i < n.arg_count; ++i) {
+        auto v = evaluate(n.args[i]);
+        if (!v) {
+          return v;
+        }
+        values[i] = v.value();
+      }
+      return apply_function(n.function, values, n.arg_count);
+    }
+    }
+    return 0;
+  }
+
+  static value_result apply_binary(const node &n, int64_t l, int64_t r) noexcept {
+    const auto a = static_cast<uint64_t>(l);
+    const auto b = static_cast<uint64_t>(r);
+    switch (n.op) {
+    case '+':
+      return detail::wrap(a + b);
+    case '-':
+      return detail::wrap(a - b);
+    case '*':
+      return detail::wrap(a * b);
+    case '>':
+      return l > r ? 1 : 0;
+    case '<':
+      return l < r ? 1 : 0;
+    default:
+      if (r == 0) {
+        return reloco::unexpected<parse_error>(parse_error{"division by zero", n.at});
+      }
+      return r == -1 ? detail::wrap(0 - a) : l / r; // INT64_MIN / -1 would overflow
+    }
+  }
+
+  static int64_t apply_function(function_id fn, const reloco::array<int64_t, kMaxArguments> &args,
+                                size_t count) noexcept {
+    if (fn == function_id::abs) {
       return args[0] < 0 ? detail::wrap(0 - static_cast<uint64_t>(args[0])) : args[0];
     }
-    if ((name.text == "max" || name.text == "min") && count >= 1) {
-      int64_t best = args[0];
-      for (size_t i = 1; i < count; ++i) {
-        best = name.text == "max" ? (args[i] > best ? args[i] : best) : (args[i] < best ? args[i] : best);
-      }
-      return best;
+    int64_t best = args[0];
+    for (size_t i = 1; i < count; ++i) {
+      best = fn == function_id::max ? (args[i] > best ? args[i] : best) : (args[i] < best ? args[i] : best);
     }
-    const bool known = name.text == "abs" || name.text == "max" || name.text == "min";
-    return reloco::unexpected<parse_error>(parse_error{known ? "wrong number of arguments" : "unknown function", name});
+    return best;
   }
 
   status define(const token &name, int64_t value) noexcept {
@@ -328,6 +456,7 @@ private:
   size_t variable_count_{0};
   size_t depth_{0};
   microfmt::error_list<16> errors_{};
+  microfmt::node_pool<node, 32> pool_{kMaxNodes};
   microfmt::buffer_sink<1024> out_{};
 };
 

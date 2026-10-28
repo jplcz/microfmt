@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 
+#include <microfmt/parsing/ast_pool.hpp>
 #include <microfmt/parsing/lexer_rules_presets.hpp>
 #include <microfmt/parsing/number_parse.hpp>
 #include <microfmt/parsing/token_stream.hpp>
@@ -1063,6 +1064,138 @@ TEST(LexerModes, InterpolatedStringIsParsedByTheParser) {
   const auto failed = microfmt::with_rules(bad, tmpl, [&](token_stream &s) { return parse_template(s, bad_pieces); });
   ASSERT_FALSE(failed);
   EXPECT_EQ(failed.error().at.line, 2u);
+}
+
+namespace {
+
+struct pool_node {
+  int value{0};
+  char op{0};
+  microfmt::node_id<pool_node> left{};
+  microfmt::node_id<pool_node> right{};
+};
+using pool_id = microfmt::node_id<pool_node>;
+using pool_result = reloco::expected<pool_id, parse_error>;
+
+template <size_t N> struct tree_actions {
+  microfmt::node_pool<pool_node, N> &pool;
+
+  pool_result primary(token_stream &s) {
+    if (!s.check(token_kind::integer)) {
+      return reloco::unexpected<parse_error>(s.error_here("expected a number"));
+    }
+    const microfmt::token tok = s.next();
+    return pool.make(tok, pool_node{static_cast<int>(microfmt::parse<int64_t>(tok.text).value()), 0, {}, {}});
+  }
+  pool_result make_binary(const binary_op &op, pool_id l, pool_id r) {
+    return pool.make(microfmt::token{}, pool_node{0, op.text[0], l, r});
+  }
+};
+
+int evaluate(const microfmt::node_pool<pool_node, 8> &pool, pool_id id) {
+  const auto node_ref = pool.get(id);
+  const pool_node &node = *node_ref;
+  if (node.op == 0) {
+    return node.value;
+  }
+  const int l = evaluate(pool, node.left);
+  const int r = evaluate(pool, node.right);
+  return node.op == '+' ? l + r : l * r;
+}
+
+} // namespace
+
+TEST(NodePool, MakesNodesAndChecksHandles) {
+  microfmt::node_pool<pool_node, 2> pool;
+  auto a = pool.make(microfmt::token{}, pool_node{7, 0, {}, {}});
+  auto b = pool.make(microfmt::token{}, pool_node{8, 0, {}, {}});
+  auto c = pool.make(microfmt::token{}, pool_node{9, 0, {}, {}}); // spills past the inline capacity
+  ASSERT_TRUE(a && b && c);
+  EXPECT_EQ(a.value().index, 0u);
+  EXPECT_EQ(c.value().index, 2u);
+  EXPECT_EQ(pool.size(), 3u);
+  EXPECT_EQ(pool.get(b.value())->value, 8);
+  EXPECT_EQ(pool.try_get(a.value())->value, 7); // handles stay valid after the pool grew
+  EXPECT_FALSE(pool.try_get(pool_id::invalid()));
+  EXPECT_FALSE(pool.try_get(pool_id{99}));
+  EXPECT_FALSE(pool_id::invalid().valid());
+}
+
+TEST(NodePool, FullPoolReportsAnErrorAtTheGivenToken) {
+  microfmt::node_pool<pool_node, 2> pool{2};
+  token_stream ts{"x y z", lexer_rules{}};
+  ASSERT_TRUE(pool.make(ts.next(), pool_node{}));
+  ASSERT_TRUE(pool.make(ts.next(), pool_node{}));
+  const microfmt::token third = ts.next();
+  auto full = pool.make(third, pool_node{});
+  ASSERT_FALSE(full);
+  EXPECT_EQ(full.error().message, "node pool full");
+  EXPECT_EQ(full.error().at.text, "z");
+  EXPECT_EQ(pool.size(), 2u);
+}
+
+TEST(NodePool, RollbackDropsLaterNodesOnly) {
+  microfmt::node_pool<pool_node, 4> pool;
+  auto keep = pool.make(microfmt::token{}, pool_node{1, 0, {}, {}});
+  const microfmt::pool_mark m = pool.mark();
+  auto drop = pool.make(microfmt::token{}, pool_node{2, 0, {}, {}});
+  pool.rollback(m);
+  EXPECT_EQ(pool.size(), 1u);
+  EXPECT_TRUE(pool.try_get(keep.value()));
+  EXPECT_FALSE(pool.try_get(drop.value()));
+  pool.rollback(microfmt::pool_mark{10}); // larger than the pool: no effect
+  EXPECT_EQ(pool.size(), 1u);
+  pool.clear();
+  EXPECT_EQ(pool.size(), 0u);
+}
+
+TEST(NodePool, PooledRollsBackFailedAlternativesInsideChoice) {
+  microfmt::node_pool<pool_node, 8> pool;
+  lexer_rules rules;
+  rules.operators = kCalcOps;
+  token_stream ts{"1 + 2 * 3 ;", rules};
+  const microfmt::expression_grammar grammar{kMixfixBinary, {}, {}, {}, {}};
+
+  // First alternative builds the whole expression, then fails on the missing '!'; the second succeeds.
+  auto with_bang = microfmt::pooled(pool, [&](token_stream &s) -> pool_result {
+    tree_actions<8> actions{pool};
+    auto tree = microfmt::parse_expression<pool_id>(s, grammar, actions);
+    if (!tree) {
+      return tree;
+    }
+    if (auto bang = s.expect(token_kind::punctuation, "!", "expected '!'"); !bang) {
+      return reloco::unexpected<parse_error>(bang.error());
+    }
+    return tree;
+  });
+  auto with_semicolon = microfmt::pooled(pool, [&](token_stream &s) -> pool_result {
+    tree_actions<8> actions{pool};
+    auto tree = microfmt::parse_expression<pool_id>(s, grammar, actions);
+    if (!tree) {
+      return tree;
+    }
+    if (auto semi = s.expect(token_kind::punctuation, ";", "expected ';'"); !semi) {
+      return reloco::unexpected<parse_error>(semi.error());
+    }
+    return tree;
+  });
+
+  auto result = microfmt::parse_choice(ts, with_bang, with_semicolon);
+  ASSERT_TRUE(result);
+  EXPECT_EQ(pool.size(), 5u); // 3 numbers + 2 operators, none left over from the failed alternative
+  EXPECT_EQ(evaluate(pool, result.value()), 7);
+}
+
+TEST(NodePool, FullPoolStopsTheExpressionWithAnError) {
+  microfmt::node_pool<pool_node, 2> pool{3};
+  lexer_rules rules;
+  rules.operators = kCalcOps;
+  token_stream ts{"1 + 2 + 3", rules};
+  tree_actions<2> actions{pool};
+  const microfmt::expression_grammar grammar{kMixfixBinary, {}, {}, {}, {}};
+  auto result = microfmt::parse_expression<pool_id>(ts, grammar, actions);
+  ASSERT_FALSE(result);
+  EXPECT_EQ(result.error().message, "node pool full");
 }
 
 TEST(Recovery, CollectsSeveralErrorsAndTerminates) {

@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+
 #include "../examples/mini_lang.hpp"
 
 namespace {
@@ -128,4 +130,32 @@ TEST(MiniLang, EveryBadCallArgumentIsReportedAlongsideASummary) {
   EXPECT_EQ(errors[1].at.text, "nope");
   EXPECT_EQ(errors[2].message, "call has invalid arguments");
   EXPECT_EQ(errors[2].at.text, "max");
+}
+
+TEST(MiniLang, OnlyTheChosenBranchRunsAndDivisionByZeroPointsAtTheDivisor) {
+  interpreter lazy{"print(1 ? 5 : 1 / 0); print(if 0 then 1 / 0 else 6);"};
+  EXPECT_EQ(lazy.run(), 2u);
+  EXPECT_TRUE(lazy.errors().empty());
+  EXPECT_EQ(lazy.output(), "5\n6\n");
+
+  interpreter bad{"print(8 / (3 - 3));"};
+  (void)bad.run();
+  const auto errors = bad.errors().errors();
+  ASSERT_EQ(errors.size(), 1u);
+  EXPECT_EQ(errors[0].message, "division by zero");
+  EXPECT_EQ(errors[0].at.line, 1u);
+}
+
+TEST(MiniLang, ATooLargeExpressionFailsAndTheNodesAreReusedByLaterStatements) {
+  std::string program = "print(1";
+  for (int i = 0; i < 100; ++i) {
+    program += "+1";
+  }
+  program += ");\nprint(1+1);";
+  interpreter interp{program};
+  EXPECT_EQ(interp.run(), 1u); // the second statement runs: the first one's nodes were given back
+  EXPECT_EQ(interp.output(), "2\n");
+  const auto errors = interp.errors().errors();
+  ASSERT_EQ(errors.size(), 1u);
+  EXPECT_EQ(errors[0].message, "node pool full");
 }

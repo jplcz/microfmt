@@ -405,6 +405,58 @@ auto result = microfmt::with_rules(ts, string_rules, [](microfmt::token_stream &
 
 See [`examples/lexer_modes_demo.cpp`](../examples/lexer_modes_demo.cpp) for a complete interpolated-string parser.
 
+## Building a tree (node pool)
+
+Why: parse results are often trees (`1 + 2 * 3` is a `+` node whose right child is a `*` node). Without
+a heap there is no good place for children: raw pointers are unsafe, `unique_ptr` allocates and recurses when
+destroyed, and a node cannot hold itself by value. `node_pool` stores every node in one vector and links them
+by **index** (`node_id`), so a tree is a plain copyable value. It also solves backtracking: a failed
+alternative must not leave half-built nodes behind, and the pool can simply be cut back (`rollback`).
+Include `<microfmt/parsing/ast_pool.hpp>`.
+
+```cpp
+// One struct for every kind of node; children are handles (4 bytes), not pointers.
+struct node {
+  int64_t value{0};                       // number nodes
+  char op{0};                             // 0 = number, otherwise '+' or '*'
+  microfmt::token at{};                   // where to report errors about this node
+  microfmt::node_id<node> left{}, right{}; // children; node_id<node>::invalid() means "none"
+};
+
+// 16 nodes live inside the pool object; more spill to the heap. 1000 = hard limit (hostile input).
+microfmt::node_pool<node, 16> pool{1000};
+
+// make() stores a node and returns its handle, or the parse_error "node pool full" located at `at`.
+auto leaf = pool.make(tok, node{42, 0, tok, {}, {}});
+
+// get() returns a checked reference to the node (terminates on a bad handle); try_get() returns an
+// empty pointer instead. Both need an lvalue pool: pool().get(id) on a temporary does not compile.
+auto ref = pool.get(leaf.value());
+
+// Backtracking: pooled() wraps a rule so that when it fails the pool goes back to its earlier size.
+// It composes with attempt, parse_choice and parse_optional.
+auto a = microfmt::pooled(pool, [&](microfmt::token_stream &s) { return rule_a(s, pool); });
+auto b = microfmt::pooled(pool, [&](microfmt::token_stream &s) { return rule_b(s, pool); });
+auto result = microfmt::parse_choice(ts, a, b);
+
+// For a tree that is only needed for one statement: mark, parse, use, rollback.
+const microfmt::pool_mark before = pool.mark();
+/* parse + evaluate */
+pool.rollback(before);   // the next statement starts with an empty pool
+```
+
+Rules:
+
+* Use **either** `pooled` rollback **or** `memoize` for a given pool. A rolled-back index can be reused by a
+  different node, so a memoized handle could point to the wrong one. `memoize` with no rollback is fine: dead
+  nodes stay until `clear()` and only cost capacity.
+* A handle made after `mark()` is stale after `rollback(mark)`; do not keep it.
+* Nodes hold handles, not token text; if a node must outlive `discard_consumed()` (streaming), copy the text.
+
+The [mini language](mini-language.md) is built this way: it parses each expression into a pool, resolves names
+while parsing, evaluates the tree and rolls the pool back. See also
+[`examples/node_pool_demo.cpp`](../examples/node_pool_demo.cpp).
+
 ## Delimited lists
 
 Arrays, call arguments and objects repeat the same loop (open bracket,
@@ -692,6 +744,7 @@ already handles its termination, depth and error-position details for you.
 | Extra context on an error ("in call to f") | `with_note` / `note` | Adds a note without changing where the error points. |
 | Skip to a safe point after an error | `recover_to`, `recover_balanced` | The balanced form respects nested `()`, `[]`, `{}`. |
 | Tokens that depend on context (`"${expr}"`, heredocs, embedded languages) | `with_rules`, `take_raw_until` | Switches the lexer rules for a region and re-tokenizes the lookahead. |
+| A syntax tree without heap pointers; undo of failed alternatives | `node_pool`, `node_id`, `pooled` | Nodes are linked by index and the pool rolls back when an alternative fails. |
 | A backtracking rule that gets slow on nested input | `memoize` with `memo_table` | Remembers results per position; only for rules that depend on nothing else. |
 | Guarding against hostile nesting | `depth_guard` | Cheap recursion limit; the helpers above already take a `max_depth`. |
 

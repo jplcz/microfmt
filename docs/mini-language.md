@@ -16,14 +16,17 @@ print(max(x, y, 7));          // calls with comma-separated arguments
 ```
 
 Statements are `let NAME [= expr];`, `print(expr);` and `{ statements }`. Expressions have numbers,
-variables, calls (`max`, `min`, `abs`), unary `-`, `+ - * / > <`, `?:` and parentheses. The program is
-evaluated while it is parsed, so there is no syntax tree to build.
+variables, calls (`max`, `min`, `abs`), unary `-`, `+ - * / > <`, `?:` and parentheses. Statements run one at a
+time; each expression is parsed into a small tree (a `node_pool`), evaluated, and the nodes are given back.
+Names are resolved while parsing, so an unknown variable or function is a parse-time error; only the chosen
+branch of `?:` / `if` runs, and a division by zero is reported at the divisor.
 
 ## Why it is built this way
 
 A real tool should show *every* mistake in one run, not stop at the first, and must stay safe on hostile
 input (bounded memory, bounded recursion, no overflow). The example therefore uses fixed-size storage
-everywhere: 16 variables, 8 call arguments, 16 stored errors, a 1 KiB output buffer, and a nesting limit of
+everywhere: 16 variables, 8 call arguments, 16 stored errors, a 1 KiB output buffer, 128 nodes per expression
+(the first 32 inline in the interpreter), and a nesting limit of
 32. Hitting a limit is reported as a normal error.
 
 ## Which helper is used where
@@ -43,6 +46,7 @@ everywhere: 16 variables, 8 call arguments, 16 stored errors, a 1 KiB output buf
 | Point at where a block was opened | `with_note` | `parse_block()` |
 | Show the source line and a caret | `report()` | the demo |
 | Stop runaway nesting | `depth_guard` | statements and calls |
+| Keep the syntax tree without pointers, and cap its size | `node_pool`, `node_id` | `expression()`, `parse_tree()` |
 
 ## Walkthrough of the interesting parts
 
@@ -57,7 +61,8 @@ expression fails, which stays an error, so the typo is not silently treated as "
 
 **Expressions.** `parse_expression` handles precedence; you only supply the leaves (`parse_primary`) and
 what to do with the operands (the `make_binary`, `make_prefix` and `make_ternary` members of
-`expression_actions`). `if cond then a else b` is a keyword form: `make_mixfix` parses the condition and
+`expression_actions`, which here store a node in the pool and return its handle instead of computing a value;
+`evaluate()` later walks the tree). `if cond then a else b` is a keyword form: `make_mixfix` parses the condition and
 both branches with `expr.parse`, so they may be any expression (including another `if`), and reports
 `expected 'then'` / `expected 'else'` at the token where the keyword was missing. Calls are parsed in `parse_primary`
 rather than as postfix operators because the callee name is needed and the left operand is already a number
