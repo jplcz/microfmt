@@ -736,3 +736,68 @@ TEST(ExpectOneOf, MatchesAnyKindOrReportsTheGivenMessage) {
 
   EXPECT_FALSE(microfmt::expect_one_of(ts, span_none<token_kind>(), "nothing allowed"));
 }
+
+namespace {
+
+// block := identifier '{' (name_statement | block)* '}', collecting body errors into `errors`.
+struct block_parser {
+  microfmt::error_list<8> &errors;
+
+  reloco::expected<void, parse_error> operator()(token_stream &ts) {
+    if (auto name = ts.expect(token_kind::identifier, "expected a name"); !name) {
+      return reloco::unexpected<parse_error>(name.error());
+    }
+    if (auto open = ts.expect(token_kind::punctuation, "{", "expected '{'"); !open) {
+      return reloco::unexpected<parse_error>(open.error());
+    }
+    auto body = [this](token_stream &s) -> reloco::expected<void, parse_error> {
+      return microfmt::parse_choice(s, name_statement, *this);
+    };
+    (void)microfmt::parse_statements_until(ts, token_kind::punctuation, "}", kStatementEnd, kBraces, errors, body);
+    if (auto close = ts.expect(token_kind::punctuation, "}", "expected '}'"); !close) {
+      return reloco::unexpected<parse_error>(close.error());
+    }
+    return {};
+  }
+};
+
+size_t parse_blocks(string_view source, microfmt::error_list<8> &errors) {
+  token_stream ts{source, lexer_rules{}};
+  block_parser block{errors};
+  auto top = [&block](token_stream &s) -> reloco::expected<void, parse_error> {
+    return microfmt::parse_choice(s, name_statement, block);
+  };
+  return microfmt::parse_statements(ts, kStatementEnd, kBraces, errors, top);
+}
+
+} // namespace
+
+TEST(BlockRecovery, ErrorsInsideABlockStayInsideAndLaterStatementsParse) {
+  microfmt::error_list<8> errors;
+  EXPECT_EQ(parse_blocks("net { a b; c; } d;", errors), 2u);
+  ASSERT_EQ(errors.total(), 1u);
+  const auto stored = errors.errors();
+  EXPECT_EQ(stored[0].message, "expected ';'");
+
+  microfmt::error_list<8> two;
+  EXPECT_EQ(parse_blocks("net { a b; c d; e; } f;", two), 2u);
+  EXPECT_EQ(two.total(), 2u);
+}
+
+TEST(BlockRecovery, EmptyAndNestedBlocks) {
+  microfmt::error_list<8> errors;
+  EXPECT_EQ(parse_blocks("net { } x;", errors), 2u);
+  EXPECT_TRUE(errors.empty());
+
+  microfmt::error_list<8> nested;
+  EXPECT_EQ(parse_blocks("a { b { c d; e; } f; } g;", nested), 2u);
+  EXPECT_EQ(nested.total(), 1u);
+}
+
+TEST(BlockRecovery, MissingCloserIsReportedAtEndOfInput) {
+  microfmt::error_list<8> errors;
+  EXPECT_EQ(parse_blocks("net { a; ", errors), 0u);
+  ASSERT_GE(errors.total(), 1u);
+  const auto stored = errors.errors();
+  EXPECT_EQ(stored[0].message, "unexpected end of input");
+}

@@ -348,10 +348,38 @@ size_t good = microfmt::parse_statements(ts, kSemicolon, kBraces, errors, statem
 A closing bracket with no opener is skipped unless it is itself a sync token. An
 unmatched opener simply runs to the end of input.
 
-Limit: recovery is token-level. If the error happens *inside* a block (after its
-`{` was consumed), recovery resumes at depth 0 inside that block. To keep
-recovering within blocks, parse the block body with its own `parse_statements`
-call in your block rule.
+### Recovering inside a block
+
+`recover_balanced` helps when the error is *before* a block. If the error is
+*inside* `net { port = ; host = local; }`, the block rule has already consumed
+`{`, so the outer loop would resume mid-block and trip over the closing `}`. The
+block rule must keep parsing its own body. `parse_statements_until` does that:
+it runs your statement rule until the closing token (left unconsumed), recovers
+after each error without ever swallowing that closer, and records every error in
+the list you share with the outer loop.
+
+```cpp
+// The block rule needs the shared error list, so make it a small function object.
+struct block_rule {
+  microfmt::error_list<8> &errors;
+  reloco::expected<void, microfmt::parse_error> operator()(microfmt::token_stream &ts) const {
+    // ... expect the block name and '{' ...
+    // Parse the body: statements until '}'. Sync tokens and brackets work as in parse_statements;
+    // the closer need not be listed in `sync`. Body errors go into `errors`.
+    (void)microfmt::parse_statements_until(ts, microfmt::token_kind::punctuation, "}",
+                                           kSemicolon, kBraces, errors, setting);
+    // ... expect the closing '}' ...
+    return {};  // the block counts as parsed; its problems are already in `errors`
+  }
+};
+```
+
+A body error does not fail the block, so the outer loop does not report it a
+second time; compare `errors.total()` before and after if you need to know
+whether the block was clean. If the input ends before the closer, one
+"unexpected end of input" error is recorded (and a block rule that then expects
+the closer reports its own). Nest blocks by recursion, and keep `depth_guard` in
+the block rule. See [`examples/config_check_demo.cpp`](../examples/config_check_demo.cpp).
 
 ### Several accepted kinds
 

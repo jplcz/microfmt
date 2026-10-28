@@ -544,29 +544,18 @@ struct RELOCO_POINTER bracket_pair {
   microfmt::string_view close{};
 };
 
-/**
- * @brief Like `recover_to`, but sync tokens inside nested brackets are ignored.
- *
- * Why: a `;` inside `{ ... }` is not the end of the outer statement. Skipping the whole bracketed
- * region stops recovery from resuming in the middle of a block and reporting bogus follow-up errors.
- * Sync points are only honoured at depth 0; a closing bracket with no opener is skipped unless it is
- * itself a sync point. If nesting would exceed `max_depth` recovery stops at the current token,
- * which keeps the work linear in the token count for hostile input.
- *
- * @return Number of tokens skipped.
- */
-[[nodiscard]] inline size_t recover_balanced(token_stream &ts, span<const token_sync> sync,
-                                             span<const bracket_pair> brackets, size_t max_depth = 64) noexcept {
+namespace detail {
+
+// Shared engine for recover_balanced and parse_statements_until: `is_sync(token)` is only asked at depth 0.
+template <typename IsSync>
+size_t recover_balanced_if(token_stream &ts, IsSync &&is_sync, span<const bracket_pair> brackets,
+                           size_t max_depth) noexcept {
   size_t skipped = 0;
   size_t depth = 0;
   while (!ts.at_end()) {
     const token tok = ts.peek();
-    if (depth == 0) {
-      for (size_t i = 0; i < sync.size(); ++i) {
-        if (sync[i].kind == tok.kind && (sync[i].text.empty() || sync[i].text == tok.text)) {
-          return skipped;
-        }
-      }
+    if (depth == 0 && is_sync(tok)) {
+      return skipped;
     }
     bool opens = false;
     bool closes = false;
@@ -586,6 +575,34 @@ struct RELOCO_POINTER bracket_pair {
     ++skipped;
   }
   return skipped;
+}
+
+} // namespace detail
+
+/**
+ * @brief Like `recover_to`, but sync tokens inside nested brackets are ignored.
+ *
+ * Why: a `;` inside `{ ... }` is not the end of the outer statement. Skipping the whole bracketed
+ * region stops recovery from resuming in the middle of a block and reporting bogus follow-up errors.
+ * Sync points are only honoured at depth 0; a closing bracket with no opener is skipped unless it is
+ * itself a sync point. If nesting would exceed `max_depth` recovery stops at the current token,
+ * which keeps the work linear in the token count for hostile input.
+ *
+ * @return Number of tokens skipped.
+ */
+[[nodiscard]] inline size_t recover_balanced(token_stream &ts, span<const token_sync> sync,
+                                             span<const bracket_pair> brackets, size_t max_depth = 64) noexcept {
+  return detail::recover_balanced_if(
+      ts,
+      [sync](const token &tok) {
+        for (size_t i = 0; i < sync.size(); ++i) {
+          if (sync[i].kind == tok.kind && (sync[i].text.empty() || sync[i].text == tok.text)) {
+            return true;
+          }
+        }
+        return false;
+      },
+      brackets, max_depth);
 }
 
 // ============================================================================
@@ -685,6 +702,62 @@ template <size_t N, typename Statement>
                                       error_list<N> &errors, Statement &&statement) noexcept {
   return detail::statements_loop(ts, errors, statement,
                                  [sync, brackets](token_stream &s) { (void)recover_balanced(s, sync, brackets); });
+}
+
+/**
+ * @brief Parses statements until `close` (left unconsumed), collecting errors into `errors`.
+ *
+ * Why: a block rule that has consumed `{` must keep recovering inside its own body, otherwise the
+ * outer loop resumes mid-block and reports bogus follow-up errors. After a statement error this skips
+ * to the next sync token (or `close`) at bracket depth 0, so the block's closing bracket is never
+ * swallowed. Reaching the end of input before `close` records "unexpected end of input". A body error
+ * does not fail the caller: it is recorded and the block counts as parsed, so compare `errors.total()`
+ * before and after if you need to know. Progress is guaranteed as in `parse_statements`.
+ *
+ * @return Number of statements parsed successfully.
+ */
+template <size_t N, typename Statement>
+[[nodiscard]] size_t parse_statements_until(token_stream &ts, token_kind close_kind, microfmt::string_view close,
+                                            span<const token_sync> sync, span<const bracket_pair> brackets,
+                                            error_list<N> &errors, Statement &&statement) noexcept {
+  size_t parsed = 0;
+  for (;;) {
+    if (ts.at_end()) {
+      errors.add(parse_error{"unexpected end of input", ts.peek()});
+      break;
+    }
+    if (ts.check(close_kind, close)) {
+      break;
+    }
+    const size_t start = ts.peek().offset;
+    auto result = statement(ts);
+    if (result) {
+      ++parsed;
+      if (ts.peek().offset == start && !ts.at_end() && !ts.check(close_kind, close)) {
+        ts.next();
+      }
+      continue;
+    }
+    errors.add(result.error());
+    (void)detail::recover_balanced_if(
+        ts,
+        [close_kind, close, sync](const token &tok) {
+          if (tok.kind == close_kind && tok.text == close) {
+            return true;
+          }
+          for (size_t i = 0; i < sync.size(); ++i) {
+            if (sync[i].kind == tok.kind && (sync[i].text.empty() || sync[i].text == tok.text)) {
+              return true;
+            }
+          }
+          return false;
+        },
+        brackets, 64);
+    if (!ts.at_end() && !ts.check(close_kind, close)) {
+      ts.next();
+    }
+  }
+  return parsed;
 }
 
 /**
