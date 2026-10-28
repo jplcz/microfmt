@@ -415,8 +415,11 @@ private:
 // Expressions (precedence climbing)
 // ============================================================================
 
-/** Operator associativity: `1 - 2 - 3` is `(1 - 2) - 3` for `left`, `1 ^ 2 ^ 3` is `1 ^ (2 ^ 3)` for `right`. */
-enum class assoc : uint8_t { left, right };
+/**
+ * Operator associativity: `1 - 2 - 3` is `(1 - 2) - 3` for `left`, `1 ^ 2 ^ 3` is `1 ^ (2 ^ 3)` for `right`.
+ * `none` forbids chaining: `a < b < c` is the parse error "operator is not associative".
+ */
+enum class assoc : uint8_t { left, right, none };
 
 /** One binary operator, e.g. `{"*", 20, assoc::left}`. Higher precedence binds tighter. */
 struct RELOCO_POINTER binary_op {
@@ -543,6 +546,7 @@ public:
       return left;
     }
     T value = std::move(left).value();
+    int non_associative = -1; // precedence of the `none` operator just applied, or -1
     for (;;) {
       if (const reloco::optional<postfix_op> post = find_postfix(ts_.peek()); post && post->precedence >= min_precedence) {
         ts_.next();
@@ -569,6 +573,9 @@ public:
         return value;
       }
       const binary_op op = *found;
+      if (non_associative == static_cast<int>(op.precedence)) {
+        return reloco::unexpected<parse_error>(ts_.error_here("operator is not associative"));
+      }
       ts_.next();
       const unsigned next_min = op.associativity == assoc::right ? op.precedence : op.precedence + 1U;
       auto right = parse(next_min);
@@ -580,6 +587,7 @@ public:
         return combined;
       }
       value = std::move(combined).value();
+      non_associative = op.associativity == assoc::none ? static_cast<int>(op.precedence) : -1;
     }
   }
 

@@ -18,6 +18,7 @@
 #include <microfmt/parsing/lexer_rules_presets.hpp>
 #include <microfmt/parsing/parse_error.hpp>
 #include <microfmt/parsing/stream_window.hpp>
+#include <microfmt/parsing/operator_table.hpp>
 #include <microfmt/parsing/string_pool.hpp>
 #include <microfmt/parsing/string_pool_ref.hpp>
 #include <microfmt/parsing/token_stream.hpp>

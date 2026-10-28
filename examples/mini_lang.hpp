@@ -9,10 +9,11 @@
 // rolled back; statements run one by one.
 //
 //   program    := statement*
-//   statement  := let | print | block
+//   statement  := let | print | block | fixity
 //   let        := "let" NAME [ "=" expression ] ";"
 //   print      := "print" "(" expression ")" ";"
 //   block      := "{" statement* "}"
+//   fixity     := ("infixl" | "infixr" | "infix") NUMBER STRING "=" ("min" | "max") ";"
 //   expression := numbers, variables, calls NAME "(" [expression {"," expression}] ")",
 //                 unary -, binary + - * / > <, "?:", "if" expression "then" expression "else" expression
 //                 and parentheses
@@ -23,6 +24,7 @@
 #include <microfmt/microfmt.hpp>
 #include <microfmt/parsing/ast_pool.hpp>
 #include <microfmt/parsing/number_parse.hpp>
+#include <microfmt/parsing/operator_table.hpp>
 #include <microfmt/parsing/string_pool.hpp>
 #include <microfmt/parsing/token_stream_formatters.hpp>
 
@@ -39,14 +41,11 @@ using microfmt::token_stream;
 using value_result = reloco::expected<int64_t, parse_error>;
 using status = reloco::expected<void, parse_error>;
 
-// The lexer must emit these as `op` tokens; "=" is the assignment in `let`.
-inline constexpr string_view kOperators[] = {"+", "-", "*", "/", ">", "<", "=", "?", ":"};
-
-// Comparison binds looser than arithmetic, and the ternary (precedence 5) looser than comparison.
-inline constexpr microfmt::binary_op kBinary[] = {{"+", 10}, {"-", 10}, {"*", 20}, {"/", 20}, {">", 8}, {"<", 8}};
-inline constexpr microfmt::prefix_op kPrefix[] = {{"-", 30}};
-// `if` introduces a keyword form; its else branch binds as loosely as the ternary.
-inline constexpr microfmt::mixfix_op kMixfix[] = {{"if", 5}};
+// Operators live in an operator_table so a program can add its own (see parse_fixity). Precedences are only
+// relative: comparison binds looser than arithmetic, and the ternary (precedence 5) looser than all of them.
+inline constexpr size_t kMaxOperators = 16;
+inline constexpr size_t kMaxUserOperators = 8;
+inline constexpr string_view kBuiltinOperators = "+-*/<>";
 
 // After a broken statement, resume at the next ';' that is not inside a `{ ... }` block.
 inline constexpr microfmt::token_sync kStatementEnd[] = {{token_kind::punctuation, ";"}};
@@ -59,7 +58,7 @@ inline constexpr size_t kMaxDepth = 32;
 // Nodes of one expression; more is an error ("node pool full"). The first 32 live inside the interpreter.
 inline constexpr size_t kMaxNodes = 128;
 
-enum class node_kind : uint8_t { number, variable, binary, negate, ternary, call };
+enum class node_kind : uint8_t { number, variable, binary, user_binary, negate, ternary, call };
 enum class function_id : uint8_t { abs, max, min };
 
 // One syntax-tree node. Children are handles into the interpreter's node_pool, not pointers. `at` is the token
@@ -95,13 +94,13 @@ constexpr int64_t wrap(uint64_t v) noexcept { return static_cast<int64_t>(v); }
  */
 class RELOCO_POINTER interpreter {
 public:
-  explicit interpreter(string_view source RELOCO_LIFETIMEBOUND) noexcept : source_{source} {}
+  explicit interpreter(string_view source RELOCO_LIFETIMEBOUND) noexcept : source_{source} { declare_builtin_operators(); }
 
   /** @return Number of statements that ran without error. */
   [[nodiscard]] size_t run() noexcept {
-    microfmt::lexer_rules rules;
-    rules.operators = kOperators;
-    token_stream ts{source_, rules};
+    // "=" is the assignment in `let`; the table supplies every other operator spelling to the lexer.
+    rules_.operators = operator_spellings();
+    token_stream ts{source_, rules_};
     auto statement = [this](token_stream &s) -> status { return parse_statement(s); };
     return microfmt::parse_statements(ts, kStatementEnd, kBraces, errors_, statement);
   }
@@ -126,7 +125,62 @@ private:
     return microfmt::parse_choice(
         ts, [this](token_stream &s) -> status { return parse_let(s); },
         [this](token_stream &s) -> status { return parse_print(s); },
-        [this](token_stream &s) -> status { return parse_block(s); });
+        [this](token_stream &s) -> status { return parse_block(s); },
+        [this](token_stream &s) -> status { return parse_fixity(s); });
+  }
+
+  // `infixl 20 "<>" = min;` declares a binary operator at run time: its precedence (relative to the others), its
+  // associativity (`infixl`, `infixr`, or `infix` which forbids chaining) and the function it applies.
+  status parse_fixity(token_stream &ts) noexcept {
+    const token keyword = ts.peek();
+    const bool left = keyword.text == "infixl";
+    const bool right = keyword.text == "infixr";
+    if (keyword.kind != token_kind::identifier || !(left || right || keyword.text == "infix")) {
+      return reloco::unexpected<parse_error>(ts.error_here("expected a statement: let, print or a block"));
+    }
+    ts.next();
+    auto level = ts.expect(token_kind::integer, "expected a precedence number");
+    auto spelling = level ? ts.expect(token_kind::string, "expected the operator in quotes")
+                          : reloco::expected<token, parse_error>(reloco::unexpected<parse_error>(level.error()));
+    if (!spelling) {
+      return reloco::unexpected<parse_error>(spelling.error());
+    }
+    if (auto eq = ts.expect(token_kind::op, "=", "expected '='"); !eq) {
+      return reloco::unexpected<parse_error>(eq.error());
+    }
+    auto function = ts.expect(token_kind::identifier, "expected min or max");
+    if (!function) {
+      return reloco::unexpected<parse_error>(function.error());
+    }
+    if (function.value().text != "min" && function.value().text != "max") {
+      return reloco::unexpected<parse_error>(parse_error{"expected min or max", function.value()});
+    }
+    if (auto semi = ts.expect(token_kind::punctuation, ";", "expected ';'"); !semi) {
+      return reloco::unexpected<parse_error>(semi.error());
+    }
+    auto number = microfmt::parse<uint8_t>(level.value().text);
+    if (!number) {
+      return reloco::unexpected<parse_error>(parse_error{"precedence out of range", level.value()});
+    }
+    const string_view quoted = spelling.value().text;
+    const string_view text = quoted.size() >= 2 ? quoted.substr(1, quoted.size() - 2) : string_view{};
+    if (user_operator_count_ == user_operators_.size()) {
+      return reloco::unexpected<parse_error>(parse_error{"too many operators", spelling.value()});
+    }
+    auto name = operator_names_.intern(text, spelling.value());
+    if (!name) {
+      return reloco::unexpected<parse_error>(name.error());
+    }
+    const microfmt::assoc how = left ? microfmt::assoc::left : (right ? microfmt::assoc::right : microfmt::assoc::none);
+    if (auto declared = operators_.add_binary(text, number.value(), how); !declared) {
+      return reloco::unexpected<parse_error>(parse_error{declared.error(), spelling.value()});
+    }
+    user_operators_[user_operator_count_++] =
+        user_operator{name.value(), function.value().text == "max" ? function_id::max : function_id::min};
+    // The lexer must now emit the new spelling as an `op` token: swap the rules and re-tokenize the lookahead.
+    rules_.operators = operator_spellings();
+    ts.set_rules(rules_);
+    return {};
   }
 
   status parse_let(token_stream &ts) noexcept {
@@ -201,7 +255,11 @@ private:
     node_result make_binary(const microfmt::binary_op &op, node_id<node> l, node_id<node> r) const noexcept {
       node n;
       n.kind = node_kind::binary;
-      n.op = op.text[0];
+      n.op = op.text.size() == 1 ? op.text[0] : '\0';
+      if (n.op == '\0' || kBuiltinOperators.find(n.op) == string_view::npos) {
+        n.kind = node_kind::user_binary;
+        n.function = self->function_of(op.text);
+      }
       n.a = l;
       n.b = r;
       // A division by zero is reported at the divisor.
@@ -224,9 +282,9 @@ private:
 
     // `if cond then a else b`: the helper consumed "if"; we parse the three parts by re-entering the
     // expression parser (expr.parse) and consume `then` / `else` ourselves. The else branch is parsed at the
-    // mixfix precedence, so `if a then b else c + 1` is `if ... else (c + 1)`.
+    // loosest precedence (0), so `if a then b else c + 1` is `if ... else (c + 1)`.
     template <typename Expr>
-    node_result make_mixfix(const microfmt::mixfix_op &op, token_stream &s, Expr &expr) const noexcept {
+    node_result make_mixfix(const microfmt::mixfix_op &, token_stream &s, Expr &expr) const noexcept {
       auto cond = expr.parse(0);
       if (!cond) {
         return cond;
@@ -241,7 +299,7 @@ private:
       if (auto kw = s.expect(token_kind::identifier, "else", "expected 'else'"); !kw) {
         return reloco::unexpected<parse_error>(kw.error());
       }
-      auto else_node = expr.parse(op.precedence);
+      auto else_node = expr.parse(0);
       if (!else_node) {
         return else_node;
       }
@@ -263,8 +321,7 @@ private:
   // or function is reported while parsing (and, in a call, together with the other bad arguments).
   node_result parse_tree(token_stream &ts) noexcept {
     expression_actions actions{this};
-    const microfmt::expression_grammar grammar{kBinary, kPrefix, {}, kMixfix, microfmt::ternary_op{}};
-    return microfmt::parse_expression<node_id<node>>(ts, grammar, actions);
+    return microfmt::parse_expression<node_id<node>>(ts, operators_.grammar(), actions);
   }
 
   // Parse, evaluate, then give the nodes back: the tree is only needed for the one statement that uses it.
@@ -384,6 +441,18 @@ private:
       }
       return apply_binary(n, l.value(), r.value());
     }
+    case node_kind::user_binary: {
+      auto l = evaluate(n.a);
+      if (!l) {
+        return l;
+      }
+      auto r = evaluate(n.b);
+      if (!r) {
+        return r;
+      }
+      const reloco::array<int64_t, kMaxArguments> pair{l.value(), r.value()};
+      return apply_function(n.function, pair, 2);
+    }
     case node_kind::ternary: {
       // Only the chosen branch runs, which is the point of having a tree.
       auto cond = evaluate(n.a);
@@ -441,6 +510,42 @@ private:
     return best;
   }
 
+  // The built-in operators, declared with numeric precedences (which only fix their order).
+  void declare_builtin_operators() noexcept {
+    (void)operators_.add_binary("+", 10);
+    (void)operators_.add_binary("-", 10);
+    (void)operators_.add_binary("*", 20);
+    (void)operators_.add_binary("/", 20);
+    (void)operators_.add_binary(">", 8);
+    (void)operators_.add_binary("<", 8);
+    (void)operators_.add_prefix("-", 30);
+    (void)operators_.add_mixfix("if", 5);
+    (void)operators_.set_ternary(microfmt::ternary_op{});
+  }
+
+  // "=" and ":" are not operators of the table but `let` and `?:` need the lexer to emit them as `op`.
+  [[nodiscard]] microfmt::span<const string_view> operator_spellings() noexcept {
+    extra_spellings_.clear();
+    (void)extra_spellings_.try_push_back("=");
+    (void)extra_spellings_.try_push_back("?");
+    (void)extra_spellings_.try_push_back(":");
+    const auto declared = operators_.spellings();
+    for (size_t i = 0; i < declared.size(); ++i) {
+      (void)extra_spellings_.try_push_back(declared[i]);
+    }
+    return microfmt::detail::view_of<string_view>(extra_spellings_);
+  }
+
+  function_id function_of(string_view spelling) const noexcept {
+    const microfmt::string_id wanted = operator_names_.find(spelling);
+    for (size_t i = 0; i < user_operator_count_; ++i) {
+      if (user_operators_[i].name == wanted) {
+        return user_operators_[i].function;
+      }
+    }
+    return function_id::max;
+  }
+
   status define(const token &name, int64_t value) noexcept {
     const microfmt::string_id known = strings_.find(name.text);
     for (size_t i = 0; i < variable_count_; ++i) {
@@ -460,7 +565,18 @@ private:
     return {};
   }
 
+  struct RELOCO_COPYABLE user_operator {
+    microfmt::string_id name{};
+    function_id function{function_id::max};
+  };
+
   string_view source_;
+  microfmt::lexer_rules rules_{};
+  microfmt::operator_table<kMaxOperators> operators_{kMaxOperators};
+  microfmt::string_pool<64> operator_names_{256, kMaxUserOperators};
+  reloco::array<user_operator, kMaxUserOperators> user_operators_{};
+  size_t user_operator_count_{0};
+  reloco::sso_vector<string_view, kMaxOperators + 4> extra_spellings_{};
   reloco::array<variable, kMaxVariables> variables_{};
   size_t variable_count_{0};
   size_t depth_{0};

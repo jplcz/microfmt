@@ -159,3 +159,66 @@ TEST(MiniLang, ATooLargeExpressionFailsAndTheNodesAreReusedByLaterStatements) {
   ASSERT_EQ(errors.size(), 1u);
   EXPECT_EQ(errors[0].message, "node pool full");
 }
+
+TEST(OperatorTable, LevelsOrderPrecedencesAndRenumberOnInsertion) {
+  microfmt::operator_table<8> table;
+  const auto loose = table.add_level();
+  const auto tight = table.add_level();
+  ASSERT_TRUE(loose && tight);
+  EXPECT_LT(table.precedence_of(loose.value()), table.precedence_of(tight.value()));
+  const auto middle = table.add_level_above(loose.value());
+  ASSERT_TRUE(middle);
+  EXPECT_LT(table.precedence_of(loose.value()), table.precedence_of(middle.value()));
+  EXPECT_LT(table.precedence_of(middle.value()), table.precedence_of(tight.value()));
+  EXPECT_TRUE(table.add_binary("+", middle.value()));
+  EXPECT_EQ(table.level_of("+"), middle.value());
+  EXPECT_FALSE(table.level_of("nope").valid());
+}
+
+TEST(OperatorTable, AtMost62LevelsAndStaticErrorsLeaveTheTableUnchanged) {
+  microfmt::operator_table<4> table;
+  for (size_t i = 0; i < microfmt::operator_table<4>::kMaxLevels; ++i) {
+    ASSERT_TRUE(table.add_level()) << i;
+  }
+  const auto overflow = table.add_level();
+  ASSERT_FALSE(overflow);
+  EXPECT_EQ(overflow.error(), "operator table full");
+
+  microfmt::operator_table<4> ops;
+  ASSERT_TRUE(ops.add_binary("+", uint8_t{10}));
+  const auto generation = ops.generation();
+  EXPECT_EQ(ops.add_binary("+", uint8_t{20}).error(), "duplicate operator");
+  EXPECT_EQ(ops.add_binary("", uint8_t{20}).error(), "empty operator");
+  EXPECT_EQ(ops.generation(), generation);
+  EXPECT_EQ(ops.size(), 1u);
+  EXPECT_TRUE(ops.add_prefix("+", uint8_t{30})); // same spelling in another category is fine
+}
+
+TEST(OperatorTable, SpellingsAndKeywordsFeedTheLexer) {
+  microfmt::operator_table<8> table;
+  ASSERT_TRUE(table.add_binary("+", uint8_t{10}));
+  ASSERT_TRUE(table.add_binary("<=", uint8_t{5}));
+  ASSERT_TRUE(table.add_binary("div", uint8_t{20}));
+  ASSERT_TRUE(table.add_prefix("(", uint8_t{30})); // punctuation is never an operator spelling
+  EXPECT_EQ(table.spellings().size(), 2u);
+  EXPECT_TRUE(table.keywords().contains("div"));
+}
+
+TEST(MiniLang, FixityDeclarationsAddOperatorsAtRunTime) {
+  interpreter interp{"infixl 5 \"<>\" = max; print(1 + 2 <> 2 * 5); infixr 1 \"~\" = min; print(9 ~ 4 + 1);"};
+  EXPECT_EQ(interp.run(), 4u);
+  EXPECT_TRUE(interp.errors().empty());
+  EXPECT_EQ(interp.output(), "10\n5\n");
+}
+
+TEST(MiniLang, NonAssociativeOperatorRejectsChainingAndBadDeclarationsAreReported) {
+  interpreter chained{"infix 9 \"<>\" = max; print(1 <> 2);\nprint(1 <> 2 <> 3);"};
+  EXPECT_EQ(chained.run(), 2u);
+  const auto chained_errors = chained.errors().errors();
+  ASSERT_EQ(chained_errors.size(), 1u);
+  EXPECT_EQ(chained_errors[0].message, "operator is not associative");
+
+  interpreter bad{"infixl 300 \"<>\" = max; infixl 5 \"+\" = max; infixl 5 \"<>\" = sum;"};
+  EXPECT_EQ(bad.run(), 0u);
+  EXPECT_EQ(bad.errors().errors().size(), 3u);
+}
