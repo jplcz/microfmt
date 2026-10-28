@@ -297,6 +297,9 @@ private:
   }
 
   [[nodiscard]] reloco::string_view text_from(size_t offset) const & noexcept RELOCO_LIFETIMEBOUND {
+    if (arena_.empty()) {
+      return {}; // `data()` of an empty vector asserts; an empty literal is legal
+    }
     return reloco::string_view(arena_.data(), arena_.size()).substr(offset);
   }
   reloco::string_view text_from(size_t) const && = delete;

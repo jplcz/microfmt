@@ -1225,6 +1225,18 @@ TEST(StringPool, InternsEqualTextToEqualIds) {
   EXPECT_EQ(pool.view(g.value()), "gamma");
 }
 
+TEST(StringPool, EmptyTextIsValidOnAFreshPool) {
+  microfmt::string_pool<4> pool;
+  const auto interned = pool.intern("", microfmt::token{});
+  ASSERT_TRUE(interned);
+  EXPECT_TRUE(pool.view(interned.value()).empty());
+  microfmt::string_pool<4> built;
+  auto builder = built.begin();
+  const auto id = builder.finish(microfmt::token{});
+  ASSERT_TRUE(id);
+  EXPECT_TRUE(built.view(id.value()).empty());
+}
+
 TEST(StringPool, FindNeverInsertsAndBadIdsGiveEmptyViews) {
   microfmt::string_pool<16> pool;
   const microfmt::token at{};
