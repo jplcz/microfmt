@@ -13,7 +13,8 @@
 //   print      := "print" "(" expression ")" ";"
 //   block      := "{" statement* "}"
 //   expression := numbers, variables, calls NAME "(" [expression {"," expression}] ")",
-//                 unary -, binary + - * / > <, "?:" and parentheses
+//                 unary -, binary + - * / > <, "?:", "if" expression "then" expression "else" expression
+//                 and parentheses
 
 #include <cstddef>
 #include <cstdint>
@@ -40,6 +41,8 @@ inline constexpr string_view kOperators[] = {"+", "-", "*", "/", ">", "<", "=", 
 // Comparison binds looser than arithmetic, and the ternary (precedence 5) looser than comparison.
 inline constexpr microfmt::binary_op kBinary[] = {{"+", 10}, {"-", 10}, {"*", 20}, {"/", 20}, {">", 8}, {"<", 8}};
 inline constexpr microfmt::prefix_op kPrefix[] = {{"-", 30}};
+// `if` introduces a keyword form; its else branch binds as loosely as the ternary.
+inline constexpr microfmt::mixfix_op kMixfix[] = {{"if", 5}};
 
 // After a broken statement, resume at the next ';' that is not inside a `{ ... }` block.
 inline constexpr microfmt::token_sync kStatementEnd[] = {{token_kind::punctuation, ";"}};
@@ -160,10 +163,14 @@ private:
     return {};
   }
 
-  value_result expression(token_stream &ts) noexcept {
-    auto primary = [this](token_stream &s) -> value_result { return parse_primary(s); };
+  // The callbacks that turn parsed pieces into values; parse_expression looks them up by name.
+  struct RELOCO_POINTER expression_actions {
+    interpreter *self;
+    token_stream *stream;
 
-    auto binary = [&ts](const microfmt::binary_op &op, int64_t l, int64_t r) -> value_result {
+    value_result primary(token_stream &s) const noexcept { return self->parse_primary(s); }
+
+    value_result make_binary(const microfmt::binary_op &op, int64_t l, int64_t r) const noexcept {
       const auto a = static_cast<uint64_t>(l);
       const auto b = static_cast<uint64_t>(r);
       switch (op.text[0]) {
@@ -179,24 +186,52 @@ private:
         return l < r ? 1 : 0;
       default:
         if (r == 0) {
-          return reloco::unexpected<parse_error>(ts.error_here("division by zero"));
+          return reloco::unexpected<parse_error>(stream->error_here("division by zero"));
         }
         return r == -1 ? detail::wrap(0 - a) : l / r; // INT64_MIN / -1 would overflow
       }
-    };
+    }
 
-    auto prefix = [](const microfmt::prefix_op &, int64_t v) -> value_result {
+    value_result make_prefix(const microfmt::prefix_op &, int64_t v) const noexcept {
       return detail::wrap(0 - static_cast<uint64_t>(v));
-    };
+    }
 
     // Both branches of `?:` are already evaluated; that is fine because expressions have no side effects.
-    auto ternary = [](const microfmt::ternary_op &, int64_t c, int64_t t, int64_t e) -> value_result {
+    value_result make_ternary(const microfmt::ternary_op &, int64_t c, int64_t t, int64_t e) const noexcept {
       return c != 0 ? t : e;
-    };
-    auto no_postfix = [](const microfmt::postfix_op &, int64_t v, token_stream &) -> value_result { return v; };
+    }
 
-    return microfmt::parse_expression<int64_t>(ts, kBinary, kPrefix, microfmt::span<const microfmt::postfix_op>{},
-                                               microfmt::ternary_op{}, primary, binary, prefix, no_postfix, ternary);
+    // `if cond then a else b`: the helper consumed "if"; we parse the three parts by re-entering the
+    // expression parser (expr.parse) and consume `then` / `else` ourselves. The else branch is parsed at the
+    // mixfix precedence, so `if a then b else c + 1` is `if ... else (c + 1)`.
+    template <typename Expr>
+    value_result make_mixfix(const microfmt::mixfix_op &op, token_stream &s, Expr &expr) const noexcept {
+      auto cond = expr.parse(0);
+      if (!cond) {
+        return cond;
+      }
+      if (auto kw = s.expect(token_kind::identifier, "then", "expected 'then'"); !kw) {
+        return reloco::unexpected<parse_error>(kw.error());
+      }
+      auto then_value = expr.parse(0);
+      if (!then_value) {
+        return then_value;
+      }
+      if (auto kw = s.expect(token_kind::identifier, "else", "expected 'else'"); !kw) {
+        return reloco::unexpected<parse_error>(kw.error());
+      }
+      auto else_value = expr.parse(op.precedence);
+      if (!else_value) {
+        return else_value;
+      }
+      return cond.value() != 0 ? then_value.value() : else_value.value();
+    }
+  };
+
+  value_result expression(token_stream &ts) noexcept {
+    expression_actions actions{this, &ts};
+    const microfmt::expression_grammar grammar{kBinary, kPrefix, {}, kMixfix, microfmt::ternary_op{}};
+    return microfmt::parse_expression<int64_t>(ts, grammar, actions);
   }
 
   // The leaves of an expression: a number, a variable or a call. "(" expression ")" never reaches here.

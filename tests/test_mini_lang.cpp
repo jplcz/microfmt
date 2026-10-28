@@ -101,3 +101,18 @@ TEST(MiniLang, ResourceLimitsReportErrorsInsteadOfOverflowing) {
   (void)wrap.run();
   EXPECT_EQ(wrap.output().substr(0, 21), "-9223372036854775808\n");
 }
+
+TEST(MiniLang, IfThenElseIsAnExpressionThatNestsAndReportsMissingKeywords) {
+  interpreter ok{
+      "let a = 3; print(if a > 2 then a * 10 else 0); print(1 + if a < 2 then 1 else if a > 2 then 5 else 6);"};
+  EXPECT_EQ(ok.run(), 3u);
+  EXPECT_EQ(ok.output(), "30\n6\n");
+
+  interpreter bad{"print(if 1 then 2);\nprint(if 1 2 else 3);\nprint(7);"};
+  EXPECT_EQ(bad.run(), 1u);
+  EXPECT_EQ(bad.output(), "7\n");
+  const auto errors = bad.errors().errors();
+  ASSERT_EQ(errors.size(), 2u);
+  EXPECT_EQ(errors[0].message, "expected 'else'");
+  EXPECT_EQ(errors[1].message, "expected 'then'");
+}

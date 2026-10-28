@@ -208,6 +208,25 @@ struct RELOCO_POINTER ternary_op {
   uint8_t precedence{5}; ///< Lower than the binary operators, so `a + b ? c : d` is `(a + b) ? c : d`.
 };
 
+/**
+ * A keyword-introduced form such as `if c then a else b`, matched by the spelling of its first token
+ * (`op`, `keyword`, `identifier` or `punctuation`) wherever an operand is expected.
+ * `precedence` is a hint handed back to the callback for the trailing sub-expression.
+ */
+struct RELOCO_POINTER mixfix_op {
+  microfmt::string_view text{};
+  uint8_t precedence{0};
+};
+
+/** All operator tables for the `Actions` flavour of `parse_expression`; empty members mean "not used". */
+struct RELOCO_POINTER expression_grammar {
+  span<const binary_op> binary{};
+  span<const prefix_op> prefix{};
+  span<const postfix_op> postfix{};
+  span<const mixfix_op> mixfix{};
+  reloco::optional<ternary_op> ternary{};
+};
+
 namespace detail {
 
 /** Ternary callback used when no ternary operator is given; never called because it is disabled. */
@@ -224,17 +243,53 @@ template <typename T> struct no_postfix {
   }
 };
 
+/** Mixfix callback used when no mixfix forms are given; never called because the table is empty. */
+template <typename T> struct no_mixfix {
+  template <typename Expr>
+  reloco::expected<T, parse_error> operator()(const mixfix_op &, token_stream &, Expr &) const noexcept {
+    return reloco::unexpected<parse_error>(parse_error{"mixfix forms are disabled", {}});
+  }
+};
+
+/** C++17 detection idiom: `is_detected<Op, Args...>` is true when `Op<Args...>` is a valid type. */
+template <typename Void, template <typename...> class Op, typename... Args> struct detector : std::false_type {};
+template <template <typename...> class Op, typename... Args>
+struct detector<std::void_t<Op<Args...>>, Op, Args...> : std::true_type {};
+template <template <typename...> class Op, typename... Args>
+inline constexpr bool is_detected_v = detector<void, Op, Args...>::value;
+
+template <typename A, typename... X> using binary_call_t = decltype(std::declval<A &>().make_binary(std::declval<X>()...));
+template <typename A, typename... X> using prefix_call_t = decltype(std::declval<A &>().make_prefix(std::declval<X>()...));
+template <typename A, typename... X> using postfix_call_t = decltype(std::declval<A &>().make_postfix(std::declval<X>()...));
+template <typename A, typename... X> using ternary_call_t = decltype(std::declval<A &>().make_ternary(std::declval<X>()...));
+template <typename A, typename... X> using mixfix_call_t = decltype(std::declval<A &>().make_mixfix(std::declval<X>()...));
+
+/** Forwards to `actions.make_mixfix`, or fails when the actions object has none. */
+template <typename T, typename Actions> struct RELOCO_POINTER mixfix_forwarder {
+  Actions *actions;
+  token_stream *stream;
+  template <typename Expr>
+  reloco::expected<T, parse_error> operator()(const mixfix_op &op, token_stream &s, Expr &expr) const noexcept {
+    if constexpr (is_detected_v<mixfix_call_t, Actions, const mixfix_op &, token_stream &, Expr &>) {
+      return actions->make_mixfix(op, s, expr);
+    } else {
+      return reloco::unexpected<parse_error>(stream->error_here("no make_mixfix callback"));
+    }
+  }
+};
+
 template <typename T, typename Primary, typename MakeBinary, typename MakePrefix, typename MakePostfix,
-          typename MakeTernary>
+          typename MakeTernary, typename MakeMixfix = no_mixfix<T>>
 class RELOCO_POINTER expression_parser {
 public:
   expression_parser(token_stream &ts, span<const binary_op> binary, span<const prefix_op> prefix,
-                    span<const postfix_op> postfix, const reloco::optional<ternary_op> &ternary, Primary &primary,
+                    span<const postfix_op> postfix, const reloco::optional<ternary_op> &ternary RELOCO_LIFETIMEBOUND, Primary &primary,
                     MakeBinary &make_binary, MakePrefix &make_prefix, MakePostfix &make_postfix,
-                    MakeTernary &make_ternary, size_t max_depth) noexcept
-      : ts_(ts), binary_(binary), prefix_(prefix), postfix_(postfix), ternary_(ternary), primary_(primary),
-        make_binary_(make_binary), make_prefix_(make_prefix), make_postfix_(make_postfix),
-        make_ternary_(make_ternary), max_depth_(max_depth) {}
+                    MakeTernary &make_ternary, size_t max_depth, span<const mixfix_op> mixfix = {},
+                    MakeMixfix *make_mixfix = nullptr) noexcept
+      : ts_(ts), binary_(binary), prefix_(prefix), postfix_(postfix), mixfix_(mixfix), ternary_(ternary),
+        primary_(primary), make_binary_(make_binary), make_prefix_(make_prefix), make_postfix_(make_postfix),
+        make_ternary_(make_ternary), make_mixfix_(make_mixfix), max_depth_(max_depth) {}
 
   [[nodiscard]] reloco::expected<T, parse_error> parse(unsigned min_precedence) noexcept {
     const depth_guard guard{depth_, max_depth_};
@@ -347,7 +402,22 @@ private:
     return reloco::nullopt;
   }
 
+  [[nodiscard]] reloco::optional<mixfix_op> find_mixfix(const token &tok) const noexcept {
+    if (is_operator_token(tok) || tok.kind == token_kind::identifier || tok.kind == token_kind::punctuation) {
+      for (size_t i = 0; i < mixfix_.size(); ++i) {
+        if (mixfix_[i].text == tok.text) {
+          return mixfix_[i];
+        }
+      }
+    }
+    return reloco::nullopt;
+  }
+
   [[nodiscard]] reloco::expected<T, parse_error> parse_operand() noexcept {
+    if (const reloco::optional<mixfix_op> form = find_mixfix(ts_.peek()); form && make_mixfix_ != nullptr) {
+      ts_.next();
+      return (*make_mixfix_)(*form, ts_, *this);
+    }
     if (const reloco::optional<prefix_op> op = find_prefix(ts_.peek())) {
       ts_.next();
       auto operand = parse(op->precedence);
@@ -373,12 +443,14 @@ private:
   span<const binary_op> binary_;
   span<const prefix_op> prefix_;
   span<const postfix_op> postfix_;
+  span<const mixfix_op> mixfix_;
   const reloco::optional<ternary_op> &ternary_;
   Primary &primary_;
   MakeBinary &make_binary_;
   MakePrefix &make_prefix_;
   MakePostfix &make_postfix_;
   MakeTernary &make_ternary_;
+  MakeMixfix *make_mixfix_;
   size_t max_depth_;
   size_t depth_{0};
 };
@@ -461,6 +533,72 @@ parse_expression(token_stream &ts, span<const binary_op> binary, span<const pref
   const reloco::optional<ternary_op> enabled{ternary};
   detail::expression_parser<T, Primary, MakeBinary, MakePrefix, MakePostfix, MakeTernary> parser{
       ts, binary, prefix, postfix, enabled, primary, make_binary, make_prefix, make_postfix, make_ternary, max_depth};
+  return parser.parse(0);
+}
+
+/**
+ * @brief `parse_expression` driven by an `expression_grammar` and one `actions` object.
+ *
+ * Why: forms like `if c then a else b` or `let x = e in body` start with a keyword and contain several
+ * sub-expressions, which `primary` cannot parse because it cannot re-enter the precedence parser. A
+ * mixfix callback receives the stream and the running parser: `expr.parse(min_precedence)` parses a
+ * sub-expression, and the callback consumes the keywords between them itself.
+ *
+ * `actions` members (all called with the same shapes as the other overloads):
+ *  - `primary(ts)` is required;
+ *  - `make_binary(op, l, r)` and `make_prefix(op, v)` are required when those tables are non-empty;
+ *  - `make_postfix(op, v, ts)`, `make_ternary(op, c, t, e)` and `make_mixfix(op, ts, expr)` may be omitted;
+ *    if the grammar uses the matching feature anyway, parsing fails with an error at that token.
+ * A mixfix keyword takes priority over `primary`, so it cannot also be a variable name.
+ */
+template <typename T, typename Actions>
+[[nodiscard]] reloco::expected<T, parse_error>
+parse_expression(token_stream &ts, const expression_grammar &grammar, Actions &actions, size_t max_depth = 64) noexcept {
+  using result = reloco::expected<T, parse_error>;
+  auto primary = [&actions](token_stream &s) noexcept -> result { return actions.primary(s); };
+  auto make_binary = [&actions, &ts](const binary_op &op, T l, T r) noexcept -> result {
+    (void)ts;
+    if constexpr (detail::is_detected_v<detail::binary_call_t, Actions, const binary_op &, T, T>) {
+      return actions.make_binary(op, std::move(l), std::move(r));
+    } else {
+      (void)actions;
+      return reloco::unexpected<parse_error>(ts.error_here("no make_binary callback"));
+    }
+  };
+  auto make_prefix = [&actions, &ts](const prefix_op &op, T v) noexcept -> result {
+    (void)ts;
+    if constexpr (detail::is_detected_v<detail::prefix_call_t, Actions, const prefix_op &, T>) {
+      return actions.make_prefix(op, std::move(v));
+    } else {
+      (void)actions;
+      return reloco::unexpected<parse_error>(ts.error_here("no make_prefix callback"));
+    }
+  };
+  auto make_postfix = [&actions, &ts](const postfix_op &op, T v, token_stream &s) noexcept -> result {
+    (void)ts;
+    if constexpr (detail::is_detected_v<detail::postfix_call_t, Actions, const postfix_op &, T, token_stream &>) {
+      return actions.make_postfix(op, std::move(v), s);
+    } else {
+      (void)actions;
+      return reloco::unexpected<parse_error>(ts.error_here("no make_postfix callback"));
+    }
+  };
+  auto make_ternary = [&actions, &ts](const ternary_op &op, T c, T t, T e) noexcept -> result {
+    (void)ts;
+    if constexpr (detail::is_detected_v<detail::ternary_call_t, Actions, const ternary_op &, T, T, T>) {
+      return actions.make_ternary(op, std::move(c), std::move(t), std::move(e));
+    } else {
+      (void)actions;
+      return reloco::unexpected<parse_error>(ts.error_here("no make_ternary callback"));
+    }
+  };
+  using adapted_parser = detail::expression_parser<T, decltype(primary), decltype(make_binary), decltype(make_prefix),
+                                                   decltype(make_postfix), decltype(make_ternary),
+                                                   detail::mixfix_forwarder<T, Actions>>;
+  detail::mixfix_forwarder<T, Actions> adapter{&actions, &ts};
+  adapted_parser parser{ts,       grammar.binary, grammar.prefix, grammar.postfix, grammar.ternary,
+                        primary,  make_binary,    make_prefix,    make_postfix,    make_ternary,
+                        max_depth, grammar.mixfix, &adapter};
   return parser.parse(0);
 }
 

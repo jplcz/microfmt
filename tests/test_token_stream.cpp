@@ -362,6 +362,143 @@ TEST(Expression, PostfixCallbackErrorsPropagate) {
   EXPECT_EQ(unclosed.error().message, "expected ']'");
 }
 
+namespace {
+
+constexpr microfmt::mixfix_op kMixfixForms[] = {{"if", 5}};
+constexpr binary_op kMixfixBinary[] = {{"+", 10, assoc::left}, {"*", 20, assoc::left}};
+constexpr prefix_op kMixfixPrefix[] = {{"-", 30}};
+constexpr microfmt::postfix_op kMixfixPostfix[] = {{"#", 50}};
+
+// `if c then a else b` evaluates to a or b; `#` adds 100; `?:` is available too.
+struct mixfix_actions {
+  unsigned else_precedence_seen{0};
+
+  calc_result primary(token_stream &s) {
+    if (!s.check(token_kind::integer)) {
+      return reloco::unexpected<parse_error>(s.error_here("expected a number"));
+    }
+    return microfmt::parse<int64_t>(s.next().text).value();
+  }
+  calc_result make_binary(const binary_op &op, int64_t l, int64_t r) { return op.text == "+" ? l + r : l * r; }
+  calc_result make_prefix(const prefix_op &, int64_t v) { return -v; }
+  calc_result make_postfix(const microfmt::postfix_op &, int64_t v, token_stream &) { return v + 100; }
+  calc_result make_ternary(const microfmt::ternary_op &, int64_t c, int64_t t, int64_t e) { return c != 0 ? t : e; }
+  template <typename Expr> calc_result make_mixfix(const microfmt::mixfix_op &op, token_stream &s, Expr &expr) {
+    auto cond = expr.parse(0);
+    if (!cond) {
+      return cond;
+    }
+    if (auto kw = s.expect(token_kind::identifier, "then", "expected 'then'"); !kw) {
+      return reloco::unexpected<parse_error>(kw.error());
+    }
+    auto a = expr.parse(0);
+    if (!a) {
+      return a;
+    }
+    if (auto kw = s.expect(token_kind::identifier, "else", "expected 'else'"); !kw) {
+      return reloco::unexpected<parse_error>(kw.error());
+    }
+    auto b = expr.parse(trailing_precedence.value_or(op.precedence));
+    if (!b) {
+      return b;
+    }
+    return cond.value() != 0 ? a.value() : b.value();
+  }
+  reloco::optional<unsigned> trailing_precedence{};
+};
+
+calc_result mixfix_calc(string_view text, size_t max_depth = 64, reloco::optional<unsigned> trailing = {}) {
+  lexer_rules rules;
+  rules.operators = kCalcOps;
+  token_stream ts{text, rules};
+  mixfix_actions actions;
+  actions.trailing_precedence = trailing;
+  const microfmt::expression_grammar grammar{kMixfixBinary, kMixfixPrefix, {}, kMixfixForms, {}};
+  auto result = microfmt::parse_expression<int64_t>(ts, grammar, actions, max_depth);
+  if (result && !ts.at_end()) {
+    return reloco::unexpected<parse_error>(ts.error_here("trailing input"));
+  }
+  return result;
+}
+
+} // namespace
+
+TEST(Mixfix, IfThenElseEvaluatesAndNests) {
+  EXPECT_EQ(mixfix_calc("if 1 then 10 else 20").value(), 10);
+  EXPECT_EQ(mixfix_calc("if 0 then 10 else 20").value(), 20);
+  EXPECT_EQ(mixfix_calc("if 1 then if 0 then 1 else 2 else 3").value(), 2);
+  EXPECT_EQ(mixfix_calc("if 0 then 1 else if 0 then 2 else 3").value(), 3);
+}
+
+TEST(Mixfix, WorksAsOperandInsideBinaryPrefixAndParentheses) {
+  EXPECT_EQ(mixfix_calc("1 + if 1 then 2 else 3 * 4").value(), 3);
+  EXPECT_EQ(mixfix_calc("2 * (if 0 then 1 else 5) + 1").value(), 11);
+  EXPECT_EQ(mixfix_calc("-if 1 then 7 else 0").value(), -7);
+}
+
+TEST(Mixfix, TrailingPrecedenceControlsHowFarElseExtends) {
+  // Low hint: the else branch swallows `+ 1`. High hint: it stops, so `+ 1` applies to the whole form.
+  EXPECT_EQ(mixfix_calc("if 0 then 5 else 2 + 1").value(), 3);
+  EXPECT_EQ(mixfix_calc("if 0 then 5 else 2 + 1", 64, 30u).value(), 3);
+  EXPECT_EQ(mixfix_calc("1 + if 1 then 5 else 2 + 1", 64, 5u).value(), 6);  // (2 + 1) belongs to the else branch
+  EXPECT_EQ(mixfix_calc("1 + if 1 then 5 else 2 + 1", 64, 30u).value(), 7); // (1 + 5) + 1
+}
+
+TEST(Mixfix, MissingKeywordsAreReportedAtTheRightToken) {
+  auto no_then = mixfix_calc("if 1 5 else 2");
+  ASSERT_FALSE(no_then.has_value());
+  EXPECT_EQ(no_then.error().message, "expected 'then'");
+  EXPECT_EQ(no_then.error().at.text, "5");
+
+  auto no_else = mixfix_calc("if 1 then 2");
+  ASSERT_FALSE(no_else.has_value());
+  EXPECT_EQ(no_else.error().message, "expected 'else'");
+  EXPECT_EQ(no_else.error().at.kind, token_kind::end);
+}
+
+TEST(Mixfix, OtherIdentifiersStillReachPrimaryAndDepthIsBounded) {
+  auto unknown = mixfix_calc("iffy");
+  ASSERT_FALSE(unknown.has_value());
+  EXPECT_EQ(unknown.error().message, "expected a number");
+
+  auto deep = mixfix_calc("if 1 then if 1 then if 1 then if 1 then if 1 then 1 else 1 else 1 else 1 else 1 else 1", 4);
+  ASSERT_FALSE(deep.has_value());
+  EXPECT_EQ(deep.error().message, "nesting too deep");
+}
+
+TEST(Mixfix, CombinesWithEveryOtherGrammarPart) {
+  lexer_rules rules;
+  constexpr string_view ops[] = {"+", "*", "-", "?", ":", "#"};
+  rules.operators = ops;
+  token_stream ts{"-1 # + if 0 then 2 else 3 ? 4 : 5", rules};
+  mixfix_actions actions;
+  const microfmt::expression_grammar grammar{kMixfixBinary, kMixfixPrefix, kMixfixPostfix, kMixfixForms,
+                                             microfmt::ternary_op{}};
+  auto result = microfmt::parse_expression<int64_t>(ts, grammar, actions);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(result.value(), -97); // -(1 #) + (else branch: `3 ? 4 : 5` is 4)
+  EXPECT_TRUE(ts.at_end());
+}
+
+TEST(Mixfix, MissingOptionalCallbackIsAnErrorOnlyWhenUsed) {
+  struct minimal {
+    calc_result primary(token_stream &s) { return microfmt::parse<int64_t>(s.next().text).value(); }
+    calc_result make_binary(const binary_op &, int64_t l, int64_t r) { return l + r; }
+  };
+  lexer_rules rules;
+  rules.operators = kCalcOps;
+  token_stream plain{"1 + 2", rules};
+  minimal actions;
+  const microfmt::expression_grammar only_binary{kMixfixBinary, {}, {}, {}, {}};
+  EXPECT_EQ(microfmt::parse_expression<int64_t>(plain, only_binary, actions).value(), 3);
+
+  token_stream used{"if 1 then 2 else 3", rules};
+  const microfmt::expression_grammar with_mixfix{kMixfixBinary, {}, {}, kMixfixForms, {}};
+  auto r = microfmt::parse_expression<int64_t>(used, with_mixfix, actions);
+  ASSERT_FALSE(r.has_value());
+  EXPECT_EQ(r.error().message, "no make_mixfix callback");
+}
+
 TEST(Recovery, CollectsSeveralErrorsAndTerminates) {
   // statement := name ';'
   token_stream ts{"a; b b; c d; e;", lexer_rules{}};

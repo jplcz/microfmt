@@ -31,7 +31,8 @@ everywhere: 16 variables, 8 call arguments, 16 stored errors, a 1 KiB output buf
 | Need | Helper | Where |
 |---|---|---|
 | Read tokens one at a time | `token_stream`, `expect`, `skip`, `check` | every rule |
-| Operators with precedence | `parse_expression` with `kBinary`, `kPrefix`, a `ternary_op` | `expression()` |
+| Operators with precedence | `parse_expression` with an `expression_grammar` (`kBinary`, `kPrefix`, a `ternary_op`) | `expression()` |
+| `if c then a else b` | a `mixfix_op` plus `make_mixfix`, which re-enters the parser with `expr.parse` | `expression_actions::make_mixfix` |
 | Comma-separated call arguments | `parse_list` | `parse_call()` |
 | "A statement is a let, a print or a block" | `parse_choice` | `parse_statement()` |
 | Optional initialiser (`let x;`) | `parse_optional` | `parse_let()` |
@@ -55,7 +56,10 @@ without consuming anything" into "nothing here". In `let x = ;` the `=` is consu
 expression fails, which stays an error, so the typo is not silently treated as "no initialiser".
 
 **Expressions.** `parse_expression` handles precedence; you only supply the leaves (`parse_primary`) and
-what to do with the operands (`binary`, `prefix`, `ternary` lambdas). Calls are parsed in `parse_primary`
+what to do with the operands (the `make_binary`, `make_prefix` and `make_ternary` members of
+`expression_actions`). `if cond then a else b` is a keyword form: `make_mixfix` parses the condition and
+both branches with `expr.parse`, so they may be any expression (including another `if`), and reports
+`expected 'then'` / `expected 'else'` at the token where the keyword was missing. Calls are parsed in `parse_primary`
 rather than as postfix operators because the callee name is needed and the left operand is already a number
 by then. Arithmetic wraps instead of overflowing, and `INT64_MIN / -1` is handled, so hostile input cannot
 trigger undefined behaviour.

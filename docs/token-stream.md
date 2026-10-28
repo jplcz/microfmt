@@ -210,6 +210,64 @@ auto result = microfmt::parse_expression<int64_t>(
 
 A missing `:` is a `parse_error` "expected ':'" at the offending token.
 
+### Keyword forms (mixfix): `if c then a else b`
+
+Why: some forms start with a keyword and contain several sub-expressions in between more keywords
+(`if … then … else`, `let x = e in body`). They are not operators, and `primary` cannot parse them
+because it cannot re-enter the precedence parser. A *mixfix* form is recognised by its first token,
+wherever an operand is expected, and its callback parses the rest itself, calling back into the
+expression parser for each sub-expression.
+
+How: describe every operator table in one `expression_grammar` and pass one `actions` object whose
+member functions are the callbacks.
+
+```cpp
+// "if" is matched wherever an operand is expected; 5 is a hint the callback may use for the last part.
+constexpr microfmt::mixfix_op kForms[] = {{"if", 5}};
+
+struct actions {
+  // Required: leaves (numbers, names).
+  reloco::expected<int64_t, microfmt::parse_error> primary(microfmt::token_stream &ts);
+  // Required when the binary / prefix tables are non-empty. Same shapes as the other overloads.
+  reloco::expected<int64_t, microfmt::parse_error> make_binary(const microfmt::binary_op &, int64_t l, int64_t r);
+  reloco::expected<int64_t, microfmt::parse_error> make_prefix(const microfmt::prefix_op &, int64_t v);
+
+  // Called after "if" was consumed. `expr.parse(min_precedence)` parses one sub-expression.
+  template <typename Expr>
+  reloco::expected<int64_t, microfmt::parse_error> make_mixfix(const microfmt::mixfix_op &op,
+                                                               microfmt::token_stream &ts, Expr &expr) {
+    auto cond = expr.parse(0);                                  // the condition: a full expression
+    if (!cond) return cond;
+    if (auto kw = ts.expect(microfmt::token_kind::identifier, "then", "expected 'then'"); !kw)
+      return reloco::unexpected<microfmt::parse_error>(kw.error());
+    auto a = expr.parse(0);                                     // the "then" branch
+    if (!a) return a;
+    if (auto kw = ts.expect(microfmt::token_kind::identifier, "else", "expected 'else'"); !kw)
+      return reloco::unexpected<microfmt::parse_error>(kw.error());
+    auto b = expr.parse(op.precedence);                         // the "else" branch: extends as far as op.precedence allows
+    if (!b) return b;
+    return cond.value() != 0 ? a.value() : b.value();
+  }
+};
+
+// grammar: binary, prefix, postfix, mixfix, optional ternary (empty members are simply unused).
+const microfmt::expression_grammar grammar{kBinary, kPrefix, {}, kForms, {}};
+actions a;
+auto result = microfmt::parse_expression<int64_t>(ts, grammar, a);  // max_depth defaults to 64
+```
+
+Notes:
+
+* `make_postfix`, `make_ternary` and `make_mixfix` may be left out of `actions`; using the matching
+  grammar part then fails with a `parse_error` ("no make_mixfix callback", …) instead of not compiling.
+* A mixfix keyword wins over `primary`, so `if` can no longer be a variable name; other identifiers
+  (`iffy`) still reach `primary`.
+* Mixfix forms are only looked for in operand position, so they never clash with binary or postfix
+  operators. Nested forms count towards `max_depth` (`nesting too deep` as usual).
+* The `precedence` of a `mixfix_op` is only a hint passed back to your callback: with a low value the
+  `else` branch swallows `+ 1` in `if a then b else c + 1`; with a high one the `+ 1` applies to the whole `if`.
+* This API needs no AST: `T` can be a number, a node index, anything movable.
+
 ## Delimited lists
 
 Arrays, call arguments and objects repeat the same loop (open bracket,
