@@ -159,6 +159,117 @@ check `ts.at_end()` yourself if trailing input is an error. A missing operand,
 a missing `)` or nesting deeper than the limit returns a `parse_error`.
 See [`examples/calc_demo.cpp`](../examples/calc_demo.cpp) for a full calculator.
 
+### Postfix operators: calls, indexing, `x!`
+
+`f(x)` and `a[i]` bind to the operand on their left, so they are *postfix*
+operators. Pass a `postfix_op` table and a fourth callback; the stream is
+positioned just after the operator spelling, so the callback parses whatever
+follows (call arguments, an index) and consumes the closing bracket itself.
+
+```cpp
+// Spelling may be an op, keyword or punctuation token; higher precedence binds tighter.
+// `[` is punctuation, so index operators work even though `[` is not an `op` token.
+constexpr microfmt::postfix_op kPostfix[] = {{"!", 50}, {"[", 60}};
+
+// make_postfix(op, operand, ts): `ts` is right after "!" or "[".
+auto postfix = [](const microfmt::postfix_op &op, int64_t v, microfmt::token_stream &s)
+    -> reloco::expected<int64_t, microfmt::parse_error> {
+  if (op.text == "!") { return factorial(v); }
+  // "[": parse the index (any rule you like, e.g. parse_expression again), then the closing bracket.
+  /* ... */
+};
+
+// Overload with the postfix table and callback inserted after `prefix` / before the other callbacks.
+auto result = microfmt::parse_expression<int64_t>(ts, kBinary, kPrefix, kPostfix, primary, binary, prefix, postfix);
+```
+
+Precedence orders postfix against prefix: with `-` at 30, `!` at 50 gives
+`-a!` = `-(a!)`, while `!` at 10 gives `(-a)!`.
+
+### The conditional operator `cond ? then : else`
+
+`?:` has three operands, so it is configured separately. The middle operand is
+a full expression, and the else part is parsed at the ternary precedence, which
+makes it right associative (`a ? b : c ? d : e` is `a ? b : (c ? d : e)`).
+
+```cpp
+// Spellings of "?" and ":" (op, keyword or punctuation tokens) and the precedence.
+// Both must be lexed: add them to lexer_rules::operators, or use punctuation.
+microfmt::ternary_op ternary{"?", ":", 5}; // 5 = below + - * /, so a + b ? c : d is (a + b) ? c : d
+
+// make_ternary(op, condition, then_value, else_value) builds the result value.
+auto make_ternary = [](const microfmt::ternary_op &, int64_t c, int64_t t, int64_t e)
+    -> reloco::expected<int64_t, microfmt::parse_error> { return c != 0 ? t : e; };
+
+// Overload with postfix AND ternary; pass an empty postfix span if you only need ?:.
+auto result = microfmt::parse_expression<int64_t>(
+    ts, kBinary, kPrefix, microfmt::span<const microfmt::postfix_op>{}, ternary,
+    primary, binary, prefix, postfix, make_ternary);
+```
+
+A missing `:` is a `parse_error` "expected ':'" at the offending token.
+
+## Delimited lists
+
+Arrays, call arguments and objects repeat the same loop (open bracket,
+optional empty list, items separated by commas, close bracket). `parse_list`
+does it; you only describe one element:
+
+```cpp
+microfmt::list_options opt;   // defaults: "[" ... "]" separated by ","
+opt.open = "(";               // bracket spellings are punctuation tokens
+opt.close = ")";
+opt.allow_trailing = true;    // accept (1, 2,); default is false
+
+// item(ts) must consume exactly one element and return expected<void, parse_error>.
+auto r = microfmt::parse_list(ts, opt, [](microfmt::token_stream &s)
+    -> reloco::expected<void, microfmt::parse_error> {
+  auto n = s.expect(microfmt::token_kind::integer, "expected a number");
+  if (!n) { return reloco::unexpected<microfmt::parse_error>(n.error()); }
+  return {};
+});
+// Errors: "expected opening bracket", or "expected separator or closing bracket" at the offending token.
+```
+
+Set `open = ""` for a bare list, and `close = ""` when the list simply ends
+after the last item. The loop only continues after consuming a separator, so
+it always terminates. See `examples/json_parser_demo.cpp`.
+
+## Reporting several errors
+
+By default the first error aborts. To report more in one run, skip ahead to a
+known-good point and carry on. `parse_statements` does the whole loop: it runs
+your statement rule until the input ends; on an error it stores the error,
+skips to the next *sync point* and continues. `error_list<N>` keeps the errors
+in fixed inline storage (no heap); errors beyond `N` are only counted, so
+hostile input cannot grow memory.
+
+```cpp
+// Statements end with ';', so ';' is where we can resume after an error.
+// An empty `text` in a token_sync matches any spelling of that kind.
+constexpr microfmt::token_sync kSemicolon[] = {{microfmt::token_kind::punctuation, ";"}};
+
+// statement(ts) parses ONE statement and returns expected<void, parse_error>.
+auto statement = [](microfmt::token_stream &s) -> reloco::expected<void, microfmt::parse_error> { /* ... */ };
+
+microfmt::error_list<8> errors;   // room for 8 errors; the rest are counted
+size_t good = microfmt::parse_statements(ts, kSemicolon, errors, statement);
+
+const auto stored = errors.errors();          // span of the stored errors
+// errors.total()      all errors found, errors.overflowed()  true if some were not stored
+// Show each one with the caret formatter (see "Showing errors").
+```
+
+After an error the sync token is consumed too. If no sync token remains before
+the end of input, parsing stops. A statement that succeeds without consuming
+anything is skipped by one token, so the loop always terminates. Stored errors
+borrow the parsed text, so the list must not outlive it. See
+[`examples/config_check_demo.cpp`](../examples/config_check_demo.cpp).
+
+For a custom loop use `recover_to(ts, sync)` directly: it consumes tokens until
+the next one matches a sync point (left unconsumed) or the input ends, and
+returns how many it skipped.
+
 ## Showing errors
 
 `<microfmt/parsing/token_stream_formatters.hpp>` renders a `parse_error` with
@@ -180,6 +291,6 @@ bounds.
 
 ## Limits
 
-* No error recovery: the first error aborts (use backtracking to retry).
-* Expressions support binary infix, prefix and parenthesised groups only; parse postfix, ternary or call syntax in your own `primary` callback.
+* A single parse aborts on its first error; use `parse_statements` for multi-error runs (see "Reporting several errors").
+* Expressions support binary infix, prefix, postfix, `?:` and parenthesised groups; parse other mixfix syntax in your own `primary` callback.
 * Same limits as the lexer: bytes only, one contiguous buffer.

@@ -267,3 +267,260 @@ TEST(Expression, DepthLimitStopsHostileNesting) {
   ASSERT_FALSE(deep.has_value());
   EXPECT_EQ(deep.error().message, "nesting too deep");
 }
+
+TEST(ParseList, AcceptsEmptySingleAndMultipleItems) {
+  auto count_items = [](string_view text, microfmt::list_options opt) {
+    token_stream ts{text, microfmt::rules::json};
+    size_t items = 0;
+    auto r = microfmt::parse_list(ts, opt, [&items](token_stream &s) -> reloco::expected<void, parse_error> {
+      if (auto n = s.expect(token_kind::integer, "expected a number"); !n) {
+        return reloco::unexpected<parse_error>(n.error());
+      }
+      ++items;
+      return {};
+    });
+    return r.has_value() ? static_cast<int>(items) : -1;
+  };
+  EXPECT_EQ(count_items("[]", {}), 0);
+  EXPECT_EQ(count_items("[1]", {}), 1);
+  EXPECT_EQ(count_items("[1, 2, 3]", {}), 3);
+  EXPECT_EQ(count_items("[1, 2,]", {}), -1);
+  microfmt::list_options trailing;
+  trailing.allow_trailing = true;
+  EXPECT_EQ(count_items("[1, 2,]", trailing), 2);
+  EXPECT_EQ(count_items("[1 2]", {}), -1);
+  EXPECT_EQ(count_items("[1, 2", {}), -1);
+  EXPECT_EQ(count_items("1, 2", {.open = "", .close = ""}), 2); // bare list
+}
+
+TEST(ParseList, ReportsMissingSeparatorAtTheOffendingToken) {
+  token_stream ts{"[1 2]", microfmt::rules::json};
+  auto r = microfmt::parse_list(ts, {}, [](token_stream &s) -> reloco::expected<void, parse_error> {
+    if (auto n = s.expect(token_kind::integer, "expected a number"); !n) {
+      return reloco::unexpected<parse_error>(n.error());
+    }
+    return {};
+  });
+  ASSERT_FALSE(r.has_value());
+  EXPECT_EQ(r.error().message, "expected separator or closing bracket");
+  EXPECT_EQ(r.error().at.column, 4u);
+}
+
+namespace {
+
+constexpr string_view kPostfixOps[] = {"+", "-", "#", "["};
+
+// Evaluates with postfix `#` (adds 100) and `[` index `]` (operand * 10 + index).
+calc_result calc_post(string_view text, uint8_t hash_precedence) {
+  lexer_rules rules;
+  rules.operators = kPostfixOps;
+  token_stream ts{text, rules};
+  const microfmt::postfix_op postfix[] = {{"#", hash_precedence}, {"[", 60}};
+  auto primary = [](token_stream &s) -> calc_result {
+    if (!s.check(token_kind::integer)) {
+      return reloco::unexpected<parse_error>(s.error_here("expected a number"));
+    }
+    return microfmt::parse<int64_t>(s.next().text).value();
+  };
+  auto binary = [](const binary_op &, int64_t l, int64_t r) -> calc_result { return l + r; };
+  auto prefix = [](const prefix_op &, int64_t v) -> calc_result { return -v; };
+  auto make_postfix = [](const microfmt::postfix_op &op, int64_t v, token_stream &s) -> calc_result {
+    if (op.text == "#") {
+      return v + 100;
+    }
+    auto index = s.expect(token_kind::integer, "expected an index");
+    if (!index) {
+      return reloco::unexpected<parse_error>(index.error());
+    }
+    if (auto close = s.expect(token_kind::punctuation, "]", "expected ']'"); !close) {
+      return reloco::unexpected<parse_error>(close.error());
+    }
+    return v * 10 + microfmt::parse<int64_t>(index.value().text).value();
+  };
+  constexpr binary_op plus[] = {{"+", 10}};
+  constexpr prefix_op minus[] = {{"-", 30}};
+  return microfmt::parse_expression<int64_t>(ts, plus, minus, postfix, primary, binary, prefix, make_postfix);
+}
+
+} // namespace
+
+TEST(Expression, PostfixOperatorsRespectPrecedence) {
+  EXPECT_EQ(calc_post("3#", 50).value(), 103);
+  EXPECT_EQ(calc_post("-3#", 50).value(), -103); // # binds tighter than prefix -: -(3#)
+  EXPECT_EQ(calc_post("-3#", 10).value(), 97);   // # looser than prefix -: (-3)#
+  EXPECT_EQ(calc_post("1 + 2#", 50).value(), 103);
+  EXPECT_EQ(calc_post("5[2]", 50).value(), 52);  // callback consumes the index and ']'
+  EXPECT_EQ(calc_post("5[2][3]", 50).value(), 523);
+}
+
+TEST(Expression, PostfixCallbackErrorsPropagate) {
+  auto r = calc_post("5[x]", 50);
+  ASSERT_FALSE(r.has_value());
+  EXPECT_EQ(r.error().message, "expected an index");
+  auto unclosed = calc_post("5[2", 50);
+  ASSERT_FALSE(unclosed.has_value());
+  EXPECT_EQ(unclosed.error().message, "expected ']'");
+}
+
+TEST(Recovery, CollectsSeveralErrorsAndTerminates) {
+  // statement := name ';'
+  token_stream ts{"a; b b; c d; e;", lexer_rules{}};
+  constexpr microfmt::token_sync kSemicolon[] = {{token_kind::punctuation, ";"}};
+  size_t good = 0;
+  size_t errors = 0;
+  while (!ts.at_end()) {
+    auto statement = [&ts]() -> reloco::expected<void, parse_error> {
+      if (auto name = ts.expect(token_kind::identifier, "expected a name"); !name) {
+        return reloco::unexpected<parse_error>(name.error());
+      }
+      if (auto semi = ts.expect(token_kind::punctuation, ";", "expected ';'"); !semi) {
+        return reloco::unexpected<parse_error>(semi.error());
+      }
+      return {};
+    }();
+    if (statement) {
+      ++good;
+      continue;
+    }
+    ++errors;
+    (void)microfmt::recover_to(ts, kSemicolon);
+    (void)ts.skip(token_kind::punctuation, ";");
+  }
+  EXPECT_EQ(good, 2u);
+  EXPECT_EQ(errors, 2u);
+}
+
+TEST(Recovery, StopsAtSyncTokenWithoutConsumingAndHandlesGarbage) {
+  token_stream ts{"x y ; z", lexer_rules{}};
+  constexpr microfmt::token_sync kSemicolon[] = {{token_kind::punctuation, ";"}};
+  EXPECT_EQ(microfmt::recover_to(ts, kSemicolon), 2u);
+  EXPECT_EQ(ts.peek().text, ";");
+  EXPECT_EQ(microfmt::recover_to(ts, kSemicolon), 0u); // already at a sync token
+
+  token_stream garbage{"@ @ @", lexer_rules{}};
+  EXPECT_EQ(microfmt::recover_to(garbage, kSemicolon), 3u); // no sync token: runs to the end
+  EXPECT_TRUE(garbage.at_end());
+
+  token_stream any_kind{"a 1 b", lexer_rules{}};
+  constexpr microfmt::token_sync kInteger[] = {{token_kind::integer, {}}};
+  EXPECT_EQ(microfmt::recover_to(any_kind, kInteger), 1u);
+}
+
+namespace {
+
+constexpr string_view kTernaryOps[] = {"+", "?", ":"};
+
+template <typename T> microfmt::span<const T> span_none() { return {}; }
+
+calc_result calc_ternary(string_view text) {
+  lexer_rules rules;
+  rules.operators = kTernaryOps;
+  token_stream ts{text, rules};
+  auto primary = [](token_stream &s) -> calc_result {
+    if (!s.check(token_kind::integer)) {
+      return reloco::unexpected<parse_error>(s.error_here("expected a number"));
+    }
+    return microfmt::parse<int64_t>(s.next().text).value();
+  };
+  auto binary = [](const binary_op &, int64_t l, int64_t r) -> calc_result { return l + r; };
+  auto prefix = [](const prefix_op &, int64_t v) -> calc_result { return v; };
+  auto postfix = [](const microfmt::postfix_op &, int64_t v, token_stream &) -> calc_result { return v; };
+  auto ternary = [](const microfmt::ternary_op &, int64_t c, int64_t t, int64_t e) -> calc_result {
+    return c != 0 ? t : e;
+  };
+  constexpr binary_op plus[] = {{"+", 10}};
+  return microfmt::parse_expression<int64_t>(ts, plus, span_none<prefix_op>(), span_none<microfmt::postfix_op>(),
+                                             microfmt::ternary_op{}, primary, binary, prefix, postfix, ternary);
+}
+
+} // namespace
+
+TEST(Expression, TernarySelectsAndNestsToTheRight) {
+  EXPECT_EQ(calc_ternary("1 ? 10 : 20").value(), 10);
+  EXPECT_EQ(calc_ternary("0 ? 10 : 20").value(), 20);
+  EXPECT_EQ(calc_ternary("0 ? 1 : 0 ? 2 : 3").value(), 3);    // a ? b : (c ? d : e)
+  EXPECT_EQ(calc_ternary("1 ? 0 ? 1 : 2 : 3").value(), 2);    // nested in the middle operand
+  EXPECT_EQ(calc_ternary("1 + 0 ? 5 : 6").value(), 5);        // binary binds tighter: (1 + 0) ? 5 : 6
+  EXPECT_EQ(calc_ternary("0 ? 5 : 1 + 1").value(), 2);        // else part is a full binary expression
+}
+
+TEST(Expression, TernaryReportsMissingColon) {
+  auto r = calc_ternary("1 ? 2 3");
+  ASSERT_FALSE(r.has_value());
+  EXPECT_EQ(r.error().message, "expected ':'");
+  EXPECT_EQ(r.error().at.column, 7u);
+  EXPECT_FALSE(calc_ternary("1 ? 2").has_value());
+  EXPECT_FALSE(calc_ternary("1 ? 2 :").has_value());
+}
+
+TEST(ErrorList, StoresUpToCapacityAndCountsTheRest) {
+  microfmt::error_list<2> list;
+  EXPECT_TRUE(list.empty());
+  list.add(parse_error{"one", {}});
+  list.add(parse_error{"two", {}});
+  list.add(parse_error{"three", {}});
+  EXPECT_FALSE(list.empty());
+  EXPECT_EQ(list.size(), 2u);
+  EXPECT_EQ(list.total(), 3u);
+  EXPECT_TRUE(list.overflowed());
+  const auto stored = list.errors();
+  ASSERT_EQ(stored.size(), 2u);
+  EXPECT_EQ(stored[0].message, "one");
+  EXPECT_EQ(stored[1].message, "two");
+}
+
+namespace {
+
+constexpr microfmt::token_sync kStatementEnd[] = {{token_kind::punctuation, ";"}};
+
+// statement := identifier ';'
+reloco::expected<void, parse_error> name_statement(token_stream &ts) {
+  if (auto name = ts.expect(token_kind::identifier, "expected a name"); !name) {
+    return reloco::unexpected<parse_error>(name.error());
+  }
+  if (auto semi = ts.expect(token_kind::punctuation, ";", "expected ';'"); !semi) {
+    return reloco::unexpected<parse_error>(semi.error());
+  }
+  return {};
+}
+
+} // namespace
+
+TEST(ParseStatements, CollectsEveryErrorAndCountsGoodStatements) {
+  token_stream ts{"a; b b; c d; e;", lexer_rules{}};
+  microfmt::error_list<8> errors;
+  EXPECT_EQ(microfmt::parse_statements(ts, kStatementEnd, errors, name_statement), 2u);
+  const auto stored = errors.errors();
+  ASSERT_EQ(stored.size(), 2u);
+  EXPECT_EQ(stored[0].message, "expected ';'");
+  EXPECT_EQ(stored[0].at.column, 6u);
+  EXPECT_EQ(stored[1].at.column, 11u);
+}
+
+TEST(ParseStatements, HandlesNoErrorsNoSyncTokenAndEmptyInput) {
+  microfmt::error_list<4> none;
+  token_stream ok{"a; b;", lexer_rules{}};
+  EXPECT_EQ(microfmt::parse_statements(ok, kStatementEnd, none, name_statement), 2u);
+  EXPECT_TRUE(none.empty());
+
+  token_stream empty{"", lexer_rules{}};
+  EXPECT_EQ(microfmt::parse_statements(empty, kStatementEnd, none, name_statement), 0u);
+
+  microfmt::error_list<4> errors;
+  token_stream unterminated{"a; 1 2 3", lexer_rules{}}; // error, and no ';' before the end
+  EXPECT_EQ(microfmt::parse_statements(unterminated, kStatementEnd, errors, name_statement), 1u);
+  EXPECT_EQ(errors.total(), 1u);
+}
+
+TEST(ParseStatements, ErrorOnTheSyncTokenAndGarbageStillTerminate) {
+  microfmt::error_list<16> errors;
+  token_stream ts{"; ; @ ; a;", lexer_rules{}};
+  EXPECT_EQ(microfmt::parse_statements(ts, kStatementEnd, errors, name_statement), 1u);
+  EXPECT_EQ(errors.total(), 3u);
+
+  // A statement that succeeds without consuming input must not loop forever.
+  token_stream stuck{"x y", lexer_rules{}};
+  microfmt::error_list<4> none;
+  auto no_progress = [](token_stream &) -> reloco::expected<void, parse_error> { return {}; };
+  EXPECT_EQ(microfmt::parse_statements(stuck, kStatementEnd, none, no_progress), 2u);
+}

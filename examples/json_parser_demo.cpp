@@ -29,33 +29,24 @@ microfmt::lexer_rules json_rules() {
 
 result parse_value(microfmt::token_stream &ts, size_t &depth);
 
-// array := '[' [ value { ',' value } ] ']'   object := '{' [ string ':' value { ',' ... } ] '}'
+// array  := '[' [ value { ',' value } ] ']'
+// object := '{' [ string ':' value { ',' string ':' value } ] '}'
+// parse_list handles brackets, separators and the empty list; we only describe one element.
 result parse_container(microfmt::token_stream &ts, size_t &depth, bool object) {
-  const microfmt::string_view close = object ? "}" : "]";
-  ts.next(); // the opening bracket was already checked by the caller
-  if (ts.skip(token_kind::punctuation, close)) {
-    return {};
-  }
-  for (;;) {
+  microfmt::list_options brackets;
+  brackets.open = object ? "{" : "[";
+  brackets.close = object ? "}" : "]";
+  return microfmt::parse_list(ts, brackets, [&](microfmt::token_stream &s) -> result {
     if (object) {
-      if (auto key = ts.expect(token_kind::string, "expected a string key"); !key) {
+      if (auto key = s.expect(token_kind::string, "expected a string key"); !key) {
         return reloco::unexpected<microfmt::parse_error>(key.error());
       }
-      if (auto colon = ts.expect(token_kind::punctuation, ":", "expected ':'"); !colon) {
+      if (auto colon = s.expect(token_kind::punctuation, ":", "expected ':'"); !colon) {
         return reloco::unexpected<microfmt::parse_error>(colon.error());
       }
     }
-    if (auto value = parse_value(ts, depth); !value) {
-      return value;
-    }
-    if (ts.skip(token_kind::punctuation, ",")) {
-      continue;
-    }
-    if (auto end = ts.expect(token_kind::punctuation, close, "expected ',' or a closing bracket"); !end) {
-      return reloco::unexpected<microfmt::parse_error>(end.error());
-    }
-    return {};
-  }
+    return parse_value(s, depth);
+  });
 }
 
 result parse_value(microfmt::token_stream &ts, size_t &depth) {
