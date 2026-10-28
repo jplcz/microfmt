@@ -268,6 +268,48 @@ Notes:
   `else` branch swallows `+ 1` in `if a then b else c + 1`; with a high one the `+ 1` applies to the whole `if`.
 * This API needs no AST: `T` can be a number, a node index, anything movable.
 
+## Operators chosen at run time
+
+The constant arrays above are fine when the operators are known when you write the parser. Languages that let
+a program declare operators (Haskell's `infixl 6 <+>`, Prolog's `op/3`) need a table that can grow while
+parsing. `operator_table<N>` is that table: it owns the spellings, hands the lexer its operator list, and hands
+`parse_expression` an `expression_grammar`, so the three never disagree.
+
+Precedence is expressed as **levels** rather than numbers, because "binds between `+` and `*`" is what a
+declaration really means and a number picked in advance may have no free slot. Levels renumber themselves when
+one is inserted (at most 62).
+
+```cpp
+microfmt::operator_table<8> table;                       // room for 8 operators inline; more spill to the heap
+
+auto sum = table.add_level().value();                    // the first level is the loosest
+auto product = table.add_level().value();                // add_level() binds tighter than all existing levels
+(void)table.add_binary("+", sum);                        // spelling, level, optional assoc (left by default)
+(void)table.add_binary("*", product);
+(void)table.add_binary("^", product, microfmt::assoc::right);
+(void)table.add_binary("<", sum, microfmt::assoc::none); // none: `a < b < c` is an error, not a grouping
+
+auto between = table.add_level_above(sum).value();       // inserted later, between + and *
+(void)table.add_binary("<+>", between);
+
+microfmt::lexer_rules rules;
+rules.operators = table.spellings();                     // the lexer must emit every spelling as an `op` token
+rules.keywords = table.keywords();                       // word-like operators such as `div` stay keywords
+microfmt::token_stream ts{text, rules};
+auto value = microfmt::parse_expression<int64_t>(ts, table.grammar(), actions);
+```
+
+Notes:
+
+* Every declaration returns an `expected<void, string_view>`; the message is static (`duplicate operator`,
+  `empty operator`, `bad precedence`, `operator table full`) and a failed declaration leaves the table unchanged.
+* `grammar()`, `spellings()` and `keywords()` are invalidated by the next declaration: declare between parses,
+  never from inside one. After declaring, call `ts.set_rules(rules)` so the lookahead is re-tokenized.
+* `add_binary("+", uint8_t{10})` creates or reuses a numeric level, for tables that really are fixed.
+* `set_punctuation` changes which single bytes are punctuation; those can never be operator spellings.
+* `examples/operator_table_demo.cpp` shows a late insertion changing how an expression groups, and
+  [the mini language](mini-language.md) declares operators from its own source with `infixl 5 "<>" = max;`.
+
 ## Source spans
 
 Why: a parse that only returns a value cannot say *where* the value came from. Anything that keeps a
@@ -885,6 +927,7 @@ already handles its termination, depth and error-position details for you.
 
 | You are writing... | Use | Why this one |
 |---|---|---|
+| Operators a program declares while it is parsed | `operator_table` + `parse_expression` | Levels keep relative order when one is inserted; the lexer rules and grammar come from the same table. |
 | Arithmetic / operators with precedence | `parse_expression` | Handles binding power and associativity; you only supply `primary` and node builders. |
 | `if c then a else b`, `x ? a : b`, `f(x)`, `a[i]`, `x!` | `parse_expression` with `expression_grammar` (mixfix, ternary, postfix) | Same loop, extra operator shapes, no hand-rolled precedence. |
 | `a, b, c` inside brackets | `parse_list` | Delimiters, empty list and trailing separator are handled. |

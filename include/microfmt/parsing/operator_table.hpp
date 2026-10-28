@@ -27,7 +27,8 @@ namespace microfmt {
 namespace detail {
 
 /** Views a vector's elements; unlike `data()`, this is valid while the vector is empty. */
-template <class T, class Vector> [[nodiscard]] reloco::span<const T> view_of(const Vector &v RELOCO_LIFETIMEBOUND) noexcept {
+template <class T, class Vector>
+[[nodiscard]] reloco::span<const T> view_of(const Vector &v RELOCO_LIFETIMEBOUND) noexcept {
   RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   return reloco::span<const T>(v.unsafe_data(), v.size());
   RELOCO_END_UNSAFE_BUFFER_USAGE;
@@ -283,19 +284,23 @@ private:
     return true;
   }
 
-  [[nodiscard]] microfmt::string_view spelling_of(const entry &e) const noexcept { return text_at(e.text); }
+  [[nodiscard]] microfmt::string_view spelling_of(const entry &e) const & noexcept RELOCO_LIFETIMEBOUND {
+    return text_at(e.text);
+  }
+  microfmt::string_view spelling_of(const entry &) const && = delete;
 
-  [[nodiscard]] microfmt::string_view text_at(span_ref r) const noexcept {
+  [[nodiscard]] microfmt::string_view text_at(span_ref r) const & noexcept RELOCO_LIFETIMEBOUND {
     return detail::string_view_of(arena_).substr(r.offset, r.length);
   }
+  microfmt::string_view text_at(span_ref) const && = delete;
 
   [[nodiscard]] reloco::optional<span_ref> store(microfmt::string_view text) noexcept {
     const size_t start = arena_.size();
     if (!arena_.try_append(reloco::span<const char>(text.data(), text.size()))) {
       return reloco::optional<span_ref>{};
     }
-    return reloco::optional<span_ref>{span_ref{static_cast<uint32_t>(start & 0xFFFFFFFFu),
-                                               static_cast<uint32_t>(text.size() & 0xFFFFFFFFu)}};
+    return reloco::optional<span_ref>{
+        span_ref{static_cast<uint32_t>(start & 0xFFFFFFFFu), static_cast<uint32_t>(text.size() & 0xFFFFFFFFu)}};
   }
 
   [[nodiscard]] size_t position_of(level l) const noexcept {
@@ -403,12 +408,17 @@ private:
     return {};
   }
 
-  [[nodiscard]] bool contains_byte(microfmt::string_view set, char ch) const noexcept {
-    return set.find(ch) != microfmt::string_view::npos;
+  [[nodiscard]] bool is_punctuation(char ch) const noexcept {
+    for (size_t i = 0; i < punctuation_.size(); ++i) {
+      if (punctuation_[i] == ch) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  [[nodiscard]] bool has_word(microfmt::string_view text, const reloco::sso_vector<microfmt::string_view, N> &list) const
-      noexcept {
+  [[nodiscard]] static bool has_word(microfmt::string_view text,
+                                     reloco::span<const microfmt::string_view> list) noexcept {
     for (size_t i = 0; i < list.size(); ++i) {
       if (list[i] == text) {
         return true;
@@ -427,7 +437,6 @@ private:
     spellings_.clear();
     keywords_.clear();
     bool ok = true;
-    const microfmt::string_view punctuation = detail::string_view_of(punctuation_);
     for (size_t i = 0; i < entries_.size() && ok; ++i) {
       const entry &e = entries_[i];
       const microfmt::string_view text = spelling_of(e);
@@ -451,14 +460,15 @@ private:
         break;
       }
       if (is_word(text)) {
-        if (!has_word(text, keywords_)) {
+        if (!has_word(text, detail::view_of<microfmt::string_view>(keywords_))) {
           size_t at = 0;
           while (at < keywords_.size() && keywords_[at] < text) {
             ++at;
           }
           ok = keywords_.try_insert_at(at, text).has_value();
         }
-      } else if (!(text.size() == 1 && contains_byte(punctuation, text[0])) && !has_word(text, spellings_)) {
+      } else if (!(text.size() == 1 && is_punctuation(text[0])) &&
+                 !has_word(text, detail::view_of<microfmt::string_view>(spellings_))) {
         ok = spellings_.try_push_back(text).has_value();
       }
     }

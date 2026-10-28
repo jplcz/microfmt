@@ -13,9 +13,14 @@ let x = 2 + 3 * 4;            // variable with an initialiser
 let y = x > 10 ? x : 0;       // comparison and the ?: operator
 print(max(x, y, 7));          // calls with comma-separated arguments
 { let z = -y; print(z); }     // blocks
+infixl 5 "<>" = max;           // declare an operator: precedence, associativity, function
+print(1 + 2 <> 2 * 5);        // 10
 ```
 
-Statements are `let NAME [= expr];`, `print(expr);` and `{ statements }`. Expressions have numbers,
+Statements are `let NAME [= expr];`, `print(expr);`, `{ statements }` and `infixl|infixr|infix N "op" = min|max;`.
+The last one adds a binary operator at run time (`infix` forbids chaining); N is a precedence from 0 to 255 relative to
+the built-in `+ - * /` (10, 20) and `< >` (8), and the operator applies `min` or `max`. The built-ins live in an
+`operator_table`, so the new spelling is handed to the lexer with `set_rules` right after the declaration. Expressions have numbers,
 variables, calls (`max`, `min`, `abs`), unary `-`, `+ - * / > <`, `?:` and parentheses. Statements run one at a
 time; each expression is parsed into a small tree (a `node_pool`), evaluated, and the nodes are given back.
 Names are resolved while parsing, so an unknown variable or function is a parse-time error; only the chosen
@@ -36,7 +41,7 @@ everywhere: 16 variables, 8 call arguments, 16 stored errors, a 1 KiB output buf
 | Need | Helper | Where |
 |---|---|---|
 | Read tokens one at a time | `token_stream`, `expect`, `skip`, `check` | every rule |
-| Operators with precedence | `parse_expression` with an `expression_grammar` (`kBinary`, `kPrefix`, a `ternary_op`) | `expression()` |
+| Operators with precedence | `parse_expression` with an `expression_grammar` (from an `operator_table`) | `expression()` |
 | `if c then a else b` | a `mixfix_op` plus `make_mixfix`, which re-enters the parser with `expr.parse` | `expression_actions::make_mixfix` |
 | Comma-separated call arguments, each bad one reported | `parse_list_recovering` | `parse_call()` |
 | "A statement is a let, a print or a block" | `parse_choice` | `parse_statement()` |
