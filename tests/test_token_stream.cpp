@@ -933,6 +933,138 @@ TEST(Packrat, TwoRulesShareATableThroughDifferentIds) {
   EXPECT_EQ(table.hits(), 1u);
 }
 
+TEST(LexerModes, WithRulesChangesTokenizationInsideAndRestoresAfter) {
+  const lexer_rules normal;
+  lexer_rules quote_is_punctuation;
+  quote_is_punctuation.quotes = "";
+  quote_is_punctuation.punctuation = "'";
+
+  token_stream ts{"x 'b'", normal};
+  EXPECT_EQ(ts.peek2().kind, token_kind::string);
+
+  const auto inside = microfmt::with_rules(ts, quote_is_punctuation, [](token_stream &s) {
+    return std::make_pair(s.peek2().kind, s.peek2().text == "'");
+  });
+  EXPECT_EQ(inside.first, token_kind::punctuation);
+  EXPECT_TRUE(inside.second);
+  EXPECT_EQ(ts.peek2().kind, token_kind::string);
+  EXPECT_EQ(ts.peek2().text, "'b'");
+  EXPECT_EQ(ts.peek().text, "x");
+}
+
+TEST(LexerModes, RulesAreRestoredWhenTheRuleFailsAndNestingUnwinds) {
+  const lexer_rules normal;
+  lexer_rules outer;
+  outer.quotes = "";
+  outer.punctuation = "'";
+  lexer_rules inner;
+  inner.punctuation = "";
+
+  token_stream ts{"x 'b'", normal};
+  auto failed = microfmt::with_rules(ts, outer, [&](token_stream &s) -> reloco::expected<void, parse_error> {
+    const auto nested = microfmt::with_rules(s, inner, [](token_stream &t) { return t.peek2().kind; });
+    EXPECT_EQ(nested, token_kind::string);
+    EXPECT_EQ(s.peek2().kind, token_kind::punctuation);
+    return reloco::unexpected<parse_error>(s.error_here("boom"));
+  });
+  EXPECT_FALSE(failed);
+  EXPECT_EQ(ts.peek2().kind, token_kind::string);
+}
+
+TEST(LexerModes, BacktrackingRestoresRulesAndPosition) {
+  const lexer_rules normal;
+  lexer_rules quote_is_punctuation;
+  quote_is_punctuation.quotes = "";
+  quote_is_punctuation.punctuation = "'";
+
+  token_stream ts{"x 'b'", normal};
+  auto failed = microfmt::attempt(ts, [&](token_stream &s) -> reloco::expected<void, parse_error> {
+    s.set_rules(quote_is_punctuation);
+    (void)s.next();
+    return reloco::unexpected<parse_error>(s.error_here("no"));
+  });
+  EXPECT_FALSE(failed);
+  EXPECT_EQ(ts.peek().text, "x");
+  EXPECT_EQ(ts.peek2().kind, token_kind::string);
+}
+
+TEST(LexerModes, TakeRawKeepsWhitespaceStopsAtStopBytesAndTracksLines) {
+  const lexer_rules rules;
+  token_stream ts{"(  a b\n c ) d", rules};
+  ASSERT_TRUE(ts.accept(token_kind::punctuation));
+  const microfmt::token raw = ts.take_raw_until(")");
+  EXPECT_EQ(raw.kind, token_kind::string);
+  EXPECT_EQ(raw.text, "  a b\n c ");
+  EXPECT_EQ(raw.line, 1u);
+  EXPECT_EQ(ts.peek().text, ")");
+  EXPECT_EQ(ts.peek().line, 2u);
+  EXPECT_EQ(ts.peek().column, 4u);
+  EXPECT_EQ(ts.peek2().text, "d");
+
+  const microfmt::token empty = ts.take_raw_until(")");
+  EXPECT_TRUE(empty.text.empty());
+  ASSERT_TRUE(ts.accept(token_kind::punctuation));
+  const microfmt::token rest = ts.take_raw_until("");
+  EXPECT_EQ(rest.text, " d");
+  EXPECT_TRUE(ts.at_end());
+  EXPECT_TRUE(ts.take_raw_until(")").text.empty());
+}
+
+namespace {
+
+// template := '"' ( raw | '${' ident '}' )* '"'; the pieces are joined with '|' for the assertions.
+reloco::expected<void, parse_error> parse_template(token_stream &ts, std::string &pieces) {
+  if (auto open = ts.expect(token_kind::punctuation, "\"", "expected '\"'"); !open) {
+    return reloco::unexpected<parse_error>(open.error());
+  }
+  for (;;) {
+    const microfmt::token raw = ts.take_raw_until("\"$");
+    if (!raw.text.empty()) {
+      pieces += "T(" + std::string(raw.text.data(), raw.text.size()) + ")|";
+    }
+    if (ts.check(token_kind::punctuation, "\"")) {
+      (void)ts.next();
+      return {};
+    }
+    if (auto dollar = ts.expect(token_kind::punctuation, "$", "unterminated string"); !dollar) {
+      return reloco::unexpected<parse_error>(dollar.error());
+    }
+    if (auto open = ts.expect(token_kind::punctuation, "{", "expected '{' after '$'"); !open) {
+      return reloco::unexpected<parse_error>(open.error());
+    }
+    auto name = ts.expect(token_kind::identifier, "expected a name");
+    if (!name) {
+      return reloco::unexpected<parse_error>(name.error());
+    }
+    pieces += "E(" + std::string(name->text.data(), name->text.size()) + ")|";
+    if (auto close = ts.expect(token_kind::punctuation, "}", "expected '}'"); !close) {
+      return reloco::unexpected<parse_error>(close.error());
+    }
+  }
+}
+
+} // namespace
+
+TEST(LexerModes, InterpolatedStringIsParsedByTheParser) {
+  const lexer_rules normal;
+  lexer_rules tmpl;
+  tmpl.quotes = "";
+  tmpl.punctuation = "\"${}";
+
+  std::string pieces;
+  token_stream ts{"\"a ${x} b ${yy}!\" tail", normal};
+  const auto ok = microfmt::with_rules(ts, tmpl, [&](token_stream &s) { return parse_template(s, pieces); });
+  ASSERT_TRUE(ok);
+  EXPECT_EQ(pieces, "T(a )|E(x)|T( b )|E(yy)|T(!)|");
+  EXPECT_EQ(ts.peek().text, "tail");
+
+  std::string bad_pieces;
+  token_stream bad{"\"a ${x\n", normal};
+  const auto failed = microfmt::with_rules(bad, tmpl, [&](token_stream &s) { return parse_template(s, bad_pieces); });
+  ASSERT_FALSE(failed);
+  EXPECT_EQ(failed.error().at.line, 2u);
+}
+
 TEST(Recovery, CollectsSeveralErrorsAndTerminates) {
   // statement := name ';'
   token_stream ts{"a; b b; c d; e;", lexer_rules{}};

@@ -393,12 +393,49 @@ public:
   /** True once `next()` has returned `token_kind::end`. */
   [[nodiscard]] constexpr bool at_end() const noexcept { return ended_; }
 
-private:
-  struct cursor {
+  /** A resumable place in the source: byte offset plus its 1-based line and column. */
+  struct RELOCO_COPYABLE position {
     size_t pos{0};
     uint32_t line{1};
     uint32_t column{1};
   };
+
+  /** The place the next `next()` call starts scanning from. */
+  [[nodiscard]] constexpr position state() const noexcept { return cursor_; }
+
+  /** Continues scanning from `where` (a value returned by `state()` or `position_after()`). */
+  constexpr void restore(position where) noexcept {
+    cursor_ = where;
+    ended_ = false;
+  }
+
+  /** The place directly after `tok`, which must come from this lexer's source. */
+  [[nodiscard]] constexpr position position_after(const token &tok) const noexcept {
+    position where{tok.offset, tok.line, tok.column};
+    advance_to(where, tok.offset + tok.text.size());
+    return where;
+  }
+
+  /** The active rules. */
+  [[nodiscard]] constexpr const lexer_rules &rules() const noexcept RELOCO_LIFETIMEBOUND { return rules_; }
+
+  /** Replaces the rules used from the next scan on; already returned tokens are not affected. */
+  constexpr void set_rules(const lexer_rules &rules) noexcept { rules_ = lexer_rules(rules); }
+
+  /**
+   * Returns the bytes from the current place up to (not including) the first byte of `stop_bytes`, or to the end
+   * of the source, as a `string` token without quotes. Whitespace is kept. The run may be empty.
+   */
+  [[nodiscard]] constexpr token take_raw(microfmt::string_view stop_bytes) noexcept {
+    size_t i = cursor_.pos;
+    while (i < source_.size() && !contains_byte(stop_bytes, source_[i])) {
+      ++i;
+    }
+    return emit(cursor_, token_kind::string, i - cursor_.pos);
+  }
+
+private:
+  using cursor = position;
 
   [[nodiscard]] constexpr char at(size_t index) const noexcept {
     return index < source_.size() ? source_[index] : '\0';

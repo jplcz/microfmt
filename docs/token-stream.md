@@ -368,6 +368,43 @@ Rules for memoized rules:
 
 See [`examples/packrat_demo.cpp`](../examples/packrat_demo.cpp), which prints the rule runs with and without the cache.
 
+## Lexer modes (context-dependent tokens)
+
+Why: one `lexer_rules` value describes the whole language, but some languages
+change their lexical rules by context. In `"total: ${a + 1} items"` the text
+between the quotes is raw, while `${ ... }` is ordinary code again. Under the
+normal rules the lexer returns the whole string as one token, so the parser
+never sees the `${`. Only the parser knows which context it is in, so it
+chooses the mode. `token_stream` caches two lookahead tokens that were lexed
+under the *old* rules; the helpers below re-tokenize them for you.
+
+```cpp
+// Outside the string `"` opens a normal string; inside, it is plain punctuation so the parser drives the string.
+const microfmt::lexer_rules code_rules;
+microfmt::lexer_rules string_rules;
+string_rules.quotes = "";            // no string literals in this mode
+string_rules.punctuation = "\"${}";   // the bytes the template grammar needs as tokens
+
+microfmt::token_stream ts{input, code_rules};
+
+// with_rules: switch to string_rules, run the rule, switch back (also when the rule fails).
+auto result = microfmt::with_rules(ts, string_rules, [](microfmt::token_stream &s) {
+  // take_raw_until: the text after the last consumed token (spaces included) up to a `"` or `$`.
+  // The result is a `string` token without quotes; it may be empty.
+  const microfmt::token raw = s.take_raw_until("\"$");
+  // ... then expect `$`, `{`, parse the expression with normal tokens, expect `}`, and repeat.
+  return parse_template_rest(s, raw);
+});
+```
+
+* `ts.set_rules(rules)` and `ts.rules()` are the building blocks if you prefer to switch by hand.
+* Nesting works, and backtracking (`attempt`, `parse_choice`) restores the rules because the stream is copied.
+* A switch costs a re-lex of two tokens; use it per region, not per token.
+* `memoize` is keyed by offset only, so do not memoize a rule that can run under different rules at the same offset.
+* The rules are copied into the stream, but spans inside them (keywords, operators) must outlive it.
+
+See [`examples/lexer_modes_demo.cpp`](../examples/lexer_modes_demo.cpp) for a complete interpolated-string parser.
+
 ## Delimited lists
 
 Arrays, call arguments and objects repeat the same loop (open bracket,
@@ -654,6 +691,7 @@ already handles its termination, depth and error-position details for you.
 | "Expected a, b or c" messages | `expect_one_of` | One error that names every acceptable kind. |
 | Extra context on an error ("in call to f") | `with_note` / `note` | Adds a note without changing where the error points. |
 | Skip to a safe point after an error | `recover_to`, `recover_balanced` | The balanced form respects nested `()`, `[]`, `{}`. |
+| Tokens that depend on context (`"${expr}"`, heredocs, embedded languages) | `with_rules`, `take_raw_until` | Switches the lexer rules for a region and re-tokenizes the lookahead. |
 | A backtracking rule that gets slow on nested input | `memoize` with `memo_table` | Remembers results per position; only for rules that depend on nothing else. |
 | Guarding against hostile nesting | `depth_guard` | Cheap recursion limit; the helpers above already take a `max_depth`. |
 

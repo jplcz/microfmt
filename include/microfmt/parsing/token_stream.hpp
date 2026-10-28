@@ -72,6 +72,7 @@ public:
     const token result = first_;
     if (result.kind != token_kind::end) {
       previous_ = result;
+      after_previous_ = lexer_.position_after(result);
     }
     first_ = second_;
     second_ = lexer_.next();
@@ -149,12 +150,42 @@ public:
     return parse_error{message, first_};
   }
 
+  /** The rules currently used to tokenize. */
+  [[nodiscard]] constexpr const lexer_rules &rules() const noexcept RELOCO_LIFETIMEBOUND { return lexer_.rules(); }
+
+  /** Switches the rules and re-tokenizes the lookahead (`peek()`, `peek2()`) from the end of the last consumed token. */
+  constexpr void set_rules(const lexer_rules &rules) noexcept {
+    lexer_.set_rules(rules);
+    refill();
+  }
+
+  /**
+   * Consumes the raw bytes after the last consumed token (whitespace included) up to, not including, the first byte
+   * of `stop_bytes` or the end of the text, and returns them as a `string` token without quotes. The run may be
+   * empty. The lookahead is re-tokenized after the raw text.
+   */
+  constexpr token take_raw_until(microfmt::string_view stop_bytes) noexcept {
+    lexer_.restore(after_previous_);
+    previous_ = lexer_.take_raw(stop_bytes);
+    after_previous_ = lexer_.state();
+    first_ = lexer_.next();
+    second_ = lexer_.next();
+    return previous_;
+  }
+
 private:
+  constexpr void refill() noexcept {
+    lexer_.restore(after_previous_);
+    first_ = lexer_.next();
+    second_ = lexer_.next();
+  }
+
   microfmt::string_view source_;
   lexer lexer_;
   token first_;
   token second_;
   token previous_{};
+  lexer::position after_previous_{};
 };
 
 /**
@@ -752,6 +783,27 @@ parse_left_recursive(token_stream &ts, Seed &&seed, Extend &&extend,
     }
     ++steps;
   }
+}
+
+// ============================================================================
+// Lexer modes
+// ============================================================================
+
+/**
+ * @brief Runs `rule` with different lexer rules, then restores the previous ones (also when the rule fails).
+ *
+ * The lookahead is re-tokenized on entry and on exit, so tokens lexed under the old rules never leak into the
+ * region. Nesting works; backtracking works because the stream copy carries the active rules.
+ * @param rules rules used inside the region; spans in them must outlive the stream.
+ * @param rule `expected<T, parse_error>(token_stream &)` (any non-void result type).
+ */
+template <typename Rule>
+RELOCO_CONSTEXPR20 auto with_rules(token_stream &ts, const lexer_rules &rules, Rule &&rule) noexcept -> decltype(rule(ts)) {
+  const lexer_rules saved = lexer_rules(ts.rules());
+  ts.set_rules(rules);
+  auto result = rule(ts);
+  ts.set_rules(saved);
+  return result;
 }
 
 // ============================================================================
