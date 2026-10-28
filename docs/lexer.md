@@ -8,7 +8,7 @@ with ad-hoc `if`/`strchr` loops is error prone (off-by-one reads, endless loops
 on odd input); the microfmt lexer is a small, allocation-free engine that never
 reads out of bounds and always makes progress.
 
-It is a **base engine**: it tokenizes, it does not parse grammars. Include
+It is a **base engine**: it tokenizes, it does not parse grammars (build parsers with the [token stream](token-stream.md)). Include
 `<microfmt/parsing/lexer.hpp>`; presets live in `lexer_rules_presets.hpp`;
 token formatters and the highlighter in `lexer_formatters.hpp`.
 

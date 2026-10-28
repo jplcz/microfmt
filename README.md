@@ -28,6 +28,7 @@ Start with the guide that matches what you are building:
 | [Hardened containers](docs/hardened-containers.md) | Checked views and results, non-trapping access, assertion handling, and explicit security opt-out |
 | [Formatter guide](docs/formatters.md) | Binary and diagnostic values, ranges, time, units, protocols, structured output, and presentation |
 | [Lexer guide](docs/lexer.md) | Base tokenizer engine, keyword tables, presets, and ANSI highlighting |
+| [Token stream guide](docs/token-stream.md) | Lookahead stream, errors with positions and recursion guard for hand-written parsers |
 | [Reflection support](docs/reflection.md) | Experimental P2996/`-freflection` (GCC 16+ trunk): automatic enum/struct formatting via `formatters/reflection.hpp`, without Boost |
 | [Inspector framework](docs/inspector.md) | Remote memory, objects, containers, symbols, registers, and stack unwinding |
 | [Writing low-stack renderers](docs/renderer-guide.md) | Caller-owned scratch storage and small formatter/view design |
