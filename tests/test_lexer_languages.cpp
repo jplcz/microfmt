@@ -101,6 +101,13 @@ TEST(LexerLanguagesTest, LuaLongBracketsCommentsAndNumbers) {
   EXPECT_EQ(tokens[2].text, "[[l1\nl2]]");
   EXPECT_EQ(count_kind(tokens, token_kind::floating), 1u);
 
+  const auto trailing = lex_all("4. 2.E-1 1..2", microfmt::rules::lua);
+  ASSERT_EQ(trailing.size(), 6u); // `4.`, `2.E-1`, `1`, `..`, `2`, end
+  EXPECT_EQ(trailing[0].text, "4.");
+  EXPECT_EQ(trailing[0].kind, token_kind::floating);
+  EXPECT_EQ(trailing[1].text, "2.E-1");
+  EXPECT_EQ(trailing[2].kind, token_kind::integer);
+
   const auto unterminated = lex_all("--[=[ open", microfmt::rules::lua);
   ASSERT_EQ(unterminated.size(), 1u);
   EXPECT_EQ(unterminated[0].kind, token_kind::error);

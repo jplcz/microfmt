@@ -122,6 +122,7 @@ inline constexpr microfmt::string_view shell_operators[] = {"&&", "||", ";;", ">
   r.long_bracket_strings = true;
   r.digit_separator = '\0';
   r.hex_float = true;
+  r.decimal_trailing_dot = true;
   return r;
 }
 

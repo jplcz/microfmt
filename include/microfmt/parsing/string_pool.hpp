@@ -272,11 +272,11 @@ private:
                                                  string_decoder decoder) noexcept {
     builder out = pool.begin();
     auto append = [&out](reloco::string_view piece) noexcept { out.append(piece); };
-    string_sink sink{reloco::function_ref<void(reloco::string_view)>(append)};
-    decoder(sink, raw);
-    if (sink.failed()) {
+    string_sink text_out{reloco::function_ref<void(reloco::string_view)>(append)};
+    decoder(text_out, raw);
+    if (text_out.failed()) {
       out.abandon();
-      return pool_result{string_id{}, sink.failure()};
+      return pool_result{string_id{}, text_out.failure()};
     }
     const auto result = out.finish(token{});
     return result ? pool_result{result.value(), {}} : pool_result{string_id{}, result.error().message};

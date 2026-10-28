@@ -205,6 +205,7 @@ leaving it alone keeps the earlier behaviour.
 | `number_suffixes` | Known suffixes (`u`, `ul`, `f`, ...), ASCII case-insensitive, longest wins | `c` |
 | `user_defined_suffixes` | Any identifier run after a number, string or char joins the token (`10_km`, `"s"_str`) | `cpp` |
 | `hex_float` | `0x1.8p3` | `c`, `cpp`, `lua` |
+| `decimal_trailing_dot` | `4.` and `2.E-1` are floats (`1..2` stays `1`, `..`, `2`) | `lua` |
 | `octal_prefix` | `0o17` | `toml` |
 | `datetime_literals` | `1979-05-27`, `07:32:00.5`, `1979-05-27T07:32:00Z`, `... 07:32:00+01:00` as one `datetime` token | `toml` |
 | `numbers` | `false` disables the number rule: digits start identifiers | `ini`, `config`, `config_kv` |

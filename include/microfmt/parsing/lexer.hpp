@@ -278,6 +278,7 @@ struct lexer_rules {
   span<const microfmt::string_view> number_suffixes{}; ///< `u`, `ul`, `f`, ...; ASCII case-insensitive, longest wins.
   bool user_defined_suffixes{false};                   ///< C++ UDLs: an identifier run after a number/string/char joins the token.
   bool hex_float{false};                               ///< `0x1.8p3`.
+  bool decimal_trailing_dot{false};                    ///< `4.` is a float (not before a second `.`: `1..2`).
   bool octal_prefix{false};                            ///< `0o17`.
   bool numbers{true};                                  ///< false: digits start identifiers (INI/config values are bare words).
   bool datetime_literals{false};                       ///< `1979-05-27`, `07:32:00`, `1979-05-27T07:32:00Z`.
@@ -880,6 +881,9 @@ private:
       if (at(i) == '.' && is_digit(at(i + 1))) {
         kind = token_kind::floating;
         i += 1 + scan_digits(i + 1, is_digit);
+      } else if (rules_.decimal_trailing_dot && at(i) == '.' && i > start && at(i + 1) != '.') {
+        kind = token_kind::floating;
+        ++i;
       }
       const char e = at(i);
       if (e == 'e' || e == 'E') {

@@ -1604,21 +1604,21 @@ struct RELOCO_POINTER repeat_options {
 };
 
 /**
- * @brief Repeats `item(ts)` while it succeeds and consumes input, handing each value to `sink`.
+ * @brief Repeats `item(ts)` while it succeeds and consumes input, handing each value to `collect`.
  *
  * Why: separator-less repetition ("zero or more statements") needs a progress check or an item
- * that consumes nothing loops forever. The caller owns the storage through `sink`, so no heap is used.
+ * that consumes nothing loops forever. The caller owns the storage through `collect`, so no heap is used.
  * A failure that consumed nothing ends the loop cleanly (stream restored); a failure after consuming
  * input is a real mistake and is returned. An item that succeeds without consuming ends the loop and
  * its value is discarded.
  *
  * @param item `expected<T, parse_error>(token_stream &)`, `T` not void.
- * @param sink `void(T &&)`; called once per parsed item, in order.
+ * @param collect `void(T &&)`; called once per parsed item, in order.
  * @return The number of items parsed.
  */
 template <typename Item, typename Sink>
 [[nodiscard]] RELOCO_CONSTEXPR20 reloco::expected<size_t, parse_error>
-parse_repeat(token_stream &ts, const repeat_options &opt, Item &&item, Sink &&sink) noexcept {
+parse_repeat(token_stream &ts, const repeat_options &opt, Item &&item, Sink &&collect) noexcept {
   size_t count = 0;
   while (count < opt.max) {
     const token_stream saved = ts;
@@ -1634,7 +1634,7 @@ parse_repeat(token_stream &ts, const repeat_options &opt, Item &&item, Sink &&si
     if (ts.peek().offset == start) {
       break;
     }
-    sink(std::move(result).value());
+    collect(std::move(result).value());
     ++count;
   }
   if (count < opt.min) {
@@ -1644,19 +1644,19 @@ parse_repeat(token_stream &ts, const repeat_options &opt, Item &&item, Sink &&si
 }
 
 /**
- * @brief Parses items until the terminator token (left unconsumed), handing each value to `sink`.
+ * @brief Parses items until the terminator token (left unconsumed), handing each value to `collect`.
  *
  * Why: "statements until `}`" is the common block shape, and here any item failure is a real error
  * (the terminator has not been seen), unlike `parse_repeat`. Reaching the end of input without the
  * terminator is an error, and so is an item that consumes nothing (it would never reach the terminator).
  *
  * @param item `expected<T, parse_error>(token_stream &)`, `T` not void.
- * @param sink `void(T &&)`.
+ * @param collect `void(T &&)`.
  * @return The number of items parsed.
  */
 template <typename Item, typename Sink>
 [[nodiscard]] RELOCO_CONSTEXPR20 reloco::expected<size_t, parse_error>
-parse_until(token_stream &ts, token_kind kind, microfmt::string_view text, Item &&item, Sink &&sink) noexcept {
+parse_until(token_stream &ts, token_kind kind, microfmt::string_view text, Item &&item, Sink &&collect) noexcept {
   size_t count = 0;
   while (!ts.check(kind, text)) {
     if (ts.at_end()) {
@@ -1670,7 +1670,7 @@ parse_until(token_stream &ts, token_kind kind, microfmt::string_view text, Item 
     if (ts.peek().offset == start) {
       return reloco::unexpected<parse_error>(ts.error_here("item consumed no input"));
     }
-    sink(std::move(result).value());
+    collect(std::move(result).value());
     ++count;
   }
   return count;

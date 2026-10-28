@@ -113,9 +113,9 @@ public:
 
   /** The level of a declared operator (binary first, then prefix, postfix, mixfix); invalid when unknown. */
   [[nodiscard]] level level_of(microfmt::string_view text) const noexcept {
-    for (size_t category = 0; category < 4; ++category) {
+    for (size_t cat = 0; cat < 4; ++cat) {
       for (size_t i = 0; i < entries_.size(); ++i) {
-        if (static_cast<size_t>(entries_[i].category) == category && spelling_of(entries_[i]) == text) {
+        if (static_cast<size_t>(entries_[i].category) == cat && spelling_of(entries_[i]) == text) {
           return level{entries_[i].level_id};
         }
       }
@@ -126,33 +126,33 @@ public:
   // ---- declarations ------------------------------------------------------------------------------------------
 
   [[nodiscard]] status add_binary(microfmt::string_view text, level at, assoc associativity = assoc::left) noexcept {
-    return declare(category::binary, text, at, associativity);
+    return declare(op_category::binary, text, at, associativity);
   }
   /** Numeric form for tables that really are fixed: creates or reuses the level numbered `precedence`. */
   [[nodiscard]] status add_binary(microfmt::string_view text, uint8_t precedence,
                                   assoc associativity = assoc::left) noexcept {
-    return declare_numeric(category::binary, text, precedence, associativity);
+    return declare_numeric(op_category::binary, text, precedence, associativity);
   }
 
   [[nodiscard]] status add_prefix(microfmt::string_view text, level at) noexcept {
-    return declare(category::prefix, text, at, assoc::left);
+    return declare(op_category::prefix, text, at, assoc::left);
   }
   [[nodiscard]] status add_prefix(microfmt::string_view text, uint8_t precedence) noexcept {
-    return declare_numeric(category::prefix, text, precedence, assoc::left);
+    return declare_numeric(op_category::prefix, text, precedence, assoc::left);
   }
 
   [[nodiscard]] status add_postfix(microfmt::string_view text, level at) noexcept {
-    return declare(category::postfix, text, at, assoc::left);
+    return declare(op_category::postfix, text, at, assoc::left);
   }
   [[nodiscard]] status add_postfix(microfmt::string_view text, uint8_t precedence) noexcept {
-    return declare_numeric(category::postfix, text, precedence, assoc::left);
+    return declare_numeric(op_category::postfix, text, precedence, assoc::left);
   }
 
   [[nodiscard]] status add_mixfix(microfmt::string_view text, level at) noexcept {
-    return declare(category::mixfix, text, at, assoc::left);
+    return declare(op_category::mixfix, text, at, assoc::left);
   }
   [[nodiscard]] status add_mixfix(microfmt::string_view text, uint8_t precedence) noexcept {
-    return declare_numeric(category::mixfix, text, precedence, assoc::left);
+    return declare_numeric(op_category::mixfix, text, precedence, assoc::left);
   }
 
   /** Enables `cond ? then : else`; the spellings are copied. Its precedence is `op.precedence`, as given. */
@@ -236,7 +236,7 @@ private:
   static constexpr size_t kBase = 8;
   static constexpr size_t kStep = 4;
 
-  enum class category : uint8_t { binary, prefix, postfix, mixfix };
+  enum class op_category : uint8_t { binary, prefix, postfix, mixfix };
 
   struct RELOCO_COPYABLE span_ref {
     uint32_t offset{0};
@@ -244,7 +244,7 @@ private:
   };
   struct RELOCO_COPYABLE entry {
     span_ref text{};
-    category category{category::binary};
+    op_category category{op_category::binary};
     uint16_t level_id{0};
     assoc associativity{assoc::left};
   };
@@ -361,7 +361,7 @@ private:
   }
 
   // Rejects what can be rejected without touching the table, so a failed declaration creates no level.
-  [[nodiscard]] status precheck(category kind, microfmt::string_view text) const noexcept {
+  [[nodiscard]] status precheck(op_category kind, microfmt::string_view text) const noexcept {
     if (!valid_spelling(text)) {
       return reloco::unexpected<microfmt::string_view>("empty operator");
     }
@@ -373,7 +373,7 @@ private:
     return {};
   }
 
-  [[nodiscard]] status declare_numeric(category kind, microfmt::string_view text, uint8_t number,
+  [[nodiscard]] status declare_numeric(op_category kind, microfmt::string_view text, uint8_t number,
                                        assoc associativity) noexcept {
     if (auto checked = precheck(kind, text); !checked) {
       return checked;
@@ -383,7 +383,7 @@ private:
               : status(reloco::unexpected<microfmt::string_view>(at.error()));
   }
 
-  [[nodiscard]] status declare(category kind, microfmt::string_view text, level at, assoc associativity) noexcept {
+  [[nodiscard]] status declare(op_category kind, microfmt::string_view text, level at, assoc associativity) noexcept {
     if (auto checked = precheck(kind, text); !checked) {
       return checked;
     }
@@ -443,16 +443,16 @@ private:
       const size_t rank = position_of(level{e.level_id});
       const auto precedence = static_cast<uint8_t>((kBase + rank * kStep) & 0xFFu);
       switch (e.category) {
-      case category::binary:
+      case op_category::binary:
         ok = binary_.try_push_back(binary_op{text, precedence, e.associativity}).has_value();
         break;
-      case category::prefix:
+      case op_category::prefix:
         ok = prefix_.try_push_back(prefix_op{text, precedence}).has_value();
         break;
-      case category::postfix:
+      case op_category::postfix:
         ok = postfix_.try_push_back(postfix_op{text, precedence}).has_value();
         break;
-      case category::mixfix:
+      case op_category::mixfix:
         ok = mixfix_.try_push_back(mixfix_op{text, precedence}).has_value();
         break;
       }
