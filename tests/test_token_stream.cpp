@@ -5,11 +5,15 @@
 #include <gtest/gtest.h>
 
 #include <microfmt/parsing/lexer_rules_presets.hpp>
+#include <microfmt/parsing/number_parse.hpp>
 #include <microfmt/parsing/token_stream.hpp>
 
+using microfmt::assoc;
+using microfmt::binary_op;
 using microfmt::depth_guard;
 using microfmt::lexer_rules;
 using microfmt::parse_error;
+using microfmt::prefix_op;
 using microfmt::string_view;
 using microfmt::token_kind;
 using microfmt::token_stream;
@@ -175,4 +179,91 @@ TEST(TokenStream, DepthLimitStopsHostileNesting) {
   auto r = validate("[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]");
   ASSERT_FALSE(r.has_value());
   EXPECT_EQ(r.error().message, "nesting too deep");
+}
+
+namespace {
+
+constexpr string_view kCalcOps[] = {"+", "-", "*", "/", "^"};
+constexpr binary_op kBinary[] = {{"+", 10, assoc::left}, {"-", 10, assoc::left}, {"*", 20, assoc::left},
+                                 {"/", 20, assoc::left}, {"^", 40, assoc::right}};
+constexpr prefix_op kPrefix[] = {{"-", 30}};
+
+using calc_result = reloco::expected<int64_t, parse_error>;
+
+calc_result calc(string_view text, size_t max_depth = 64) {
+  lexer_rules rules;
+  rules.operators = kCalcOps;
+  token_stream ts{text, rules};
+  auto primary = [](token_stream &s) -> calc_result {
+    if (!s.check(token_kind::integer)) {
+      return reloco::unexpected<parse_error>(s.error_here("expected a number"));
+    }
+    return microfmt::parse<int64_t>(s.next().text).value();
+  };
+  auto binary = [&ts](const binary_op &op, int64_t l, int64_t r) -> calc_result {
+    switch (op.text[0]) {
+    case '+':
+      return l + r;
+    case '-':
+      return l - r;
+    case '*':
+      return l * r;
+    case '/':
+      if (r == 0) {
+        return reloco::unexpected<parse_error>(ts.error_here("division by zero"));
+      }
+      return l / r;
+    default: {
+      int64_t result = 1;
+      for (int64_t i = 0; i < r; ++i) {
+        result *= l;
+      }
+      return result;
+    }
+    }
+  };
+  auto prefix = [](const prefix_op &, int64_t v) -> calc_result { return -v; };
+  auto result = microfmt::parse_expression<int64_t>(ts, kBinary, kPrefix, primary, binary, prefix, max_depth);
+  if (result && !ts.at_end()) {
+    return reloco::unexpected<parse_error>(ts.error_here("trailing input"));
+  }
+  return result;
+}
+
+} // namespace
+
+TEST(Expression, PrecedenceAndAssociativity) {
+  EXPECT_EQ(calc("1 + 2 * 3").value(), 7);
+  EXPECT_EQ(calc("(1 + 2) * 3").value(), 9);
+  EXPECT_EQ(calc("10 - 4 - 3").value(), 3);  // left associative
+  EXPECT_EQ(calc("2 ^ 3 ^ 2").value(), 512); // right associative
+  EXPECT_EQ(calc("8 / 2 / 2").value(), 2);
+}
+
+TEST(Expression, PrefixBindsTighterThanMultiplyButLooserThanPower) {
+  EXPECT_EQ(calc("-2 * 3").value(), -6);
+  EXPECT_EQ(calc("-2 ^ 2").value(), -4);
+  EXPECT_EQ(calc("1 - -4").value(), 5);
+  EXPECT_EQ(calc("--3").value(), 3);
+}
+
+TEST(Expression, ReportsErrorsAtTheOffendingToken) {
+  auto missing_operand = calc("1 + ");
+  ASSERT_FALSE(missing_operand.has_value());
+  EXPECT_EQ(missing_operand.error().message, "expected a number");
+  EXPECT_EQ(missing_operand.error().at.kind, token_kind::end);
+
+  auto unclosed = calc("(1 + 2");
+  ASSERT_FALSE(unclosed.has_value());
+  EXPECT_EQ(unclosed.error().message, "expected ')'");
+
+  EXPECT_EQ(calc("1 2").error().message, "trailing input");
+  EXPECT_EQ(calc("1 / 0").error().message, "division by zero");
+}
+
+TEST(Expression, DepthLimitStopsHostileNesting) {
+  EXPECT_TRUE(calc("((((1))))", 16).has_value());
+  auto deep = calc("((((((((((((((((((((1))))))))))))))))))))", 8);
+  ASSERT_FALSE(deep.has_value());
+  EXPECT_EQ(deep.error().message, "nesting too deep");
 }

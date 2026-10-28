@@ -11,8 +11,7 @@
  *
  * Why: scanning text into identifiers, numbers, strings and operators is
  * needed by command parsers, highlighters and validators; this is the shared,
- * bounds-safe foundation. See `docs/lexer.md` for the user guide and
- * `docs/design/lexer.md` for the design.
+ * bounds-safe foundation. See `docs/lexer.md` for the user guide.
  */
 
 #include "../microfmt.hpp"
@@ -264,7 +263,7 @@ struct lexer_rules {
   bool skip_whitespace{true};
   bool skip_comments{true};
 
-  // --- Language extensions, all off by default (see docs/design/lexer-languages.md) ---
+  // --- Language extensions, all off by default ---
   span<const microfmt::string_view> line_comments{};   ///< Extra line-comment markers (INI: `;` next to `#`).
   bool line_continuation{false};                       ///< Backslash + newline continues line comments and directives.
   bool long_bracket_comments{false};                   ///< Lua: a line-comment marker followed by `[==[` opens a long comment.

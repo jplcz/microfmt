@@ -118,8 +118,68 @@ error: trailing input at 1:8 in [1, 2] extra
 Tip: the `json` preset leaves `-` as an error byte; the demo copies the preset
 and adds `-` as an operator so `-2.5` parses as `op` followed by a number.
 
+## Expressions with operator precedence
+
+Arithmetic-style input such as `1 + 2 * 3 - -4` needs precedence (`*` binds
+tighter than `+`) and associativity (`2 ^ 3 ^ 2` groups to the right). Writing
+one grammar function per level is repetitive, so `parse_expression` does it
+from operator tables. It builds **no AST**: you give it callbacks that produce
+whatever value type you want (a number to evaluate directly, or an index into
+your own node pool).
+
+```cpp
+// Operator spellings the lexer must emit as `op` tokens (set on lexer_rules::operators).
+constexpr microfmt::string_view kOps[] = {"+", "-", "*", "/", "^"};
+
+// Higher precedence binds tighter. `^` is right associative: 2^3^2 == 2^(3^2).
+constexpr microfmt::binary_op kBinary[] = {
+    {"+", 10}, {"-", 10}, {"*", 20}, {"/", 20}, {"^", 40, microfmt::assoc::right}};
+
+// Unary minus: tighter than `*`, looser than `^`, so -2^2 == -(2^2).
+constexpr microfmt::prefix_op kPrefix[] = {{"-", 30}};
+
+microfmt::lexer_rules rules;
+rules.operators = kOps;
+microfmt::token_stream ts{"1 + 2 * 3", rules};
+
+// primary: parses a leaf (number, identifier, call). "(" expr ")" is handled for you.
+auto primary = [](microfmt::token_stream &s) -> reloco::expected<int64_t, microfmt::parse_error> { /* ... */ };
+// make_binary: combines two operand values; return a node here to build a tree instead.
+auto binary = [](const microfmt::binary_op &op, int64_t l, int64_t r) -> reloco::expected<int64_t, microfmt::parse_error> { /* ... */ };
+// make_prefix: applies a unary operator to its operand.
+auto prefix = [](const microfmt::prefix_op &op, int64_t v) -> reloco::expected<int64_t, microfmt::parse_error> { /* ... */ };
+
+// T is the value type; the last argument (default 64) limits nesting depth.
+auto result = microfmt::parse_expression<int64_t>(ts, kBinary, kPrefix, primary, binary, prefix);
+```
+
+Operators are matched by spelling against `op` and `keyword` tokens (so `and`
+or `mod` work if they are keywords). The stream is left after the expression;
+check `ts.at_end()` yourself if trailing input is an error. A missing operand,
+a missing `)` or nesting deeper than the limit returns a `parse_error`.
+See [`examples/calc_demo.cpp`](../examples/calc_demo.cpp) for a full calculator.
+
+## Showing errors
+
+`<microfmt/parsing/token_stream_formatters.hpp>` renders a `parse_error` with
+the offending source line and a caret, so you do not rebuild that by hand:
+
+```cpp
+#include <microfmt/parsing/token_stream_formatters.hpp>
+
+// report(error, source): `source` must be the exact text that was parsed.
+microfmt::format_to(sink, "{}", microfmt::report(result.error(), source));
+// expected a number (1:9)
+// 4 * (3 +
+//         ^
+```
+
+Only the failing line is shown (CRLF is stripped, tabs are preserved so the
+caret lines up) and an out-of-range offset is clamped, so it never reads out of
+bounds.
+
 ## Limits
 
 * No error recovery: the first error aborts (use backtracking to retry).
-* No precedence-climbing helper; write one rule per precedence level.
+* Expressions support binary infix, prefix and parenthesised groups only; parse postfix, ternary or call syntax in your own `primary` callback.
 * Same limits as the lexer: bytes only, one contiguous buffer.

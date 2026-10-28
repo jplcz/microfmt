@@ -16,6 +16,7 @@
 #include <microfmt/parsing/lexer_formatters.hpp>
 #include <microfmt/parsing/lexer_rules_presets.hpp>
 #include <microfmt/parsing/token_stream.hpp>
+#include <microfmt/parsing/token_stream_formatters.hpp>
 #include <microfmt/parsing/number_parse.hpp>
 #include <microfmt/parsing/number_parse_float.hpp>
 #include <microfmt/formatters/chrono_calendar.hpp>

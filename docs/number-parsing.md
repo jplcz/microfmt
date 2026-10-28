@@ -2,7 +2,7 @@
 
 `microfmt/parsing/number_parse.hpp` (integers) and
 `microfmt/parsing/number_parse_float.hpp` (floating point, opt-in) turn text
-into numbers. Design: [design/number-parsing.md](design/number-parsing.md).
+into numbers..
 
 ## Why
 

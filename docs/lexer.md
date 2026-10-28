@@ -280,5 +280,4 @@ false (for serial or non-TTY sinks).
   (`RELOCO_POINTER`); constructors are `RELOCO_LIFETIMEBOUND` and rvalue
   `std::string` sources are deleted (see `docs/lifetime-safety.md`).
 
-See `examples/lexer_demo.cpp` for a runnable demo and `docs/design/lexer.md`
-for the design rationale.
+See `examples/lexer_demo.cpp` for a runnable demo.

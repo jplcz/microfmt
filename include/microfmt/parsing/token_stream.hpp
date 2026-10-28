@@ -12,7 +12,7 @@
  * Why: every small parser repeats "is the next token X? consume it, else
  * report line/column". `token_stream` packages that, plus cheap backtracking
  * (copy the stream) and a recursion-depth guard. See `docs/token-stream.md`
- * for the user guide and `docs/design/token-stream.md` for the design.
+ * for the user guide.
  */
 
 #include "lexer.hpp"
@@ -20,6 +20,7 @@
 #include <reloco/optional.hpp>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 namespace microfmt {
 
@@ -151,5 +152,151 @@ private:
   size_t &depth_;
   bool ok_{false};
 };
+
+// ============================================================================
+// Expressions (precedence climbing)
+// ============================================================================
+
+/** Operator associativity: `1 - 2 - 3` is `(1 - 2) - 3` for `left`, `1 ^ 2 ^ 3` is `1 ^ (2 ^ 3)` for `right`. */
+enum class assoc : uint8_t { left, right };
+
+/** One binary operator, e.g. `{"*", 20, assoc::left}`. Higher precedence binds tighter. */
+struct RELOCO_POINTER binary_op {
+  microfmt::string_view text{};
+  uint8_t precedence{0};
+  assoc associativity{assoc::left};
+};
+
+/** One prefix operator, e.g. `{"-", 30}`. Its operand is parsed at the operator's precedence. */
+struct RELOCO_POINTER prefix_op {
+  microfmt::string_view text{};
+  uint8_t precedence{0};
+};
+
+namespace detail {
+
+template <typename T, typename Primary, typename MakeBinary, typename MakePrefix> class RELOCO_POINTER expression_parser {
+public:
+  expression_parser(token_stream &ts, span<const binary_op> binary, span<const prefix_op> prefix, Primary &primary,
+                    MakeBinary &make_binary, MakePrefix &make_prefix, size_t max_depth) noexcept
+      : ts_(ts), binary_(binary), prefix_(prefix), primary_(primary), make_binary_(make_binary),
+        make_prefix_(make_prefix), max_depth_(max_depth) {}
+
+  [[nodiscard]] reloco::expected<T, parse_error> parse(unsigned min_precedence) noexcept {
+    const depth_guard guard{depth_, max_depth_};
+    if (!guard) {
+      return reloco::unexpected<parse_error>(ts_.error_here("nesting too deep"));
+    }
+    auto left = parse_operand();
+    if (!left) {
+      return left;
+    }
+    T value = std::move(left).value();
+    for (;;) {
+      const reloco::optional<binary_op> found = find_binary(ts_.peek());
+      if (!found || found->precedence < min_precedence) {
+        return value;
+      }
+      const binary_op op = *found;
+      ts_.next();
+      const unsigned next_min = op.associativity == assoc::right ? op.precedence : op.precedence + 1U;
+      auto right = parse(next_min);
+      if (!right) {
+        return right;
+      }
+      auto combined = make_binary_(op, std::move(value), std::move(right).value());
+      if (!combined) {
+        return combined;
+      }
+      value = std::move(combined).value();
+    }
+  }
+
+private:
+  [[nodiscard]] static bool is_operator_token(const token &tok) noexcept {
+    return tok.kind == token_kind::op || tok.kind == token_kind::keyword;
+  }
+
+  [[nodiscard]] reloco::optional<binary_op> find_binary(const token &tok) const noexcept {
+    if (is_operator_token(tok)) {
+      for (size_t i = 0; i < binary_.size(); ++i) {
+        if (binary_[i].text == tok.text) {
+          return binary_[i];
+        }
+      }
+    }
+    return reloco::nullopt;
+  }
+
+  [[nodiscard]] reloco::optional<prefix_op> find_prefix(const token &tok) const noexcept {
+    if (is_operator_token(tok)) {
+      for (size_t i = 0; i < prefix_.size(); ++i) {
+        if (prefix_[i].text == tok.text) {
+          return prefix_[i];
+        }
+      }
+    }
+    return reloco::nullopt;
+  }
+
+  [[nodiscard]] reloco::expected<T, parse_error> parse_operand() noexcept {
+    if (const reloco::optional<prefix_op> op = find_prefix(ts_.peek())) {
+      ts_.next();
+      auto operand = parse(op->precedence);
+      if (!operand) {
+        return operand;
+      }
+      return make_prefix_(*op, std::move(operand).value());
+    }
+    if (ts_.skip(token_kind::punctuation, "(")) {
+      auto inner = parse(0);
+      if (!inner) {
+        return inner;
+      }
+      if (auto close = ts_.expect(token_kind::punctuation, ")", "expected ')'"); !close) {
+        return reloco::unexpected<parse_error>(close.error());
+      }
+      return inner;
+    }
+    return primary_(ts_);
+  }
+
+  token_stream &ts_;
+  span<const binary_op> binary_;
+  span<const prefix_op> prefix_;
+  Primary &primary_;
+  MakeBinary &make_binary_;
+  MakePrefix &make_prefix_;
+  size_t max_depth_;
+  size_t depth_{0};
+};
+
+} // namespace detail
+
+/**
+ * @brief Parses an expression with operator precedence (precedence climbing); builds no AST.
+ *
+ * Why: without it every precedence level needs its own grammar function. You
+ * describe the operators as tables and provide three callbacks that build
+ * whatever value type `T` you want (a number, a node index, ...).
+ *
+ * @tparam T Result type of the expression (a number, an index into your node pool, ...).
+ * @param ts Stream positioned at the start of the expression; left after its last token.
+ * @param binary Binary operators (matched against `op` and `keyword` tokens by spelling).
+ * @param prefix Prefix operators such as unary `-`.
+ * @param primary `expected<T, parse_error>(token_stream &)`: parses a literal, identifier or call.
+ *        `(` expr `)` is handled by this function and never reaches `primary`.
+ * @param make_binary `expected<T, parse_error>(const binary_op &, T left, T right)`.
+ * @param make_prefix `expected<T, parse_error>(const prefix_op &, T operand)`.
+ * @param max_depth Nesting limit; deeper input fails with "nesting too deep".
+ */
+template <typename T, typename Primary, typename MakeBinary, typename MakePrefix>
+[[nodiscard]] reloco::expected<T, parse_error>
+parse_expression(token_stream &ts, span<const binary_op> binary, span<const prefix_op> prefix, Primary &&primary,
+                 MakeBinary &&make_binary, MakePrefix &&make_prefix, size_t max_depth = 64) noexcept {
+  detail::expression_parser<T, Primary, MakeBinary, MakePrefix> parser{ts, binary, prefix, primary, make_binary,
+                                                                        make_prefix, max_depth};
+  return parser.parse(0);
+}
 
 } // namespace microfmt
