@@ -19,7 +19,9 @@ Statements are `let NAME [= expr];`, `print(expr);` and `{ statements }`. Expres
 variables, calls (`max`, `min`, `abs`), unary `-`, `+ - * / > <`, `?:` and parentheses. Statements run one at a
 time; each expression is parsed into a small tree (a `node_pool`), evaluated, and the nodes are given back.
 Names are resolved while parsing, so an unknown variable or function is a parse-time error; only the chosen
-branch of `?:` / `if` runs, and a division by zero is reported at the divisor.
+branch of `?:` / `if` runs, and a division by zero is reported at the divisor. Variable names are interned in a
+`string_pool` (at most 16 distinct names), so a lookup is `find()` plus integer comparisons and the variables do
+not keep views into the source.
 
 ## Why it is built this way
 
@@ -47,6 +49,7 @@ everywhere: 16 variables, 8 call arguments, 16 stored errors, a 1 KiB output buf
 | Show the source line and a caret | `report()` | the demo |
 | Stop runaway nesting | `depth_guard` | statements and calls |
 | Keep the syntax tree without pointers, and cap its size | `node_pool`, `node_id` | `expression()`, `parse_tree()` |
+| Store variable names once and compare them as integers | `string_pool`, `string_id` | `define()`, the variable lookup in the primary rule |
 
 ## Walkthrough of the interesting parts
 

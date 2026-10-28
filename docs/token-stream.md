@@ -451,11 +451,92 @@ Rules:
   different node, so a memoized handle could point to the wrong one. `memoize` with no rollback is fine: dead
   nodes stay until `clear()` and only cost capacity.
 * A handle made after `mark()` is stale after `rollback(mark)`; do not keep it.
-* Nodes hold handles, not token text; if a node must outlive `discard_consumed()` (streaming), copy the text.
+* Nodes hold handles, not token text; for names and literals keep a `string_id` (next section), which also
+  survives `discard_consumed()` (streaming).
 
 The [mini language](mini-language.md) is built this way: it parses each expression into a pool, resolves names
 while parsing, evaluates the tree and rolls the pool back. See also
 [`examples/node_pool_demo.cpp`](../examples/node_pool_demo.cpp).
+
+## Strings in a tree (string pool)
+
+Why: a token's `text` is a view into the source buffer. That is cheap, but a node that keeps it breaks when the
+source goes away (streaming input is discarded as it is consumed), it cannot describe text that was *built*
+(a string literal after its escapes are decoded), and every comparison of two names compares bytes.
+`string_pool` is an interner: it copies each distinct string into one arena once and gives back a 4-byte
+`string_id`. Equal text always gives an equal id, so nodes stay small and copyable, names compare as integers,
+and the text lives as long as the pool. Lookup is a hash table over index arrays (no allocation per string).
+It is case sensitive and meant for identifiers and literals, not for error snippets (errors keep using the
+token's offset, line and column). Include `<microfmt/parsing/string_pool.hpp>`.
+
+```cpp
+// 256 bytes of text live inside the pool object; more spill to the heap. The two limits (total bytes, number of
+// distinct strings) bound hostile input: past them intern() returns the parse_error "string pool full".
+microfmt::string_pool<256> strings{64 * 1024, 4096};
+
+// intern() stores the text if it is new and returns its id; `at` is where an error would be reported.
+auto a = strings.intern(name_token);         // same as intern(name_token.text, name_token)
+auto b = strings.intern(other_name_token);
+if (a && b && a.value() == b.value()) { /* same spelling, no byte comparison needed */ }
+
+// view() gives the text back. Keep the id, not the view: the view is invalid after the pool grows or rolls back.
+reloco::string_view text = strings.view(a.value());
+
+// find() looks a name up without adding it (a mistyped name must not grow the pool); invalid() if unknown.
+microfmt::string_id known = strings.find(identifier_token.text);
+
+// Keywords: intern them first and they get the ids 0..k-1, so "is it a keyword?" is `id.index < k`.
+const reloco::string_view words[] = {"let", "print", "if"};
+auto ok = strings.intern_all(reloco::span<const reloco::string_view>(words), at);
+```
+
+**How lookup works (hashing).** Comparing a new string against every stored one would be slow, so the pool
+uses a hash table:
+
+1. `intern("count")` computes a *hash*: a 32-bit number made from the bytes (FNV-1a: start from a constant, then
+   for each byte XOR it in and multiply by a prime). Equal text always gives the same number; different text
+   usually gives a different one.
+2. The low bits of the hash choose a *bucket* (the table size is a power of two, so this is `hash & (buckets - 1)`).
+   A bucket holds the index of the newest string that landed there; each stored string remembers the index of the
+   previous one in the same bucket (a short chain, all in plain index arrays, no per-string allocation).
+3. The pool walks that chain. For each candidate it compares the stored hash and length first (cheap) and the
+   bytes last. A match returns the existing id; the end of the chain means the string is new, so its bytes are
+   appended to the arena and it becomes the head of the chain.
+4. When there are more strings than buckets the table doubles and every string is relinked, so chains stay
+   about one entry long and a lookup costs one pass over the bytes plus a few comparisons. If memory for the
+   bigger table is not available the pool keeps working with longer chains.
+
+Two strings with the same hash (a *collision*) are fine: the byte comparison tells them apart. The hash is not
+cryptographic and is not meant to resist an attacker; the `max_strings` limit bounds the work hostile input can
+cause. A prefix tree (trie) would only help for prefix queries, and costs more memory and pointer chasing, so
+it is not used. `rollback` is cheap for the same reason: strings are removed newest first, each is the head of
+its chain, so unlinking it is one assignment.
+
+**Building a string piece by piece.** A literal with escapes has no source range to point at. `begin()` returns
+a builder that writes straight into the pool, so there is no temporary buffer:
+
+```cpp
+auto builder = strings.begin();      // only one builder can be open at a time
+builder.append("line");              // append() and push_back() never fail loudly...
+builder.push_back('\n');             // ...a limit hit is remembered and reported by finish()
+auto id = builder.finish(literal);   // the id; if an equal string exists it is reused and the copy dropped
+// Returning early (or the builder going out of scope) abandons the text: nothing is left in the pool.
+```
+
+While a builder is open, `intern` fails with "string pool busy" and `rollback`/`clear` do nothing. Do not append
+a view that came from `view(id)`.
+
+**Backtracking.** `mark()`/`rollback()` and `pooled(strings, rule)` work like the node pool: a failed
+alternative gives its strings back. Leftover strings are harmless (they only use capacity), so rollback is an
+optimisation for long-running parsers. To roll several pools back together, nest `pooled` calls. As with the
+node pool, do not combine rollback with `memoize` on ids of the same pool.
+
+**Streaming.** Intern before `discard_consumed()` and keep `string_id`s in nodes instead of tokens or views;
+the string pool is the one structure that must survive a discard.
+
+The [mini language](mini-language.md) interns its variable names this way. See also
+[`examples/string_pool_demo.cpp`](../examples/string_pool_demo.cpp), which decodes string literals with the
+builder and prints them after the source buffer is freed.
 
 ## Delimited lists
 
@@ -745,6 +826,7 @@ already handles its termination, depth and error-position details for you.
 | Skip to a safe point after an error | `recover_to`, `recover_balanced` | The balanced form respects nested `()`, `[]`, `{}`. |
 | Tokens that depend on context (`"${expr}"`, heredocs, embedded languages) | `with_rules`, `take_raw_until` | Switches the lexer rules for a region and re-tokenizes the lookahead. |
 | A syntax tree without heap pointers; undo of failed alternatives | `node_pool`, `node_id`, `pooled` | Nodes are linked by index and the pool rolls back when an alternative fails. |
+| Names and literals that outlive the source, compare as integers, or are built from pieces (escapes) | `string_pool`, `string_id`, `string_pool::begin()` | Each distinct string is stored once; nodes keep a 4-byte id. Also the safe way to keep text across `discard_consumed()`. |
 | A backtracking rule that gets slow on nested input | `memoize` with `memo_table` | Remembers results per position; only for rules that depend on nothing else. |
 | Guarding against hostile nesting | `depth_guard` | Cheap recursion limit; the helpers above already take a `max_depth`. |
 

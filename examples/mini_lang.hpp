@@ -23,6 +23,7 @@
 #include <microfmt/microfmt.hpp>
 #include <microfmt/parsing/ast_pool.hpp>
 #include <microfmt/parsing/number_parse.hpp>
+#include <microfmt/parsing/string_pool.hpp>
 #include <microfmt/parsing/token_stream_formatters.hpp>
 
 namespace mini_lang {
@@ -89,7 +90,8 @@ constexpr int64_t wrap(uint64_t v) noexcept { return static_cast<int64_t>(v); }
 /**
  * @brief Runs a program: parses, evaluates, collects every error and the `print` output.
  *
- * Borrows `source` (errors and variable names point into it), so `source` must outlive the interpreter.
+ * Borrows `source` (error positions point into it), so `source` must outlive the interpreter. Variable names are
+ * interned in a `string_pool`, so they do not depend on the source buffer.
  */
 class RELOCO_POINTER interpreter {
 public:
@@ -109,8 +111,8 @@ public:
   [[nodiscard]] string_view source() const noexcept { return source_; }
 
 private:
-  struct RELOCO_POINTER variable {
-    string_view name{};
+  struct RELOCO_COPYABLE variable {
+    microfmt::string_id name{}; // interned: comparing two names is comparing two integers
     int64_t value{0};
   };
 
@@ -299,8 +301,10 @@ private:
     if (ts.check(token_kind::punctuation, "(")) {
       return parse_call(ts, tok.value());
     }
+    // find() never inserts, so a mistyped name does not grow the pool; an invalid id matches no variable.
+    const microfmt::string_id wanted = strings_.find(tok.value().text);
     for (size_t i = 0; i < variable_count_; ++i) {
-      if (variables_[i].name == tok.value().text) {
+      if (variables_[i].name == wanted) {
         n.kind = node_kind::variable;
         n.slot = i;
         return pool_.make(n.at, n);
@@ -438,8 +442,9 @@ private:
   }
 
   status define(const token &name, int64_t value) noexcept {
+    const microfmt::string_id known = strings_.find(name.text);
     for (size_t i = 0; i < variable_count_; ++i) {
-      if (variables_[i].name == name.text) {
+      if (variables_[i].name == known) {
         variables_[i].value = value;
         return {};
       }
@@ -447,7 +452,11 @@ private:
     if (variable_count_ == variables_.size()) {
       return reloco::unexpected<parse_error>(parse_error{"too many variables", name});
     }
-    variables_[variable_count_++] = variable{name.text, value};
+    auto id = strings_.intern(name);
+    if (!id) {
+      return reloco::unexpected<parse_error>(id.error());
+    }
+    variables_[variable_count_++] = variable{id.value(), value};
     return {};
   }
 
@@ -457,6 +466,7 @@ private:
   size_t depth_{0};
   microfmt::error_list<16> errors_{};
   microfmt::node_pool<node, 32> pool_{kMaxNodes};
+  microfmt::string_pool<256> strings_{1024, kMaxVariables};
   microfmt::buffer_sink<1024> out_{};
 };
 

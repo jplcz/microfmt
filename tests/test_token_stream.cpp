@@ -10,6 +10,7 @@
 #include <microfmt/parsing/ast_pool.hpp>
 #include <microfmt/parsing/lexer_rules_presets.hpp>
 #include <microfmt/parsing/number_parse.hpp>
+#include <microfmt/parsing/string_pool.hpp>
 #include <microfmt/parsing/token_stream.hpp>
 
 using microfmt::assoc;
@@ -1196,6 +1197,195 @@ TEST(NodePool, FullPoolStopsTheExpressionWithAnError) {
   auto result = microfmt::parse_expression<pool_id>(ts, grammar, actions);
   ASSERT_FALSE(result);
   EXPECT_EQ(result.error().message, "node pool full");
+}
+
+TEST(StringPool, InternsEqualTextToEqualIds) {
+  microfmt::string_pool<16> pool;
+  const microfmt::token at{};
+  auto a = pool.intern("alpha", at);
+  auto b = pool.intern("beta", at);
+  auto again = pool.intern("alpha", at);
+  auto empty = pool.intern("", at);
+  ASSERT_TRUE(a && b && again && empty);
+  EXPECT_EQ(a.value(), again.value());
+  EXPECT_NE(a.value(), b.value());
+  EXPECT_NE(pool.intern("Alpha", at).value(), a.value()); // case sensitive
+  EXPECT_EQ(pool.view(a.value()), "alpha");
+  EXPECT_EQ(pool.view(empty.value()), "");
+  EXPECT_EQ(pool.intern("", at).value(), empty.value());
+  EXPECT_EQ(pool.size(), 4u);
+  EXPECT_EQ(pool.bytes(), 14u); // "alpha" "beta" "Alpha"; the empty string adds none
+
+  // A token interns its own text.
+  token_stream ts{"gamma", lexer_rules{}};
+  const microfmt::token word = ts.next();
+  auto g = pool.intern(word);
+  ASSERT_TRUE(g);
+  EXPECT_EQ(pool.view(g.value()), "gamma");
+}
+
+TEST(StringPool, FindNeverInsertsAndBadIdsGiveEmptyViews) {
+  microfmt::string_pool<16> pool;
+  const microfmt::token at{};
+  auto x = pool.intern("x", at);
+  EXPECT_EQ(pool.find("x"), x.value());
+  EXPECT_FALSE(pool.find("y").valid());
+  EXPECT_EQ(pool.size(), 1u);
+  EXPECT_EQ(pool.view(microfmt::string_id::invalid()), "");
+  EXPECT_EQ(pool.view(microfmt::string_id{42}), "");
+  const microfmt::string_pool<16> untouched;
+  EXPECT_FALSE(untouched.find("x").valid());
+}
+
+TEST(StringPool, ManyStringsKeepWorkingAcrossGrowth) {
+  microfmt::string_pool<16> pool; // far more strings than the inline capacity and the initial bucket count
+  const microfmt::token at{};
+  reloco::sso_vector<microfmt::string_id, 8> ids;
+  for (int i = 0; i < 3000; ++i) {
+    const std::string name = "name_" + std::to_string(i);
+    auto id = pool.intern(microfmt::string_view(name.data(), name.size()), at);
+    ASSERT_TRUE(id);
+    ASSERT_TRUE(ids.try_push_back(id.value()));
+  }
+  EXPECT_EQ(pool.size(), 3000u);
+  for (int i = 0; i < 3000; ++i) {
+    const std::string name = "name_" + std::to_string(i);
+    const microfmt::string_view text(name.data(), name.size());
+    EXPECT_EQ(pool.find(text), ids[static_cast<size_t>(i)]);
+    EXPECT_EQ(pool.view(ids[static_cast<size_t>(i)]), text);
+  }
+}
+
+TEST(StringPool, LimitsReportAnErrorAtTheGivenToken) {
+  const microfmt::token at{};
+  microfmt::string_pool<16> few{1000, 2};
+  ASSERT_TRUE(few.intern("a", at) && few.intern("b", at));
+  auto third = few.intern("c", at);
+  ASSERT_FALSE(third);
+  EXPECT_EQ(third.error().message, "string pool full");
+  EXPECT_TRUE(few.intern("a", at)); // an existing string needs no room
+
+  microfmt::string_pool<16> small{4, 100};
+  ASSERT_TRUE(small.intern("abcd", at));
+  EXPECT_FALSE(small.intern("e", at));
+  EXPECT_EQ(small.size(), 1u);
+  EXPECT_EQ(small.bytes(), 4u);
+}
+
+TEST(StringPool, RollbackDropsLaterStringsAndAllowsReuse) {
+  microfmt::string_pool<8> pool;
+  const microfmt::token at{};
+  auto keep = pool.intern("keep", at);
+  const microfmt::string_pool_mark m = pool.mark();
+  for (int i = 0; i < 100; ++i) { // enough to force growth after the mark
+    const std::string name = "tmp" + std::to_string(i);
+    ASSERT_TRUE(pool.intern(microfmt::string_view(name.data(), name.size()), at));
+  }
+  pool.rollback(m);
+  EXPECT_EQ(pool.size(), 1u);
+  EXPECT_EQ(pool.bytes(), 4u);
+  EXPECT_FALSE(pool.find("tmp5").valid());
+  EXPECT_EQ(pool.find("keep"), keep.value());
+  auto again = pool.intern("tmp5", at); // the freed index is reused
+  ASSERT_TRUE(again);
+  EXPECT_EQ(again.value().index, 1u);
+  EXPECT_EQ(pool.view(again.value()), "tmp5");
+  pool.clear();
+  EXPECT_EQ(pool.size(), 0u);
+  EXPECT_FALSE(pool.find("keep").valid());
+  EXPECT_TRUE(pool.intern("keep", at));
+}
+
+TEST(StringPool, InternAllGivesKeywordsTheFirstIds) {
+  microfmt::string_pool<32> pool;
+  const microfmt::token at{};
+  const microfmt::string_view words[] = {"let", "print", "if"};
+  ASSERT_TRUE(pool.intern_all(reloco::span<const microfmt::string_view>(words), at));
+  EXPECT_EQ(pool.find("let").index, 0u);
+  EXPECT_EQ(pool.find("if").index, 2u);
+  EXPECT_GE(pool.intern("counter", at).value().index, 3u);
+}
+
+TEST(StringPool, PooledRollsBackFailedAlternatives) {
+  microfmt::string_pool<32> pool;
+  token_stream ts{"abc ;", lexer_rules{}};
+  auto with_bang = microfmt::pooled(pool, [&](token_stream &s) -> reloco::expected<microfmt::string_id, parse_error> {
+    auto word = s.expect(token_kind::identifier, "expected a name");
+    if (!word) {
+      return reloco::unexpected<parse_error>(word.error());
+    }
+    auto id = pool.intern(word.value());
+    if (!id) {
+      return id;
+    }
+    if (auto bang = s.expect(token_kind::punctuation, "!", "expected '!'"); !bang) {
+      return reloco::unexpected<parse_error>(bang.error());
+    }
+    return id;
+  });
+  auto with_semicolon = [&](token_stream &s) -> reloco::expected<microfmt::string_id, parse_error> {
+    auto word = s.expect(token_kind::identifier, "expected a name");
+    if (!word) {
+      return reloco::unexpected<parse_error>(word.error());
+    }
+    return pool.intern(word.value());
+  };
+  auto result = microfmt::parse_choice(ts, with_bang, with_semicolon);
+  ASSERT_TRUE(result);
+  EXPECT_EQ(pool.size(), 1u); // "abc" was interned once by the second alternative; the failed one left nothing
+  EXPECT_EQ(result.value().index, 0u);
+}
+
+TEST(StringPool, BuilderDecodesTextPieceByPiece) {
+  microfmt::string_pool<16> pool;
+  const microfmt::token at{};
+  auto plain = pool.intern("a\nb", at);
+  {
+    auto b = pool.begin();
+    b.append("a");
+    b.push_back('\n');
+    b.append("b");
+    EXPECT_EQ(b.view(), "a\nb");
+    auto id = b.finish(at);
+    ASSERT_TRUE(id);
+    EXPECT_EQ(id.value(), plain.value()); // an equal string is shared, the copy is dropped
+    EXPECT_EQ(pool.size(), 1u);
+    EXPECT_EQ(pool.bytes(), 3u);
+  }
+  auto b = pool.begin();
+  b.append("new");
+  auto fresh = b.finish(at);
+  ASSERT_TRUE(fresh);
+  EXPECT_EQ(pool.view(fresh.value()), "new");
+  EXPECT_EQ(pool.size(), 2u);
+}
+
+TEST(StringPool, BuilderRulesBusyAbandonAndLimits) {
+  const microfmt::token at{};
+  microfmt::string_pool<16> pool{8, 100};
+  ASSERT_TRUE(pool.intern("base", at));
+  {
+    auto b = pool.begin();
+    b.append("tmp");
+    auto busy = pool.intern("x", at); // one writer at a time
+    ASSERT_FALSE(busy);
+    EXPECT_EQ(busy.error().message, "string pool busy");
+    auto second = pool.begin();
+    EXPECT_FALSE(second.finish(at));
+    pool.clear(); // ignored while a builder is open
+    EXPECT_EQ(pool.size(), 1u);
+  } // destructor abandons the text
+  EXPECT_EQ(pool.bytes(), 4u);
+  EXPECT_TRUE(pool.intern("x", at));
+
+  auto b = pool.begin();
+  b.append("abcd"); // 4 + 1 + 4 > 8: the failure is remembered
+  b.append("e");
+  auto failed = b.finish(at);
+  ASSERT_FALSE(failed);
+  EXPECT_EQ(failed.error().message, "string pool full");
+  EXPECT_EQ(pool.bytes(), 5u);
+  EXPECT_TRUE(pool.intern("ok", at)); // the pool is usable again
 }
 
 TEST(Recovery, CollectsSeveralErrorsAndTerminates) {
