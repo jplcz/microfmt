@@ -909,6 +909,62 @@ private:
   size_t total_{0};
 };
 
+/**
+ * @brief `parse_list` that records a failing item in `errors`, skips it and checks the rest.
+ *
+ * Why: one bad argument should not hide the next one. After an item error the tokens up to the next
+ * separator or closing bracket at nesting depth 0 are skipped (bracket-aware, like `recover_balanced`)
+ * and the loop goes on, so several mistakes in one list are reported in a single run.
+ *
+ * @param errors Receives the error of every failed item.
+ * @param brackets Pairs skipped as units while recovering; empty when elements hold no nested brackets.
+ * @return The number of failed items (0 for a clean list). Problems that cannot be recovered locally
+ *         (missing opening bracket, input ending before the closer) are returned as an error and NOT
+ *         added to `errors`, so the caller reports them once. A caller must treat a non-zero count as
+ *         "the list is not usable".
+ */
+template <size_t N, typename Item>
+[[nodiscard]] reloco::expected<size_t, parse_error>
+parse_list_recovering(token_stream &ts, const list_options &opt, error_list<N> &errors,
+                      span<const bracket_pair> brackets, Item &&item, size_t max_depth = 64) noexcept {
+  if (!opt.open.empty()) {
+    if (auto open = ts.expect(token_kind::punctuation, opt.open, "expected opening bracket"); !open) {
+      return reloco::unexpected<parse_error>(open.error());
+    }
+  }
+  const bool bracketed = !opt.close.empty();
+  if (bracketed && ts.skip(token_kind::punctuation, opt.close)) {
+    return size_t{0};
+  }
+  auto is_sync = [&opt, bracketed](const token &tok) noexcept {
+    return tok.kind == token_kind::punctuation && (tok.text == opt.separator || (bracketed && tok.text == opt.close));
+  };
+  size_t failed = 0;
+  for (;;) {
+    if (auto element = item(ts); !element) {
+      errors.add(element.error());
+      ++failed;
+      (void)detail::recover_balanced_if(ts, is_sync, brackets, max_depth);
+      // Recovery can stop early (nesting cap); skipping one token guarantees progress.
+      if (!ts.at_end() && !is_sync(ts.peek())) {
+        ts.next();
+      }
+    }
+    if (!ts.skip(token_kind::punctuation, opt.separator)) {
+      break;
+    }
+    if (opt.allow_trailing && bracketed && ts.skip(token_kind::punctuation, opt.close)) {
+      return failed;
+    }
+  }
+  if (bracketed) {
+    if (auto close = ts.expect(token_kind::punctuation, opt.close, "expected separator or closing bracket"); !close) {
+      return reloco::unexpected<parse_error>(close.error());
+    }
+  }
+  return failed;
+}
+
 namespace detail {
 
 template <size_t N, typename Statement, typename Recover>

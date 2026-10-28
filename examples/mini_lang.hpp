@@ -46,6 +46,7 @@ inline constexpr microfmt::mixfix_op kMixfix[] = {{"if", 5}};
 
 // After a broken statement, resume at the next ';' that is not inside a `{ ... }` block.
 inline constexpr microfmt::token_sync kStatementEnd[] = {{token_kind::punctuation, ";"}};
+inline constexpr bracket_pair kParens[] = {{token_kind::punctuation, "(", token_kind::punctuation, ")"}};
 inline constexpr bracket_pair kBraces[] = {{token_kind::punctuation, "{", token_kind::punctuation, "}"}};
 
 inline constexpr size_t kMaxVariables = 16;
@@ -259,7 +260,8 @@ private:
     return reloco::unexpected<parse_error>(parse_error{"unknown variable", tok.value()});
   }
 
-  // NAME "(" [expression {"," expression}] ")": parse_list handles the brackets and commas.
+  // NAME "(" [expression {"," expression}] ")": parse_list_recovering handles the brackets, the commas
+  // and skipping a bad argument.
   value_result parse_call(token_stream &ts, const token &name) noexcept {
     microfmt::depth_guard guard{depth_, kMaxDepth};
     if (!guard) {
@@ -279,8 +281,14 @@ private:
       return {};
     };
     const microfmt::list_options options{"(", ")", ",", false};
-    if (auto list = microfmt::parse_list(ts, options, item); !list) {
-      return reloco::unexpected<parse_error>(list.error());
+    // Each bad argument is recorded in errors_ and skipped, so `max(1, +, *)` reports both mistakes.
+    auto failed = microfmt::parse_list_recovering(ts, options, errors_, kParens, item);
+    if (!failed) {
+      return reloco::unexpected<parse_error>(failed.error());
+    }
+    if (failed.value() != 0) {
+      // The individual errors are already listed; this one marks the call itself as unusable.
+      return reloco::unexpected<parse_error>(parse_error{"call has invalid arguments", name});
     }
     return apply(name, args, count);
   }

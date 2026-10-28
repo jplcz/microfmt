@@ -116,3 +116,16 @@ TEST(MiniLang, IfThenElseIsAnExpressionThatNestsAndReportsMissingKeywords) {
   EXPECT_EQ(errors[0].message, "expected 'else'");
   EXPECT_EQ(errors[1].message, "expected 'then'");
 }
+
+TEST(MiniLang, EveryBadCallArgumentIsReportedAlongsideASummary) {
+  interpreter interp{"print(max(1, , nope, 4));\nprint(2);"};
+  EXPECT_EQ(interp.run(), 1u);
+  EXPECT_EQ(interp.output(), "2\n");
+  const auto errors = interp.errors().errors();
+  ASSERT_EQ(errors.size(), 3u);
+  EXPECT_EQ(errors[0].message, "expected a number, variable or call"); // the empty argument
+  EXPECT_EQ(errors[1].message, "unknown variable");
+  EXPECT_EQ(errors[1].at.text, "nope");
+  EXPECT_EQ(errors[2].message, "call has invalid arguments");
+  EXPECT_EQ(errors[2].at.text, "max");
+}

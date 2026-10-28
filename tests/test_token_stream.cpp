@@ -596,6 +596,99 @@ TEST(Chain, ReportsMissingItemsAndEnforcesTheLimit) {
   EXPECT_EQ(too_many.error().message, "too many items in chain");
 }
 
+namespace {
+
+constexpr microfmt::bracket_pair kListBrackets[] = {
+    {token_kind::punctuation, "(", token_kind::punctuation, ")"},
+    {token_kind::punctuation, "[", token_kind::punctuation, "]"}};
+
+struct recovering_outcome {
+  bool ok{false};
+  size_t failed{0};
+  size_t good{0};
+  microfmt::error_list<4> errors{};
+  string_view message{};
+};
+
+// List of integers; anything else is an item error. Opener/closer are "(" and ")".
+recovering_outcome recover_list(string_view text, bool allow_trailing = false) {
+  token_stream ts{text, lexer_rules{}};
+  recovering_outcome out;
+  const microfmt::list_options options{"(", ")", ",", allow_trailing};
+  auto item = [&out](token_stream &s) -> reloco::expected<void, parse_error> {
+    if (auto n = s.expect(token_kind::integer, "expected a number"); !n) {
+      return reloco::unexpected<parse_error>(n.error());
+    }
+    ++out.good;
+    return {};
+  };
+  auto r = microfmt::parse_list_recovering(ts, options, out.errors, kListBrackets, item);
+  out.ok = r.has_value();
+  if (r) {
+    out.failed = r.value();
+  } else {
+    out.message = r.error().message;
+  }
+  return out;
+}
+
+} // namespace
+
+TEST(ListRecovery, ReportsEveryBadItemAndStillChecksTheRest) {
+  const auto out = recover_list("(1, x, 3, y, 5)");
+  ASSERT_TRUE(out.ok);
+  EXPECT_EQ(out.failed, 2u);
+  EXPECT_EQ(out.good, 3u);
+  const auto errors = out.errors.errors();
+  ASSERT_EQ(errors.size(), 2u);
+  EXPECT_EQ(errors[0].at.text, "x");
+  EXPECT_EQ(errors[1].at.text, "y");
+
+  const auto clean = recover_list("(1, 2)");
+  EXPECT_TRUE(clean.ok);
+  EXPECT_EQ(clean.failed, 0u);
+  EXPECT_TRUE(clean.errors.empty());
+}
+
+TEST(ListRecovery, SkipsNestedBracketsAsOneUnit) {
+  // The commas inside (..) and [..] must not be taken for separators of the outer list.
+  const auto out = recover_list("(1, x (a, b) [c, d], 3)");
+  ASSERT_TRUE(out.ok);
+  EXPECT_EQ(out.failed, 1u);
+  EXPECT_EQ(out.good, 2u);
+}
+
+TEST(ListRecovery, HandlesEmptyElementsTrailingSeparatorsAndTheLastItem) {
+  EXPECT_EQ(recover_list("(, 1)").failed, 1u);   // empty first element
+  EXPECT_EQ(recover_list("(1, x)").failed, 1u);  // bad item right before the closer
+  const auto trailing = recover_list("(1, 2,)", true);
+  EXPECT_TRUE(trailing.ok);
+  EXPECT_EQ(trailing.failed, 0u);
+  EXPECT_EQ(recover_list("(1, 2,)").failed, 1u); // no trailing allowed: the empty last element fails
+}
+
+TEST(ListRecovery, UnrecoverableShapesAreReturnedAndNotRecorded) {
+  const auto no_close = recover_list("(1, x");
+  EXPECT_FALSE(no_close.ok);
+  EXPECT_EQ(no_close.message, "expected separator or closing bracket");
+  EXPECT_EQ(no_close.errors.size(), 1u); // only the item error; the shape error is the caller's to report
+
+  const auto no_open = recover_list("1, 2)");
+  EXPECT_FALSE(no_open.ok);
+  EXPECT_EQ(no_open.message, "expected opening bracket");
+  EXPECT_TRUE(no_open.errors.empty());
+}
+
+TEST(ListRecovery, TerminatesOnHostileInputAndCapsStoredErrors) {
+  EXPECT_FALSE(recover_list("((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((").ok);
+  EXPECT_FALSE(recover_list("(,,,,,,,,,,,,,,,,,,,,,,,,").ok); // never closed
+  const auto many = recover_list("(x, x, x, x, x, x, x, x)");
+  ASSERT_TRUE(many.ok);
+  EXPECT_EQ(many.failed, 8u);
+  EXPECT_EQ(many.errors.size(), 4u); // capacity
+  EXPECT_TRUE(many.errors.overflowed());
+}
+
 TEST(Recovery, CollectsSeveralErrorsAndTerminates) {
   // statement := name ';'
   token_stream ts{"a; b b; c d; e;", lexer_rules{}};

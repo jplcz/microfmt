@@ -423,6 +423,35 @@ For a custom loop use `recover_to(ts, sync)` directly: it consumes tokens until
 the next one matches a sync point (left unconsumed) or the input ends, and
 returns how many it skipped.
 
+### Several errors in one list
+
+Why: with `parse_list` one bad argument in `f(1, +, 3, *)` aborts the statement, so the second
+mistake is only found after the first is fixed. `parse_list_recovering` records the bad item, skips to
+the next separator or the closing bracket (nested brackets are skipped as units) and keeps checking.
+
+```cpp
+// Brackets to skip as units while recovering; pass an empty span if elements have no nested brackets.
+constexpr microfmt::bracket_pair kParens[] = {{microfmt::token_kind::punctuation, "(",
+                                               microfmt::token_kind::punctuation, ")"}};
+microfmt::error_list<16> errors;                    // receives the error of every bad item
+const microfmt::list_options options{"(", ")", ",", false};
+
+// item(ts) has the same contract as for parse_list: consume one element or return its error.
+auto failed = microfmt::parse_list_recovering(ts, options, errors, kParens, item);
+if (!failed) {
+  return reloco::unexpected<microfmt::parse_error>(failed.error()); // no opener / input ended: report once
+}
+if (failed.value() != 0) {
+  // The item errors are already in `errors`; return a summary so the call itself is marked unusable.
+  return reloco::unexpected<microfmt::parse_error>(microfmt::parse_error{"call has invalid arguments", name});
+}
+```
+
+The result is the number of failed items. Shape errors that cannot be recovered locally (missing opening
+bracket, input ending before the closer) are returned as the error and are *not* added to `errors`, so they
+are reported once by the caller. A non-zero count means the list is not usable: do not evaluate or build from
+it, but parsing can go on after it. See the call arguments in `examples/mini_lang.hpp`.
+
 ### Blocks: balanced recovery
 
 `recover_to` stops at the first sync token, even one inside a nested `{ ... }`.

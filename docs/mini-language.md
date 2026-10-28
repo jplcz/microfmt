@@ -33,7 +33,7 @@ everywhere: 16 variables, 8 call arguments, 16 stored errors, a 1 KiB output buf
 | Read tokens one at a time | `token_stream`, `expect`, `skip`, `check` | every rule |
 | Operators with precedence | `parse_expression` with an `expression_grammar` (`kBinary`, `kPrefix`, a `ternary_op`) | `expression()` |
 | `if c then a else b` | a `mixfix_op` plus `make_mixfix`, which re-enters the parser with `expr.parse` | `expression_actions::make_mixfix` |
-| Comma-separated call arguments | `parse_list` | `parse_call()` |
+| Comma-separated call arguments, each bad one reported | `parse_list_recovering` | `parse_call()` |
 | "A statement is a let, a print or a block" | `parse_choice` | `parse_statement()` |
 | Optional initialiser (`let x;`) | `parse_optional` | `parse_let()` |
 | Several accepted token kinds | `expect_one_of` | `parse_primary()` |

@@ -35,6 +35,7 @@ int main() {
                                         "print(a;\n"
                                         "{ let c = nope; print(a); }\n"
                                         "print(abs(-5));\n"
+                                        "print(max(1, , nope, 4));\n"
                                         "{ let d = 1;\n";
 
   microfmt::buffer_sink<2048> out;
