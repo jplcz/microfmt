@@ -415,12 +415,7 @@ private:
   }
 
   [[nodiscard]] static constexpr bool contains_byte(microfmt::string_view set, char ch) noexcept {
-    for (size_t i = 0; i < set.size(); ++i) {
-      if (set[i] == ch) {
-        return true;
-      }
-    }
-    return false;
+    return set.find(ch) != microfmt::string_view::npos;
   }
 
   [[nodiscard]] static constexpr bool is_high_byte(char ch) noexcept { return (static_cast<unsigned char>(ch) & 0x80U) != 0U; }
