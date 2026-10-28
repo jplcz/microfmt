@@ -12,6 +12,9 @@
 #include <microfmt/formatters/can.hpp>
 #include <microfmt/formatters/cbor.hpp>
 #include <microfmt/formatters/chrono.hpp>
+#include <microfmt/parsing/lexer.hpp>
+#include <microfmt/parsing/lexer_formatters.hpp>
+#include <microfmt/parsing/lexer_rules_presets.hpp>
 #include <microfmt/formatters/chrono_calendar.hpp>
 #include <microfmt/formatters/numeric_views.hpp>
 #include <microfmt/formatters/sequence_views.hpp>

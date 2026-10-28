@@ -624,6 +624,8 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_numeric_views.cpp
         tests/test_sequence_views.cpp
         tests/test_chrono_calendar.cpp
+        tests/test_lexer.cpp
+        tests/test_lexer_formatters.cpp
         tests/test_debug_float.cpp
         tests/test_fmt_priority.cpp
         tests/test_source_location.cpp
