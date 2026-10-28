@@ -9,6 +9,7 @@ implementation.
 | Document | Status |
 |---|---|
 | [lexer.md](lexer.md) | Implemented |
+| [lexer-languages.md](lexer-languages.md) | Implemented |
 
 Status values: *Proposed* (awaiting approval), *Accepted* (implementation may
 start), *Implemented* (links to the user guide), *Rejected*.

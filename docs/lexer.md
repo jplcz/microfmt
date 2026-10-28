@@ -96,6 +96,8 @@ outlive the rules (keep them `constexpr`/`static`).
 ## Complete rule reference
 
 Rules are applied in this order at each position. Every rule has an opt-out.
+Directives, long brackets, prefixes, raw strings and the other opt-in rules from
+"Language extension rules" below slot in before the number rule.
 
 | # | Rule | What it matches | How to disable / tune |
 |---|---|---|---|
@@ -121,7 +123,8 @@ one contiguous buffer, and keywords are case sensitive.
 ## Token kinds
 
 `end`, `error`, `whitespace`, `newline`, `identifier`, `keyword`, `integer`,
-`floating`, `string`, `comment`, `op`, `punctuation`. With
+`floating`, `string`, `comment`, `op`, `punctuation`, `character`, `directive`,
+`datetime`. With
 `skip_whitespace = false` and `skip_comments = false` the tokens tile the input
 exactly (offsets are contiguous and cover every byte), which is what the
 highlighter relies on.
@@ -131,13 +134,113 @@ highlighter relies on.
 ```cpp
 #include <microfmt/parsing/lexer_rules_presets.hpp>
 
-microfmt::rules::c_like  // // and /* */ comments, " and ' strings, 0x/0b, C operators
-microfmt::rules::json    // only " strings, true/false/null, no comments, no 0x
-microfmt::rules::shell   // # comments, $var and --flag-a words, && || >> redirections
+microfmt::rules::c          // C17/C23: directives, 'c' chars, L/u/U/u8 prefixes, u/l/f suffixes
+microfmt::rules::cpp        // C++23: c + raw strings, 1'000 separators, 10_km literals, ::, <=>
+microfmt::rules::c_like     // alias of cpp (kept for source compatibility, see changelog)
+microfmt::rules::lua        // Lua 5.4: --, --[==[ ]==], [[ ]] strings, hex floats
+microfmt::rules::sql        // case-insensitive keywords, '' quote doubling, "x" and `x` quoting
+microfmt::rules::toml       // # comments, ' literal strings, """ multi-line, date-times
+microfmt::rules::ini        // ; and # comments, [section], key = value, bare-word values
+microfmt::rules::config     // nginx/Apache style: # comments, { } ; and bare words
+microfmt::rules::config_kv  // key=value files (sysctl, .env): # and ; comments
+microfmt::rules::json       // only " strings, true/false/null, no comments, no 0x
+microfmt::rules::shell      // # comments, $var and --flag-a words, && || >> redirections
 ```
 
 They are ordinary constexpr `lexer_rules`: copy one and change a field to
-adapt it (`auto r = microfmt::rules::c_like; r.skip_comments = false;`).
+adapt it (`auto r = microfmt::rules::cpp; r.skip_comments = false;`).
+
+Preset limits worth knowing (the lexer stays lenient, a parser validates):
+
+* `sql`: `"x"` and `` `x` `` identifiers come out as `string` tokens.
+* `ini`, `config`, `config_kv`: numbers are off (`numbers = false`), so `80`,
+  `192.168.0.1` and `/usr/bin` are all `identifier` tokens (bare words). The
+  parser decides what a value means. `ini` only treats `"` as a quote so
+  `don't` is fine; `config_kv` accepts both quote kinds.
+* `toml`: bare keys like `my-key` are one identifier, but `2024-key` lexes as
+  `2024`, `-`, `key` (extras never glue to a number); signs are `op` tokens.
+* `cpp`: `#include`/`#define` lines are one `directive` token; the parser (or a
+  second lexer pass over the directive text) interprets them.
+
+## Writing rules for a real language
+
+The lexer is meant to sit under a parser. It does **faithful tokenization**
+and leaves validation to the layer above:
+
+* Valid source never produces an `error` token.
+* It does not check escape sequences, numeric ranges, suffix validity, date
+  field ranges (`2024-13-45` is a `datetime`), balanced brackets or grammar.
+* With `skip_whitespace = false` and `skip_comments = false` tokens tile the
+  input, with exact offsets and line/columns, so a parser can report
+  diagnostics and a formatter can reproduce the source.
+* `error` only means "could not continue lexing this construct" (unterminated
+  string/comment, stray byte, malformed opener); each still consumes at least
+  one byte so a parser can resynchronise.
+
+## Language extension rules
+
+These `lexer_rules` fields are off by default; every one is a pure opt-in, so
+leaving it alone keeps the earlier behaviour.
+
+| Field | What it does | Used by |
+|---|---|---|
+| `line_comments` | Extra line-comment markers next to `line_comment` (longest marker wins) | `ini`, `config_kv` |
+| `line_continuation` | A backslash before a newline continues line comments and directives | `c`, `cpp` |
+| `long_bracket_comments` | A line-comment marker followed by `[==[` starts a comment closed by the same level `]==]` | `lua` |
+| `long_bracket_strings` | `[[ ... ]]` / `[==[ ... ]==]` strings (level up to 255; unterminated is `error`) | `lua` |
+| `char_quotes` | Quote bytes that make `character` tokens (`'a'`) | `c`, `cpp` |
+| `raw_quotes` | Quote bytes whose strings ignore the escape byte | `toml` (`'`) |
+| `doubled_quote_escape` | A doubled quote inside a string is a literal quote (`'it''s'`) | `sql` |
+| `multiline_triple_quotes` | Quote bytes that also allow `"""..."""` / `'''...'''` strings spanning lines | `toml` |
+| `multiline_quotes` | Quote bytes whose ordinary strings may contain raw newlines | `sql` |
+| `string_prefixes` | Prefixes such as `u8`, `L`, `R` that join a directly following quote | `c`, `cpp` |
+| `cpp_raw_strings` | A prefix ending in `R` starts `R"delim( ... )delim"` (delimiter at most 16 bytes) | `cpp` |
+| `number_suffixes` | Known suffixes (`u`, `ul`, `f`, ...), ASCII case-insensitive, longest wins | `c` |
+| `user_defined_suffixes` | Any identifier run after a number, string or char joins the token (`10_km`, `"s"_str`) | `cpp` |
+| `hex_float` | `0x1.8p3` | `c`, `cpp`, `lua` |
+| `octal_prefix` | `0o17` | `toml` |
+| `datetime_literals` | `1979-05-27`, `07:32:00.5`, `1979-05-27T07:32:00Z`, `... 07:32:00+01:00` as one `datetime` token | `toml` |
+| `numbers` | `false` disables the number rule: digits start identifiers | `ini`, `config`, `config_kv` |
+| `keywords_ignore_case` | Keyword lookup folds ASCII case; the table must be lower-case (checked by `lexer_rules_valid`) | `sql` |
+| `directive_prefix` | A first-on-line `#` makes the whole line (with continuations) one `directive` token | `c`, `cpp` |
+
+Examples (each field with what it is, why and what the values mean):
+
+```cpp
+// A language with ';' and '#' comments, "x" strings without escapes and
+// case-insensitive keywords. Keywords must be lower-case when
+// keywords_ignore_case is set, otherwise lexer_rules_valid() is false.
+constexpr microfmt::keyword_table kWords{"select", "from"};
+constexpr microfmt::string_view kExtraComments[] = {"#"};
+
+constexpr microfmt::lexer_rules make() {
+  microfmt::lexer_rules r;
+  r.keywords = kWords;
+  r.keywords_ignore_case = true;     // "SELECT" and "Select" are keywords too
+  r.line_comment = ";";              // first marker
+  r.line_comments = kExtraComments;  // more markers; the longest match wins
+  r.escape = '\0';                   // no escape byte: a backslash is plain text
+  r.quotes = "\"";                   // only double quotes open strings
+  return r;
+}
+static_assert(microfmt::lexer_rules_valid(make()));
+```
+
+`lexer_rules_valid` additionally rejects: long-bracket comments with no
+line-comment marker, `cpp_raw_strings` without a prefix ending in `R`,
+`char_quotes` overlapping `quotes`, empty prefixes/suffixes/markers, a
+`directive_prefix` that is also the first byte of a line-comment marker, and a
+non-lower-case table with `keywords_ignore_case`.
+
+## Changelog
+
+* `rules::c_like` is now an alias of `rules::cpp`. Visible differences:
+  `'a'` is a `character` token (it used to be `string`), `#...` lines are one
+  `directive` token, `10UL`/`1.5f` no longer produce `error`.
+* New `token_kind` values (`character`, `directive`, `datetime`) were appended
+  after the existing ones, so stored numeric values are unchanged.
+* A number followed by `-` or `.` extras (`2024-key`) is no longer an error
+  token; only letters, digits, `_` and high bytes glue to a number.
 
 ## Formatting tokens and highlighting
 

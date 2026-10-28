@@ -49,6 +49,12 @@ namespace microfmt {
     return "op";
   case token_kind::punctuation:
     return "punctuation";
+  case token_kind::character:
+    return "character";
+  case token_kind::directive:
+    return "directive";
+  case token_kind::datetime:
+    return "datetime";
   }
   return "unknown";
 }
@@ -82,6 +88,7 @@ struct highlight_theme {
   ansi::style comment{ansi::color::bright_black, ansi::color::none, ansi::attribute::italic};
   ansi::style op{ansi::color::bright_cyan};
   ansi::style punctuation{};
+  ansi::style directive{ansi::color::bright_blue};
   ansi::style error{ansi::color::bright_red, ansi::color::none, ansi::attribute::underline};
 
   [[nodiscard]] constexpr ansi::style style_for(token_kind kind) const noexcept {
@@ -92,9 +99,13 @@ struct highlight_theme {
       return identifier;
     case token_kind::integer:
     case token_kind::floating:
+    case token_kind::datetime:
       return number;
     case token_kind::string:
+    case token_kind::character:
       return string;
+    case token_kind::directive:
+      return directive;
     case token_kind::comment:
       return comment;
     case token_kind::op:
