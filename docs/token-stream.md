@@ -630,6 +630,38 @@ last { z = 1;
 Errors without a note print exactly as before, and `error_list` stores notes
 along with the errors, so nothing else changes.
 
+## Choosing a helper
+
+There are many helpers because grammars repeat a handful of shapes. Find the
+shape you are writing in the left column; the right column is the helper that
+already handles its termination, depth and error-position details for you.
+
+| You are writing... | Use | Why this one |
+|---|---|---|
+| Arithmetic / operators with precedence | `parse_expression` | Handles binding power and associativity; you only supply `primary` and node builders. |
+| `if c then a else b`, `x ? a : b`, `f(x)`, `a[i]`, `x!` | `parse_expression` with `expression_grammar` (mixfix, ternary, postfix) | Same loop, extra operator shapes, no hand-rolled precedence. |
+| `a, b, c` inside brackets | `parse_list` | Delimiters, empty list and trailing separator are handled. |
+| The same, but one bad item must not hide the rest | `parse_list_recovering` | Records each bad item and resynchronises at the next separator or the closing bracket. |
+| `item (sep item)*` with no brackets (`a.b.c`, `x + y + z` by hand) | `parse_chain` | Folds results as it goes; stops cleanly when no separator follows. |
+| `seed suffix*` (`a(1)(2).b`), i.e. left recursion | `parse_left_recursive` | Loops instead of recursing, and rejects a suffix that consumes nothing. |
+| Zero or more items until a closing token | `parse_until` | Terminates even when the item parser consumes nothing. |
+| Zero or more items until the input ends | `parse_repeat` | Same no-progress guarantee. |
+| A file of statements where one bad statement should not stop the rest | `parse_statements` / `parse_statements_until` | Collects errors in an `error_list` and skips to the next statement. |
+| One of several alternatives | `parse_choice` | Tries each one with backtracking, reports the error that got furthest. |
+| Try something and fall back | `attempt` | Restores the stream when the attempt fails. |
+| An optional part | `parse_optional` | Returns "absent" without an error when the part is not there. |
+| The text and position range of a node | `parse_spanned` | Wraps any rule's result with a `source_span`. |
+| "Expected a, b or c" messages | `expect_one_of` | One error that names every acceptable kind. |
+| Extra context on an error ("in call to f") | `with_note` / `note` | Adds a note without changing where the error points. |
+| Skip to a safe point after an error | `recover_to`, `recover_balanced` | The balanced form respects nested `()`, `[]`, `{}`. |
+| A backtracking rule that gets slow on nested input | `memoize` with `memo_table` | Remembers results per position; only for rules that depend on nothing else. |
+| Guarding against hostile nesting | `depth_guard` | Cheap recursion limit; the helpers above already take a `max_depth`. |
+
+Rules of thumb: start with `parse_expression` for anything operator-shaped and
+with `parse_list` for anything comma-shaped; reach for the recovering variants
+only when you report several errors per run; add `memoize` last, after you have
+measured repeated work.
+
 ## Limits
 
 * A single parse aborts on its first error; use `parse_statements` for multi-error runs (see "Reporting several errors").
