@@ -155,8 +155,7 @@ private:
                                            statement);
     if (auto close = ts.expect(token_kind::punctuation, "}", "expected '}'"); !close) {
       // The missing '}' is only noticed at the end of the input; the note points back at the opener.
-      return reloco::unexpected<parse_error>(
-          microfmt::with_note(close.error(), "block opened here", open.value()));
+      return reloco::unexpected<parse_error>(microfmt::with_note(close.error(), "block opened here", open.value()));
     }
     return {};
   }
@@ -264,8 +263,7 @@ private:
       return best;
     }
     const bool known = name.text == "abs" || name.text == "max" || name.text == "min";
-    return reloco::unexpected<parse_error>(
-        parse_error{known ? "wrong number of arguments" : "unknown function", name});
+    return reloco::unexpected<parse_error>(parse_error{known ? "wrong number of arguments" : "unknown function", name});
   }
 
   status define(const token &name, int64_t value) noexcept {

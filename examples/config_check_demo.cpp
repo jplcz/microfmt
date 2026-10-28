@@ -69,7 +69,9 @@ struct block_rule {
 } // namespace
 
 int main() {
-  constexpr microfmt::string_view source = "name = \"demo\";\nretries 3;\nport = ;\ndebug = on;\nlevel = 2 2;\nnet { port = 80; host = local; }\nnet2 { a = ; b = 2; c d; e = 5; }\nlast { z = 1;\n";
+  constexpr microfmt::string_view source =
+      "name = \"demo\";\nretries 3;\nport = ;\ndebug = on;\nlevel = 2 2;\nnet { port = 80; host = local; }\nnet2 { a = "
+      "; b = 2; c d; e = 5; }\nlast { z = 1;\n";
 
   microfmt::lexer_rules rules;
   rules.operators = kOperators;

@@ -25,19 +25,17 @@ void run(microfmt::string_view title, microfmt::string_view program, microfmt::b
 } // namespace
 
 int main() {
-  constexpr microfmt::string_view good =
-      "let x = 2 + 3 * 4;\n"
-      "let y = x > 10 ? x : 0;\n"
-      "print(max(x, y, 7));\n"
-      "{ let z = -y; print(z); }\n";
+  constexpr microfmt::string_view good = "let x = 2 + 3 * 4;\n"
+                                         "let y = x > 10 ? x : 0;\n"
+                                         "print(max(x, y, 7));\n"
+                                         "{ let z = -y; print(z); }\n";
 
-  constexpr microfmt::string_view bad =
-      "let a = 1;\n"
-      "let b = 1 +;\n"
-      "print(a;\n"
-      "{ let c = nope; print(a); }\n"
-      "print(abs(-5));\n"
-      "{ let d = 1;\n";
+  constexpr microfmt::string_view bad = "let a = 1;\n"
+                                        "let b = 1 +;\n"
+                                        "print(a;\n"
+                                        "{ let c = nope; print(a); }\n"
+                                        "print(abs(-5));\n"
+                                        "{ let d = 1;\n";
 
   microfmt::buffer_sink<2048> out;
   run("valid", good, out);

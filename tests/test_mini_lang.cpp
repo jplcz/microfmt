@@ -8,14 +8,15 @@
 
 namespace {
 
-using mini_lang::interpreter;
 using microfmt::string_view;
+using mini_lang::interpreter;
 
 } // namespace
 
 TEST(MiniLang, EvaluatesExpressionsVariablesCallsAndTernary) {
-  interpreter interp{"let x = 2 + 3 * 4; let y = x > 10 ? x : 0; print(max(x, y, 7)); print(min(4, 2)); print(abs(-9));\n"
-                     "let z; print(z); print(-(1 + 2) * 3); print(7 / 2 < 4 ? 1 : 2);"};
+  interpreter interp{
+      "let x = 2 + 3 * 4; let y = x > 10 ? x : 0; print(max(x, y, 7)); print(min(4, 2)); print(abs(-9));\n"
+      "let z; print(z); print(-(1 + 2) * 3); print(7 / 2 < 4 ? 1 : 2);"};
   EXPECT_EQ(interp.run(), 9u);
   EXPECT_TRUE(interp.errors().empty());
   EXPECT_EQ(interp.output(), "14\n2\n9\n0\n-9\n1\n");
