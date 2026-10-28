@@ -709,6 +709,50 @@ parse_chain(token_stream &ts, token_kind separator_kind, microfmt::string_view s
     ++items;
   }
 }
+/**
+ * @brief Parses `seed suffix*`: the loop behind a left-recursive rule `A := A suffix | seed`.
+ *
+ * Why: recursive descent cannot call `A` from `A`; the usual fix is to parse the seed and then keep
+ * extending the value while a suffix matches. Unlike `parse_chain` the suffixes may have different
+ * shapes (`a.b(1)[2]`), and unlike `postfix_op` no precedence table is needed.
+ *
+ * @param seed `expected<T, parse_error>(token_stream &)`.
+ * @param extend `expected<bool, parse_error>(token_stream &, T &left)`. Return `false` (consuming nothing)
+ *        when no suffix starts here; otherwise consume the suffix, replace `left` with the extended value
+ *        (e.g. `left = make_member(std::move(left), name)`) and return `true`. A malformed suffix returns its
+ *        error, which is passed on as is (there is no fall-back to the shorter result).
+ * @param max_steps Limit on the number of suffixes; more fails with "too many suffixes". An `extend` that
+ *        returns `true` without consuming a token fails with "left recursion made no progress".
+ */
+template <typename T, typename Seed, typename Extend>
+[[nodiscard]] RELOCO_CONSTEXPR20 reloco::expected<T, parse_error>
+parse_left_recursive(token_stream &ts, Seed &&seed, Extend &&extend,
+                     size_t max_steps = static_cast<size_t>(-1)) noexcept {
+  auto first = seed(ts);
+  if (!first) {
+    return first;
+  }
+  T value = std::move(first).value();
+  size_t steps = 0;
+  for (;;) {
+    const token before = ts.peek();
+    const token consumed_before = ts.previous();
+    auto extended = extend(ts, value);
+    if (!extended) {
+      return reloco::unexpected<parse_error>(extended.error());
+    }
+    if (!extended.value()) {
+      return value;
+    }
+    if (ts.previous().offset == consumed_before.offset && ts.previous().kind == consumed_before.kind) {
+      return reloco::unexpected<parse_error>(parse_error{"left recursion made no progress", before});
+    }
+    if (steps >= max_steps) {
+      return reloco::unexpected<parse_error>(parse_error{"too many suffixes", ts.previous()});
+    }
+    ++steps;
+  }
+}
 
 // ============================================================================
 // Delimited lists

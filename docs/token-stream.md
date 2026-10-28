@@ -308,6 +308,36 @@ is not followed by an item is an error at that token (the separator is consumed;
 fall-back to a shorter chain), and exceeding the limit fails with "too many items in chain". See
 [`examples/spans_demo.cpp`](../examples/spans_demo.cpp) for both helpers together.
 
+## Left recursion: `A := A suffix | seed`
+
+Why: a rule that starts with itself (`access := access "." name | name`) would call itself forever in
+recursive descent. The fix is always the same loop: parse the seed, then keep extending the value while a
+suffix matches. `parse_chain` handles one repeated separator and item and `postfix_op` needs precedence
+tables; `parse_left_recursive` is for suffixes of different shapes (`a.b(1)[2]`) decided by looking at the
+next token.
+
+```cpp
+// seed(ts)           parses the leftmost operand, e.g. a name.
+// extend(ts, left)   looks at the next token: if a suffix starts there, consume it, replace `left` with the
+//                    extended value and return true; otherwise return false and consume nothing.
+//                    A malformed suffix returns its error, which is passed on unchanged.
+auto extend = [](microfmt::token_stream &s, Node &left) -> reloco::expected<bool, microfmt::parse_error> {
+  if (s.skip(microfmt::token_kind::punctuation, ".")) {
+    auto name = s.expect(microfmt::token_kind::identifier, "expected a member name");
+    if (!name) return reloco::unexpected<microfmt::parse_error>(name.error());
+    left = make_member(std::move(left), name.value());   // move: `left` may own a subtree
+    return true;
+  }
+  return false;                                           // no suffix here: the loop ends
+};
+// 8 = maximum number of suffixes (default: unlimited); more fails with "too many suffixes".
+auto node = microfmt::parse_left_recursive<Node>(ts, seed, extend, 8);
+```
+
+The loop is iterative, so long chains cannot overflow the stack. An `extend` that returns `true` without
+consuming a token fails with "left recursion made no progress" instead of hanging. See
+[`examples/left_recursion_demo.cpp`](../examples/left_recursion_demo.cpp).
+
 ## Delimited lists
 
 Arrays, call arguments and objects repeat the same loop (open bracket,

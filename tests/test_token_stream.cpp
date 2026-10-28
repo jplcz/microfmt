@@ -4,6 +4,9 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
+#include <string>
+
 #include <microfmt/parsing/lexer_rules_presets.hpp>
 #include <microfmt/parsing/number_parse.hpp>
 #include <microfmt/parsing/token_stream.hpp>
@@ -687,6 +690,105 @@ TEST(ListRecovery, TerminatesOnHostileInputAndCapsStoredErrors) {
   EXPECT_EQ(many.failed, 8u);
   EXPECT_EQ(many.errors.size(), 4u); // capacity
   EXPECT_TRUE(many.errors.overflowed());
+}
+
+namespace {
+
+using text = std::string;
+using text_value = reloco::expected<text, parse_error>;
+
+// A := name ( "." name | "[" number "]" )*, building a string that shows the order of application.
+text_value left_rec(string_view source, size_t max_steps = static_cast<size_t>(-1)) {
+  lexer_rules rules;
+  rules.punctuation = ".[]";
+  token_stream ts{source, rules};
+  auto seed = [](token_stream &s) -> text_value {
+    auto name = s.expect(token_kind::identifier, "expected a name");
+    if (!name) {
+      return reloco::unexpected<parse_error>(name.error());
+    }
+    return text{name.value().text.data(), name.value().text.size()};
+  };
+  auto extend = [](token_stream &s, text &left) -> reloco::expected<bool, parse_error> {
+    if (s.skip(token_kind::punctuation, ".")) {
+      auto name = s.expect(token_kind::identifier, "expected a member name");
+      if (!name) {
+        return reloco::unexpected<parse_error>(name.error());
+      }
+      left = "(" + left + " ." + text{name.value().text.data(), name.value().text.size()} + ")";
+      return true;
+    }
+    if (s.skip(token_kind::punctuation, "[")) {
+      auto index = s.expect(token_kind::integer, "expected an index");
+      if (!index) {
+        return reloco::unexpected<parse_error>(index.error());
+      }
+      if (auto close = s.expect(token_kind::punctuation, "]", "expected ']'"); !close) {
+        return reloco::unexpected<parse_error>(close.error());
+      }
+      left = "(" + left + " [" + text{index.value().text.data(), index.value().text.size()} + "])";
+      return true;
+    }
+    return false;
+  };
+  return microfmt::parse_left_recursive<text>(ts, seed, extend, max_steps);
+}
+
+} // namespace
+
+TEST(LeftRecursion, AppliesSuffixesOfDifferentShapesLeftToRight) {
+  EXPECT_EQ(left_rec("a").value(), "a");
+  EXPECT_EQ(left_rec("a.b[2].c").value(), "(((a .b) [2]) .c)");
+}
+
+TEST(LeftRecursion, MalformedSuffixesReportTheirOwnError) {
+  auto dangling = left_rec("a.");
+  ASSERT_FALSE(dangling.has_value());
+  EXPECT_EQ(dangling.error().message, "expected a member name");
+  EXPECT_EQ(dangling.error().at.kind, token_kind::end);
+
+  auto unclosed = left_rec("a.b[1");
+  ASSERT_FALSE(unclosed.has_value());
+  EXPECT_EQ(unclosed.error().message, "expected ']'");
+
+  EXPECT_EQ(left_rec("1").error().message, "expected a name"); // seed failure propagates
+}
+
+TEST(LeftRecursion, GuardsAgainstNoProgressAndTooManySuffixes) {
+  token_stream ts{"a b", lexer_rules{}};
+  auto seed = [](token_stream &s) -> reloco::expected<int, parse_error> {
+    (void)s.next();
+    return 0;
+  };
+  auto stuck = [](token_stream &, int &) -> reloco::expected<bool, parse_error> { return true; };
+  auto no_progress = microfmt::parse_left_recursive<int>(ts, seed, stuck);
+  ASSERT_FALSE(no_progress.has_value());
+  EXPECT_EQ(no_progress.error().message, "left recursion made no progress");
+
+  EXPECT_EQ(left_rec("a.b.c.d", 3).value(), "(((a .b) .c) .d)"); // exactly 3 suffixes is allowed
+  auto too_many = left_rec("a.b.c.d.e", 3);
+  ASSERT_FALSE(too_many.has_value());
+  EXPECT_EQ(too_many.error().message, "too many suffixes");
+}
+
+TEST(LeftRecursion, WorksWithMoveOnlyValuesAndLongInput) {
+  auto seed = [](token_stream &s) -> reloco::expected<std::unique_ptr<int>, parse_error> {
+    (void)s.next();
+    return std::make_unique<int>(0);
+  };
+  auto extend = [](token_stream &s, std::unique_ptr<int> &left) -> reloco::expected<bool, parse_error> {
+    if (!s.skip(token_kind::punctuation, ".")) {
+      return false;
+    }
+    left = std::make_unique<int>(*left + 1);
+    return true;
+  };
+  lexer_rules rules;
+  rules.punctuation = ".";
+  token_stream dots{"x . . . . . . . . . . . . . . . . . . . .", rules};
+  auto result = microfmt::parse_left_recursive<std::unique_ptr<int>>(dots, seed, extend);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(*result.value(), 20);
 }
 
 TEST(Recovery, CollectsSeveralErrorsAndTerminates) {
