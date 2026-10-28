@@ -15,9 +15,11 @@
  * See `docs/token-stream.md` ("Strings in a tree") for the guide, including how the hashing works.
  */
 
+#include "string_pool_ref.hpp"
 #include "token_stream.hpp"
 #include <cstddef>
 #include <cstdint>
+#include <reloco/function_ref.hpp>
 #include <reloco/span.hpp>
 #include <reloco/sso_vector.hpp>
 #include <reloco/string_view.hpp>
@@ -26,19 +28,6 @@
 #include <utility>
 
 namespace microfmt {
-
-/** Index of a string inside a `string_pool`. Four bytes, trivially copyable; `invalid()` means "no string". */
-struct RELOCO_COPYABLE string_id {
-  static constexpr uint32_t kInvalid = 0xFFFFFFFFu;
-
-  uint32_t index{kInvalid};
-
-  [[nodiscard]] static constexpr string_id invalid() noexcept { return string_id{}; }
-  [[nodiscard]] constexpr bool valid() const noexcept { return index != kInvalid; }
-
-  friend constexpr bool operator==(string_id a, string_id b) noexcept { return a.index == b.index; }
-  friend constexpr bool operator!=(string_id a, string_id b) noexcept { return a.index != b.index; }
-};
 
 /** The pool contents at some moment; `string_pool::rollback` returns to it. */
 struct RELOCO_COPYABLE string_pool_mark {
@@ -227,6 +216,16 @@ public:
   /** Starts building a string piece by piece (see `builder`). */
   [[nodiscard]] builder begin() & noexcept RELOCO_LIFETIMEBOUND { return builder(*this); }
 
+  /**
+   * The type-erased handle that `token_stream` and `expect_name`/`expect_string` use. Keep the pool alive and in
+   * place for as long as the handle is used, and keep the handle itself alive as long as the stream that borrows it.
+   */
+  [[nodiscard]] string_pool_ref ref() & noexcept RELOCO_LIFETIMEBOUND {
+    return string_pool_ref(string_pool_ref::intern_fn(reloco::nontype<&string_pool::intern_erased>, *this),
+                           string_pool_ref::decode_fn(reloco::nontype<&string_pool::decode_erased>, *this),
+                           string_pool_ref::view_fn(reloco::nontype<&string_pool::view_erased>, *this));
+  }
+
   [[nodiscard]] size_t size() const noexcept { return entries_.size(); }
   [[nodiscard]] size_t bytes() const noexcept { return arena_.size(); }
   [[nodiscard]] size_t max_bytes() const noexcept { return max_bytes_; }
@@ -264,6 +263,29 @@ public:
   }
 
 private:
+  [[nodiscard]] static pool_result intern_erased(string_pool &pool, reloco::string_view text) noexcept {
+    const auto result = pool.intern(text, token{});
+    return result ? pool_result{result.value(), {}} : pool_result{string_id{}, result.error().message};
+  }
+
+  [[nodiscard]] static pool_result decode_erased(string_pool &pool, reloco::string_view raw,
+                                                 string_decoder decoder) noexcept {
+    builder out = pool.begin();
+    auto append = [&out](reloco::string_view piece) noexcept { out.append(piece); };
+    string_sink sink{reloco::function_ref<void(reloco::string_view)>(append)};
+    decoder(sink, raw);
+    if (sink.failed()) {
+      out.abandon();
+      return pool_result{string_id{}, sink.failure()};
+    }
+    const auto result = out.finish(token{});
+    return result ? pool_result{result.value(), {}} : pool_result{string_id{}, result.error().message};
+  }
+
+  [[nodiscard]] static reloco::string_view view_erased(const string_pool &pool RELOCO_LIFETIMEBOUND, string_id id) noexcept {
+    return pool.view(id);
+  }
+
   // FNV-1a: fast and simple. Not a security boundary; `max_strings` bounds the work hostile input can cause.
   [[nodiscard]] static uint32_t hash_of(reloco::string_view text) noexcept {
     uint32_t h = 2166136261u;

@@ -419,6 +419,15 @@ public:
   /** The active rules. */
   [[nodiscard]] constexpr const lexer_rules &rules() const noexcept RELOCO_LIFETIMEBOUND { return rules_; }
 
+  /**
+   * Points the lexer at a different view of the same text (a streaming window that grew). Offsets stay
+   * relative to the first byte of the view; the cursor is kept.
+   */
+  constexpr void set_source(microfmt::string_view source) noexcept {
+    source_ = source;
+    ended_ = false;
+  }
+
   /** Replaces the rules used from the next scan on; already returned tokens are not affected. */
   constexpr void set_rules(const lexer_rules &rules) noexcept { rules_ = lexer_rules(rules); }
 

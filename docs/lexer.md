@@ -49,7 +49,8 @@ terminate within `size + 1` calls, even on malformed input.
 For context-dependent languages (string interpolation, heredocs) the lexer can
 also be steered: `state()` / `restore(position)` save and resume a place in the
 text, `set_rules()` swaps the rules for the next scans, and `take_raw(stop_bytes)`
-returns raw text up to a stop byte. You normally use them through
+returns raw text up to a stop byte. `set_source(text)` points the lexer at new text (used by the streaming window,
+which moves its data). You normally use them through
 `token_stream` (see "Lexer modes" in the [token stream guide](token-stream.md)).
 
 ## Defining your own rules

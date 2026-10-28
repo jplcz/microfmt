@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+
 #include <microfmt/microfmt.hpp>
 #include <microfmt/parsing/lexer_rules_presets.hpp>
 #include <microfmt/parsing/token_stream_formatters.hpp>
@@ -87,4 +89,47 @@ TEST(ErrorReportTest, WithNoteLeavesTheOriginalAndOtherFieldsUntouched) {
   EXPECT_EQ(noted.message, "bad");
   EXPECT_EQ(noted.note, "see here");
   EXPECT_EQ(noted.note_at.text, "a");
+}
+
+namespace {
+
+struct text_reader {
+  string_view data;
+  size_t pos{0};
+  size_t operator()(reloco::span<char> out) noexcept {
+    size_t n = data.size() - pos;
+    n = n < out.size() ? n : out.size();
+    for (size_t i = 0; i < n; ++i) {
+      out[i] = data[pos + i];
+    }
+    pos += n;
+    return n;
+  }
+};
+
+} // namespace
+
+TEST(ErrorReportTest, StreamedErrorsUseTheWindowBaseAndDropOldSnippets) {
+  std::string text(200, ' ');
+  text += "oops here";
+  text_reader reader{text};
+  microfmt::stream_window<256> window{reader};
+  token_stream ts{window.ref(), microfmt::lexer_rules{}};
+  const microfmt::token t = ts.next();
+  const parse_error err{"bad name", t};
+
+  microfmt::buffer_sink<512> live;
+  microfmt::format_to(live.as_sink(), "{}", microfmt::report(err, ts.source(), ts.source_base()));
+  EXPECT_NE(live.view().find("oops"), string_view::npos);
+
+  ts.next();
+  ts.discard_consumed();
+  microfmt::buffer_sink<512> old;
+  microfmt::format_to(old.as_sink(), "{}", microfmt::report(err, ts.source(), ts.source_base()));
+  EXPECT_NE(old.view().find("bad name"), string_view::npos);
+  EXPECT_EQ(old.view().find("oops"), string_view::npos);
+
+  microfmt::buffer_sink<512> stored;
+  microfmt::format_to(stored.as_sink(), "{}", microfmt::report(microfmt::store(err), ts.source(), ts.source_base()));
+  EXPECT_NE(stored.view().find("bad name"), string_view::npos);
 }

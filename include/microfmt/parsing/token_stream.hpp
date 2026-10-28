@@ -16,6 +16,9 @@
  */
 
 #include "lexer.hpp"
+#include "parse_error.hpp"
+#include "stream_window.hpp"
+#include "string_pool_ref.hpp"
 #include <reloco/array.hpp>
 #include <reloco/expected.hpp>
 #include <reloco/optional.hpp>
@@ -24,27 +27,6 @@
 #include <utility>
 
 namespace microfmt {
-
-/** Why a parse failed. `message` must have static storage (use a string literal). */
-struct RELOCO_POINTER parse_error {
-  microfmt::string_view message{};
-  token at{}; ///< Offending token; `at.line` / `at.column` locate it, `at.text` borrows the source.
-  microfmt::string_view note{}; ///< Optional secondary message (static storage), empty for none.
-  token note_at{};              ///< Where `note` points (for example the opening bracket); used when `note` is set.
-};
-
-/**
- * @brief Copy of `error` with a note attached, e.g. `with_note(err, "block opened here", open_brace)`.
- *
- * Why: some mistakes are detected far from their cause (a missing `}` is found at the end of input);
- * the note points at the cause. `note` must have static storage; one note per error.
- */
-[[nodiscard]] constexpr parse_error with_note(parse_error error, microfmt::string_view note,
-                                              const token &where) noexcept {
-  error.note = note;
-  error.note_at = where;
-  return error;
-}
 
 /**
  * @brief Lookahead cursor over a lexed text.
@@ -61,6 +43,31 @@ public:
   template <typename S, std::enable_if_t<std::is_same_v<S, std::string>, int> = 0>
   explicit token_stream(S &&, const lexer_rules &) = delete;
 
+  /** Like the constructor above, and `strings` is where `intern`, `expect_name` and `expect_string` store text. */
+  explicit constexpr token_stream(microfmt::string_view source RELOCO_LIFETIMEBOUND, const lexer_rules &rules,
+                                  const string_pool_ref &strings RELOCO_LIFETIMEBOUND) noexcept
+      : token_stream(source, rules) {
+    strings_ = reloco::value_ptr<const string_pool_ref>(&strings);
+  }
+
+  /**
+   * Streaming input: tokenizes the text that arrives through `window` (see `stream_window`). Same parser helpers,
+   * but token offsets are absolute (bytes since the start of the input) and `discard_consumed()` makes room.
+   * The window must outlive the stream and every copy of it.
+   */
+  explicit token_stream(window_ref window RELOCO_LIFETIMEBOUND, const lexer_rules &rules) noexcept
+      : source_(), lexer_(microfmt::string_view(), rules), window_(&window.state()),
+        generation_(window.state().generation), margin_(stream_margin(rules)) {
+    refill();
+  }
+
+  /** Streaming input plus a string pool for text that must outlive the window. */
+  explicit token_stream(window_ref window RELOCO_LIFETIMEBOUND, const lexer_rules &rules,
+                        const string_pool_ref &strings RELOCO_LIFETIMEBOUND) noexcept
+      : token_stream(window, rules) {
+    strings_ = reloco::value_ptr<const string_pool_ref>(&strings);
+  }
+
   /** Next token, not consumed. */
   [[nodiscard]] constexpr token peek() const noexcept { return first_; }
 
@@ -72,18 +79,23 @@ public:
     const token result = first_;
     if (result.kind != token_kind::end) {
       previous_ = result;
-      after_previous_ = lexer_.position_after(result);
+      after_previous_ = position_after_token(result);
     }
     first_ = second_;
-    second_ = lexer_.next();
+    second_ = lex_next();
     return result;
   }
 
   /** The last token consumed, or a default (`end`) token when nothing has been consumed yet. */
   [[nodiscard]] constexpr token previous() const noexcept { return previous_; }
 
-  /** The whole text being parsed (what `source_span::text` is sliced from). */
-  [[nodiscard]] constexpr microfmt::string_view source() const noexcept { return source_; }
+  /** The text currently held: the whole input, or for a streaming stream the window contents. */
+  [[nodiscard]] constexpr microfmt::string_view source() const noexcept {
+    return window_ ? window_->text() : source_;
+  }
+
+  /** Absolute offset of `source()[0]`: 0 unless the stream is streaming and has discarded input. */
+  [[nodiscard]] constexpr size_t source_base() const noexcept { return window_ ? window_->base : 0; }
 
   /** True when the next token is `end`. */
   [[nodiscard]] constexpr bool at_end() const noexcept { return first_.kind == token_kind::end; }
@@ -156,6 +168,7 @@ public:
   /** Switches the rules and re-tokenizes the lookahead (`peek()`, `peek2()`) from the end of the last consumed token. */
   constexpr void set_rules(const lexer_rules &rules) noexcept {
     lexer_.set_rules(rules);
+    margin_ = stream_margin(rules);
     refill();
   }
 
@@ -163,8 +176,15 @@ public:
    * Consumes the raw bytes after the last consumed token (whitespace included) up to, not including, the first byte
    * of `stop_bytes` or the end of the text, and returns them as a `string` token without quotes. The run may be
    * empty. The lookahead is re-tokenized after the raw text.
+   *
+   * Streaming: when the window fills before a stop byte appears, the piece reaches the window end and
+   * `raw_cut()` is true; the lookahead is `end` until you call `take_raw_until` again, which first drops the
+   * bytes already handed out (earlier pieces dangle) and continues with the next part of the run.
    */
   constexpr token take_raw_until(microfmt::string_view stop_bytes) noexcept {
+    if (window_) {
+      return take_raw_windowed(stop_bytes);
+    }
     lexer_.restore(after_previous_);
     previous_ = lexer_.take_raw(stop_bytes);
     after_previous_ = lexer_.state();
@@ -173,11 +193,186 @@ public:
     return previous_;
   }
 
+  /** True when the last `take_raw_until` stopped at the end of a full window, not at a stop byte (streaming only). */
+  [[nodiscard]] constexpr bool raw_cut() const noexcept { return cut_; }
+
+  /** True when a token did not fit in the window since the last discard: the window is too small for the input. */
+  [[nodiscard]] constexpr bool window_too_small() const noexcept { return window_ && window_->overflowed; }
+
+  /** True when a string pool was supplied to the constructor. */
+  [[nodiscard]] constexpr bool has_strings() const noexcept { return static_cast<bool>(strings_); }
+
+  /** The string pool given to the constructor; check `has_strings()` first. */
+  [[nodiscard]] constexpr const string_pool_ref &strings() const noexcept RELOCO_LIFETIMEBOUND { return *strings_; }
+
+  /**
+   * Streaming: drops the input before the line of the last consumed token and re-tokenizes the lookahead, making
+   * room in the window. Do it only between statements, never inside `attempt`/`parse_choice`:
+   *
+   * - every `token`, `string_view` and `parse_error` that pointed into the window dangles, and `previous().text`
+   *   is cleared (its position stays); keep text through the string pool (`intern`, `store`) before discarding;
+   * - copies of the stream made earlier become stale and yield `end` tokens (they must not be used again);
+   * - a `memo_table` must be cleared (`end_statement` does this).
+   *
+   * No effect without a window. Offsets, lines and columns stay absolute.
+   */
+  void discard_consumed() noexcept {
+    if (!window_ || window_->generation != generation_) {
+      return;
+    }
+    const microfmt::string_view text = window_->text();
+    const size_t consumed = after_previous_.pos < text.size() ? after_previous_.pos : text.size();
+    size_t keep = consumed;
+    while (keep > 0 && text[keep - 1] != '\n') {
+      --keep;
+    }
+    // A very long line is not worth keeping for the error snippet: it would leave no room.
+    if (consumed - keep > window_->buffer.size() / 2) {
+      keep = consumed;
+    }
+    drop_bytes(keep);
+    refill();
+  }
+
 private:
+  // Smallest number of bytes that must follow a token before it is trusted: the lexer looks a little past a
+  // token to decide its kind (`1.` then a digit, `1e+5`, the longest operator, a date-time, a `[==[` level).
+  // Floor 16, cap 64 (the minimum window is 4 times that).
+  [[nodiscard]] static constexpr size_t stream_margin(const lexer_rules &rules) noexcept {
+    size_t margin = 16;
+    const auto grow = [&margin](size_t wanted) { margin = wanted > margin ? wanted : margin; };
+    for (size_t i = 0; i < rules.operators.size(); ++i) {
+      grow(rules.operators[i].size() + 2);
+    }
+    for (size_t i = 0; i < rules.string_prefixes.size(); ++i) {
+      grow(rules.string_prefixes[i].size() + 2);
+    }
+    for (size_t i = 0; i < rules.number_suffixes.size(); ++i) {
+      grow(rules.number_suffixes[i].size() + 2);
+    }
+    grow(rules.block_comment_open.size() + 2);
+    grow(rules.block_comment_close.size() + 2);
+    if (rules.datetime_literals) {
+      grow(40);
+    }
+    if (rules.cpp_raw_strings) {
+      grow(24);
+    }
+    if (rules.long_bracket_strings || rules.long_bracket_comments) {
+      grow(64);
+    }
+    return margin < 64 ? margin : 64;
+  }
+
+  [[nodiscard]] constexpr lexer::position position_after_token(const token &t) const noexcept {
+    token relative = t;
+    relative.offset -= source_base();
+    return lexer_.position_after(relative);
+  }
+
+  // Next token with an absolute offset. Streaming: only returns a token once enough bytes follow it (or the input
+  // ended), reading more and re-lexing until then.
+  constexpr token lex_next() noexcept {
+    if (!window_) {
+      return lexer_.next();
+    }
+    return lex_windowed();
+  }
+
+  token lex_windowed() noexcept {
+    window_state &w = *window_;
+    if (w.generation != generation_) {
+      return token{};
+    }
+    for (;;) {
+      lexer_.set_source(w.text());
+      const lexer::position start = lexer_.state();
+      token t = lexer_.next();
+      const size_t end = t.offset + t.text.size();
+      if (w.eof || end + margin_ <= w.used) {
+        t.offset += w.base;
+        return t;
+      }
+      if (w.used >= w.buffer.size()) {
+        return overflow_token(w, t);
+      }
+      const size_t want = end + margin_;
+      w.fill(want < w.buffer.size() ? want : w.buffer.size());
+      lexer_.restore(start);
+    }
+  }
+
+  // The window is full and the token touches its end: hand back what is there as an `error` token (or `end` when
+  // nothing is left) so the parser reports it, and remember that the window is too small.
+  token overflow_token(window_state &w, token t) noexcept {
+    w.overflowed = true;
+    if (t.offset >= w.used) {
+      t.kind = token_kind::end;
+      t.text = microfmt::string_view();
+    } else {
+      t.kind = token_kind::error;
+      t.text = w.text().substr(t.offset);
+      lexer_.restore(lexer_.position_after(t));
+    }
+    t.offset += w.base;
+    return t;
+  }
+
+  token take_raw_windowed(microfmt::string_view stop_bytes) noexcept {
+    window_state &w = *window_;
+    if (w.generation != generation_) {
+      return token{};
+    }
+    const bool continuing = cut_;
+    cut_ = false;
+    if (continuing && w.used >= w.buffer.size()) {
+      drop_bytes(after_previous_.pos < w.used ? after_previous_.pos : w.used);
+    }
+    lexer_.restore(after_previous_);
+    token piece;
+    for (;;) {
+      lexer_.set_source(w.text());
+      const lexer::position start = lexer_.state();
+      piece = lexer_.take_raw(stop_bytes);
+      const bool reached_end = piece.offset + piece.text.size() >= w.used;
+      if (!reached_end || w.eof) {
+        break;
+      }
+      if (w.used >= w.buffer.size()) {
+        cut_ = true;
+        break;
+      }
+      w.fill(w.buffer.size());
+      lexer_.restore(start);
+    }
+    after_previous_ = lexer_.state();
+    piece.offset += w.base;
+    previous_ = piece;
+    if (cut_) {
+      first_ = token{};
+      second_ = token{};
+    } else {
+      first_ = lex_next();
+      second_ = lex_next();
+    }
+    return previous_;
+  }
+
+  // Removes the first `count` window bytes and keeps this stream consistent with the shifted window.
+  void drop_bytes(size_t count) noexcept {
+    if (count == 0) {
+      return;
+    }
+    window_->discard(count);
+    generation_ = window_->generation;
+    after_previous_.pos -= count;
+    previous_.text = microfmt::string_view();
+  }
+
   constexpr void refill() noexcept {
     lexer_.restore(after_previous_);
-    first_ = lexer_.next();
-    second_ = lexer_.next();
+    first_ = lex_next();
+    second_ = lex_next();
   }
 
   microfmt::string_view source_;
@@ -186,6 +381,11 @@ private:
   token second_;
   token previous_{};
   lexer::position after_previous_{};
+  reloco::value_ptr<window_state> window_{};
+  reloco::value_ptr<const string_pool_ref> strings_{};
+  uint32_t generation_{0};
+  size_t margin_{16};
+  bool cut_{false};
 };
 
 /**
@@ -667,12 +867,14 @@ struct RELOCO_POINTER source_span {
  */
 [[nodiscard]] constexpr source_span span_from(const token_stream &ts, const token &first) noexcept {
   const token last = ts.previous();
+  const size_t base = ts.source_base();
   const size_t last_end = last.offset + last.text.size();
-  if (last.kind == token_kind::end || last.offset < first.offset || last_end > ts.source().size() ||
-      first.offset > ts.source().size()) {
+  const size_t limit = base + ts.source().size();
+  if (last.kind == token_kind::end || last.offset < first.offset || first.offset < base || last_end > limit ||
+      first.offset > limit) {
     return source_span{{}, first.offset, first.line, first.column};
   }
-  return source_span{ts.source().substr(first.offset, last_end - first.offset), first.offset, first.line,
+  return source_span{ts.source().substr(first.offset - base, last_end - first.offset), first.offset, first.line,
                      first.column};
 }
 
@@ -1054,27 +1256,27 @@ size_t recover_balanced_if(token_stream &ts, IsSync &&is_sync, span<const bracke
  * @brief Fixed-capacity list of parse errors (inline storage, no heap).
  *
  * Errors beyond `N` are counted but not stored, so a hostile input cannot grow
- * memory; check `overflowed()` to tell the user more errors exist. Stored
- * errors borrow the parsed source through their tokens, so the list must not
- * outlive the text.
+ * memory; check `overflowed()` to tell the user more errors exist. Errors are stored as `stored_error`
+ * (static message strings plus positions, no borrowed text), so the list stays valid after the source, or a
+ * streaming window, is gone. The offending text is not kept: use the position (`at.offset`, `at.length`).
  */
 template <size_t N> class RELOCO_POINTER error_list {
   static_assert(N > 0, "error_list needs room for at least one error");
 
 public:
-  /** Stores `error` while there is room; always counts it. */
+  /** Stores `error` (detached from the source) while there is room; always counts it. */
   constexpr void add(const parse_error &error) noexcept {
     if (stored_ < N) {
-      items_[stored_] = error;
+      items_[stored_] = store(error);
       ++stored_;
     }
     ++total_;
   }
 
-  [[nodiscard]] constexpr span<const parse_error> errors() const & noexcept RELOCO_LIFETIMEBOUND {
-    return span<const parse_error>(items_.data(), stored_);
+  [[nodiscard]] constexpr span<const stored_error> errors() const & noexcept RELOCO_LIFETIMEBOUND {
+    return span<const stored_error>(items_.data(), stored_);
   }
-  span<const parse_error> errors() const && = delete;
+  span<const stored_error> errors() const && = delete;
 
   /** Number of stored errors (at most `N`). */
   [[nodiscard]] constexpr size_t size() const noexcept { return stored_; }
@@ -1084,7 +1286,7 @@ public:
   [[nodiscard]] constexpr bool empty() const noexcept { return total_ == 0; }
 
 private:
-  reloco::array<parse_error, N> items_{};
+  reloco::array<stored_error, N> items_{};
   size_t stored_{0};
   size_t total_{0};
 };
@@ -1435,6 +1637,135 @@ parse_until(token_stream &ts, token_kind kind, microfmt::string_view text, Item 
     ++count;
   }
   return count;
+}
+
+// ============================================================================
+// Text that outlives the window (string pool helpers)
+// ============================================================================
+
+/**
+ * @brief Interns the text of `t` in the stream's string pool and returns its id.
+ *
+ * Why: a token's `text` points into the source, which a streaming parser discards. The id (4 bytes) stays valid, and
+ * equal text gives an equal id. Fails with `no string pool` when the stream was built without one and with
+ * `string pool full` at the pool's limits, located at `t`. For a string literal the text includes the quotes; use
+ * `expect_string` to get the decoded value.
+ */
+[[nodiscard]] inline reloco::expected<string_id, parse_error> intern(token_stream &ts, const token &t) noexcept {
+  if (!ts.has_strings()) {
+    return reloco::unexpected<parse_error>(parse_error{"no string pool", t});
+  }
+  const pool_result result = ts.strings().intern(t.text);
+  if (!result.ok()) {
+    return reloco::unexpected<parse_error>(parse_error{result.error, t});
+  }
+  return result.id;
+}
+
+/** Consumes an identifier and returns its interned id; `message` (static) is the error when the next token is not one. */
+[[nodiscard]] inline reloco::expected<string_id, parse_error> expect_name(token_stream &ts,
+                                                                          microfmt::string_view message) noexcept {
+  if (!ts.check(token_kind::identifier)) {
+    return reloco::unexpected<parse_error>(ts.error_here(message));
+  }
+  auto id = intern(ts, ts.peek());
+  if (id) {
+    ts.next();
+  }
+  return id;
+}
+
+namespace detail {
+
+// The text between the quotes of a string token (a prefix such as `u8` is skipped); text without a quote is returned as is.
+[[nodiscard]] inline microfmt::string_view string_body(const lexer_rules &rules, microfmt::string_view text) noexcept {
+  size_t open = 0;
+  while (open < text.size() && rules.quotes.find(text[open]) == microfmt::string_view::npos &&
+         rules.raw_quotes.find(text[open]) == microfmt::string_view::npos &&
+         rules.char_quotes.find(text[open]) == microfmt::string_view::npos) {
+    ++open;
+  }
+  if (open >= text.size()) {
+    return text;
+  }
+  const char quote = text[open];
+  const size_t from = open + 1;
+  const size_t length = text.size() - from;
+  if (length > 0 && text[text.size() - 1] == quote) {
+    return text.substr(from, length - 1);
+  }
+  return text.substr(from);
+}
+
+} // namespace detail
+
+/**
+ * @brief Consumes a string literal, decodes its body with `decoder` and returns the interned value.
+ *
+ * Why: a literal's source text (`"a\n"`) is not its value (`a` + newline), and neither can be kept after the
+ * source is discarded. The decoder (`decode_json_string`, `decode_c_escapes`, `decode_sql_string` or your own
+ * `void(string_sink &, string_view raw_body)`) writes the value into the pool. A bad escape is a parse error
+ * located at the literal, and nothing is left in the pool. `message` (static) is the error for a non-string token.
+ */
+[[nodiscard]] inline reloco::expected<string_id, parse_error>
+expect_string(token_stream &ts, microfmt::string_view message, string_decoder decoder) noexcept {
+  if (!ts.check(token_kind::string)) {
+    return reloco::unexpected<parse_error>(ts.error_here(message));
+  }
+  const token literal = ts.peek();
+  if (!ts.has_strings()) {
+    return reloco::unexpected<parse_error>(parse_error{"no string pool", literal});
+  }
+  const pool_result result = ts.strings().decode(detail::string_body(ts.rules(), literal.text), decoder);
+  if (!result.ok()) {
+    return reloco::unexpected<parse_error>(parse_error{result.error, literal});
+  }
+  const string_id id = result.id;
+  ts.next();
+  return id;
+}
+
+/** A token whose text lives in the string pool: plain data (no pointers), safe to keep in a node after a discard. */
+struct RELOCO_COPYABLE stored_token {
+  token_kind kind{token_kind::end};
+  string_id text{};
+  size_t offset{0};
+  uint32_t line{1};
+  uint32_t column{1};
+};
+
+/** Detaches `t` from the source by interning its text. Fails like `intern`. */
+[[nodiscard]] inline reloco::expected<stored_token, parse_error> store(token_stream &ts, const token &t) noexcept {
+  auto id = intern(ts, t);
+  if (!id) {
+    return reloco::unexpected<parse_error>(id.error());
+  }
+  return stored_token{t.kind, id.value(), t.offset, t.line, t.column};
+}
+
+/** The token again, with its text read back from the pool. The text is valid until the pool changes. */
+[[nodiscard]] inline token view(const string_pool_ref &strings, const stored_token &stored) noexcept {
+  token result;
+  result.kind = stored.kind;
+  result.text = strings.view(stored.text);
+  result.offset = stored.offset;
+  result.line = stored.line;
+  result.column = stored.column;
+  return result;
+}
+
+/**
+ * @brief Statement boundary for a streaming parse: discard consumed input and reset per-statement state.
+ *
+ * Does, in order: `ts.discard_consumed()`, `memo.clear()` and `clear()` on every node pool passed in (their
+ * handles may point at discarded text). The string pool is NOT cleared, so ids kept from earlier statements stay valid.
+ * Call it between statements only, with no `attempt`/`parse_choice` active.
+ */
+template <typename Memo, typename... Pools>
+void end_statement(token_stream &ts, Memo &memo, Pools &...node_pools) noexcept {
+  ts.discard_consumed();
+  memo.clear();
+  (node_pools.clear(), ...);
 }
 
 } // namespace microfmt

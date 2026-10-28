@@ -532,7 +532,9 @@ optimisation for long-running parsers. To roll several pools back together, nest
 node pool, do not combine rollback with `memoize` on ids of the same pool.
 
 **Streaming.** Intern before `discard_consumed()` and keep `string_id`s in nodes instead of tokens or views;
-the string pool is the one structure that must survive a discard.
+the string pool is the one structure that must survive a discard. A `token_stream` can be given the pool
+(`token_stream ts{window.ref(), rules, strings.ref()}`) so that `expect_name`, `expect_string`, `intern` and
+`store` work on the stream itself; see "Streaming input" below.
 
 The [mini language](mini-language.md) interns its variable names this way. See also
 [`examples/string_pool_demo.cpp`](../examples/string_pool_demo.cpp), which decodes string literals with the
@@ -646,7 +648,7 @@ const auto stored = errors.errors();          // span of the stored errors
 After an error the sync token is consumed too. If no sync token remains before
 the end of input, parsing stops. A statement that succeeds without consuming
 anything is skipped by one token, so the loop always terminates. Stored errors
-borrow the parsed text, so the list must not outlive it. See
+are copied out of the source (message, offset, line, column, length), so the list may outlive it. See
 [`examples/config_check_demo.cpp`](../examples/config_check_demo.cpp).
 
 For a custom loop use `recover_to(ts, sync)` directly: it consumes tokens until
@@ -751,6 +753,81 @@ constexpr microfmt::token_kind kValue[] = {
 auto value = microfmt::expect_one_of(ts, kValue, "expected an integer, string or identifier");
 ```
 
+## Streaming input
+
+Why: everything above assumes the whole text sits in one buffer. A 2 GB log, a socket or a UART on a
+microcontroller cannot be held in memory. `stream_window<N>` keeps only `N` bytes, refills them from a reader
+function and lets the parser throw away what it has finished with. The rest of your parser does not change:
+every helper still takes a `token_stream &`. Include `<microfmt/parsing/stream_window.hpp>`.
+
+```cpp
+// The reader fills the span it is given and returns the byte count; 0 means the end of the input. It may return
+// fewer bytes than the span can hold (a socket often does); the stream keeps asking until it has enough.
+struct file_reader {
+  std::FILE *file;
+  size_t operator()(reloco::span<char> out) noexcept { return std::fread(out.data(), 1, out.size(), file); }
+};
+
+file_reader reader{file};
+microfmt::stream_window<4096> window{reader};     // 4096 bytes is ALL the memory the input gets; minimum is 256
+microfmt::string_pool<256> pool;                  // names and decoded literals, kept across statements
+const microfmt::string_pool_ref strings = pool.ref(); // type-erased handle; must outlive the stream
+
+microfmt::token_stream ts{window.ref(), rules, strings}; // omit `strings` if you do not intern
+
+while (!ts.at_end()) {
+  auto statement = parse_statement(ts);           // any rule or helper from this guide
+  // ... use `statement`, store it, or record the error ...
+  ts.discard_consumed();                          // statement boundary: drop consumed text, refill the window
+}
+```
+
+**What a window can and cannot do.**
+
+* Tokens carry *absolute* offsets, lines and columns (bytes and lines since the start of the input), so
+  positions stay correct after the window moves. `ts.source_base()` is the absolute offset of the window's first byte.
+* A token's `text` is a view into the window. It is valid until the next `discard_consumed()`; after that, use a
+  `string_id` (`intern`, `expect_name`, `expect_string`) or `store(ts, token)`, which keeps a `stored_token`
+  (kind, id, position: plain data) that `view(strings, stored)` turns back into a token.
+* `discard_consumed()` keeps the line of the last consumed token (so first-on-line checks such as C directives
+  still work) unless that line is longer than half the window. `previous().text` is empty after a discard.
+  Call it between statements only, never inside `attempt` or `parse_choice`, whose rewind needs the text.
+  `end_statement(ts, memo, node_pools...)` does the discard and also clears the memo table and node pools, whose
+  entries may refer to dropped text; it deliberately does not clear the string pool.
+* A copy of the stream made before a discard is *stale*: once its cached lookahead is used up it reads as `end`
+  rather than touching moved bytes.
+* One statement plus its lookahead must fit in the window, and so must the whitespace and comments in front of the
+  next token (they are skipped in place, not incrementally). If a single token does not fit, `next()` returns an
+  `error` token, `window_too_small()` becomes true and the parse ends cleanly instead of reading out of bounds.
+  Size the window for your longest statement, with some room: 4096 suits most line-oriented formats.
+* The window must also be at least 4x the *lookahead margin*, which is derived from your lexer rules (longest
+  operator, string prefix, number suffix, comment marker; 16 to 64 bytes). A token that ends within the margin of
+  the end of the buffered data is re-lexed after more input arrives, so `==` split across two reads is never
+  mis-lexed as `=` `=`. Limit: a Lua long bracket whose level is above about 60 (`[======...[`) can be
+  mis-lexed at a window border.
+
+**Strings.** With a pool attached, `expect_name(ts, "message")` consumes an identifier and returns its
+`string_id`; `expect_string(ts, "message", decoder)` consumes a string literal and returns the id of its decoded
+value. Decoders: `decode_c_escapes`, `decode_json_string` (including `\uXXXX` and surrogate pairs, written as
+UTF-8) and `decode_sql_string` (`''` for a quote), or your own `void(string_sink &, string_view raw_body)`. A bad
+escape is a `parse_error` at the literal and leaves nothing in the pool. Error messages are always static strings,
+so an error stays valid after the source is gone.
+
+**Errors.** `error_list` copies each error into a `stored_error` (message, plus offset, line, column and length for
+the place and for the note), so it survives discards; read `errors()[i].at.line` rather than `at.text`.
+`report(error, source, base)` takes `ts.source()` and `ts.source_base()`: it shows the source line while it is still
+in the window and just `message (line:column)` once it has been discarded. The same works for a `stored_error`.
+
+**Raw text.** `take_raw_until(stop)` reads up to a stop byte. If the stop byte is not in the window, the piece is
+cut where the window is full: `raw_cut()` is true and you call `take_raw_until` again for the next piece (the
+earlier piece is dropped first, so copy or consume it before asking). Pieces are read across refills, so a heredoc
+terminator split over two reads is still found.
+
+See [`examples/streaming_demo.cpp`](../examples/streaming_demo.cpp): a 39 KB `name = value;` file parsed through a
+512-byte window fed 5 bytes at a time, peak window use 68 bytes, with two stored errors printed after their text
+left the window. `window_state`, `window_ref` and `stream_window` are the pieces behind it: `window_ref` is the
+non-template handle the stream stores, so the stream type does not depend on `N`.
+
 ## Showing errors
 
 `<microfmt/parsing/token_stream_formatters.hpp>` renders a `parse_error` with
@@ -827,6 +904,7 @@ already handles its termination, depth and error-position details for you.
 | Tokens that depend on context (`"${expr}"`, heredocs, embedded languages) | `with_rules`, `take_raw_until` | Switches the lexer rules for a region and re-tokenizes the lookahead. |
 | A syntax tree without heap pointers; undo of failed alternatives | `node_pool`, `node_id`, `pooled` | Nodes are linked by index and the pool rolls back when an alternative fails. |
 | Names and literals that outlive the source, compare as integers, or are built from pieces (escapes) | `string_pool`, `string_id`, `string_pool::begin()` | Each distinct string is stored once; nodes keep a 4-byte id. Also the safe way to keep text across `discard_consumed()`. |
+| Input larger than memory (files, sockets, UARTs) | `stream_window`, `discard_consumed`, `end_statement`, `expect_name`, `expect_string` | Parses through a fixed buffer; positions stay absolute; names and literals go to the string pool. |
 | A backtracking rule that gets slow on nested input | `memoize` with `memo_table` | Remembers results per position; only for rules that depend on nothing else. |
 | Guarding against hostile nesting | `depth_guard` | Cheap recursion limit; the helpers above already take a `max_depth`. |
 
@@ -839,4 +917,5 @@ measured repeated work.
 
 * A single parse aborts on its first error; use `parse_statements` for multi-error runs (see "Reporting several errors").
 * Expressions support binary infix, prefix, postfix, `?:` and parenthesised groups; parse other mixfix syntax in your own `primary` callback.
-* Same limits as the lexer: bytes only, one contiguous buffer.
+* Same limits as the lexer: bytes only. The text is one contiguous buffer unless you use a `stream_window`, in which case
+  a statement (with the trivia before the next token) must fit in the window; see "Streaming input".

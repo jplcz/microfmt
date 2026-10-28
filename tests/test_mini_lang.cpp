@@ -127,9 +127,9 @@ TEST(MiniLang, EveryBadCallArgumentIsReportedAlongsideASummary) {
   ASSERT_EQ(errors.size(), 3u);
   EXPECT_EQ(errors[0].message, "expected a number, variable or call"); // the empty argument
   EXPECT_EQ(errors[1].message, "unknown variable");
-  EXPECT_EQ(errors[1].at.text, "nope");
+  EXPECT_EQ(errors[1].at.length, 4u); // "nope"
   EXPECT_EQ(errors[2].message, "call has invalid arguments");
-  EXPECT_EQ(errors[2].at.text, "max");
+  EXPECT_EQ(errors[2].at.length, 3u); // "max"
 }
 
 TEST(MiniLang, OnlyTheChosenBranchRunsAndDivisionByZeroPointsAtTheDivisor) {

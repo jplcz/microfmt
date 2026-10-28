@@ -646,8 +646,9 @@ TEST(ListRecovery, ReportsEveryBadItemAndStillChecksTheRest) {
   EXPECT_EQ(out.good, 3u);
   const auto errors = out.errors.errors();
   ASSERT_EQ(errors.size(), 2u);
-  EXPECT_EQ(errors[0].at.text, "x");
-  EXPECT_EQ(errors[1].at.text, "y");
+  EXPECT_EQ(errors[0].at.offset, 4u); // "x": the text is not kept, only the position
+  EXPECT_EQ(errors[0].at.length, 1u);
+  EXPECT_EQ(errors[1].at.offset, 10u);
 
   const auto clean = recover_list("(1, 2)");
   EXPECT_TRUE(clean.ok);
@@ -1842,4 +1843,249 @@ TEST(ErrorNotes, SurviveErrorListAndPointAtTheOpener) {
   ASSERT_EQ(stored.size(), 1u);
   EXPECT_EQ(stored[0].note, "block opened here");
   EXPECT_EQ(stored[0].note_at.column, 5u);
+}
+
+namespace {
+
+// Hands out `chunk` bytes per call, so tokens straddle every window refill.
+struct chunk_reader {
+  string_view data;
+  size_t chunk;
+  size_t pos{0};
+  size_t operator()(reloco::span<char> out) noexcept {
+    size_t n = data.size() - pos;
+    n = n < chunk ? n : chunk;
+    n = n < out.size() ? n : out.size();
+    for (size_t i = 0; i < n; ++i) {
+      out[i] = data[pos + i];
+    }
+    pos += n;
+    return n;
+  }
+};
+
+constexpr string_view kStreamCorpus =
+    "name = \"a\\nb\"; // note\n  x == 1.5; /* block */ y = u8\"tail\" ; "
+    "long_identifier_name_here = 0x2A; z != 7;\n";
+
+lexer_rules stream_rules() {
+  lexer_rules r = microfmt::rules::cpp;
+  return r;
+}
+
+} // namespace
+
+TEST(Streaming, MatchesContiguousLexingForEveryChunkSize) {
+  const lexer_rules rules = stream_rules();
+  token_stream whole{kStreamCorpus, rules};
+  reloco::sso_vector<microfmt::token, 64> expected;
+  for (microfmt::token t = whole.next(); t.kind != token_kind::end; t = whole.next()) {
+    ASSERT_TRUE(expected.try_push_back(t));
+  }
+
+  for (const size_t chunk : {size_t{1}, size_t{2}, size_t{7}, size_t{64}, size_t{4096}}) {
+    chunk_reader reader{kStreamCorpus, chunk};
+    microfmt::stream_window<512> window{reader};
+    token_stream ts{window.ref(), rules};
+    size_t index = 0;
+    for (microfmt::token t = ts.next(); t.kind != token_kind::end; t = ts.next(), ++index) {
+      ASSERT_LT(index, expected.size()) << "chunk " << chunk;
+      EXPECT_EQ(t.kind, expected[index].kind) << "chunk " << chunk;
+      EXPECT_EQ(t.text, expected[index].text) << "chunk " << chunk;
+      EXPECT_EQ(t.offset, expected[index].offset) << "chunk " << chunk;
+      EXPECT_EQ(t.line, expected[index].line) << "chunk " << chunk;
+      EXPECT_EQ(t.column, expected[index].column) << "chunk " << chunk;
+    }
+    EXPECT_EQ(index, expected.size()) << "chunk " << chunk;
+    EXPECT_FALSE(ts.window_too_small());
+  }
+}
+
+TEST(Streaming, OversizedTokenIsAnErrorAndTerminates) {
+  std::string text = "\"";
+  text.append(600, 'x');
+  text += "\" tail";
+  chunk_reader reader{text, 16};
+  microfmt::stream_window<256> window{reader};
+  token_stream ts{window.ref(), json_rules()};
+  size_t guard = 0;
+  bool saw_error = false;
+  for (microfmt::token t = ts.next(); t.kind != token_kind::end && guard < 1000; t = ts.next(), ++guard) {
+    saw_error = saw_error || t.kind == token_kind::error;
+  }
+  EXPECT_TRUE(saw_error);
+  EXPECT_TRUE(ts.window_too_small());
+  EXPECT_LT(guard, 1000u);
+}
+
+TEST(Streaming, DiscardLetsLargeInputPassWithAbsolutePositions) {
+  std::string text;
+  for (int i = 0; i < 400; ++i) {
+    text += "k" + std::to_string(i) + " = " + std::to_string(i) + ";\n";
+  }
+  chunk_reader reader{text, 5};
+  microfmt::stream_window<256> window{reader};
+  token_stream ts{window.ref(), stream_rules()};
+  size_t statements = 0;
+  microfmt::token last_name;
+  while (!ts.at_end()) {
+    last_name = ts.next();
+    ASSERT_EQ(last_name.kind, token_kind::identifier);
+    EXPECT_EQ(last_name.line, statements + 1);
+    EXPECT_EQ(last_name.column, 1u);
+    EXPECT_EQ(last_name.offset, text.find("k" + std::to_string(statements) + " ="));
+    ASSERT_TRUE(ts.expect(token_kind::op, "=", "expected ="));
+    ASSERT_TRUE(ts.expect(token_kind::integer, "expected number"));
+    ASSERT_TRUE(ts.expect(token_kind::punctuation, ";", "expected ;"));
+    ts.discard_consumed();
+    ++statements;
+  }
+  EXPECT_EQ(statements, 400u);
+  EXPECT_FALSE(ts.window_too_small());
+  EXPECT_GT(window.ref().base(), 0u);
+}
+
+TEST(Streaming, StaleCopyReadsAsEnd) {
+  std::string text(200, ' ');
+  text += "a b c d e f g h";
+  chunk_reader reader{text, 64};
+  microfmt::stream_window<256> window{reader};
+  token_stream ts{window.ref(), stream_rules()};
+  token_stream before = ts;
+  ts.next();
+  ts.next();
+  ts.discard_consumed();
+  before.next(); // the two cached lookahead tokens are still returned
+  before.next();
+  EXPECT_EQ(before.next().kind, token_kind::end);
+}
+
+TEST(Streaming, BacktrackingWorksInsideTheWindow) {
+  chunk_reader reader{"a b c", 1};
+  microfmt::stream_window<256> window{reader};
+  token_stream ts{window.ref(), stream_rules()};
+  const token_stream saved = ts;
+  EXPECT_EQ(ts.next().text, "a");
+  EXPECT_EQ(ts.next().text, "b");
+  ts = saved;
+  EXPECT_EQ(ts.next().text, "a");
+}
+
+TEST(Streaming, TakeRawUntilCrossesChunkBordersAndCutsAtFullWindow) {
+  std::string body(100, 'q');
+  std::string text = "{" + body + "}";
+  {
+    chunk_reader reader{text, 3};
+    microfmt::stream_window<256> window{reader};
+    token_stream ts{window.ref(), stream_rules()};
+    ASSERT_EQ(ts.next().text, "{");
+    const microfmt::token raw = ts.take_raw_until("}");
+    EXPECT_EQ(std::string(raw.text.data(), raw.text.size()), body);
+    EXPECT_FALSE(ts.raw_cut());
+    EXPECT_EQ(ts.next().text, "}");
+  }
+  {
+    std::string big(600, 'q');
+    chunk_reader reader{big, 50};
+    microfmt::stream_window<256> window{reader};
+    token_stream ts{window.ref(), stream_rules()};
+    size_t total = 0;
+    size_t pieces = 0;
+    do {
+      const microfmt::token raw = ts.take_raw_until("}");
+      total += raw.text.size();
+      ++pieces;
+    } while (ts.raw_cut() && pieces < 20);
+    EXPECT_EQ(total, 600u);
+    EXPECT_GT(pieces, 1u);
+  }
+}
+
+TEST(Streaming, ErrorListKeepsPositionsAfterTheSourceIsGone) {
+  std::string text = "aa bb\n";
+  text.append(120, ' ');
+  text += "cc\n";
+  chunk_reader reader{text, 8};
+  microfmt::stream_window<256> window{reader};
+  token_stream ts{window.ref(), stream_rules()};
+  microfmt::error_list<4> errors;
+  ts.next();
+  errors.add(ts.error_here("first"));
+  ts.next();
+  ts.next();
+  ts.discard_consumed();
+  errors.add(ts.error_here("second"));
+  ASSERT_EQ(errors.size(), 2u);
+  const auto kept = errors.errors();
+  EXPECT_EQ(kept[0].at.line, 1u);
+  EXPECT_EQ(kept[0].at.column, 4u);
+  EXPECT_EQ(kept[0].message, "first");
+  EXPECT_EQ(kept[1].at.line, 3u);
+}
+
+TEST(Streaming, InternAndDecodeThroughThePool) {
+  string_view text = "name \"a\\nb\" name \"x\\q\" next";
+  chunk_reader reader{text, 3};
+  microfmt::stream_window<256> window{reader};
+  microfmt::string_pool<16> pool;
+  const microfmt::string_pool_ref ref = pool.ref();
+  token_stream ts{window.ref(), json_rules(), ref};
+
+  auto first = microfmt::expect_name(ts, "name expected");
+  ASSERT_TRUE(first);
+  auto value = microfmt::expect_string(ts, "string expected", microfmt::decode_json_string);
+  ASSERT_TRUE(value);
+  EXPECT_EQ(pool.view(first.value()), "name");
+  EXPECT_EQ(pool.view(value.value()), "a\nb");
+  auto second = microfmt::expect_name(ts, "name expected");
+  ASSERT_TRUE(second);
+  EXPECT_EQ(first.value(), second.value());
+
+  const size_t bytes_before = pool.bytes();
+  auto bad = microfmt::expect_string(ts, "string expected", microfmt::decode_json_string);
+  EXPECT_FALSE(bad);
+  EXPECT_EQ(pool.bytes(), bytes_before);
+
+  auto wrong = microfmt::expect_string(ts, "string expected", microfmt::decode_json_string);
+  EXPECT_FALSE(wrong);
+}
+
+TEST(Streaming, DecodersCoverJsonCAndSql) {
+  microfmt::string_pool<16> pool;
+  const microfmt::string_pool_ref ref = pool.ref();
+  auto json = ref.decode("\\u00e9\\ud83d\\ude00", microfmt::decode_json_string);
+  ASSERT_TRUE(json.ok());
+  EXPECT_EQ(pool.view(json.id), "\xC3\xA9\xF0\x9F\x98\x80");
+  auto c = ref.decode("t\\tx\\x41", microfmt::decode_c_escapes);
+  ASSERT_TRUE(c.ok());
+  EXPECT_EQ(pool.view(c.id), "t\txA");
+  auto sql = ref.decode("it''s", microfmt::decode_sql_string);
+  ASSERT_TRUE(sql.ok());
+  EXPECT_EQ(pool.view(sql.id), "it's");
+}
+
+TEST(Streaming, StoreAndViewDetachATokenFromTheSource) {
+  microfmt::string_pool<16> pool;
+  const microfmt::string_pool_ref ref = pool.ref();
+  token_stream ts{"word", lexer_rules{}, ref};
+  auto stored = microfmt::store(ts, ts.peek());
+  ASSERT_TRUE(stored);
+  const microfmt::token back = microfmt::view(ref, stored.value());
+  EXPECT_EQ(back.text, "word");
+  EXPECT_EQ(back.kind, token_kind::identifier);
+  EXPECT_EQ(back.column, 1u);
+}
+
+TEST(Streaming, EndStatementClearsPerStatementStateButKeepsStrings) {
+  chunk_reader reader{"a b", 2};
+  microfmt::stream_window<256> window{reader};
+  microfmt::string_pool<16> pool;
+  const microfmt::string_pool_ref ref = pool.ref();
+  token_stream ts{window.ref(), lexer_rules{}, ref};
+  microfmt::memo_table<int, 4> memo;
+  auto id = microfmt::expect_name(ts, "name");
+  ASSERT_TRUE(id);
+  microfmt::end_statement(ts, memo);
+  EXPECT_EQ(pool.view(id.value()), "a");
+  EXPECT_EQ(ts.peek().text, "b");
 }
