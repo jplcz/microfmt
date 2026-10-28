@@ -755,6 +755,90 @@ parse_left_recursive(token_stream &ts, Seed &&seed, Extend &&extend,
 }
 
 // ============================================================================
+// Memoization (packrat)
+// ============================================================================
+
+/**
+ * @brief Fixed-capacity, direct-mapped cache of rule results for `memoize`; no heap.
+ *
+ * An entry is chosen by (rule id, start offset). A collision replaces the older entry, so a small
+ * table only costs speed, never correctness. It stores copies of results (and of `parse_error`, whose
+ * tokens borrow the parsed source), so it must not outlive the text; call `clear()` between inputs.
+ */
+template <typename T, size_t N> class RELOCO_POINTER memo_table {
+  static_assert(N > 0, "memo_table needs room for at least one entry");
+  static_assert(std::is_copy_constructible_v<T>, "memoized results must be copyable; use an index into a node pool");
+
+public:
+  /** Lookups answered from the cache. */
+  [[nodiscard]] constexpr size_t hits() const noexcept { return hits_; }
+  /** Rules that actually ran. */
+  [[nodiscard]] constexpr size_t misses() const noexcept { return misses_; }
+
+  /** Forgets every entry and resets the counters. */
+  RELOCO_CONSTEXPR20 void clear() noexcept {
+    for (size_t i = 0; i < N; ++i) {
+      entries_[i] = entry{};
+    }
+    hits_ = 0;
+    misses_ = 0;
+  }
+
+private:
+  template <typename U, size_t M, typename Rule>
+  friend reloco::expected<U, parse_error> memoize(token_stream &, memo_table<U, M> &, uint32_t, Rule &&) noexcept;
+
+  struct entry {
+    bool used{false};
+    uint32_t rule_id{0};
+    size_t offset{0};
+    reloco::optional<reloco::expected<T, parse_error>> result{};
+    reloco::optional<token_stream> end{};
+  };
+
+  [[nodiscard]] static constexpr size_t slot(uint32_t rule_id, size_t offset) noexcept {
+    return (offset * 31U + rule_id) % N;
+  }
+
+  reloco::array<entry, N> entries_{};
+  size_t hits_{0};
+  size_t misses_{0};
+};
+
+/**
+ * @brief Runs `rule(ts)` once per (rule id, position): a hit restores the stream to where the rule ended
+ *        and returns the stored result (value or error); a miss runs the rule and stores its outcome.
+ *
+ * Why: with nested alternatives that share a prefix, `parse_choice` re-parses the same rule at the same
+ * position over and over (exponential in the nesting). Remembering the outcome makes the repeat a lookup.
+ *
+ * The rule must depend only on its position in the input: no external state, no counters, no error lists,
+ * no evaluation side effects, because a hit skips them.
+ *
+ * @param rule_id Small integer, unique per memoized rule sharing the table.
+ * @param rule `expected<T, parse_error>(token_stream &)`.
+ */
+template <typename T, size_t N, typename Rule>
+[[nodiscard]] reloco::expected<T, parse_error> memoize(token_stream &ts, memo_table<T, N> &table, uint32_t rule_id,
+                                                       Rule &&rule) noexcept {
+  const size_t offset = ts.peek().offset;
+  auto &slot = table.entries_[memo_table<T, N>::slot(rule_id, offset)];
+  if (slot.used && slot.rule_id == rule_id && slot.offset == offset && slot.result && slot.end) {
+    ++table.hits_;
+    ts = *slot.end;
+    return *slot.result;
+  }
+  ++table.misses_;
+  reloco::expected<T, parse_error> result = rule(ts);
+  slot.used = true;
+  slot.rule_id = rule_id;
+  slot.offset = offset;
+  slot.result = result;
+  slot.end = ts;
+  return result;
+}
+
+// ============================================================================
 // Delimited lists
 // ============================================================================
 

@@ -791,6 +791,148 @@ TEST(LeftRecursion, WorksWithMoveOnlyValuesAndLongInput) {
   EXPECT_EQ(*result.value(), 20);
 }
 
+namespace {
+
+// A := "(" A ")" "!" | "(" A ")" "?" | "x"   (value: nesting depth). Both parenthesised alternatives
+// re-parse the inner A, which is exponential without memoization.
+struct nested_grammar {
+  using result = reloco::expected<int, parse_error>;
+
+  bool use_memo{false};
+  size_t body_runs{0};
+  microfmt::memo_table<int, 64> memo{};
+
+  result group(token_stream &ts) {
+    if (use_memo) {
+      return microfmt::memoize(ts, memo, 1, [this](token_stream &s) { return body(s); });
+    }
+    return body(ts);
+  }
+
+  result wrapped(token_stream &ts, string_view suffix) {
+    if (auto open = ts.expect(token_kind::punctuation, "(", "expected '('"); !open) {
+      return reloco::unexpected<parse_error>(open.error());
+    }
+    auto inner = group(ts);
+    if (!inner) {
+      return inner;
+    }
+    if (auto close = ts.expect(token_kind::punctuation, ")", "expected ')'"); !close) {
+      return reloco::unexpected<parse_error>(close.error());
+    }
+    if (auto tail = ts.expect(token_kind::op, suffix, "expected a suffix"); !tail) {
+      return reloco::unexpected<parse_error>(tail.error());
+    }
+    return inner.value() + 1;
+  }
+
+  result body(token_stream &ts) {
+    ++body_runs;
+    return microfmt::parse_choice(
+        ts, [this](token_stream &s) -> result { return wrapped(s, "!"); },
+        [this](token_stream &s) -> result { return wrapped(s, "?"); },
+        [](token_stream &s) -> result {
+          if (auto x = s.expect(token_kind::identifier, "x", "expected 'x'"); !x) {
+            return reloco::unexpected<parse_error>(x.error());
+          }
+          return 0;
+        });
+  }
+};
+
+constexpr string_view kSuffixOps[] = {"!", "?"};
+
+nested_grammar::result run_nested(nested_grammar &g, string_view text) {
+  lexer_rules rules;
+  rules.operators = kSuffixOps;
+  token_stream ts{text, rules};
+  auto result = g.group(ts);
+  if (result && !ts.at_end()) {
+    return reloco::unexpected<parse_error>(ts.error_here("trailing input"));
+  }
+  return result;
+}
+
+} // namespace
+
+TEST(Packrat, GivesTheSameResultButDoesLinearInsteadOfExponentialWork) {
+  constexpr string_view input = "((((((((((((x)?)?)?)?)?)?)?)?)?)?)?)?"; // depth 12, only the "?" alternative matches
+  nested_grammar plain;
+  auto expected = run_nested(plain, input);
+  ASSERT_TRUE(expected.has_value());
+  EXPECT_EQ(expected.value(), 12);
+
+  nested_grammar cached;
+  cached.use_memo = true;
+  auto got = run_nested(cached, input);
+  ASSERT_TRUE(got.has_value());
+  EXPECT_EQ(got.value(), 12);
+
+  EXPECT_GT(plain.body_runs, 4000u); // roughly 2^12
+  EXPECT_LT(cached.body_runs, 40u);  // one run per nesting level plus the leaf
+  EXPECT_GT(cached.memo.hits(), 0u);
+  EXPECT_EQ(cached.memo.misses(), cached.body_runs);
+}
+
+TEST(Packrat, ErrorsAreCachedAndTheStreamIsRestoredAfterAHit) {
+  nested_grammar g;
+  g.use_memo = true;
+  lexer_rules rules;
+  rules.operators = kSuffixOps;
+  token_stream ts{"(x) y", rules};
+
+  auto first = g.group(ts); // "(x)" has no suffix, so the whole rule fails at "y"
+  ASSERT_FALSE(first.has_value());
+  const size_t runs = g.body_runs;
+  const size_t offset_after_first = ts.peek().offset;
+
+  token_stream again{"(x) y", rules};
+  auto second = g.group(again); // a fresh stream: same position 0, so the cached outcome is replayed
+  ASSERT_FALSE(second.has_value());
+  EXPECT_EQ(second.error().message, first.error().message);
+  EXPECT_EQ(g.body_runs, runs); // nothing re-ran
+  EXPECT_EQ(again.peek().offset, offset_after_first);
+  EXPECT_EQ(again.previous().offset, ts.previous().offset);
+}
+
+TEST(Packrat, CollisionsOnlyCostSpeedAndClearForgetsEverything) {
+  microfmt::memo_table<int, 1> tiny; // every key collides
+  token_stream ts{"x y", lexer_rules{}};
+  size_t runs = 0;
+  auto rule = [&runs](token_stream &s) -> reloco::expected<int, parse_error> {
+    ++runs;
+    (void)s.next();
+    return 7;
+  };
+  EXPECT_EQ(microfmt::memoize(ts, tiny, 1, rule).value(), 7);
+  EXPECT_EQ(microfmt::memoize(ts, tiny, 2, rule).value(), 7); // different rule and offset: evicts the first
+  token_stream back{"x y", lexer_rules{}};
+  EXPECT_EQ(microfmt::memoize(back, tiny, 1, rule).value(), 7); // evicted, so it runs again
+  EXPECT_EQ(runs, 3u);
+  EXPECT_EQ(tiny.hits(), 0u);
+
+  token_stream hit{"x y", lexer_rules{}};
+  EXPECT_EQ(microfmt::memoize(hit, tiny, 1, rule).value(), 7);
+  EXPECT_EQ(tiny.hits(), 1u);
+  EXPECT_EQ(runs, 3u);
+  tiny.clear();
+  EXPECT_EQ(tiny.hits(), 0u);
+  token_stream after{"x y", lexer_rules{}};
+  EXPECT_EQ(microfmt::memoize(after, tiny, 1, rule).value(), 7);
+  EXPECT_EQ(runs, 4u);
+}
+
+TEST(Packrat, TwoRulesShareATableThroughDifferentIds) {
+  microfmt::memo_table<int, 16> table;
+  token_stream ts{"x", lexer_rules{}};
+  auto one = [](token_stream &) -> reloco::expected<int, parse_error> { return 1; };
+  auto two = [](token_stream &) -> reloco::expected<int, parse_error> { return 2; };
+  EXPECT_EQ(microfmt::memoize(ts, table, 1, one).value(), 1);
+  EXPECT_EQ(microfmt::memoize(ts, table, 2, two).value(), 2); // same offset, different id: not a hit
+  EXPECT_EQ(microfmt::memoize(ts, table, 1, two).value(), 1); // id 1 still returns rule one's result
+  EXPECT_EQ(table.hits(), 1u);
+}
+
 TEST(Recovery, CollectsSeveralErrorsAndTerminates) {
   // statement := name ';'
   token_stream ts{"a; b b; c d; e;", lexer_rules{}};

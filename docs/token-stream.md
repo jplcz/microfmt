@@ -338,6 +338,36 @@ The loop is iterative, so long chains cannot overflow the stack. An `extend` tha
 consuming a token fails with "left recursion made no progress" instead of hanging. See
 [`examples/left_recursion_demo.cpp`](../examples/left_recursion_demo.cpp).
 
+## Avoiding repeated work (memoization)
+
+Why: `parse_choice` and `attempt` re-run a rule after a failed alternative. With nested alternatives that
+share a prefix, such as `A := "(" A ")" "!" | "(" A ")" "?" | "x"`, the same inner `A` is parsed again at the
+same position for every alternative, so the work doubles per nesting level (17 levels: 262143 rule runs).
+`memoize` remembers "rule R at position P gave this result and ended here", so the repeat is a lookup (18 runs).
+
+```cpp
+// One table per result type. 64 slots, no heap. A collision just evicts the older entry: it costs a
+// re-parse, never a wrong answer. Use clear() before parsing another input.
+microfmt::memo_table<int, 64> memo;
+
+reloco::expected<int, microfmt::parse_error> group(microfmt::token_stream &ts) {
+  // 1 = id of this rule in the table (unique per memoized rule that shares it).
+  // On a hit the stream is restored to where the rule ended and the stored result (value OR error) is returned.
+  return microfmt::memoize(ts, memo, 1, [](microfmt::token_stream &s) { return group_body(s); });
+}
+// memo.hits() / memo.misses() show how well the cache works and help to size the table.
+```
+
+Rules for memoized rules:
+
+* The result must depend only on the rule and the input position. A rule that reads or changes outside state
+  (variables, counters, an `error_list`, evaluation while parsing) must not be memoized, because a hit skips
+  those effects. The mini language evaluates while parsing and is therefore not memoized.
+* The result type must be copyable (use an index into your own node pool for trees).
+* Entries are keyed by offset only, not by the text: call `clear()` between inputs.
+
+See [`examples/packrat_demo.cpp`](../examples/packrat_demo.cpp), which prints the rule runs with and without the cache.
+
 ## Delimited lists
 
 Arrays, call arguments and objects repeat the same loop (open bracket,
