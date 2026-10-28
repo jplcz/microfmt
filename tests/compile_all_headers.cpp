@@ -15,6 +15,8 @@
 #include <microfmt/parsing/lexer.hpp>
 #include <microfmt/parsing/lexer_formatters.hpp>
 #include <microfmt/parsing/lexer_rules_presets.hpp>
+#include <microfmt/parsing/number_parse.hpp>
+#include <microfmt/parsing/number_parse_float.hpp>
 #include <microfmt/formatters/chrono_calendar.hpp>
 #include <microfmt/formatters/numeric_views.hpp>
 #include <microfmt/formatters/sequence_views.hpp>

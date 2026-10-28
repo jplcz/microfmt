@@ -10,6 +10,7 @@ implementation.
 |---|---|
 | [lexer.md](lexer.md) | Implemented |
 | [lexer-languages.md](lexer-languages.md) | Implemented |
+| [number-parsing.md](number-parsing.md) | Implemented (guide: [../number-parsing.md](../number-parsing.md)) |
 
 Status values: *Proposed* (awaiting approval), *Accepted* (implementation may
 start), *Implemented* (links to the user guide), *Rejected*.
