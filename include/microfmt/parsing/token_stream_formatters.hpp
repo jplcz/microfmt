@@ -35,13 +35,25 @@ struct RELOCO_POINTER error_report {
  *     {"a": [1, 2,, 3]}
  *                 ^
  *
- * Offsets past the end of `source` are clamped, so it never reads out of bounds.
+ * Offsets past the end of `source` are clamped, so it never reads out of bounds. An error with a
+ * note (see `with_note`) adds `note: <text> (line:column)`, its source line and a caret.
  */
 template <> struct formatter<error_report> {
   constexpr void parse(format_parse_context &) noexcept {}
   void format(const error_report &rep, const sink &out) const noexcept {
-    const microfmt::string_view src = rep.source;
-    const size_t offset = rep.error.at.offset < src.size() ? rep.error.at.offset : src.size();
+    write_snippet(out, rep.source, rep.error.message, rep.error.at);
+    if (!rep.error.note.empty()) {
+      out.put('\n');
+      out.write("note: ");
+      write_snippet(out, rep.source, rep.error.note, rep.error.note_at);
+    }
+  }
+
+private:
+  // "<label> (line:col)", the source line holding `at`, and a caret under its column.
+  static void write_snippet(const sink &out, microfmt::string_view src, microfmt::string_view label,
+                            const token &at) noexcept {
+    const size_t offset = at.offset < src.size() ? at.offset : src.size();
 
     size_t line_start = offset;
     while (line_start > 0 && src[line_start - 1] != '\n') {
@@ -55,11 +67,11 @@ template <> struct formatter<error_report> {
       --line_end;
     }
 
-    out.write(rep.error.message);
+    out.write(label);
     out.write(" (");
-    formatter<uint32_t>{}.format(rep.error.at.line, out);
+    formatter<uint32_t>{}.format(at.line, out);
     out.put(':');
-    formatter<uint32_t>{}.format(rep.error.at.column, out);
+    formatter<uint32_t>{}.format(at.column, out);
     out.write(")\n");
     out.write(src.substr(line_start, line_end - line_start));
     out.put('\n');

@@ -801,3 +801,19 @@ TEST(BlockRecovery, MissingCloserIsReportedAtEndOfInput) {
   const auto stored = errors.errors();
   EXPECT_EQ(stored[0].message, "unexpected end of input");
 }
+
+TEST(ErrorNotes, SurviveErrorListAndPointAtTheOpener) {
+  token_stream ts{"net { a;", lexer_rules{}};
+  ts.next(); // net
+  auto open = ts.expect(token_kind::punctuation, "{", "expected '{'");
+  ASSERT_TRUE(open);
+  while (!ts.at_end()) {
+    ts.next();
+  }
+  microfmt::error_list<2> errors;
+  errors.add(microfmt::with_note(ts.error_here("expected '}'"), "block opened here", open.value()));
+  const auto stored = errors.errors();
+  ASSERT_EQ(stored.size(), 1u);
+  EXPECT_EQ(stored[0].note, "block opened here");
+  EXPECT_EQ(stored[0].note_at.column, 5u);
+}

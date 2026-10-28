@@ -29,7 +29,22 @@ namespace microfmt {
 struct RELOCO_POINTER parse_error {
   microfmt::string_view message{};
   token at{}; ///< Offending token; `at.line` / `at.column` locate it, `at.text` borrows the source.
+  microfmt::string_view note{}; ///< Optional secondary message (static storage), empty for none.
+  token note_at{};              ///< Where `note` points (for example the opening bracket); used when `note` is set.
 };
+
+/**
+ * @brief Copy of `error` with a note attached, e.g. `with_note(err, "block opened here", open_brace)`.
+ *
+ * Why: some mistakes are detected far from their cause (a missing `}` is found at the end of input);
+ * the note points at the cause. `note` must have static storage; one note per error.
+ */
+[[nodiscard]] constexpr parse_error with_note(parse_error error, microfmt::string_view note,
+                                              const token &where) noexcept {
+  error.note = note;
+  error.note_at = where;
+  return error;
+}
 
 /**
  * @brief Lookahead cursor over a lexed text.

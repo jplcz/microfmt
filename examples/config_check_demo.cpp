@@ -52,12 +52,15 @@ struct block_rule {
     if (auto name = ts.expect(token_kind::identifier, "expected a block name"); !name) {
       return reloco::unexpected<microfmt::parse_error>(name.error());
     }
-    if (auto open = ts.expect(token_kind::punctuation, "{", "expected '{'"); !open) {
+    auto open = ts.expect(token_kind::punctuation, "{", "expected '{'");
+    if (!open) {
       return reloco::unexpected<microfmt::parse_error>(open.error());
     }
     (void)microfmt::parse_statements_until(ts, token_kind::punctuation, "}", kStatementEnd, kBraces, errors, setting);
     if (auto close = ts.expect(token_kind::punctuation, "}", "expected '}'"); !close) {
-      return reloco::unexpected<microfmt::parse_error>(close.error());
+      // The missing '}' is only noticed at the end; the note points back at the '{' that needs it.
+      return reloco::unexpected<microfmt::parse_error>(
+          microfmt::with_note(close.error(), "block opened here", open.value()));
     }
     return {};
   }
@@ -66,7 +69,7 @@ struct block_rule {
 } // namespace
 
 int main() {
-  constexpr microfmt::string_view source = "name = \"demo\";\nretries 3;\nport = ;\ndebug = on;\nlevel = 2 2;\nnet { port = 80; host = local; }\nnet2 { a = ; b = 2; c d; e = 5; }\nserver x { a = 1; b = 2; }\n";
+  constexpr microfmt::string_view source = "name = \"demo\";\nretries 3;\nport = ;\ndebug = on;\nlevel = 2 2;\nnet { port = 80; host = local; }\nnet2 { a = ; b = 2; c d; e = 5; }\nlast { z = 1;\n";
 
   microfmt::lexer_rules rules;
   rules.operators = kOperators;

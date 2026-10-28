@@ -412,6 +412,36 @@ Only the failing line is shown (CRLF is stripped, tabs are preserved so the
 caret lines up) and an out-of-range offset is clamped, so it never reads out of
 bounds.
 
+## Notes on errors
+
+Some mistakes are noticed far from their cause: a missing `}` is only found at the
+end of the input, but the useful fact is where the block was opened. Attach that
+location with `with_note`; `report()` prints it as a second snippet.
+
+```cpp
+// Keep the token of the opener when you consume it.
+auto open = ts.expect(microfmt::token_kind::punctuation, "{", "expected '{'");
+// ... parse the body ...
+if (auto close = ts.expect(microfmt::token_kind::punctuation, "}", "expected '}'"); !close) {
+  // with_note returns a copy of the error: (error, note text, token the note points at).
+  // The note text must be a literal (static storage). One note per error.
+  return reloco::unexpected<microfmt::parse_error>(
+      microfmt::with_note(close.error(), "block opened here", open.value()));
+}
+```
+
+```text
+expected '}' (9:1)
+
+^
+note: block opened here (8:6)
+last { z = 1;
+     ^
+```
+
+Errors without a note print exactly as before, and `error_list` stores notes
+along with the errors, so nothing else changes.
+
 ## Limits
 
 * A single parse aborts on its first error; use `parse_statements` for multi-error runs (see "Reporting several errors").

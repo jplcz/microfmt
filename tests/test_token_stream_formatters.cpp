@@ -64,3 +64,27 @@ TEST(ErrorReportTest, EndTokenAndStaleOffsetStayInBounds) {
   microfmt::format_to(clamped.as_sink(), "{}", microfmt::report(err, source));
   EXPECT_EQ(clamped.view(), "unexpected end (1:4)\n[1,\n   ^");
 }
+
+TEST(ErrorReportTest, NotePrintsItsOwnSnippetAndCaret) {
+  constexpr string_view source = "[\n  1,\n  2";
+  token_stream ts{source, microfmt::rules::json};
+  const microfmt::token open = ts.next(); // '[' on line 1
+  while (!ts.at_end()) {
+    ts.next();
+  }
+  const parse_error err = microfmt::with_note(ts.error_here("expected ']'"), "list opened here", open);
+
+  microfmt::buffer_sink<256> buffer;
+  microfmt::format_to(buffer.as_sink(), "{}", microfmt::report(err, source));
+  EXPECT_EQ(buffer.view(), "expected ']' (3:4)\n  2\n   ^\nnote: list opened here (1:1)\n[\n^");
+}
+
+TEST(ErrorReportTest, WithNoteLeavesTheOriginalAndOtherFieldsUntouched) {
+  token_stream ts{"a b", microfmt::rules::json};
+  const parse_error original = ts.error_here("bad");
+  const parse_error noted = microfmt::with_note(original, "see here", ts.peek());
+  EXPECT_TRUE(original.note.empty());
+  EXPECT_EQ(noted.message, "bad");
+  EXPECT_EQ(noted.note, "see here");
+  EXPECT_EQ(noted.note_at.text, "a");
+}
