@@ -235,6 +235,32 @@ Set `open = ""` for a bare list, and `close = ""` when the list simply ends
 after the last item. The loop only continues after consuming a separator, so
 it always terminates. See `examples/json_parser_demo.cpp`.
 
+## Alternatives and optional parts
+
+Grammars often say "this is an A, or a B, or a C". Trying them by hand means
+saving the stream and restoring it on every failure path; forgetting one leaves
+the stream half-consumed. Three helpers do it for you. Every rule is a callable
+`expected<T, parse_error>(token_stream &)`.
+
+```cpp
+// attempt: run one rule; if it fails the stream is put back as it was.
+auto decl = microfmt::attempt(ts, parse_function);
+
+// parse_choice: try each rule from the SAME position; the first success wins.
+// All rules must return the same T. If all fail, the stream is restored and you get
+// the error of the alternative that got furthest into the input, because that is
+// almost always the one the user meant (ties keep the earlier alternative).
+auto item = microfmt::parse_choice(ts, parse_function, parse_variable, parse_alias);
+
+// parse_optional: value or "nothing here". It yields an empty reloco::optional only if the
+// rule failed WITHOUT consuming input; a failure after consuming (an `else` with no
+// body) stays an error, so real mistakes are not silently hidden.
+auto maybe_else = microfmt::parse_optional(ts, parse_else_branch); // expected<optional<T>, parse_error>
+```
+
+Alternatives are tried in order, so put the more specific rule first. See
+[`examples/config_check_demo.cpp`](../examples/config_check_demo.cpp).
+
 ## Reporting several errors
 
 By default the first error aborts. To report more in one run, skip ahead to a

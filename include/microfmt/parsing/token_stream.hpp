@@ -615,4 +615,88 @@ template <size_t N, typename Statement>
   return parsed;
 }
 
+/**
+ * @brief Runs `rule(ts)` and restores the stream if it fails.
+ *
+ * Why: "try this, else undo" is the building block of backtracking; doing it here means no
+ * failure path can leave the stream half-consumed. On success the consumed tokens stay consumed.
+ *
+ * @param rule `expected<T, parse_error>(token_stream &)`.
+ */
+template <typename Rule>
+[[nodiscard]] RELOCO_CONSTEXPR20 auto attempt(token_stream &ts, Rule &&rule) noexcept -> std::decay_t<decltype(rule(ts))> {
+  const token_stream saved = ts;
+  auto result = rule(ts);
+  if (!result) {
+    ts = saved;
+  }
+  return result;
+}
+
+namespace detail {
+
+template <typename R, typename Rule, typename... Rest>
+RELOCO_CONSTEXPR20 R choice_step(token_stream &ts, const token_stream &saved, reloco::optional<parse_error> best,
+                                 Rule &&rule, Rest &&...rest) noexcept {
+  ts = saved;
+  R result = rule(ts);
+  if (result) {
+    return result;
+  }
+  // The alternative that got furthest is the likeliest intended one; ties keep the earlier.
+  if (!best || result.error().at.offset > best->at.offset) {
+    best = result.error();
+  }
+  if constexpr (sizeof...(Rest) == 0) {
+    ts = saved;
+    return R(reloco::unexpected<parse_error>(*best));
+  } else {
+    return choice_step<R>(ts, saved, std::move(best), rest...);
+  }
+}
+
+} // namespace detail
+
+/**
+ * @brief Ordered choice: tries each rule from the same position and returns the first success.
+ *
+ * Why: grammars with alternatives ("a declaration is a function, a variable or an alias")
+ * need rewinding between attempts. If every rule fails, the stream is restored and the
+ * error of the alternative that got furthest (largest token offset) is returned.
+ *
+ * @param rules at least one `expected<T, parse_error>(token_stream &)`; all must return the same `T`.
+ */
+template <typename First, typename... Rest>
+[[nodiscard]] RELOCO_CONSTEXPR20 auto parse_choice(token_stream &ts, First &&first, Rest &&...rest) noexcept
+    -> std::decay_t<decltype(first(ts))> {
+  using result_type = std::decay_t<decltype(first(ts))>;
+  const token_stream saved = ts;
+  return detail::choice_step<result_type>(ts, saved, reloco::optional<parse_error>{}, first, rest...);
+}
+
+/**
+ * @brief Zero-or-one: the rule's value, or an empty optional when it fails without consuming input.
+ *
+ * Why: optional grammar parts ("an optional `else` branch") must not hide real mistakes, so a
+ * failure after the rule consumed tokens (`x = ` with no value) stays an error.
+ *
+ * @param rule `expected<T, parse_error>(token_stream &)`, `T` not void.
+ */
+template <typename Rule>
+[[nodiscard]] RELOCO_CONSTEXPR20 auto parse_optional(token_stream &ts, Rule &&rule) noexcept
+    -> reloco::expected<reloco::optional<typename std::decay_t<decltype(rule(ts))>::value_type>, parse_error> {
+  using optional_type = reloco::optional<typename std::decay_t<decltype(rule(ts))>::value_type>;
+  const token_stream saved = ts;
+  const size_t start = ts.peek().offset;
+  auto result = rule(ts);
+  if (result) {
+    return optional_type(std::move(result).value());
+  }
+  if (ts.peek().offset != start) {
+    return reloco::unexpected<parse_error>(result.error());
+  }
+  ts = saved;
+  return optional_type{};
+}
+
 } // namespace microfmt

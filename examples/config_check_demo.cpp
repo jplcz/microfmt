@@ -27,8 +27,19 @@ reloco::expected<void, microfmt::parse_error> statement(microfmt::token_stream &
   if (auto eq = ts.expect(token_kind::op, "=", "expected '='"); !eq) {
     return reloco::unexpected<microfmt::parse_error>(eq.error());
   }
-  if (!ts.skip(token_kind::integer) && !ts.skip(token_kind::string) && !ts.skip(token_kind::identifier)) {
-    return reloco::unexpected<microfmt::parse_error>(ts.error_here("expected a value"));
+  // A value is one of three alternatives; parse_choice tries each from the same position.
+  auto value_of = [](token_kind kind) {
+    return [kind](microfmt::token_stream &s) -> reloco::expected<void, microfmt::parse_error> {
+      if (!s.skip(kind)) {
+        return reloco::unexpected<microfmt::parse_error>(s.error_here("expected a value"));
+      }
+      return {};
+    };
+  };
+  if (auto value = microfmt::parse_choice(ts, value_of(token_kind::integer), value_of(token_kind::string),
+                                          value_of(token_kind::identifier));
+      !value) {
+    return value;
   }
   if (auto semi = ts.expect(token_kind::punctuation, ";", "expected ';'"); !semi) {
     return reloco::unexpected<microfmt::parse_error>(semi.error());

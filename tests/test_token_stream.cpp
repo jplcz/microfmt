@@ -524,3 +524,87 @@ TEST(ParseStatements, ErrorOnTheSyncTokenAndGarbageStillTerminate) {
   auto no_progress = [](token_stream &) -> reloco::expected<void, parse_error> { return {}; };
   EXPECT_EQ(microfmt::parse_statements(stuck, kStatementEnd, none, no_progress), 2u);
 }
+
+namespace {
+
+reloco::expected<int, parse_error> int_rule(token_stream &ts) {
+  auto tok = ts.expect(token_kind::integer, "expected integer");
+  if (!tok) {
+    return reloco::unexpected<parse_error>(tok.error());
+  }
+  return 1;
+}
+
+// Consumes an identifier then requires an integer: fails one token deeper than int_rule.
+reloco::expected<int, parse_error> ident_then_int(token_stream &ts) {
+  if (auto id = ts.expect(token_kind::identifier, "expected identifier"); !id) {
+    return reloco::unexpected<parse_error>(id.error());
+  }
+  if (auto n = ts.expect(token_kind::integer, "expected integer after name"); !n) {
+    return reloco::unexpected<parse_error>(n.error());
+  }
+  return 2;
+}
+
+} // namespace
+
+TEST(Choice, AttemptRestoresOnFailureAndKeepsOnSuccess) {
+  token_stream ts{"a b", lexer_rules{}};
+  auto failed = microfmt::attempt(ts, ident_then_int);
+  EXPECT_FALSE(failed);
+  EXPECT_EQ(ts.peek().text, "a");
+
+  auto ok = microfmt::attempt(ts, [](token_stream &s) -> reloco::expected<int, parse_error> {
+    (void)s.accept(token_kind::identifier);
+    return 7;
+  });
+  ASSERT_TRUE(ok);
+  EXPECT_EQ(ts.peek().text, "b");
+}
+
+TEST(Choice, FirstSuccessWinsAndLaterRulesStartFromTheSamePosition) {
+  token_stream ts{"x 5", lexer_rules{}};
+  auto r = microfmt::parse_choice(ts, int_rule, ident_then_int);
+  ASSERT_TRUE(r);
+  EXPECT_EQ(r.value(), 2);
+  EXPECT_TRUE(ts.at_end());
+
+  token_stream one{"9", lexer_rules{}};
+  auto single = microfmt::parse_choice(one, int_rule);
+  ASSERT_TRUE(single);
+  EXPECT_EQ(single.value(), 1);
+}
+
+TEST(Choice, AllFailingReportsTheFurthestErrorAndRewinds) {
+  token_stream ts{"x y", lexer_rules{}};
+  auto r = microfmt::parse_choice(ts, int_rule, ident_then_int);
+  ASSERT_FALSE(r);
+  EXPECT_EQ(r.error().message, "expected integer after name");
+  EXPECT_EQ(r.error().at.text, "y");
+  EXPECT_EQ(ts.peek().text, "x");
+
+  // Equal offsets keep the first alternative's error.
+  token_stream tie{"x", lexer_rules{}};
+  auto t = microfmt::parse_choice(tie, int_rule, int_rule);
+  ASSERT_FALSE(t);
+  EXPECT_EQ(t.error().message, "expected integer");
+}
+
+TEST(Choice, OptionalIsEmptyPresentOrAnErrorAfterConsumption) {
+  token_stream ts{"x", lexer_rules{}};
+  auto empty = microfmt::parse_optional(ts, int_rule);
+  ASSERT_TRUE(empty);
+  EXPECT_FALSE(empty.value().has_value());
+  EXPECT_EQ(ts.peek().text, "x");
+
+  token_stream num{"4", lexer_rules{}};
+  auto present = microfmt::parse_optional(num, int_rule);
+  ASSERT_TRUE(present);
+  ASSERT_TRUE(present.value().has_value());
+  EXPECT_EQ(*present.value(), 1);
+
+  token_stream partial{"x y", lexer_rules{}};
+  auto bad = microfmt::parse_optional(partial, ident_then_int);
+  ASSERT_FALSE(bad);
+  EXPECT_EQ(bad.error().message, "expected integer after name");
+}
