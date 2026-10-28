@@ -41,6 +41,25 @@ In C++20 and later, `join_as<Delimiter, ElementSpec>(range)` stores delimiter
 and element formatting in the type. A runtime specifier is used only when the
 compile-time `ElementSpec` is empty. See `examples/ranges_demo.cpp`.
 
+## `sequence_views.hpp`
+
+`enumerate()` and `zip()` complement `join()` when you want to see *which*
+element is which, e.g. when logging a list of sensor readings. Both borrow
+their ranges (rvalue ranges are rejected at compile time) and forward the
+format spec to every element.
+
+```cpp
+#include <microfmt/formatters/sequence_views.hpp>
+
+const std::vector<int> ids{10, 255};
+const std::vector<int> temps{7, 8, 9};
+// enumerate: index then value; {:x} is applied to each value -> "0: a, 1: ff"
+microfmt::format_to(out, "{:x}", microfmt::enumerate(ids));
+// zip: pairs, stopping at the shorter range -> "(10, 7), (255, 8)"
+microfmt::format_to(out, "{}", microfmt::zip(ids, temps));
+// the second argument of both factories changes the delimiter between items
+```
+
 ## `filter_view.hpp`
 
 `filter(range, predicate)` and `filter(pointer, count, predicate)` create a

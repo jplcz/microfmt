@@ -280,6 +280,47 @@ const std::array<int, 3> values{1, 2, 3};
 microfmt::format_to(out, "{}", microfmt::as_debug(values)); // "[1, 2, 3]"
 ```
 
+## `std_types.hpp` and `std_complex.hpp`
+
+Opt-in display formatters for standard types that otherwise cannot be passed
+to `format_to` (microfmt never uses `operator<<`). They are separate headers
+so you only pay for what you include; `std_complex.hpp` is split out because
+it pulls in the floating-point formatters.
+
+* `std::filesystem::path` prints the native path text and accepts the same
+  specifiers as `std::string` (it may allocate via `path::string()`).
+* `std::bitset<N>` prints bits MSB first without allocating; `{:#}` adds `0b`.
+* `std::byte` prints as an unsigned integer and forwards the spec
+  (`{:02x}`, `{:08b}`).
+* `std::ratio<N, D>` prints the reduced fraction (`1/1000`; `2` when the
+  denominator is 1).
+* `std::complex<T>` (floating `T`, in `std_complex.hpp`) prints `(re+imi)`,
+  forwarding the spec to both parts.
+
+```cpp
+#include <microfmt/formatters/std_types.hpp>
+#include <microfmt/formatters/std_complex.hpp>
+
+// "{:#}" -> 0b0101; "{:02x}" -> 0a; "{:.2f}" -> (1.50+2.25i)
+microfmt::format_to(out, "{:#} {:02x} {}", std::bitset<4>(5), std::byte{10},
+                    std::filesystem::path("/etc/hosts"));
+microfmt::format_to(out, "{:.2f}", std::complex<double>(1.5, 2.25));
+```
+
+## `numeric_views.hpp`
+
+`thousands(value, separator = ',', group_size = 3)` renders an integer in
+decimal with digit grouping, which makes large counters and byte sizes
+readable in logs. It never allocates and handles `INT64_MIN`.
+
+```cpp
+#include <microfmt/formatters/numeric_views.hpp>
+
+microfmt::format_to(out, "{}", microfmt::thousands(1234567));       // 1,234,567
+microfmt::format_to(out, "{}", microfmt::thousands(1234567, '_'));  // 1_234_567
+microfmt::format_to(out, "{}", microfmt::thousands(12345678, ' ', 4)); // 1234 5678
+```
+
 ## `string.hpp`
 
 This header formats `std::basic_string` directly and provides `as_string(...)`

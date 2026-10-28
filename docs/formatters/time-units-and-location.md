@@ -31,6 +31,33 @@ microfmt::format_to(out, "{}", std::chrono::milliseconds{42});
 `steady_clock::time_point` renders as an uptime-like duration. See
 `examples/chrono_demo.cpp`.
 
+## `chrono_calendar.hpp`
+
+C++20 calendar types have no formatter in `chrono.hpp` (which only covers
+durations and clock time points). Include this header when you log dates
+and times of day, for example from `std::chrono::year_month_day` parsed from
+a config file. It compiles to nothing on standard libraries without the C++20
+calendar (`MICROFMT_HAS_CHRONO_CALENDAR` is 0 there).
+
+| Type | Output |
+|---|---|
+| `year`, `day` | zero-padded number (`2026`, `07`) |
+| `month` | `03`, or `Mar` with `{:s}` |
+| `weekday` | `Mon` (`?` when invalid) |
+| `year_month_day` | `2026-03-07`; invalid dates append ` (invalid)` |
+| `hh_mm_ss<D>` | `[-]HH:MM:SS[.fraction]`, fraction width follows `D` |
+
+```cpp
+#include <microfmt/formatters/chrono_calendar.hpp>
+using namespace std::chrono;
+
+// date -> "2026-03-07"; weekday -> "Mon"; month with {:s} -> "Mar"
+microfmt::format_to(out, "{} {} {:s}", year_month_day{year{2026}/March/7},
+                    weekday{1}, month{3});
+// 1 h 2 s 250 ms before midnight offset -> "-01:00:02.250"
+microfmt::format_to(out, "{}", hh_mm_ss{-(1h + 2s + 250ms)});
+```
+
 ## `bintime.hpp`
 
 This header detects FreeBSD-style `bintime` structures with `sec` and `frac`
