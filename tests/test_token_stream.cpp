@@ -608,3 +608,73 @@ TEST(Choice, OptionalIsEmptyPresentOrAnErrorAfterConsumption) {
   ASSERT_FALSE(bad);
   EXPECT_EQ(bad.error().message, "expected integer after name");
 }
+
+TEST(Repeat, CollectsItemsInOrderAndStopsCleanlyOnNoMatch) {
+  token_stream ts{"1 2 3 x", lexer_rules{}};
+  size_t n = 0;
+  auto count = microfmt::parse_repeat(ts, {}, int_rule, [&](int &&) { ++n; });
+  ASSERT_TRUE(count);
+  EXPECT_EQ(count.value(), 3u);
+  EXPECT_EQ(n, 3u);
+  EXPECT_EQ(ts.peek().text, "x");
+
+  token_stream none{"x", lexer_rules{}};
+  auto zero = microfmt::parse_repeat(none, {}, int_rule, [](int &&) {});
+  ASSERT_TRUE(zero);
+  EXPECT_EQ(zero.value(), 0u);
+}
+
+TEST(Repeat, EnforcesMinMaxAndReportsFailureAfterConsumption) {
+  token_stream few{"1 x", lexer_rules{}};
+  auto short_run = microfmt::parse_repeat(few, {.min = 2, .too_few_message = "need two"}, int_rule, [](int &&) {});
+  ASSERT_FALSE(short_run);
+  EXPECT_EQ(short_run.error().message, "need two");
+
+  token_stream many{"1 2 3 4", lexer_rules{}};
+  auto capped = microfmt::parse_repeat(many, {.max = 2}, int_rule, [](int &&) {});
+  ASSERT_TRUE(capped);
+  EXPECT_EQ(capped.value(), 2u);
+  EXPECT_EQ(many.peek().text, "3");
+
+  token_stream broken{"x 1 y z", lexer_rules{}};
+  auto fail = microfmt::parse_repeat(broken, {}, ident_then_int, [](int &&) {});
+  ASSERT_FALSE(fail);
+  EXPECT_EQ(fail.error().at.text, "z");
+}
+
+TEST(Repeat, NoProgressItemTerminates) {
+  token_stream ts{"a b", lexer_rules{}};
+  size_t calls = 0;
+  auto count = microfmt::parse_repeat(ts, {}, [](token_stream &) -> reloco::expected<int, parse_error> { return 1; },
+                                      [&](int &&) { ++calls; });
+  ASSERT_TRUE(count);
+  EXPECT_EQ(count.value(), 0u);
+  EXPECT_EQ(calls, 0u);
+}
+
+TEST(Repeat, UntilStopsAtTerminatorAndRejectsMissingOrBadItems) {
+  token_stream ts{"1 2 ; 9", lexer_rules{}};
+  size_t total = 0;
+  auto count = microfmt::parse_until(ts, token_kind::punctuation, ";", int_rule, [&](int &&v) { total += size_t(v); });
+  ASSERT_TRUE(count);
+  EXPECT_EQ(count.value(), 2u);
+  EXPECT_EQ(total, 2u);
+  EXPECT_EQ(ts.peek().text, ";");
+
+  token_stream open{"1 2", lexer_rules{}};
+  auto eof = microfmt::parse_until(open, token_kind::punctuation, ";", int_rule, [](int &&) {});
+  ASSERT_FALSE(eof);
+  EXPECT_EQ(eof.error().message, "unexpected end of input");
+
+  token_stream bad{"1 x ;", lexer_rules{}};
+  auto item_fail = microfmt::parse_until(bad, token_kind::punctuation, ";", int_rule, [](int &&) {});
+  ASSERT_FALSE(item_fail);
+  EXPECT_EQ(item_fail.error().at.text, "x");
+
+  token_stream stuck{"a ;", lexer_rules{}};
+  auto stalled = microfmt::parse_until(
+      stuck, token_kind::punctuation, ";",
+      [](token_stream &) -> reloco::expected<int, parse_error> { return 1; }, [](int &&) {});
+  ASSERT_FALSE(stalled);
+  EXPECT_EQ(stalled.error().message, "item consumed no input");
+}

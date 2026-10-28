@@ -261,6 +261,34 @@ auto maybe_else = microfmt::parse_optional(ts, parse_else_branch); // expected<o
 Alternatives are tried in order, so put the more specific rule first. See
 [`examples/config_check_demo.cpp`](../examples/config_check_demo.cpp).
 
+## Repetition without separators
+
+`parse_list` needs separators. For "zero or more things" (statements in a block,
+digit groups) use `parse_repeat` or `parse_until`. They hand each parsed value to a
+`sink` callback, so *you* choose where values go (a fixed array plus counter, or just
+a count); nothing allocates. Both guarantee termination: an item that consumes no
+input can never spin the loop.
+
+```cpp
+// parse_repeat: keep parsing `item` while it succeeds. It stops quietly when an item fails
+// WITHOUT consuming input (that is just "no more items"); a failure AFTER consuming input
+// is a real mistake and is returned as an error.
+// min: fewest items allowed (error `too_few_message` otherwise); max: stop after this many.
+size_t total = 0;
+auto count = microfmt::parse_repeat(
+    ts, {.min = 1, .max = 16, .too_few_message = "expected a number"},
+    parse_number,                       // expected<int, parse_error>(token_stream &)
+    [&](int &&value) { total += size_t(value); }); // sink: called once per item, in order
+
+// parse_until: items up to a terminator, which is left unconsumed. Use it for blocks:
+// every item failure is an error because the closing token has not been seen yet, and
+// reaching the end of input first reports "unexpected end of input".
+auto body = microfmt::parse_until(ts, microfmt::token_kind::punctuation, "}", parse_item, sink);
+(void)ts.expect(microfmt::token_kind::punctuation, "}", "expected '}'"); // you consume the closer
+```
+
+See `block` in [`examples/config_check_demo.cpp`](../examples/config_check_demo.cpp).
+
 ## Reporting several errors
 
 By default the first error aborts. To report more in one run, skip ahead to a
