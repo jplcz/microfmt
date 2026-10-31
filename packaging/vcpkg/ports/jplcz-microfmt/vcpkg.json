@@ -1,6 +1,6 @@
 {
   "name": "jplcz-microfmt",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Header-only allocation-free formatting and remote inspection library",
   "homepage": "https://github.com/jplcz/microfmt",
   "license": "BSD-2-Clause",

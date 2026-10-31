@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.4.0
+
 ### Added
 
 - Lexer engine with token formatters and a highlighter, plus lexer rules for C, C++, Lua, SQL, INI, TOML and config files.
