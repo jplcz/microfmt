@@ -58,10 +58,16 @@ These hold for all formatters, so the pages only mention exceptions.
   `print`/`println`. Application code should print through these rather than
   `printf`.
 
-## Using this page as GitHub Pages source
+## Published as one page
 
-The pages are plain Markdown under `docs/`, which the Doxygen configuration
-already scans (`INPUT = include README.md docs`), so the
-[publish-docs workflow](https://github.com/jplcz/microfmt/actions) renders
-and deploys them together with the API reference. Build locally with
-`scripts/build-docs.sh` and open `build/docs/html/index.html`.
+The source is split into the four Markdown files above so each stays easy to
+edit and review, but readers (and AI agents) want a single document they can
+search with one Ctrl+F or load in one request. The
+[publish-cheatsheet workflow](https://github.com/jplcz/microfmt/actions)
+joins them with `scripts/build-cheatsheet.sh` (pandoc) into one
+self-contained `index.html` with a table of contents and deploys it to
+<https://jplcz.github.io/microfmt/>.
+
+Preview it locally with `scripts/build-cheatsheet.sh` and open
+`build/cheatsheet/index.html`. Add new sections to the part files; the
+script picks them up in the order listed in the `parts` array.

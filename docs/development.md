@@ -163,7 +163,7 @@ from the Markdown docs via `pandoc` (fails the configure step if `pandoc` is
 not on `PATH`); see
 [Installable CMake package](usage.md#installable-cmake-package) for the
 generated page names and install location. This is unrelated to the
-Doxygen HTML API reference produced by `scripts/build-docs.sh`.
+single-page HTML cheatsheet produced by `scripts/build-cheatsheet.sh`.
 
 `JPLCZ_MICROFMT_ENABLE_STRICT_WARNINGS` is enabled by default. It applies
 compiler-specific GCC or Clang warning sets, including conversion,
@@ -213,8 +213,8 @@ GitHub Actions run the following independent validation lanes:
 * `CodeQL` performs scheduled and change-triggered C++ security analysis.
 * `Dependency review` rejects vulnerable dependency changes in pull requests
   when the repository has GitHub dependency review available.
-* `Publish API documentation` builds and deploys the Doxygen site after
-  documentation or public-header changes on `master`.
+* `Publish cheatsheet` builds the single-page formatter cheatsheet with pandoc
+  and deploys it to GitHub Pages after cheatsheet changes on `master`.
 
 All workflows use read-only repository permissions unless a GitHub service
 requires a narrowly scoped permission. Concurrent runs for the same ref are
@@ -271,8 +271,9 @@ VCPKG_ROOT=/path/to/vcpkg ./scripts/check-vcpkg-package.sh
 # CPack archive, DEB, and RPM packages
 ./scripts/check-cpack-package.sh
 
-# Doxygen output under build/docs/html
-./scripts/build-docs.sh
+# Single-page cheatsheet (needs pandoc) at build/cheatsheet/index.html;
+# this is what the publish-cheatsheet workflow deploys to GitHub Pages
+./scripts/build-cheatsheet.sh
 ```
 
 The scripts accept environment variables for repeatable local customization:
@@ -295,7 +296,7 @@ tools to be installed; the vcpkg script additionally requires a bootstrapped
 checkout referenced by `VCPKG_ROOT`.
 
 CodeQL analysis, dependency review, and Pages deployment still require GitHub
-services. Their underlying C++ build and Doxygen generation are covered by the
+services. Their underlying C++ build is covered by the
 local scripts above.
 
 ## Test changes
@@ -383,7 +384,9 @@ it.
 
 ## Documentation
 
-Public headers use Doxygen comments. Add an `@file` block and document new
+Public headers use Doxygen-style comments (`@file`, `@brief`, `@param`) that
+editors and IDEs render; no HTML reference is generated from them. Add an
+`@file` block and document new
 developer-facing classes, templates, functions, parameters, return values, and
 non-obvious ownership or lifetime requirements.
 
@@ -394,16 +397,16 @@ The user and contributor guides are:
 * [Low-stack renderer guide](renderer-guide.md)
 * [Inspector framework guide](inspector.md)
 
-Generate the local API reference with:
+The formatter cheatsheet is published as one HTML page. Build and preview it
+with (needs `pandoc`):
 
 ```bash
-doxygen Doxyfile
-python3 -m http.server 8000 --directory build/docs/html
+./scripts/build-cheatsheet.sh
+python3 -m http.server 8000 --directory build/cheatsheet
 ```
 
-Open <http://localhost:8000> to inspect the rendered output. The `Doxyfile`
-inputs include `include/`, `README.md`, and `docs/`, so these guides appear in
-the generated reference.
+Open <http://localhost:8000> to inspect the page. The script joins
+`docs/cheatsheet.md` and `docs/cheatsheet/*.md` in order.
 
 ## Review checklist
 
@@ -413,5 +416,5 @@ Before proposing a change:
 2. Add or update tests for observable behavior.
 3. Build `jplcz_microfmt_check_public_headers` after public-header changes.
 4. Check the full relevant test suite.
-5. Update Doxygen and user-facing documentation when public APIs or usage
+5. Update header comments and user-facing documentation when public APIs or usage
    change.

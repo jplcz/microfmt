@@ -112,7 +112,7 @@ directory.
 The install also copies `README.md`, `LICENSE`, and the full `docs/` guide
 tree under `${CMAKE_INSTALL_DOCDIR}` (typically
 `share/doc/jplcz_microfmt/`), preserving the source layout so the
-cross-links between guides keep resolving. No Doxygen or HTML build step is
+cross-links between guides keep resolving. No HTML build step is
 involved. Set `JPLCZ_MICROFMT_BUILD_MANPAGES=ON` to additionally render each
 top-level guide to a `man(7)` page with `pandoc` (`jplcz_microfmt(7)` for
 `README.md`, `jplcz_microfmt-usage(7)` for `docs/usage.md`, and so on),

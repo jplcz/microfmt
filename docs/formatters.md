@@ -52,7 +52,7 @@ formatters.
 | [Presentation and compatibility](formatters/presentation-and-bridges.md) | ANSI styling, text layout, and the `{fmt}` compatibility bridge | `ansi.hpp`, `styled.hpp`, `fmt.hpp` |
 
 For a compact lookup of every formatter, its accepted specifier tokens, and
-verified examples, see the [formatter cheatsheet](cheatsheet.md).
+verified examples, see the [formatter cheatsheet](https://jplcz.github.io/microfmt/).
 
 ## Common formatter rules
 
