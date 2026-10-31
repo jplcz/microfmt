@@ -845,10 +845,10 @@ struct nested_grammar {
 
 constexpr string_view kSuffixOps[] = {"!", "?"};
 
-nested_grammar::result run_nested(nested_grammar &g, string_view text) {
+nested_grammar::result run_nested(nested_grammar &g, string_view input) {
   lexer_rules rules;
   rules.operators = kSuffixOps;
-  token_stream ts{text, rules};
+  token_stream ts{input, rules};
   auto result = g.group(ts);
   if (result && !ts.at_end()) {
     return reloco::unexpected<parse_error>(ts.error_here("trailing input"));
@@ -1451,10 +1451,10 @@ constexpr string_view kTernaryOps[] = {"+", "?", ":"};
 
 template <typename T> microfmt::span<const T> span_none() { return {}; }
 
-calc_result calc_ternary(string_view text) {
+calc_result calc_ternary(string_view input) {
   lexer_rules rules;
   rules.operators = kTernaryOps;
-  token_stream ts{text, rules};
+  token_stream ts{input, rules};
   auto primary = [](token_stream &s) -> calc_result {
     if (!s.check(token_kind::integer)) {
       return reloco::unexpected<parse_error>(s.error_here("expected a number"));

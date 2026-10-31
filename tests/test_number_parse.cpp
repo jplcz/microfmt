@@ -95,14 +95,17 @@ TEST(NumberParse, PrefixParse) {
 }
 
 #ifdef __SIZEOF_INT128__
+__extension__ typedef __int128 int128_type;
+__extension__ typedef unsigned __int128 uint128_type;
+
 TEST(NumberParse, Int128) {
-  auto r = parse<unsigned __int128>("340282366920938463463374607431768211455");
+  auto r = parse<uint128_type>("340282366920938463463374607431768211455");
   ASSERT_TRUE(r.has_value());
-  EXPECT_EQ(r.value(), ~static_cast<unsigned __int128>(0));
-  auto o = parse<unsigned __int128>("340282366920938463463374607431768211456");
+  EXPECT_EQ(r.value(), ~static_cast<uint128_type>(0));
+  auto o = parse<uint128_type>("340282366920938463463374607431768211456");
   ASSERT_FALSE(o.has_value());
   EXPECT_EQ(o.error().code, number_errc::overflow);
-  auto m = parse<__int128>("-170141183460469231731687303715884105728");
+  auto m = parse<int128_type>("-170141183460469231731687303715884105728");
   ASSERT_TRUE(m.has_value());
   EXPECT_TRUE(m.value() < 0);
 }
