@@ -7,6 +7,7 @@
 /** @file math.hpp @brief Vector and matrix formatting views. */
 
 #include "../microfmt.hpp"
+#include "floating.hpp"
 #include <cstddef>
 #include <string_view>
 #include <type_traits>
@@ -22,6 +23,7 @@ template <typename T, size_t N> struct vec_view {
 };
 
 template <typename T> struct vec3_view {
+  // NOLINTNEXTLINE(reloco-no-c-array): aggregate view type, brace-initialised by users
   T values[3];
 };
 

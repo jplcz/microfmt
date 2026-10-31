@@ -42,3 +42,14 @@ TEST(UnitsTest, AutomaticallyScalesBinaryByteValues) {
   microfmt::format_to(buffer.as_sink(), "{}", microfmt::auto_bytes(999));
   EXPECT_EQ(buffer.view(), "999 B");
 }
+
+TEST(UnitsPrecision, MultiDigitPrecisionIsParsedAndCapped) {
+  {
+    const auto r = microfmt::format<32>("{:.10}", microfmt::auto_bytes(uint64_t{1536}));
+    EXPECT_EQ(r.view(), "1.5000000000 KiB");
+  }
+  {
+    const auto r = microfmt::format<64>("{:.99}", microfmt::auto_bytes(uint64_t{1536}));
+    EXPECT_EQ(r.view(), "1.500000000000000 KiB");
+  }
+}

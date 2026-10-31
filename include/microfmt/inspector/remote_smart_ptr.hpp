@@ -50,7 +50,20 @@ public:
     if (!pointer_(space_, ptr_addr_, obj_addr)) {
       return false;
     }
+    return format_resolved(obj_addr, out);
+  }
 
+  /**
+   * @brief Renders the pointee at an already decoded address.
+   *
+   * Used when the pointer value was read from a local mirror of the remote
+   * structure (as `MICROFMT_REMOTE_STRUCT` does), so the pointer itself must
+   * not be re-read from the address space.
+   * @param obj_addr Remote address of the pointee (`0` renders `nullptr`).
+   * @param out Destination sink.
+   * @return `true` on success; `false` when a required remote read fails.
+   */
+  bool format_resolved(uintptr_t obj_addr, const sink &out) const noexcept {
     if (obj_addr == 0) {
       out.write("nullptr");
       return true;
@@ -135,6 +148,24 @@ public:
     if (!control_block_(space_, addr_, cb_addr)) {
       return false;
     }
+    return format_resolved(obj_addr, cb_addr, out);
+  }
+
+  /**
+   * @brief Renders the pointee and counts from already decoded addresses.
+   *
+   * Used when the pointer fields were read from a local mirror of the remote
+   * structure, so they must not be re-read from the address space.
+   * @param obj_addr Remote address of the pointee (`0` renders `shared_ptr(nullptr)`).
+   * @param cb_addr Remote address of the control block (`0` when unknown).
+   * @param out Destination sink.
+   * @return `true` on success.
+   */
+  bool format_resolved(uintptr_t obj_addr, uintptr_t cb_addr, const sink &out) const noexcept {
+    if (obj_addr == 0) {
+      out.write("shared_ptr(nullptr)");
+      return true;
+    }
 
     RemoteRefCount use_cnt = -1;
     RemoteRefCount weak_cnt = -1;
@@ -216,7 +247,19 @@ public:
     if (!pointer_(space_, addr_, obj_addr)) {
       return false;
     }
+    return format_resolved(obj_addr, out);
+  }
 
+  /**
+   * @brief Renders the pointee and count at an already decoded address.
+   *
+   * Used when the pointer value was read from a local mirror of the remote
+   * structure, so it must not be re-read from the address space.
+   * @param obj_addr Remote address of the pointee (`0` renders `intrusive_ptr(nullptr)`).
+   * @param out Destination sink.
+   * @return `true` on success.
+   */
+  bool format_resolved(uintptr_t obj_addr, const sink &out) const noexcept {
     if (obj_addr == 0) {
       out.write("intrusive_ptr(nullptr)");
       return true;
@@ -337,8 +380,9 @@ template <typename T, typename RemotePtr> struct remote_field_traits<remote_uniq
       return;
     }
     span<std::byte> scratch_bytes(reinterpret_cast<std::byte *>(work_buf.data()), work_buf.size());
-    remote_unique_ptr_view<T, RemotePtr> view(reinterpret_cast<uintptr_t>(field_ptr), space, scratch_bytes, 0);
-    view.format(out);
+    // field_ptr points into the local mirror, so use the decoded address instead of re-reading it remotely
+    remote_unique_ptr_view<T, RemotePtr> view(0, space, scratch_bytes, 0);
+    view.format_resolved(obj_addr, out);
   }
   RELOCO_END_UNSAFE_CODE
 };
@@ -355,9 +399,10 @@ struct remote_field_traits<remote_shared_ptr<T, RemotePtr, RemoteRefCount>> {
       return;
     }
     span<std::byte> scratch_bytes(reinterpret_cast<std::byte *>(work_buf.data()), work_buf.size());
-    remote_shared_ptr_view<T, RemotePtr, RemoteRefCount> view(
-        reinterpret_cast<uintptr_t>(field_ptr), space, scratch_bytes, 0, sizeof(RemotePtr), 0, sizeof(RemoteRefCount));
-    view.format(out);
+    // field_ptr points into the local mirror, so use the decoded addresses instead of re-reading them remotely
+    remote_shared_ptr_view<T, RemotePtr, RemoteRefCount> view(0, space, scratch_bytes, 0, sizeof(RemotePtr), 0,
+                                                              sizeof(RemoteRefCount));
+    view.format_resolved(sptr.address(), sptr.control_block_address(), out);
   }
   RELOCO_END_UNSAFE_CODE
 };
@@ -376,9 +421,9 @@ struct remote_field_traits<remote_intrusive_ptr<T, RefCountOffset, RemotePtr, Re
     }
 
     span<std::byte> scratch_bytes(reinterpret_cast<std::byte *>(work_buf.data()), work_buf.size());
-    remote_intrusive_ptr_view<T, RemotePtr, RemoteRefCount> view(reinterpret_cast<uintptr_t>(field_ptr), space,
-                                                                 scratch_bytes, 0, RefCountOffset);
-    view.format(out);
+    // field_ptr points into the local mirror, so use the decoded address instead of re-reading it remotely
+    remote_intrusive_ptr_view<T, RemotePtr, RemoteRefCount> view(0, space, scratch_bytes, 0, RefCountOffset);
+    view.format_resolved(iptr.address(), out);
   }
   RELOCO_END_UNSAFE_CODE
 };

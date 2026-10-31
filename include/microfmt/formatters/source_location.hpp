@@ -77,8 +77,12 @@ template <typename Location> struct formatter<basic_source_loc_view<Location>> {
     const bool emit_fn = (sv.show_function && parse_fn && !parse_short);
     if (emit_fn) {
       out.write(" in ");
-      out.write(sv.loc.function_name());
-      out.write("()");
+      const microfmt::string_view function = sv.loc.function_name();
+      out.write(function);
+      // Most compilers already include the parameter list in function_name().
+      if (function.empty() || function.back() != ')') {
+        out.write("()");
+      }
     }
   }
 };

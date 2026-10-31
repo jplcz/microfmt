@@ -67,11 +67,12 @@ public:
   [[nodiscard]] constexpr size_type capacity() const noexcept { return m_capacity; }
   [[nodiscard]] constexpr bool empty() const noexcept { return m_size == 0; }
 
-  [[nodiscard]] constexpr reference operator[](size_type pos) & noexcept RELOCO_LIFETIMEBOUND {
+  RELOCO_CHECKED [[nodiscard]] constexpr reference operator[](size_type pos) & noexcept RELOCO_LIFETIMEBOUND {
     RELOCO_ASSERT(pos < size(), "Index out of bounds");
     return m_data[pos];
   }
-  [[nodiscard]] constexpr const_reference operator[](size_type pos) const & noexcept RELOCO_LIFETIMEBOUND {
+  RELOCO_CHECKED [[nodiscard]] constexpr const_reference operator[](size_type pos) const & noexcept
+      RELOCO_LIFETIMEBOUND {
     RELOCO_ASSERT(pos < size(), "Index out of bounds");
     return m_data[pos];
   }
@@ -164,10 +165,10 @@ protected:
 
 private:
   reloco::allocator_ref m_alloc;
-  char *m_data;
-  char *m_inline_ptr; // Keeps track of the stack buffer address to know when to deallocate
-  std::size_t m_size;
-  std::size_t m_capacity;
+  char *m_data = nullptr;
+  char *m_inline_ptr = nullptr; // Keeps track of the stack buffer address to know when to deallocate
+  std::size_t m_size = 0;
+  std::size_t m_capacity = 0;
 
   void append(microfmt::string_view sv) noexcept {
     if (sv.empty())
@@ -244,6 +245,10 @@ public:
 
   constexpr memory_buffer() noexcept : memory_buffer(reloco::default_allocator()) {}
 
+  memory_buffer(const memory_buffer &) = delete;
+  memory_buffer &operator=(const memory_buffer &) = delete;
+  ~memory_buffer() noexcept = default;
+
   // Move constructor delegates to base, providing the new inline stack boundary
   constexpr memory_buffer(memory_buffer &&other) noexcept
       : detail::memory_buffer_base(std::move(other), m_inline, InlineCapacity) {}
@@ -255,6 +260,7 @@ public:
   }
 
 private:
+  // NOLINTNEXTLINE(reloco-no-c-array): raw inline storage handed to the base as a pointer
   alignas(void *) char m_inline[InlineCapacity];
 };
 

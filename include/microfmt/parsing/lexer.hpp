@@ -146,7 +146,7 @@ public:
 
 private:
   [[nodiscard]] static constexpr char fold(char ch) noexcept {
-    return (ch >= 'A' && ch <= 'Z') ? static_cast<char>(ch - 'A' + 'a') : ch;
+    return (ch >= 'A' && ch <= 'Z') ? static_cast<char>((static_cast<unsigned>(static_cast<unsigned char>(ch)) | 0x20U) & 0x7FU) : ch;
   }
 
   // Orders `stored` against `word` as if `word` were lower-case: <0 when stored sorts first.
@@ -196,13 +196,14 @@ public:
   explicit constexpr keyword_table(Words... words) noexcept : words_{{microfmt::string_view(words)...}} {
     // Insertion sort: N is small and this stays constexpr and allocation-free.
     for (size_t i = 1; i < N; ++i) {
-      const microfmt::string_view key = words_[i];
+      const char *const data = words_[i].data();
+      const size_t length = words_[i].size();
       size_t j = i;
-      while (j > 0 && key < words_[j - 1]) {
+      while (j > 0 && microfmt::string_view(data, length) < words_[j - 1]) {
         words_[j] = words_[j - 1];
         --j;
       }
-      words_[j] = key;
+      words_[j] = microfmt::string_view(data, length);
     }
     for (size_t i = 1; i < N; ++i) {
       RELOCO_ASSERT(words_[i - 1] < words_[i], "keyword_table contains a duplicate word");
@@ -214,9 +215,6 @@ public:
   }
   sorted_words view() const && = delete;
 
-  // Implicit on purpose so `lexer_rules::keywords = table;` reads naturally.
-  constexpr operator sorted_words() const & noexcept RELOCO_LIFETIMEBOUND { return view(); }
-  operator sorted_words() const && = delete;
 
 private:
   reloco::array<microfmt::string_view, N> words_;
@@ -246,7 +244,7 @@ template <typename... Words>
  * Every rule can be disabled by leaving its member empty/false, see
  * `docs/lexer.md` for the full list.
  */
-struct lexer_rules {
+struct RELOCO_POINTER lexer_rules {
   sorted_words keywords{};                           ///< Exact, case-sensitive.
   span<const microfmt::string_view> operators{};     ///< Longest match wins; order irrelevant.
   microfmt::string_view punctuation{"(){}[],;"};     ///< Single-byte tokens.
@@ -364,14 +362,15 @@ struct lexer_rules {
 class RELOCO_POINTER lexer {
 public:
   /** @param source Text to tokenize; must outlive the lexer. @param rules Language description (copied). */
-  explicit constexpr lexer(microfmt::string_view source RELOCO_LIFETIMEBOUND, const lexer_rules &rules) noexcept
+  explicit constexpr lexer(microfmt::string_view source RELOCO_LIFETIMEBOUND, const lexer_rules &rules RELOCO_COPIES) noexcept
       : source_(source), rules_(rules) {}
   // Only an rvalue std::string is rejected; literals and lvalues still bind to string_view above.
   template <typename S, std::enable_if_t<std::is_same_v<S, std::string>, int> = 0>
-  explicit lexer(S &&, const lexer_rules &) = delete;
+  explicit lexer(S &&source RELOCO_LIFETIMEBOUND, const lexer_rules &) = delete;
 
   /** Consumes and returns the next token. */
-  [[nodiscard]] constexpr token next() noexcept {
+  // The token borrows the source text, not `ended_`, so updating the flag after the scan is sound.
+  RELOCO_BORROW_EXEMPT [[nodiscard]] constexpr token next() noexcept {
     const token result = scan(cursor_);
     if (result.kind == token_kind::end) {
       ended_ = true;
@@ -446,6 +445,7 @@ public:
 
 private:
   using cursor = position;
+
 
   [[nodiscard]] constexpr char at(size_t index) const noexcept {
     return index < source_.size() ? source_[index] : '\0';
@@ -650,7 +650,7 @@ private:
     const bool triple = contains_byte(rules_.multiline_triple_quotes, quote) && at(index + 1) == quote &&
                         at(index + 2) == quote;
     const bool multiline = triple || contains_byte(rules_.multiline_quotes, quote);
-    size_t i = index + (triple ? 3 : 1);
+    size_t i = index + (triple ? size_t{3} : size_t{1});
     terminated = false;
     while (i < source_.size()) {
       const char ch = source_[i];
@@ -766,7 +766,7 @@ private:
   }
 
   [[nodiscard]] static constexpr char fold_lower(char ch) noexcept {
-    return (ch >= 'A' && ch <= 'Z') ? static_cast<char>(ch - 'A' + 'a') : ch;
+    return (ch >= 'A' && ch <= 'Z') ? static_cast<char>((static_cast<unsigned>(static_cast<unsigned char>(ch)) | 0x20U) & 0x7FU) : ch;
   }
 
   // Length of the longest `number_suffixes` entry at `index` (ASCII case-insensitive) not followed by an identifier byte.

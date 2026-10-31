@@ -312,6 +312,7 @@ public:
   RELOCO_REINITIALIZES constexpr void reset() noexcept { m_pos = 0; }
 
 private:
+  // NOLINTNEXTLINE(reloco-no-c-array): raw backing storage handed to the type-erased sink base as a pointer
   char m_storage[N]{};
 };
 
@@ -594,6 +595,7 @@ public:
   }
 
 private:
+  // NOLINTNEXTLINE(reloco-no-c-array): raw backing storage handed to the type-erased sink base as a pointer
   char m_storage[N]{};
 };
 
@@ -1122,7 +1124,7 @@ format_hex_backward(char *ptr, UInt value, bool uppercase) noexcept {
 RELOCO_BEGIN_UNSAFE_CODE
 RELOCO_ALWAYS_INLINE
 inline void emit_formatted_int(const sink &out, const char *digits, size_t digits_len, bool is_negative,
-                               microfmt::string_view prefix, uint8_t width, bool zero_pad) noexcept {
+                               microfmt::string_view prefix, uint16_t width, bool zero_pad) noexcept {
   const size_t prefix_len = prefix.size();
   const size_t total_content_len = digits_len + prefix_len + (is_negative ? size_t{1} : size_t{0});
   const size_t pad_len = (width > total_content_len) ? (width - total_content_len) : 0;
@@ -1157,7 +1159,7 @@ RELOCO_END_UNSAFE_CODE
 
 // Integers (Signed & Unsigned)
 struct MICROFMT_API_CLASS int_formatter_specs {
-  uint8_t width{0};
+  uint16_t width{0};
 
   // Bitfield backing all boolean state in a single byte
   // C++17 clean bitfields without in-class initializers
@@ -1167,6 +1169,7 @@ struct MICROFMT_API_CLASS int_formatter_specs {
     uint8_t zero_pad : 1;
     uint8_t is_hex : 1;
     uint8_t uppercase : 1;
+    uint8_t is_bin : 1;
   } flags{}; // Zero-initializes all bit-field members to 0
   // NOLINTEND(reloco-member-init)
 
@@ -1211,7 +1214,8 @@ struct MICROFMT_API_CLASS int_formatter_specs {
   RELOCO_BEGIN_UNSAFE_CODE
   template <typename T> void format_int_impl(T val, const sink &out) const noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
-    constexpr size_t BUF_SIZE = (sizeof(T) <= 4) ? 12 : (sizeof(T) <= 8) ? 24 : 48;
+    constexpr size_t DEC_BUF_SIZE = (sizeof(T) <= 4) ? 12 : (sizeof(T) <= 8) ? 24 : 48;
+    constexpr size_t BUF_SIZE = DEC_BUF_SIZE > sizeof(T) * 8 ? DEC_BUF_SIZE : sizeof(T) * 8; // binary needs one slot per bit
     char buffer[BUF_SIZE];
     char *end = buffer + BUF_SIZE;
     char *start = end;
@@ -1232,7 +1236,15 @@ struct MICROFMT_API_CLASS int_formatter_specs {
     }
 
     microfmt::string_view prefix{};
-    if (flags.is_hex != 0) {
+    if (flags.is_bin != 0) {
+      do {
+        *--start = static_cast<char>('0' + (uval & 1U));
+        uval = static_cast<unsigned_t>(uval >> 1);
+      } while (uval != 0);
+      if (flags.alt_form != 0) {
+        prefix = microfmt::string_view("0b");
+      }
+    } else if (flags.is_hex != 0) {
       start = detail::format_hex_backward(end, uval, flags.uppercase);
       if (flags.alt_form != 0) {
         prefix = flags.uppercase != 0 ? microfmt::string_view("0X") : microfmt::string_view("0x");
@@ -1900,6 +1912,7 @@ namespace detail {
  */
 template <typename... Args> struct RELOCO_POINTER format_args_store {
   // Use size 1 for empty packs to avoid zero-length array compiler errors
+  // NOLINTNEXTLINE(reloco-no-c-array): pack-sized fixed table; reloco::array is not available in this core header
   const void *const ptrs[sizeof...(Args) == 0 ? 1 : sizeof...(Args)];
 
   // Captures pointers to `args`; the constructed object (and thus any

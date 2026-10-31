@@ -51,6 +51,9 @@ formatters.
 | [Protocols and structured output](formatters/protocols-and-data.md) | CAN, I2C, SPI, JSON, and CBOR diagnostics or streaming output | `can.hpp`, `i2c.hpp`, `spi.hpp`, `json.hpp`, `cbor.hpp` |
 | [Presentation and compatibility](formatters/presentation-and-bridges.md) | ANSI styling, text layout, and the `{fmt}` compatibility bridge | `ansi.hpp`, `styled.hpp`, `fmt.hpp` |
 
+For a compact lookup of every formatter, its accepted specifier tokens, and
+verified examples, see the [formatter cheatsheet](cheatsheet.md).
+
 ## Common formatter rules
 
 * A formatter-specific specifier applies only to the argument in that

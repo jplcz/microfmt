@@ -142,7 +142,7 @@ template <> struct formatter<remote_fn_ptr> {
    * @param ctx Format parse context exposing the specifier text.
    */
   constexpr void parse(format_parse_context &ctx) noexcept {
-    auto spec = ctx.spec();
+    const auto spec = ctx.spec();
     if (!spec.empty()) {
       mode = spec.front();
     }
@@ -164,7 +164,7 @@ template <> struct formatter<remote_fn_ptr> {
       return;
     }
 
-    auto sym_view = remote_symbol_view(fn.address(), fn.resolver(), fn.context(), true);
+    const auto sym_view = remote_symbol_view(fn.address(), fn.resolver(), fn.context(), true);
     if (mode == '#') {
       microfmt::format_to(out, "{:#}", sym_view);
     } else {
@@ -212,6 +212,8 @@ public:
    * @brief Loads the object into the scratch buffer.
    * @return A pointer into the scratch buffer, or a precise loading error.
    */
+  // checks the scratch alignment of a bounded buffer; the pointer-to-integer cast is only used for the modulo test.
+  RELOCO_BEGIN_UNSAFE_CODE
   [[nodiscard]] expected<T *, remote_load_error> load() const noexcept RELOCO_LIFETIMEBOUND {
     if (addr_ == 0)
       return unexpected(remote_load_error::null_address);
@@ -227,6 +229,7 @@ public:
       return unexpected(remote_load_error::read_failed);
     return out_ptr;
   }
+  RELOCO_END_UNSAFE_CODE
 
   /**
    * @brief Returns the address space handle.

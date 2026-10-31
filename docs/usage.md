@@ -236,7 +236,9 @@ microfmt::format_to(output.as_sink(), "{1:08x} {0}", name, value);
 ```
 
 Use `{}` for the default representation, `{:x}` or `{:X}` for hexadecimal
-integers, and `{:04x}` for a zero-padded hexadecimal width. Positional fields
+integers, `{:b}` for binary, and `{:04x}` or `{:08b}` for a zero-padded width.
+Integer specs are `[#][0][width][b|x|X]`, where `#` adds the `0b`/`0x`/`0X`
+prefix and the `#` and `0` flags may appear in either order. Positional fields
 use the same specifiers after `:`, as in `{2:04x}`. Automatic and numeric
 fields may coexist; numeric fields do not advance the automatic argument
 index. Literal braces are written as `{{` and `}}`. Named arguments and

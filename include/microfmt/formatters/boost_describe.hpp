@@ -7,6 +7,7 @@
 /** @file boost_describe.hpp @brief Boost.Describe integration for reflected types. */
 
 #include "../microfmt.hpp"
+#include "reflect_annotate.hpp"
 #include <boost/describe.hpp>
 #include <type_traits>
 
@@ -22,6 +23,9 @@ template <typename E>
 struct is_described_enum
     : std::integral_constant<bool, std::is_enum_v<E> && boost::describe::has_describe_enumerators<E>::value> {};
 
+// Lets reflection.hpp's automatic enum formatter yield to this one when both headers are included.
+template <typename E> struct enum_has_dedicated_formatter<E, std::enable_if_t<is_described_enum<E>::value>> : std::true_type {};
+
 } // namespace detail
 
 // ============================================================================
@@ -34,7 +38,7 @@ template <typename E> struct formatter<E, std::enable_if_t<detail::is_described_
     using Enumerators = boost::describe::describe_enumerators<E>;
     bool found = false;
 
-    boost::mp11::mp_for_each<Enumerators>([&](auto D) noexcept {
+    boost::mp11::mp_for_each<Enumerators>([&found, &out, val](auto D) noexcept {
       if (!found && D.value == val) {
         out.write(D.name);
         found = true;
@@ -44,11 +48,12 @@ template <typename E> struct formatter<E, std::enable_if_t<detail::is_described_
     if (!found) {
       // Fallback: format raw underlying integer if value is unmapped/invalid
       using Underlying = std::underlying_type_t<E>;
-      format_to(out, "static_cast<{}>({})",
-                sizeof(Underlying) == 1   ? "uint8_t"
-                : sizeof(Underlying) == 2 ? "uint16_t"
-                                          : "uint32_t",
-                static_cast<Underlying>(val));
+      microfmt::format_to(out, "static_cast<{}>({})",
+                          sizeof(Underlying) == 1   ? "uint8_t"
+                          : sizeof(Underlying) == 2 ? "uint16_t"
+                          : sizeof(Underlying) == 4 ? "uint32_t"
+                                                    : "uint64_t",
+                          static_cast<Underlying>(val));
     }
   }
 };
@@ -65,7 +70,7 @@ template <typename T> struct formatter<T, std::enable_if_t<detail::is_described_
     out.put('{');
     bool first = true;
 
-    boost::mp11::mp_for_each<Members>([&](auto D) noexcept {
+    boost::mp11::mp_for_each<Members>([&first, &out, &val](auto D) noexcept {
       if (!first) {
         out.write(", ");
       }
@@ -76,7 +81,7 @@ template <typename T> struct formatter<T, std::enable_if_t<detail::is_described_
       out.write(": ");
 
       // Format member value recursively via microfmt
-      format_to(out, "{}", val.*D.pointer);
+      microfmt::format_to(out, "{}", val.*D.pointer);
     });
 
     out.put('}');

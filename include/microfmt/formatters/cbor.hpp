@@ -150,6 +150,13 @@ public:
     return *this;
   }
 
+  // Floating point and pointers would otherwise silently convert to bool.
+  template <typename T, typename std::enable_if<std::is_floating_point<T>::value ||
+                                                    (std::is_pointer<T>::value &&
+                                                     !std::is_same<typename std::remove_cv<typename std::remove_pointer<T>::type>::type, char>::value),
+                                                int>::type = 0>
+  map_writer &kv(microfmt::string_view, T) = delete;
+
   // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
   RELOCO_BEGIN_UNSAFE_CODE
   map_writer &kv(microfmt::string_view k, bool val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
@@ -282,6 +289,13 @@ public:
       out_.put(static_cast<char>(b));
     return *this;
   }
+
+  // Floating point and pointers would otherwise silently convert to bool.
+  template <typename T, typename std::enable_if<std::is_floating_point<T>::value ||
+                                                    (std::is_pointer<T>::value &&
+                                                     !std::is_same<typename std::remove_cv<typename std::remove_pointer<T>::type>::type, char>::value),
+                                                int>::type = 0>
+  array_writer &val(T) = delete;
 
   // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
   RELOCO_BEGIN_UNSAFE_CODE

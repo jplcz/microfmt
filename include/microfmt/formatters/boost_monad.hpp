@@ -26,10 +26,10 @@ template <typename T> struct formatter<boost::optional<T>> {
     }
 
     out.write("Some(");
-    formatter<T> inner;
+    formatter<T> inner{};
     format_parse_context inner_context(forwarded_spec);
     inner.parse(inner_context);
-    inner.format(*value, out);
+    inner.format(value.get(), out);
     out.put(')');
   }
 };
@@ -55,7 +55,7 @@ template <typename... Ts> struct formatter<boost::variant2::variant<Ts...>> {
     boost::variant2::visit(
         [this, &out](const auto &active) noexcept {
           using active_type = std::decay_t<decltype(active)>;
-          formatter<active_type> inner;
+          formatter<active_type> inner{};
           format_parse_context inner_context(forwarded_spec);
           inner.parse(inner_context);
           inner.format(active, out);

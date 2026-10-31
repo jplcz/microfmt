@@ -32,7 +32,7 @@ public:
 
   explicit constexpr systemd_sink(write_fn_t write_fn = write_to_journal) noexcept : write_fn_(write_fn) {}
 
-  [[nodiscard]] log_sink as_sink() noexcept RELOCO_LIFETIMEBOUND {
+  [[nodiscard]] log_sink as_sink() & noexcept RELOCO_LIFETIMEBOUND {
     return log_sink(systemd_sink_tag<MessageCapacity, IdentifierCapacity>{}, *this);
   }
 
@@ -50,6 +50,7 @@ private:
     }
 
     char priority_field[] = "PRIORITY=0";
+    // NOLINTNEXTLINE(reloco-narrowing-flow): priority is a syslog level 0..7
     priority_field[9] = static_cast<char>('0' + priority);
 
     buffer_sink<IdentifierCapacity + 18> identifier_field;
@@ -66,8 +67,10 @@ private:
     const auto message_view = message_field.view();
     const iovec fields[] = {
         {priority_field, sizeof(priority_field) - 1},
+        // NOLINTBEGIN(reloco-banned-construct): iovec::iov_base is non-const; sd_journal_sendv only reads it
         {const_cast<char *>(identifier_view.data()), identifier_view.size()},
         {const_cast<char *>(message_view.data()), message_view.size()},
+        // NOLINTEND(reloco-banned-construct)
     };
     if (::sd_journal_sendv(fields, 3) < 0) {
       write_to_stdio(identifier, message);

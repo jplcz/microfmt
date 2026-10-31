@@ -31,21 +31,23 @@ MICROFMT_API_CONSTEXPR void int_formatter_specs::parse(format_parse_context &ctx
 
   size_t i = 0;
 
-  // Parse '#' (alternate form)
-  if (i < spec.size() && spec[i] == '#') {
-    flags.alt_form = 1;
-    ++i;
-  }
-
-  // Parse '0' (zero padding flag)
-  if (i < spec.size() && spec[i] == '0') {
-    flags.zero_pad = 1;
+  // Parse the '#' (alternate form) and '0' (zero padding) flags in either order
+  while (i < spec.size()) {
+    if (spec[i] == '#' && flags.alt_form == 0) {
+      flags.alt_form = 1;
+    } else if (spec[i] == '0' && flags.zero_pad == 0) {
+      flags.zero_pad = 1;
+    } else {
+      break;
+    }
     ++i;
   }
 
   // Parse width
   while (i < spec.size() && spec[i] >= '0' && spec[i] <= '9') {
-    width = static_cast<uint8_t>(width * 10 + (spec[i] - '0'));
+    // saturate instead of wrapping on absurdly long widths
+    const unsigned next = static_cast<unsigned>(width) * 10U + static_cast<unsigned>(spec[i] - '0');
+    width = next > 0xFFFFU ? uint16_t{0xFFFFU} : static_cast<uint16_t>(next);
     ++i;
   }
 
@@ -57,6 +59,8 @@ MICROFMT_API_CONSTEXPR void int_formatter_specs::parse(format_parse_context &ctx
     } else if (spec[i] == 'X') {
       flags.is_hex = 1;
       flags.uppercase = 1;
+    } else if (spec[i] == 'b') {
+      flags.is_bin = 1;
     }
   }
 }

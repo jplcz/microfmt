@@ -27,6 +27,7 @@ Start with the guide that matches what you are building:
 | [Package-manager integration](docs/package-managers.md) | Conan 2, vcpkg overlays, CPM.cmake, CPack packaging, and CMake-based dependency managers |
 | [Hardened containers](docs/hardened-containers.md) | Checked views and results, non-trapping access, assertion handling, and explicit security opt-out |
 | [Formatter guide](docs/formatters.md) | Binary and diagnostic values, ranges, time, units, protocols, structured output, and presentation |
+| [Formatter cheatsheet](docs/cheatsheet.md) | Every formatter with its header, accepted spec tokens, and verified examples, for quick lookup by humans and AI agents |
 | [Lexer guide](docs/lexer.md) | Base tokenizer engine, keyword tables, presets, and ANSI highlighting |
 | [Token stream guide](docs/token-stream.md) | Lookahead stream, expression, list, multi-error statement and recovery helpers, caret error reports and recursion guard for hand-written parsers |
 | [Mini language example](docs/mini-language.md) | A complete small language (variables, calls, `?:`, blocks, multi-error reports) that shows how all the token stream helpers fit together |

@@ -211,7 +211,7 @@ template <std::size_t MaxSinks, typename Channel = null_wait_channel> class fano
   static_assert(MaxSinks > 0, "fanout_log_sink needs room for at least one sink");
 
   struct RELOCO_POINTER channel_guard {
-    explicit channel_guard(Channel &c) noexcept : c_(c) { c_.lock(); }
+    RELOCO_LOCK_IMPL explicit channel_guard(Channel &c) noexcept : c_(c) { c_.lock(); }
     ~channel_guard() noexcept { c_.unlock(); }
     channel_guard(const channel_guard &) = delete;
     channel_guard &operator=(const channel_guard &) = delete;

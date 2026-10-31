@@ -119,9 +119,16 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timespec_v<T>>> {
     int64_t sec = static_cast<int64_t>(ts.tv_sec);
     uint32_t nsec = static_cast<uint32_t>(ts.tv_nsec);
 
+    // A negative tv_sec with a positive fraction is (sec + frac); print its magnitude, e.g. {-2, 5} -> -1.999999995.
     if (sec < 0) {
       out.put('-');
-      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(-sec), false, 0);
+      uint64_t magnitude = static_cast<uint64_t>(-(sec + 1));
+      if (nsec > 0) {
+        nsec = 1000000000U - nsec;
+      } else {
+        ++magnitude;
+      }
+      detail::format_unsigned<detail::radix::decimal>(out, magnitude, false, 0);
     } else {
       detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(sec), false, 0);
     }
@@ -194,9 +201,16 @@ template <typename T> struct formatter<T, std::enable_if_t<is_timeval_v<T>>> {
     int64_t sec = static_cast<int64_t>(tv.tv_sec);
     uint32_t usec = static_cast<uint32_t>(tv.tv_usec);
 
+    // A negative tv_sec with a positive fraction is (sec + frac); print its magnitude, e.g. {-2, 5} -> -1.999999995.
     if (sec < 0) {
       out.put('-');
-      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(-sec), false, 0);
+      uint64_t magnitude = static_cast<uint64_t>(-(sec + 1));
+      if (usec > 0) {
+        usec = 1000000U - usec;
+      } else {
+        ++magnitude;
+      }
+      detail::format_unsigned<detail::radix::decimal>(out, magnitude, false, 0);
     } else {
       detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint64_t>(sec), false, 0);
     }

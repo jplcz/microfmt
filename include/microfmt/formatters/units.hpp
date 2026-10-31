@@ -7,6 +7,7 @@
 /** @file units.hpp @brief SI, byte-size, and unit-suffixed formatting views. */
 
 #include "../microfmt.hpp"
+#include "floating.hpp"
 #include <cstdint>
 #include <string_view>
 #include <type_traits>
@@ -100,9 +101,18 @@ template <typename T> struct formatter<auto_unit_view<T>> {
     auto spec = ctx.spec();
     for (size_t i = 0; i < spec.size(); ++i) {
       if (spec[i] == '.' && (i + 1) < spec.size()) {
-        char next = spec[i + 1];
-        if (next >= '0' && next <= '9') {
-          parse_precision = static_cast<uint8_t>(next - '0');
+        // multi-digit precision, capped at 15 so remainder * 10^prec cannot overflow uint64_t
+        unsigned value = 0;
+        bool any = false;
+        for (size_t j = i + 1; j < spec.size() && spec[j] >= '0' && spec[j] <= '9'; ++j) {
+          value = value * 10U + static_cast<unsigned>(spec[j] - '0');
+          any = true;
+          if (value > 15U) {
+            value = 15U;
+          }
+        }
+        if (any) {
+          parse_precision = static_cast<uint8_t>(value);
         }
       }
     }
@@ -138,7 +148,7 @@ template <typename T> struct formatter<auto_unit_view<T>> {
     // Whole part
     detail::format_unsigned<detail::radix::decimal>(out, abs_val, false, 0);
 
-    const uint8_t prec = (parse_precision != 255) ? parse_precision : auv.precision;
+    const uint8_t prec = (parse_precision != 255) ? parse_precision : (auv.precision > 15 ? uint8_t{15} : auv.precision);
 
     // Fractional part via pure integer arithmetic
     if (prec > 0 && scale_idx > 0) {

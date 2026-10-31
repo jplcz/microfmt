@@ -50,6 +50,14 @@ namespace microfmt {
  * be opted in from a header that compiles under every toolchain. */
 template <typename T> struct enable_reflect_format : std::false_type {};
 
+namespace detail {
+
+/** @brief Set by other enum formatter headers (e.g. `boost_describe.hpp`) for the enums they already format, so
+ * `reflection.hpp`'s automatic enum formatter steps aside instead of causing an ambiguous partial specialization. */
+template <typename E, typename = void> struct enum_has_dedicated_formatter : std::false_type {};
+
+} // namespace detail
+
 } // namespace microfmt
 
 #if RELOCO_HAS_REFLECTION
@@ -104,7 +112,7 @@ template <typename E> std::string generate_reflect_enum_dump(std::string_view ty
     out += "\"); return;\n";
   }
 
-  out += "    default: break;\n    }\n    format_to(out, \"{}\", static_cast<std::underlying_type_t<";
+  out += "    default: break;\n    }\n    microfmt::format_to(out, \"{}\", static_cast<std::underlying_type_t<";
   out += type_name;
   out += ">>(val));\n  }\n};\n";
   return out;

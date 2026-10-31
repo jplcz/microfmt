@@ -87,8 +87,10 @@ provider pattern and implementation guidance.
 
 ## Faults and traversal bounds
 
-The views render `<fault>` when a required node read, link read, or element
-format fails. Empty or missing roots and heads render an empty container.
+The views render `<fault>` inside the braces when a required node read, link
+read, or element format fails. If the container object itself (for example a
+vector's size fields) cannot be read, or the root/head is missing, they render
+an empty container.
 Tree traversal uses a scratch-backed bounded node stack, so provide enough
 scratch for both that stack and an element read. Deep or malformed trees are
 bounded rather than recursively walked.

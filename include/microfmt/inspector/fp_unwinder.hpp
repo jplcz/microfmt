@@ -22,7 +22,7 @@ namespace microfmt {
  *
  * @tparam AbiTraits Architecture-specific frame layout traits.
  */
-template <typename AbiTraits> struct fp_unwinder_context {
+template <typename AbiTraits> struct RELOCO_POINTER fp_unwinder_context {
   /// Address space containing the stack to unwind.
   address_space_ref space;
 };
@@ -96,8 +96,8 @@ template <typename AbiTraits> struct microfmt::frame_unwinder_traits<microfmt::f
     typename AbiTraits::register_type saved_fp = 0;
     typename AbiTraits::register_type saved_ra = 0;
 
-    uintptr_t fp_addr = static_cast<uintptr_t>(static_cast<ptrdiff_t>(current_fp) + fp_slot_offset);
-    uintptr_t ra_addr = static_cast<uintptr_t>(static_cast<ptrdiff_t>(current_fp) + ra_slot_offset);
+    const uintptr_t fp_addr = microfmt::detail::add_address_offset(current_fp, fp_slot_offset);
+    const uintptr_t ra_addr = microfmt::detail::add_address_offset(current_fp, ra_slot_offset);
 
     if (!context->space.read_bytes(fp_addr, &saved_fp, ptr_size))
       return false;

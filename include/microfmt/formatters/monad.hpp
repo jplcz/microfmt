@@ -30,10 +30,10 @@ template <typename T> struct formatter<std::optional<T>> {
   void format(const std::optional<T> &opt, const sink &out) const noexcept {
     if (opt.has_value()) {
       out.write("Some(");
-      formatter<T> inner_fmt;
+      formatter<T> inner_fmt{};
       format_parse_context inner_ctx(forwarded_spec);
       inner_fmt.parse(inner_ctx);
-      inner_fmt.format(*opt, out);
+      inner_fmt.format(opt.value(), out);
       out.put(')');
     } else {
       out.write("None");

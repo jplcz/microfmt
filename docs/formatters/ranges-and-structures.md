@@ -357,5 +357,5 @@ standard-library formatters. Container and monad element specifiers are
 forwarded to contained values.
 
 Boost.Asio addresses are rendered directly from their byte representation.
-Multiprecision integers default to hexadecimal and support `x`, `X`, `b`, and
-`#`; this avoids allocating a temporary decimal string.
+`boost::dynamic_bitset` defaults to binary and supports `x`, `X`, `b`, and
+`#` (prefix); this avoids allocating a temporary string.

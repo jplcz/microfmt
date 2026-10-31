@@ -80,14 +80,15 @@ private:
     }
 
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
+    // NOLINTNEXTLINE(reloco-banned-construct): to_copy is clamped to the remaining capacity above
     std::memcpy(self->data_ + self->size_, str.data(), to_copy);
     RELOCO_END_UNSAFE_BUFFER_USAGE;
 
     self->size_ += to_copy;
   }
 
-  char *data_;
-  size_t capacity_;
+  char *data_ = nullptr;
+  size_t capacity_ = 0;
   size_t size_{0};
 };
 
@@ -127,12 +128,13 @@ private:
 
     // Append via std::ostream so Boost.Asio grows the streambuf as needed.
     std::ostream os(self->streambuf_);
+    // NOLINTNEXTLINE(reloco-narrowing-flow): len <= max_chars_ and is a buffer length that fits streamsize
     os.write(str.data(), static_cast<std::streamsize>(len));
     self->written_ += len;
   }
 
-  boost::asio::streambuf *streambuf_;
-  size_t max_chars_;
+  boost::asio::streambuf *streambuf_ = nullptr;
+  size_t max_chars_ = 0;
   size_t written_{0};
 };
 

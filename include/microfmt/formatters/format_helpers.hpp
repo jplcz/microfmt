@@ -6,6 +6,7 @@
 
 /** @file format_helpers.hpp @brief Hexadecimal, byte, address, and alignment helpers. */
 #include "../microfmt.hpp"
+#include "binary.hpp" // the one-argument bin(value) overload lives there
 
 namespace microfmt {
 
@@ -51,8 +52,9 @@ template <typename T> struct bin_view {
   bool prefix{false};
 };
 
-template <typename T>
-[[nodiscard]] constexpr bin_view<T> bin(T val, int width = sizeof(T) * 8, bool prefix = false) noexcept {
+// `width` has no default: bin(value) alone is binary.hpp's overload, so including both headers stays unambiguous.
+template <typename T, std::enable_if_t<std::is_integral_v<T> && !std::is_same_v<T, bool>, int> = 0>
+[[nodiscard]] constexpr bin_view<T> bin(T val, int width, bool prefix = false) noexcept {
   return bin_view<T>{val, width, prefix};
 }
 
@@ -63,7 +65,8 @@ template <typename T> struct formatter<bin_view<T>> {
     if (b.prefix) {
       out.write("0b");
     }
-    detail::format_binary(out, static_cast<uint64_t>(b.value), b.width);
+    // zero-extend through the unsigned counterpart so negative values do not print 64 sign bits
+    detail::format_binary(out, static_cast<uint64_t>(static_cast<std::make_unsigned_t<T>>(b.value)), b.width);
   }
 };
 

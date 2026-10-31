@@ -108,7 +108,7 @@ template <> struct formatter<i2c_msg_view> {
   constexpr void parse(format_parse_context &ctx) noexcept {
     for (char c : ctx.spec()) {
       if (c == 'c' || c == 'C')
-        compact = true; // {:c} -> 0x68:W[0x75]
+        compact = true; // {:c} -> 0x68:W[75]
       if (c == 'x')
         uppercase_hex = false;
     }

@@ -52,8 +52,10 @@ Fields with a zero mask are skipped. The formatter has no custom specifier.
 
 ```cpp
 constexpr microfmt::bit_field fields[]{
-    MICROFMT_BIT_FLAG("enabled", 0),
-    MICROFMT_BIT_VALUE_HEX("mode", 0x0e, 1),
+    // MICROFMT_BIT_FLAG(bit_position, name)
+    MICROFMT_BIT_FLAG(0, "enabled"),
+    // MICROFMT_BIT_VALUE_HEX(mask, shift, name)
+    MICROFMT_BIT_VALUE_HEX(0x0e, 1, "mode"),
 };
 microfmt::format_to(out, "{}", microfmt::bits(status, fields));
 ```
@@ -130,8 +132,11 @@ matching Rust's `f32`/`f64` `Debug` convention (`1.0`, not `1`):
 #include <microfmt/formatters/floating.hpp>
 #include <microfmt/formatters/debug_float.hpp>
 
-microfmt::format_to(out, "{}", microfmt::as_debug(1.0)); // "1.0"
-microfmt::format_to(out, "{}", microfmt::as_debug(3.5)); // "3.5"
+// as_debug() borrows its argument, so pass an lvalue (rvalues are rejected).
+const double whole = 1.0;
+const double half = 3.5;
+microfmt::format_to(out, "{}", microfmt::as_debug(whole)); // "1.0"
+microfmt::format_to(out, "{}", microfmt::as_debug(half));  // "3.5"
 ```
 
 ## `format_helpers.hpp`

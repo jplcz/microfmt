@@ -39,7 +39,7 @@ constexpr string_view kOps[] = {"=", "==", "=>", "+"};
 
 lexer_rules simple_rules() {
   lexer_rules r;
-  r.keywords = kWords;
+  r.keywords = kWords.view();
   r.operators = kOps;
   r.line_comment = "//";
   r.block_comment_open = "/*";
@@ -51,7 +51,7 @@ lexer_rules simple_rules() {
 
 TEST(LexerTest, KeywordTableSortsAnyOrderAndFindsWords) {
   constexpr microfmt::keyword_table table{"zeta", "alpha", "mid"};
-  const microfmt::sorted_words words = table;
+  const microfmt::sorted_words words = table.view();
   EXPECT_EQ(words.size(), 3u);
   EXPECT_TRUE(words.contains("alpha"));
   EXPECT_TRUE(words.contains("mid"));

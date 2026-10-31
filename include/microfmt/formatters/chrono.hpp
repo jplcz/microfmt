@@ -129,19 +129,28 @@ template <typename Duration> struct formatter<std::chrono::time_point<std::chron
   void format(const std::chrono::time_point<std::chrono::system_clock, Duration> &tp, const sink &out) const noexcept {
     using namespace std::chrono;
     const auto dur = tp.time_since_epoch();
-    const auto total_secs = duration_cast<seconds>(dur).count();
-    const auto sub_ms = duration_cast<milliseconds>(dur).count() % 1000;
+    // Floor division keeps instants before the epoch on the correct second and day.
+    const auto whole_secs = floor<seconds>(dur);
+    const auto total_secs = whole_secs.count();
+    const auto sub_ms = duration_cast<milliseconds>(dur - whole_secs).count();
 
-    const int32_t days = static_cast<int32_t>(total_secs / 86400);
+    int64_t day_count = total_secs / 86400;
     int32_t rem_secs = static_cast<int32_t>(total_secs % 86400);
-    if (rem_secs < 0)
+    if (rem_secs < 0) {
       rem_secs += 86400;
+      --day_count;
+    }
+    const int32_t days = static_cast<int32_t>(day_count);
 
     const uint32_t hours = static_cast<uint32_t>(rem_secs / 3600);
     const uint32_t mins = static_cast<uint32_t>((rem_secs % 3600) / 60);
     const uint32_t secs = static_cast<uint32_t>(rem_secs % 60);
 
-    if (!time_only) {
+    // Requesting both parts is the same as requesting neither.
+    const bool want_time_only = time_only && !date_only;
+    const bool want_date_only = date_only && !time_only;
+
+    if (!want_time_only) {
       const auto date = detail::civil_from_days(days);
       detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint32_t>(date.year), false, 4);
       out.put('-');
@@ -150,19 +159,18 @@ template <typename Duration> struct formatter<std::chrono::time_point<std::chron
       detail::format_unsigned<detail::radix::decimal>(out, date.day, false, 2);
     }
 
-    if (!date_only && !time_only) {
+    if (!want_date_only && !want_time_only) {
       out.put('T');
     }
 
-    if (!date_only) {
+    if (!want_date_only) {
       detail::format_unsigned<detail::radix::decimal>(out, hours, false, 2);
       out.put(':');
       detail::format_unsigned<detail::radix::decimal>(out, mins, false, 2);
       out.put(':');
       detail::format_unsigned<detail::radix::decimal>(out, secs, false, 2);
       out.put('.');
-      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint32_t>(sub_ms < 0 ? -sub_ms : sub_ms), false,
-                                                      3);
+      detail::format_unsigned<detail::radix::decimal>(out, static_cast<uint32_t>(sub_ms), false, 3);
       out.put('Z');
     }
   }

@@ -22,7 +22,7 @@ public:
    */
   explicit constexpr c_string_span_sink(span<char> buf RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : detail::c_string_sink_base{buf.empty() ? nullptr : buf.data(), buf.empty() ? 0 : buf.size() - 1, 0} {
-    if (m_data) {
+    if (m_data != nullptr) {
       m_data[0] = '\0';
     }
   }
@@ -38,7 +38,7 @@ public:
   explicit constexpr c_string_span_sink(
       std::span<char, Extent> buf RELOCO_LIFETIMEBOUND RELOCO_LIFETIME_CAPTURE_BY_THIS) noexcept
       : detail::c_string_sink_base{buf.empty() ? nullptr : buf.data(), buf.empty() ? 0 : buf.size() - 1, 0} {
-    if (m_data) {
+    if (m_data != nullptr) {
       m_data[0] = '\0';
     }
   }
@@ -60,7 +60,7 @@ public:
    * @return Pointer to the underlying null-terminated buffer, or a safe empty
    * static string if the initial span was empty.
    */
-  [[nodiscard]] constexpr const char *c_str() const noexcept RELOCO_LIFETIMEBOUND { return m_data ? m_data : ""; }
+  [[nodiscard]] constexpr const char *c_str() const noexcept RELOCO_LIFETIMEBOUND { return m_data != nullptr ? m_data : ""; }
 
   /**
    * @brief Returns a string view over the characters written (excluding null
@@ -93,7 +93,7 @@ public:
    */
   RELOCO_REINITIALIZES constexpr void reset() noexcept {
     m_pos = 0;
-    if (m_data) {
+    if (m_data != nullptr) {
       m_data[0] = '\0';
     }
   }

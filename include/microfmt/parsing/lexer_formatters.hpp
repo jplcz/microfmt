@@ -133,7 +133,7 @@ struct RELOCO_POINTER highlight_view {
 /** @param text Source to colour; must outlive the view. @param rules Language rules. @param theme Colours. */
 [[nodiscard]] constexpr highlight_view highlight(microfmt::string_view text RELOCO_LIFETIMEBOUND,
                                                  const lexer_rules &rules, const highlight_theme &theme = {}) noexcept {
-  return highlight_view{text, rules, theme};
+  return highlight_view{text, lexer_rules(rules), highlight_theme(theme)};
 }
 template <typename S, std::enable_if_t<std::is_same_v<S, std::string>, int> = 0>
 highlight_view highlight(S &&, const lexer_rules &, const highlight_theme & = {}) = delete;
@@ -143,12 +143,16 @@ template <> struct formatter<highlight_view> {
 
   void format(const highlight_view &view, const sink &out) const noexcept {
     // Keep whitespace and comments so the text is reproduced byte for byte.
-    lexer_rules rules = view.rules;
+    lexer_rules rules(view.rules);
     rules.skip_whitespace = false;
     rules.skip_comments = false;
 
     lexer lx{view.text, rules};
-    for (token tok = lx.next(); tok.kind != token_kind::end; tok = lx.next()) {
+    for (;;) {
+      const token tok = lx.next();
+      if (tok.kind == token_kind::end) {
+        break;
+      }
       const ansi::style st = view.theme.style_for(tok.kind);
       const bool plain = !ansi::style::colors_enabled || (st.fg == ansi::color::none && st.bg == ansi::color::none &&
                                                           st.attr == ansi::attribute::none);

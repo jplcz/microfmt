@@ -83,7 +83,8 @@ public:
     const auto out = buffer.as_sink();
     microfmt::format_to(out, "{}", msg.payload);
 
-    char scratch[TagCapacity];
+    // NOLINTNEXTLINE(reloco-no-c-array): scratch storage handed to resolve_tag as a pointer
+    char scratch[TagCapacity] = {};
     const auto tag = this->resolve_tag(msg.logger_name, scratch);
     write_fn_(priority_for(msg.lvl), tag, buffer.view());
   }

@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <type_traits>
+#include <utility>
 
 #include <microfmt/formatters/json.hpp>
 
@@ -95,6 +97,34 @@ TEST(JsonFormatterTest, ComplexEscapedPayloadRoundTrips) {
   EXPECT_EQ(document["readings"][2], "");
   EXPECT_EQ(document["readings"][3], -1);
   EXPECT_EQ(document["readings"][4], std::numeric_limits<uint64_t>::max());
+}
+
+TEST(JsonFormatterTest, NegativeNarrowIntegersKeepTheirValue) {
+  microfmt::buffer_sink<64> output;
+  {
+    microfmt::json::array_writer values(output.as_sink());
+    values.val(int8_t{-3}).val(int16_t{-300}).val(int8_t{-128});
+  }
+  EXPECT_EQ(output.view(), "[-3,-300,-128]");
+}
+
+namespace {
+
+template <typename Writer, typename Value, typename = void> struct accepts_kv : std::false_type {};
+template <typename Writer, typename Value>
+struct accepts_kv<Writer, Value,
+                  std::void_t<decltype(std::declval<Writer &>().kv(microfmt::string_view{}, std::declval<Value>()))>>
+    : std::true_type {};
+
+} // namespace
+
+TEST(JsonFormatterTest, RejectsFloatingPointAndPointerValues) {
+  using writer = microfmt::json::object_writer;
+  static_assert(!accepts_kv<writer, double>::value);
+  static_assert(!accepts_kv<writer, const int *>::value);
+  static_assert(accepts_kv<writer, bool>::value);
+  static_assert(accepts_kv<writer, const char *>::value);
+  static_assert(accepts_kv<writer, int>::value);
 }
 
 TEST(JsonFormatterTest, EmbedsLambdaGeneratedObjectInFormatString) {

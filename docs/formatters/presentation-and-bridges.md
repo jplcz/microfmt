@@ -34,10 +34,10 @@ The formatter syntax is `[fill][align][width][flags]`:
 |---|---|
 | `<`, `>`, `^` | Left, right, or center alignment |
 | `u`, `l` | Uppercase or lowercase |
-| `t` | Enable truncation |
+| `t` | Title case |
 | `q` | Double quotes |
 | `b` | Bracket quoting |
-| `.N` | Set maximum rendered length |
+| `.N` | Set maximum rendered length (truncates) |
 
 ```cpp
 microfmt::format_to(out, "{:*^12q}", microfmt::pad("ready", 12));

@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <microfmt/formatters/cbor.hpp>
@@ -92,4 +94,22 @@ TEST(CborWriterTest, EmbedsLambdaGeneratedMapInFormatString) {
   const auto event = parse_cbor(output.view());
   EXPECT_EQ(event["kind"], "boot");
   EXPECT_EQ(event["sequence"], 7);
+}
+
+namespace {
+
+template <typename Writer, typename Value, typename = void> struct accepts_val : std::false_type {};
+template <typename Writer, typename Value>
+struct accepts_val<Writer, Value, std::void_t<decltype(std::declval<Writer &>().val(std::declval<Value>()))>>
+    : std::true_type {};
+
+} // namespace
+
+TEST(CborWriterTest, RejectsFloatingPointAndPointerValues) {
+  using writer = microfmt::cbor::array_writer;
+  static_assert(!accepts_val<writer, double>::value);
+  static_assert(!accepts_val<writer, const int *>::value);
+  static_assert(accepts_val<writer, bool>::value);
+  static_assert(accepts_val<writer, const char *>::value);
+  static_assert(accepts_val<writer, int>::value);
 }

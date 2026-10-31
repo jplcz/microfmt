@@ -212,6 +212,6 @@ TEST(LexerLanguagesTest, RuleValidationRejectsInconsistentExtensions) {
   r = {};
   r.keywords_ignore_case = true;
   constexpr microfmt::keyword_table upper{"SELECT"};
-  r.keywords = upper;
+  r.keywords = upper.view();
   EXPECT_FALSE(microfmt::lexer_rules_valid(r));
 }

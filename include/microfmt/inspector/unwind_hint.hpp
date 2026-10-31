@@ -102,7 +102,7 @@ public:
      * @brief Looks up a hint for a PC. See
      * @ref unwind_hint_registry_ref::find_hint.
      */
-    bool (*find_hint)(const void *ctx, uintptr_t pc, unwind_hint &out_hint) noexcept;
+    bool (*find_hint)(const void *ctx, uintptr_t pc, unwind_hint &out_hint) noexcept = nullptr;
   };
 
   /**
@@ -140,7 +140,7 @@ public:
    * @return `true` when a hint matched.
    */
   [[nodiscard]] bool find_hint(uintptr_t pc, unwind_hint &out_hint) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return false;
     return vtbl_->find_hint(ctx_.get(), pc, out_hint);
   }
@@ -185,7 +185,9 @@ public:
     return unwind_hint_registry_ref(Tag{}, context_);
   }
 
-  [[nodiscard]] constexpr operator unwind_hint_registry_ref() const & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
+  [[nodiscard]] explicit constexpr operator unwind_hint_registry_ref() const & noexcept RELOCO_LIFETIMEBOUND {
+    return ref();
+  }
 
   value_ref<context_type> context() && = delete;
   value_ref<const context_type> context() const && = delete;

@@ -387,8 +387,16 @@ TEST(PosixTimeFormatter, FormatsTimespecPrecisionAndUnits) {
   const timespec_like negative{-3, 7};
   {
     const auto result3 = microfmt::format<32>("{:n}", negative);
-    EXPECT_EQ(result3.view(), "-3.000000007s");
+    // tv_sec=-3 with +7ns is -2.999999993s.
+    EXPECT_EQ(result3.view(), "-2.999999993s");
   }
+}
+
+TEST(PosixTimeFormatter, NormalizesNegativeTimespecWithFraction) {
+  const auto half = microfmt::format<32>("{}", timespec_like{-1, 500000000});
+  EXPECT_EQ(half.view(), "-0.500000000s");
+  const auto whole = microfmt::format<32>("{}", timespec_like{-2, 0});
+  EXPECT_EQ(whole.view(), "-2.000000000s");
 }
 
 TEST(PosixTimeFormatter, FormatsTimevalPrecisionAndUnits) {
@@ -405,7 +413,7 @@ TEST(PosixTimeFormatter, FormatsTimevalPrecisionAndUnits) {
   const timeval_like negative{-3, 7};
   {
     const auto result0 = microfmt::format<32>("{:u}", negative);
-    EXPECT_EQ(result0.view(), "-3.000007s");
+    EXPECT_EQ(result0.view(), "-2.999993s");
   }
 }
 

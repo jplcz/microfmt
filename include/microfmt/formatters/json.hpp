@@ -28,7 +28,7 @@ template <typename T> void write_integer(const sink &out, T value) noexcept {
   if constexpr (std::is_signed<T>::value) {
     if (value < 0) {
       out.put('-');
-      const auto magnitude = static_cast<unsigned_type>(0) - static_cast<unsigned_type>(value);
+      const auto magnitude = static_cast<unsigned_type>(static_cast<unsigned_type>(0) - static_cast<unsigned_type>(value));
       microfmt::detail::format_unsigned<microfmt::detail::radix::decimal>(out, static_cast<uint64_t>(magnitude), false,
                                                                           0);
       return;
@@ -154,6 +154,13 @@ public:
     return kv(k, microfmt::string_view(val, N - 1));
   }
 
+  // Floating point and pointers would otherwise silently convert to bool.
+  template <typename T, typename std::enable_if<std::is_floating_point<T>::value ||
+                                                    (std::is_pointer<T>::value &&
+                                                     !std::is_same<typename std::remove_cv<typename std::remove_pointer<T>::type>::type, char>::value),
+                                                int>::type = 0>
+  object_writer &kv(microfmt::string_view, T) = delete;
+
   object_writer &kv(microfmt::string_view k, bool val) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     key(k);
     out_.write(val ? "true" : "false");
@@ -257,6 +264,13 @@ public:
   template <std::size_t N> array_writer &val(const char (&v)[N]) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     return val(microfmt::string_view(v, N - 1));
   }
+
+  // Floating point and pointers would otherwise silently convert to bool.
+  template <typename T, typename std::enable_if<std::is_floating_point<T>::value ||
+                                                    (std::is_pointer<T>::value &&
+                                                     !std::is_same<typename std::remove_cv<typename std::remove_pointer<T>::type>::type, char>::value),
+                                                int>::type = 0>
+  array_writer &val(T) = delete;
 
   array_writer &val(bool v) & noexcept RELOCO_CALLABLE_WHEN("unconsumed") {
     prefix();

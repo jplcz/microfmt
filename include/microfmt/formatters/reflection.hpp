@@ -64,7 +64,8 @@
 
 namespace microfmt::detail {
 
-template <typename E> inline constexpr bool is_reflect_formattable_enum_v = std::is_enum_v<E>;
+template <typename E> inline constexpr bool is_reflect_formattable_enum_v =
+    std::is_enum_v<E> && !enum_has_dedicated_formatter<E>::value;
 
 template <typename T>
 inline constexpr bool is_reflect_formattable_struct_v = std::is_class_v<T> && enable_reflect_format<T>::value;
@@ -90,7 +91,7 @@ template <typename E> struct formatter<E, std::enable_if_t<detail::is_reflect_fo
     }
 
     // Fallback: format raw underlying integer if value is unmapped/invalid.
-    format_to(out, "{}", static_cast<std::underlying_type_t<E>>(val));
+    microfmt::format_to(out, "{}", static_cast<std::underlying_type_t<E>>(val));
   }
 };
 
@@ -116,7 +117,7 @@ template <typename T> struct formatter<T, std::enable_if_t<detail::is_reflect_fo
       out.write(": ");
 
       // Format member value recursively via microfmt.
-      format_to(out, "{}", val.[:member:]);
+      microfmt::format_to(out, "{}", val.[:member:]);
     }
 
     out.put('}');

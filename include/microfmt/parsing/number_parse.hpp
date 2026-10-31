@@ -62,21 +62,20 @@ template <typename T> inline constexpr bool is_parsable_int_v =
     std::is_same_v<T, reloco::fixed_int<int_traits_width<T>::value, true>> ||
     std::is_same_v<T, reloco::fixed_int<int_traits_width<T>::value, false>>;
 
-[[nodiscard]] constexpr int digit_value(char ch) noexcept {
-  if (ch >= '0' && ch <= '9')
-    return ch - '0';
-  if (ch >= 'a' && ch <= 'z')
-    return ch - 'a' + 10;
-  if (ch >= 'A' && ch <= 'Z')
-    return ch - 'A' + 10;
-  return 99;
-}
-
 [[nodiscard]] constexpr char byte_at(microfmt::string_view text, std::size_t index) noexcept {
   return index < text.size() ? text.substr(index, 1).front() : '\0';
 }
 
-[[nodiscard]] constexpr int prefix_radix(char ch) noexcept {
+[[nodiscard]] constexpr std::size_t digit_value(char ch) noexcept {
+  constexpr microfmt::string_view lower = "0123456789abcdefghijklmnopqrstuvwxyz";
+  constexpr microfmt::string_view upper = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (std::size_t i = 0; i < lower.size(); ++i)
+    if (byte_at(lower, i) == ch || byte_at(upper, i) == ch)
+      return i;
+  return 99;
+}
+
+[[nodiscard]] constexpr unsigned prefix_radix(char ch) noexcept {
   switch (ch) {
   case 'x':
   case 'X':
@@ -119,20 +118,21 @@ parse_prefix(microfmt::string_view text, const integer_options &opts = {}) noexc
   }
 
   unsigned radix = opts.radix;
-  const int pr = (detail::byte_at(text, pos) == '0') ? detail::prefix_radix(detail::byte_at(text, pos + 1)) : 0;
-  if (pr != 0 && (radix == 0 || (opts.allow_prefix && radix == static_cast<unsigned>(pr)))) {
-    radix = static_cast<unsigned>(pr);
+  const unsigned pr = (detail::byte_at(text, pos) == '0') ? detail::prefix_radix(detail::byte_at(text, pos + 1)) : 0U;
+  if (pr != 0 && (radix == 0 || (opts.allow_prefix && radix == pr))) {
+    radix = pr;
     pos += 2;
   }
   if (radix == 0)
     radix = 10;
 
   const U zero = static_cast<U>(0);
-  const U max_u = static_cast<U>(~zero);
-  const U limit = is_signed_t ? (negative ? static_cast<U>(static_cast<U>(max_u >> 1) + static_cast<U>(1)) : static_cast<U>(max_u >> 1)) : max_u;
+  const U max_u = static_cast<U>(~U(zero));
+  const U half = static_cast<U>(U(max_u) >> 1);
+  const U limit = is_signed_t ? (negative ? static_cast<U>(U(half) + static_cast<U>(1)) : U(half)) : U(max_u);
   const U radix_u = static_cast<U>(radix);
 
-  U acc = zero;
+  U acc = U(zero);
   std::size_t count = 0;
   std::size_t end = pos;
   bool last_sep = false;
@@ -144,16 +144,16 @@ parse_prefix(microfmt::string_view text, const integer_options &opts = {}) noexc
       last_sep = true;
       continue;
     }
-    const int d = detail::digit_value(ch);
-    if (d >= static_cast<int>(radix))
+    const std::size_t d = detail::digit_value(ch);
+    if (d >= radix)
       break;
     const U du = static_cast<U>(d);
-    if (acc > static_cast<U>(limit / radix_u))
+    if (U(acc) > static_cast<U>(U(limit) / U(radix_u)))
       return err(number_error{negative ? number_errc::underflow : number_errc::overflow, i});
-    acc = static_cast<U>(acc * radix_u);
-    if (acc > static_cast<U>(limit - du))
+    acc = static_cast<U>(U(acc) * U(radix_u));
+    if (U(acc) > static_cast<U>(U(limit) - U(du)))
       return err(number_error{negative ? number_errc::underflow : number_errc::overflow, i});
-    acc = static_cast<U>(acc + du);
+    acc = static_cast<U>(U(acc) + U(du));
     ++count;
     last_sep = false;
     end = i + 1;
@@ -162,7 +162,7 @@ parse_prefix(microfmt::string_view text, const integer_options &opts = {}) noexc
   if (count == 0)
     return err(number_error{pos >= text.size() ? number_errc::empty : number_errc::invalid_digit, pos});
 
-  const U bits = negative ? static_cast<U>(zero - acc) : acc;
+  const U bits = negative ? static_cast<U>(U(zero) - U(acc)) : U(acc);
   return parsed<T>{static_cast<T>(bits), end};
 }
 

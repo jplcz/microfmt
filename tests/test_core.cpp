@@ -1003,3 +1003,61 @@ TEST(FormatArgsTest, NonTemplatedBoundary) {
 }
 
 RELOCO_END_UNSAFE_BUFFER_USAGE
+
+TEST(CoreIntegers, BinaryTypeFlagOrderAndWideWidths) {
+  {
+    const auto r = microfmt::format<32>("{:08b}", 5);
+    EXPECT_EQ(r.view(), "00000101");
+  }
+  {
+    const auto r = microfmt::format<32>("{:#b}", 5);
+    EXPECT_EQ(r.view(), "0b101");
+  }
+  {
+    const auto r = microfmt::format<32>("{:#010b}", 5);
+    EXPECT_EQ(r.view(), "0b00000101");
+  }
+  {
+    const auto r = microfmt::format<32>("{:b}", int8_t{-3});
+    EXPECT_EQ(r.view(), "-11");
+  }
+  {
+    const auto r = microfmt::format<64>("{:b}", uint64_t{1} << 63);
+    EXPECT_EQ(r.view().size(), 64u);
+  }
+  {
+    const auto r = microfmt::format<32>("{:0#10x}", 255);
+    EXPECT_EQ(r.view(), "0x000000ff");
+  }
+  {
+    const auto r = microfmt::format<32>("{:#010x}", 255);
+    EXPECT_EQ(r.view(), "0x000000ff");
+  }
+  {
+    const auto r = microfmt::format<320>("{:300}", 7);
+    EXPECT_EQ(r.view().size(), 300u);
+  }
+}
+
+TEST(CoreFloats, WidthAndZeroPadding) {
+  {
+    const auto r = microfmt::format<32>("[{:8.2f}]", 3.14159);
+    EXPECT_EQ(r.view(), "[    3.14]");
+  }
+  {
+    const auto r = microfmt::format<32>("[{:08.2f}]", -3.14159);
+    EXPECT_EQ(r.view(), "[-0003.14]");
+  }
+  {
+    const auto r = microfmt::format<32>("[{:+8.1f}]", 2.0);
+    EXPECT_EQ(r.view(), "[    +2.0]");
+  }
+  {
+    const auto r = microfmt::format<32>("[{:10}]", 1.5);
+    EXPECT_EQ(r.view(), "[       1.5]");
+  }
+  {
+    const auto r = microfmt::format<32>("[{:.3f}]", 1.0);
+    EXPECT_EQ(r.view(), "[1.000]");
+  }
+}

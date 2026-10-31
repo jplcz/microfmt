@@ -37,7 +37,10 @@ namespace detail {
 /** Longest number text copied for strto* (bytes, excluding the terminating NUL). */
 inline constexpr std::size_t float_buffer_capacity = 1023;
 
-[[nodiscard]] constexpr char lower_ascii(char ch) noexcept { return (ch >= 'A' && ch <= 'Z') ? static_cast<char>(ch - 'A' + 'a') : ch; }
+[[nodiscard]] constexpr char lower_ascii(char ch) noexcept {
+  // NOLINTNEXTLINE(reloco-narrowing-flow): the range check above restricts ch to 'A'..'Z', so the result is 'a'..'z'
+  return (ch >= 'A' && ch <= 'Z') ? static_cast<char>(ch - 'A' + 'a') : ch;
+}
 
 [[nodiscard]] constexpr bool word_at(microfmt::string_view text, std::size_t pos, microfmt::string_view word) noexcept {
   for (std::size_t i = 0; i < word.size(); ++i)
@@ -103,7 +106,7 @@ template <typename T, typename = std::enable_if_t<detail::is_parsable_float_v<T>
   reloco::array<char, detail::float_buffer_capacity + 1> buf{};
   std::size_t len = 0;
   bool overflowed_buffer = false;
-  const auto put = [&](char ch) noexcept {
+  const auto put = [&len, &overflowed_buffer, &buf](char ch) noexcept {
     if (len >= detail::float_buffer_capacity) {
       overflowed_buffer = true;
       return;
@@ -120,10 +123,10 @@ template <typename T, typename = std::enable_if_t<detail::is_parsable_float_v<T>
     put('x');
     pos += 2;
   }
-  const auto is_digit_ch = [&](char ch) noexcept { return hex ? detail::digit_value(ch) < 16 : (ch >= '0' && ch <= '9'); };
+  const auto is_digit_ch = [hex](char ch) noexcept { return hex ? detail::digit_value(ch) < 16 : (ch >= '0' && ch <= '9'); };
 
   // Digit run with optional separators strictly between digits; returns digit count, advances pos.
-  const auto digits = [&]() noexcept {
+  const auto digits = [&pos, &put, &is_digit_ch, text, &opts]() noexcept {
     std::size_t count = 0;
     std::size_t end = pos;
     bool last_sep = false;

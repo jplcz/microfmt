@@ -85,18 +85,18 @@ public:
     /**
      * @brief Decodes a raw trap frame. See @ref exception_frame_ref::decode.
      */
-    bool (*decode)(const void *ctx, uintptr_t trap_frame_addr, trap_context &out_trap) noexcept;
+    bool (*decode)(const void *ctx, uintptr_t trap_frame_addr, trap_context &out_trap) noexcept = nullptr;
     /**
      * @brief Finds the next nested trap frame. See
      * @ref exception_frame_ref::next_trap_frame.
      */
     bool (*next_trap_frame)(const void *ctx, uintptr_t current_trap_frame_addr,
-                            uintptr_t &next_trap_frame_addr) noexcept;
+                            uintptr_t &next_trap_frame_addr) noexcept = nullptr;
     /**
      * @brief Describes a vector/reason code. See
      * @ref exception_frame_ref::describe_reason.
      */
-    microfmt::string_view (*describe_reason)(const void *ctx, uint64_t vector_or_reason) noexcept;
+    microfmt::string_view (*describe_reason)(const void *ctx, uint64_t vector_or_reason) noexcept = nullptr;
   };
 
   /**
@@ -169,7 +169,7 @@ public:
    * fails.
    */
   [[nodiscard]] bool decode(uintptr_t trap_frame_addr, trap_context &out_trap) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return false;
     return vtbl_->decode(ctx_.get(), trap_frame_addr, out_trap);
   }
@@ -182,7 +182,7 @@ public:
    */
   [[nodiscard]] bool next_trap_frame(uintptr_t current_trap_frame_addr,
                                      uintptr_t &next_trap_frame_addr) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return false;
     return vtbl_->next_trap_frame(ctx_.get(), current_trap_frame_addr, next_trap_frame_addr);
   }
@@ -193,7 +193,7 @@ public:
    * @return Human-readable description, or an empty view when unavailable.
    */
   [[nodiscard]] microfmt::string_view describe_reason(uint64_t vector_or_reason) const noexcept {
-    if (!vtbl_ || !vtbl_->describe_reason)
+    if (vtbl_ == nullptr || vtbl_->describe_reason == nullptr)
       return {};
     return vtbl_->describe_reason(ctx_.get(), vector_or_reason);
   }
@@ -289,7 +289,7 @@ public:
 /**
  * @brief Forward-only cursor iterating over a chain of trap frames.
  */
-class MICROFMT_API_CLASS exception_frame_iterator {
+class MICROFMT_API_CLASS RELOCO_POINTER exception_frame_iterator {
 public:
   /**
    * @brief Constructs an empty (invalid) iterator.
@@ -312,12 +312,18 @@ public:
    * @brief Returns the current decoded trap context.
    * @return Reference to the current @ref trap_context.
    */
-  [[nodiscard]] constexpr const trap_context &operator*() const noexcept { return current_; }
+  [[nodiscard]] RELOCO_CHECKED constexpr const trap_context &operator*() const & noexcept RELOCO_LIFETIMEBOUND {
+    return current_;
+  }
+  const trap_context &operator*() const && = delete;
   /**
    * @brief Returns the current decoded trap context.
    * @return Pointer to the current @ref trap_context.
    */
-  [[nodiscard]] constexpr const trap_context *operator->() const noexcept { return &current_; }
+  [[nodiscard]] RELOCO_CHECKED constexpr const trap_context *operator->() const & noexcept RELOCO_LIFETIMEBOUND {
+    return &current_;
+  }
+  const trap_context *operator->() const && = delete;
 
   /**
    * @brief Reports whether the iterator is positioned on a trap frame.
@@ -353,7 +359,7 @@ public:
    * @brief Pre-increment advancing to the next trap frame.
    * @return This iterator.
    */
-  exception_frame_iterator &operator++() noexcept {
+  exception_frame_iterator &operator++() & noexcept {
     next();
     return *this;
   }
@@ -465,7 +471,7 @@ template <> struct formatter<remote_trap_view> {
    * @param ctx Format parse context exposing the specifier text.
    */
   constexpr void parse(format_parse_context &ctx) noexcept {
-    auto spec = ctx.spec();
+    const auto spec = ctx.spec();
     if (!spec.empty() && spec.front() == '#') {
       mode = '#';
     }
@@ -478,7 +484,7 @@ template <> struct formatter<remote_trap_view> {
    */
   void format(const remote_trap_view &view, const sink &out) const noexcept {
     const auto &trap = view.trap();
-    microfmt::string_view desc = view.decoder().describe_reason(trap.vector_or_reason);
+    const microfmt::string_view desc = view.decoder().describe_reason(trap.vector_or_reason);
 
     microfmt::format_to(out, "[Trap Level {} @ {:#x}] Mode: {}\n", trap.trap_level, trap.trap_frame_addr,
                         trap.is_user_mode ? "User" : "Kernel");
@@ -490,7 +496,7 @@ template <> struct formatter<remote_trap_view> {
     }
 
     microfmt::format_to(out, "  PC     : ");
-    remote_fn_ptr pc_sym(trap.pc, view.resolver(), view.symbol_context());
+    const remote_fn_ptr pc_sym(trap.pc, view.resolver(), view.symbol_context());
     if (mode == '#') {
       microfmt::format_to(out, "{:#}\n", pc_sym);
     } else {
@@ -501,7 +507,7 @@ template <> struct formatter<remote_trap_view> {
     microfmt::format_to(out, "  FP     : {:#x}", trap.fp);
     if (trap.lr != 0) {
       microfmt::format_to(out, "\n  LR     : ");
-      remote_fn_ptr lr_sym(trap.lr, view.resolver(), view.symbol_context());
+      const remote_fn_ptr lr_sym(trap.lr, view.resolver(), view.symbol_context());
       microfmt::format_to(out, "{}", lr_sym);
     }
   }

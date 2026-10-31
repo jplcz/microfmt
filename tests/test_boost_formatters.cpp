@@ -4,6 +4,11 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
+#if __has_include(<format>)
+#include <format>
+#endif
+
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/container/static_vector.hpp>
@@ -33,6 +38,23 @@ struct described_record {
   bool ready;
 };
 BOOST_DESCRIBE_STRUCT(described_record, (), (id, ready))
+
+enum class wide_described_state : uint64_t { first = 1 };
+BOOST_DESCRIBE_ENUM(wide_described_state, first)
+
+struct described_text_record {
+  microfmt::string_view name;
+};
+BOOST_DESCRIBE_STRUCT(described_text_record, (), (name))
+
+TEST(BoostFormattersTest, DescribedFormattersAreUnambiguousWithStdFormatHeaders) {
+  // reflection.hpp's automatic enum formatter keys off this trait to avoid clashing with the Describe formatter
+  static_assert(microfmt::detail::enum_has_dedicated_formatter<described_state>::value);
+  const auto record = microfmt::format<32>("{}", described_text_record{"abc"});
+  EXPECT_EQ(record.view(), "{name: abc}");
+  const auto unknown = microfmt::format<48>("{}", static_cast<wide_described_state>(7));
+  EXPECT_EQ(unknown.view(), "static_cast<uint64_t>(7)");
+}
 
 TEST(BoostFormattersTest, FormatsDescribedEnumsAndStructs) {
   {

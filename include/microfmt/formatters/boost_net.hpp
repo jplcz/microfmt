@@ -17,7 +17,8 @@ namespace detail {
 
 inline void format_boost_address_v4(const boost::asio::ip::address_v4 &address, const sink &out) noexcept {
   const auto bytes = address.to_bytes();
-  microfmt::format_to(out, "{}.{}.{}.{}", bytes[0], bytes[1], bytes[2], bytes[3]);
+  microfmt::format_to(out, "{}.{}.{}.{}", std::get<0>(bytes), std::get<1>(bytes), std::get<2>(bytes),
+                    std::get<3>(bytes));
 }
 
 inline void format_boost_address_v6(const boost::asio::ip::address_v6 &address, const sink &out) noexcept {
@@ -26,7 +27,11 @@ inline void format_boost_address_v6(const boost::asio::ip::address_v6 &address, 
   uint16_t words[8]{};
   RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
   for (std::size_t index = 0; index < 8; ++index) {
-    words[index] = static_cast<uint16_t>((static_cast<uint16_t>(bytes[index * 2]) << 8) | bytes[index * 2 + 1]);
+    // NOLINTNEXTLINE(reloco-checked-operator): std::array indices below 16 by loop bound
+    const unsigned high = bytes[index * 2];
+    // NOLINTNEXTLINE(reloco-checked-operator): std::array indices below 16 by loop bound
+    const unsigned low = bytes[index * 2 + 1];
+    words[index] = static_cast<uint16_t>(((high << 8) | low) & 0xFFFFU);
   }
 
   std::size_t best_start = 8;

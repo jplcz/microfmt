@@ -40,6 +40,7 @@ template <typename WordType, size_t N> struct RELOCO_POINTER reg_grid_desc {
   /**
    * @brief Per-entry names, one per register word.
    */
+  // NOLINTNEXTLINE(reloco-no-c-array): aggregate descriptor filled by CTAD from a parameter pack
   microfmt::string_view names[N];
 };
 

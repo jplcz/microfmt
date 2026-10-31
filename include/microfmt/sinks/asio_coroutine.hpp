@@ -38,6 +38,7 @@ namespace microfmt::coro {
  * bytes written upon completion.
  */
 template <typename Stream, std::size_t StackSize = 256, typename... Args>
+// NOLINTNEXTLINE(reloco-noexcept): coroutine returning an awaitable; failures propagate via asio exceptions
 [[nodiscard]] boost::asio::awaitable<std::size_t> async_format_to(Stream &stream, string_view fmt, Args &&...args) {
   // Allocate a temporary buffer entirely on the coroutine frame / stack.
   char stack_buffer[StackSize];

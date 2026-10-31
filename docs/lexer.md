@@ -67,7 +67,7 @@ constexpr microfmt::string_view kOps[] = {"=", "==", "=>", "+"};
 
 microfmt::lexer_rules make_rules() {
   microfmt::lexer_rules r;
-  r.keywords = kKeywords;       // sorted_words view of the table above
+  r.keywords = kKeywords.view();       // sorted_words view of the table above
   r.operators = kOps;           // span of operator spellings
   r.line_comment = "//";        // comment to end of line
   r.block_comment_open = "/*";  // both open and close, or neither
@@ -223,7 +223,7 @@ constexpr microfmt::string_view kExtraComments[] = {"#"};
 
 constexpr microfmt::lexer_rules make() {
   microfmt::lexer_rules r;
-  r.keywords = kWords;
+  r.keywords = kWords.view();
   r.keywords_ignore_case = true;     // "SELECT" and "Select" are keywords too
   r.line_comment = ";";              // first marker
   r.line_comments = kExtraComments;  // more markers; the longest match wins

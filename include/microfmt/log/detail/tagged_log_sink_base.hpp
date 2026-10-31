@@ -87,6 +87,7 @@ protected:
   [[nodiscard]] microfmt::string_view resolve_tag(microfmt::string_view logger_name,
                                                   char (&scratch)[TagCapacity]) const && = delete;
 
+  // NOLINTNEXTLINE(reloco-no-c-array): fixed-capacity tag storage, accessed only via bounded copies
   char tag_[TagCapacity]{};
   std::size_t tag_size_{0};
 };

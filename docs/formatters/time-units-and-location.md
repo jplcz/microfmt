@@ -112,7 +112,7 @@ it captures the current location when the platform API supports that form.
 | Flag | Effect |
 |---|---|
 | `s`, `S` | Short `file:line` output |
-| `f`, `F` | Include the function name |
+| `f`, `F` | Include the function name (already the default; only `s` hides it) |
 
 Direct formatters are enabled for `std::source_location` in C++20 when
 available. Defining `MICROFMT_ENABLE_BOOST_SOURCE_LOCATION` enables

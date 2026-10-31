@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <microfmt/formatters/binary.hpp>
+#include <microfmt/formatters/format_helpers.hpp>
 #include <microfmt/microfmt.hpp>
 
 TEST(BinaryViewTest, TypeInferredBitWidth) {
@@ -51,4 +52,20 @@ TEST(BinaryViewTest, PrefixesAndGrouping) {
   buf.reset();
   microfmt::format_to(buf.as_sink(), "{:#_}", microfmt::bin(uint8_t{0xA5}));
   EXPECT_EQ(buf.view(), "0b1010_0101");
+}
+
+TEST(BinaryViewTest, BinIsUnambiguousWhenFormatHelpersIsIncluded) {
+  // format_helpers.hpp provides bin(value, width, prefix); bin(value) stays binary.hpp's overload
+  {
+    const auto r = microfmt::format<32>("{}", microfmt::bin(uint8_t{5}));
+    EXPECT_EQ(r.view(), "00000101");
+  }
+  {
+    const auto r = microfmt::format<32>("{}", microfmt::bin(uint8_t{5}, 8, true));
+    EXPECT_EQ(r.view(), "0b00000101");
+  }
+  {
+    const auto r = microfmt::format<32>("{}", microfmt::bin(int8_t{-2}, 8));
+    EXPECT_EQ(r.view(), "11111110");
+  }
 }

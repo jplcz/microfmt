@@ -32,15 +32,17 @@ enum log_priority {
   DLOG_SILENT
 };
 RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
-inline int dlog_print(log_priority prio, const char *tag, const char *fmt, ...) {
+// NOLINTBEGIN(reloco-noexcept, reloco-narrowing-flow, reloco-no-c-array): host stub mirroring the C variadic dlog API
+inline int dlog_print(log_priority prio, const char *tag, const char *fmt, ...) noexcept {
   std::fprintf(stdout, "[%d] %s: ", static_cast<int>(prio), tag);
-  va_list args;
+  va_list args = {};
   va_start(args, fmt);
   const int result = std::vfprintf(stdout, fmt, args);
   va_end(args);
   std::fprintf(stdout, "\n");
   return result;
 }
+// NOLINTEND(reloco-noexcept, reloco-narrowing-flow, reloco-no-c-array)
 RELOCO_END_UNSAFE_BUFFER_USAGE
 #endif
 
@@ -70,15 +72,19 @@ public:
       return;
     }
 
-    char scratch[TagCapacity];
+    // NOLINTNEXTLINE(reloco-no-c-array): scratch storage handed to resolve_tag as a pointer
+    char scratch[TagCapacity] = {};
     const auto tag = this->resolve_tag(msg.logger_name, scratch);
     write_fn_(priority_for(msg.lvl), tag, msg.payload);
   }
 
 private:
   static void write_to_dlog(int priority, microfmt::string_view tag, microfmt::string_view message) noexcept {
+    // NOLINTBEGIN(reloco-narrowing-flow): priority comes from priority_for (valid log_priority); message sizes are
+    // bounded by the sink capacity; both are required by the C dlog API
     ::dlog_print(static_cast<::log_priority>(priority), tag.data(), "%.*s", static_cast<int>(message.size()),
                  message.data());
+    // NOLINTEND(reloco-narrowing-flow)
   }
 
   static int priority_for(level lvl) noexcept {

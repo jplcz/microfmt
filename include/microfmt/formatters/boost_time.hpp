@@ -15,6 +15,15 @@
 namespace microfmt {
 namespace detail {
 
+inline uint64_t magnitude_u64(long long v) noexcept {
+  // NOLINTBEGIN(reloco-narrowing-flow): both casts see a non-negative value (v >= 0, or -(v + 1) for v < 0)
+  if (v < 0) {
+    return static_cast<uint64_t>(-(v + 1)) + 1U;
+  }
+  return static_cast<uint64_t>(v);
+  // NOLINTEND(reloco-narrowing-flow)
+}
+
 template <typename Period> constexpr microfmt::string_view boost_duration_suffix() noexcept {
   if constexpr (Period::num == 1 && Period::den == 1000000000) {
     return "ns";
@@ -69,18 +78,18 @@ inline void format_boost_time_duration(const boost::posix_time::time_duration &d
     out.put('-');
   }
   detail::format_unsigned<detail::radix::decimal>(
-      out, static_cast<uint64_t>(duration.hours() < 0 ? -duration.hours() : duration.hours()), false, 2);
+      out, detail::magnitude_u64(duration.hours()), false, 2);
   out.put(':');
   detail::format_unsigned<detail::radix::decimal>(
-      out, static_cast<uint64_t>(duration.minutes() < 0 ? -duration.minutes() : duration.minutes()), false, 2);
+      out, detail::magnitude_u64(duration.minutes()), false, 2);
   out.put(':');
   detail::format_unsigned<detail::radix::decimal>(
-      out, static_cast<uint64_t>(duration.seconds() < 0 ? -duration.seconds() : duration.seconds()), false, 2);
+      out, detail::magnitude_u64(duration.seconds()), false, 2);
   const auto fractional = duration.fractional_seconds();
   if (fractional != 0) {
     out.put('.');
     detail::format_unsigned<detail::radix::decimal>(
-        out, static_cast<uint64_t>(fractional < 0 ? -fractional : fractional), false,
+        out, detail::magnitude_u64(fractional), false,
         static_cast<unsigned>(boost::posix_time::time_duration::num_fractional_digits()));
   }
 }

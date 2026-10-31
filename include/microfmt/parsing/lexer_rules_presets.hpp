@@ -37,24 +37,30 @@ inline constexpr keyword_table cpp_keywords{
     "volatile", "wchar_t", "while", "xor", "xor_eq"};
 // std-interop-end
 
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view c_operators[] = {
     "<<=", ">>=", "...", "->", "++", "--", "<<", ">>", "<=", ">=", "==", "!=", "&&", "||", "+=", "-=", "*=", "/=",
     "%=",  "&=",  "|=",  "^=", "+",  "-",  "*",  "/",  "%",  "&",  "|",  "^",  "~",  "!",  "<",  ">",  "=",  "?",
     ":",   "."};
 
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view cpp_operators[] = {
     "<=>", "->*", "<<=", ">>=", "...", "::", ".*", "->", "++", "--", "<<", ">>", "<=", ">=", "==", "!=", "&&", "||",
     "+=",  "-=",  "*=",  "/=",  "%=",  "&=", "|=", "^=", "+",  "-",  "*",  "/",  "%",  "&",  "|",  "^",  "~",  "!",
     "<",   ">",   "=",   "?",   ":",   "."};
 
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view c_string_prefixes[] = {"u8", "u", "U", "L"};
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view cpp_string_prefixes[] = {"u8R", "uR", "UR", "LR", "R", "u8", "u", "U", "L"};
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view c_number_suffixes[] = {"u", "l", "ul", "lu", "ll", "ull", "llu", "f"};
 
 inline constexpr keyword_table lua_keywords{"and",   "break", "do",    "else", "elseif", "end",    "false",
                                             "for",   "function", "goto", "if",   "in",     "local",  "nil",
                                             "not",   "or",    "repeat", "return", "then", "true",   "until",
                                             "while"};
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view lua_operators[] = {"...", "..", "==", "~=", "<=", ">=", "//", "::", "<<", ">>",
                                                           "+",   "-",  "*",  "/",  "%",  "^",  "#",  "&",  "~",  "|",
                                                           "<",   ">",  "=",  ".",  ":"};
@@ -67,25 +73,32 @@ inline constexpr keyword_table sql_keywords{
     "key", "left", "like", "limit", "not", "null", "offset", "on", "or", "order", "outer", "primary", "references",
     "rollback", "select", "set", "table", "then", "union", "unique", "update", "values", "view", "when", "where",
     "with"};
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view sql_operators[] = {"<>", "<=", ">=", "!=", "||", "::", "=", "<", ">", "+",
                                                           "-",  "*",  "/",  "%",  "&",  "|",  "^", "~", "!", "?",
                                                           ":"};
 
 inline constexpr keyword_table toml_keywords{"false", "inf", "nan", "true"};
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view toml_operators[] = {"=", "+", "-"};
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view ini_comments[] = {"#"};
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view ini_operators[] = {"=", ":"};
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view kv_comments[] = {";"};
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view kv_operators[] = {"="};
 
 inline constexpr keyword_table json_keywords{"false", "null", "true"};
 
 inline constexpr keyword_table shell_keywords{"case", "do", "done", "elif", "else", "esac", "fi", "for", "if", "in", "then", "while"};
+// NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view shell_operators[] = {"&&", "||", ";;", ">>", "<<", "|", "&", ">", "<", "="};
 
 [[nodiscard]] constexpr lexer_rules make_c() noexcept {
   lexer_rules r;
-  r.keywords = c_keywords;
+  r.keywords = c_keywords.view();
   r.operators = c_operators;
   r.line_comment = "//";
   r.block_comment_open = "/*";
@@ -103,7 +116,7 @@ inline constexpr microfmt::string_view shell_operators[] = {"&&", "||", ";;", ">
 
 [[nodiscard]] constexpr lexer_rules make_cpp() noexcept {
   lexer_rules r = make_c();
-  r.keywords = cpp_keywords;
+  r.keywords = cpp_keywords.view();
   r.operators = cpp_operators;
   r.string_prefixes = cpp_string_prefixes;
   r.cpp_raw_strings = true;
@@ -114,7 +127,7 @@ inline constexpr microfmt::string_view shell_operators[] = {"&&", "||", ";;", ">
 
 [[nodiscard]] constexpr lexer_rules make_lua() noexcept {
   lexer_rules r;
-  r.keywords = lua_keywords;
+  r.keywords = lua_keywords.view();
   r.operators = lua_operators;
   r.punctuation = "(){}[];,";
   r.line_comment = "--";
@@ -128,7 +141,7 @@ inline constexpr microfmt::string_view shell_operators[] = {"&&", "||", ";;", ">
 
 [[nodiscard]] constexpr lexer_rules make_sql() noexcept {
   lexer_rules r;
-  r.keywords = sql_keywords;
+  r.keywords = sql_keywords.view();
   r.keywords_ignore_case = true;
   r.operators = sql_operators;
   r.punctuation = "(),;[].";
@@ -147,7 +160,7 @@ inline constexpr microfmt::string_view shell_operators[] = {"&&", "||", ";;", ">
 
 [[nodiscard]] constexpr lexer_rules make_toml() noexcept {
   lexer_rules r;
-  r.keywords = toml_keywords;
+  r.keywords = toml_keywords.view();
   r.operators = toml_operators;
   r.punctuation = "[]{},.";
   r.line_comment = "#";
@@ -203,7 +216,7 @@ inline constexpr microfmt::string_view shell_operators[] = {"&&", "||", ";;", ">
 
 [[nodiscard]] constexpr lexer_rules make_json() noexcept {
   lexer_rules r;
-  r.keywords = json_keywords;
+  r.keywords = json_keywords.view();
   r.punctuation = "{}[],:";
   r.quotes = "\"";
   r.digit_separator = '\0';
@@ -213,7 +226,7 @@ inline constexpr microfmt::string_view shell_operators[] = {"&&", "||", ";;", ">
 
 [[nodiscard]] constexpr lexer_rules make_shell() noexcept {
   lexer_rules r;
-  r.keywords = shell_keywords;
+  r.keywords = shell_keywords.view();
   r.operators = shell_operators;
   r.punctuation = "(){}[];";
   r.line_comment = "#";
@@ -233,7 +246,7 @@ inline constexpr lexer_rules c = detail::make_c();
 inline constexpr lexer_rules cpp = detail::make_cpp();
 
 /** Source-compatible alias of `cpp` (it used to be a generic C-like preset). */
-inline constexpr lexer_rules c_like = cpp;
+inline constexpr lexer_rules c_like = lexer_rules(cpp);
 
 /** Lua 5.4: `--` line and long-bracket comments, `[[ ]]` long strings, hex floats. */
 inline constexpr lexer_rules lua = detail::make_lua();

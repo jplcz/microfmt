@@ -70,7 +70,7 @@ public:
      * @brief Detects whether (fp, pc) sits at an exception trampoline. See
      * @ref exception_matcher_ref::match_trap_frame.
      */
-    bool (*match_trap_frame)(const void *ctx, uintptr_t fp, uintptr_t pc, uintptr_t &out_trap_frame_addr) noexcept;
+    bool (*match_trap_frame)(const void *ctx, uintptr_t fp, uintptr_t pc, uintptr_t &out_trap_frame_addr) noexcept = nullptr;
   };
 
   /**
@@ -108,7 +108,7 @@ public:
    * @return `true` when matched.
    */
   [[nodiscard]] bool match_trap_frame(uintptr_t fp, uintptr_t pc, uintptr_t &out_trap_frame_addr) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return false;
     return vtbl_->match_trap_frame(ctx_.get(), fp, pc, out_trap_frame_addr);
   }
@@ -154,7 +154,9 @@ public:
     return exception_matcher_ref(Tag{}, context_);
   }
 
-  [[nodiscard]] constexpr operator exception_matcher_ref() const & noexcept RELOCO_LIFETIMEBOUND { return ref(); }
+  [[nodiscard]] explicit constexpr operator exception_matcher_ref() const & noexcept RELOCO_LIFETIMEBOUND {
+    return ref();
+  }
 
   value_ref<context_type> context() && = delete;
   value_ref<const context_type> context() const && = delete;
@@ -173,7 +175,7 @@ private:
  * @brief Forward-only cursor combining frame-pointer stepping with
  * exception/trap transitions.
  */
-class MICROFMT_API_CLASS hybrid_stack_unwinder {
+class MICROFMT_API_CLASS RELOCO_POINTER hybrid_stack_unwinder {
 public:
   /**
    * @brief Constructs a hybrid unwinder.
@@ -194,12 +196,18 @@ public:
    * @brief Returns the current frame record.
    * @return Reference to the current @ref hybrid_frame.
    */
-  [[nodiscard]] constexpr const hybrid_frame &operator*() const noexcept { return current_; }
+  [[nodiscard]] RELOCO_CHECKED constexpr const hybrid_frame &operator*() const & noexcept RELOCO_LIFETIMEBOUND {
+    return current_;
+  }
+  const hybrid_frame &operator*() const && = delete;
   /**
    * @brief Returns the current frame record.
    * @return Pointer to the current @ref hybrid_frame.
    */
-  [[nodiscard]] constexpr const hybrid_frame *operator->() const noexcept { return &current_; }
+  [[nodiscard]] RELOCO_CHECKED constexpr const hybrid_frame *operator->() const & noexcept RELOCO_LIFETIMEBOUND {
+    return &current_;
+  }
+  const hybrid_frame *operator->() const && = delete;
 
   /**
    * @brief Reports whether the cursor is positioned on a frame.
@@ -257,7 +265,7 @@ public:
    * @brief Pre-increment advancing to the next frame.
    * @return This unwinder.
    */
-  hybrid_stack_unwinder &operator++() noexcept {
+  hybrid_stack_unwinder &operator++() & noexcept {
     next();
     return *this;
   }
@@ -363,7 +371,7 @@ template <> struct formatter<hybrid_backtrace_view> {
    * @param ctx Format parse context exposing the specifier text.
    */
   constexpr void parse(format_parse_context &ctx) noexcept {
-    auto spec = ctx.spec();
+    const auto spec = ctx.spec();
     if (!spec.empty() && spec.front() == '#') {
       mode = '#';
     }
@@ -375,11 +383,11 @@ template <> struct formatter<hybrid_backtrace_view> {
    * @param out Destination sink.
    */
   void format(const hybrid_backtrace_view &view, const sink &out) const noexcept {
-    hybrid_stack_unwinder cursor = view.unwinder();
+    hybrid_stack_unwinder cursor(view.unwinder());
 
     bool first = true;
     cursor.for_each_frame(
-        [&](const hybrid_frame &frame) noexcept -> bool {
+        [this, &first, &out, &view](const hybrid_frame &frame) noexcept -> bool {
           if (!first) {
             out.write("\n");
           }
@@ -397,7 +405,7 @@ template <> struct formatter<hybrid_backtrace_view> {
 
           microfmt::format_to(out, "  #{:<2} fp={:#x}  pc=", frame.frame_index, frame.fp);
 
-          remote_fn_ptr fn_sym(frame.pc, view.resolver(), view.symbol_context());
+          const remote_fn_ptr fn_sym(frame.pc, view.resolver(), view.symbol_context());
           if (mode == '#') {
             microfmt::format_to(out, "{:#}", fn_sym);
           } else {

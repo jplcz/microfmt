@@ -38,6 +38,18 @@ TEST(ChronoTest, FormatsSystemClockTimestamps) {
   EXPECT_EQ(buffer.view(), "03:04:05.006Z");
 }
 
+TEST(ChronoTest, FormatsSystemClockBeforeEpoch) {
+  const std::chrono::system_clock::time_point timestamp{std::chrono::milliseconds{-1500}};
+  const auto text = microfmt::format<64>("{}", timestamp);
+  EXPECT_EQ(text.view(), "1969-12-31T23:59:58.500Z");
+}
+
+TEST(ChronoTest, SystemClockDateAndTimeFlagsTogetherPrintBoth) {
+  const std::chrono::system_clock::time_point timestamp{std::chrono::milliseconds{97445006}};
+  const auto text = microfmt::format<64>("{:td}", timestamp);
+  EXPECT_EQ(text.view(), "1970-01-02T03:04:05.006Z");
+}
+
 TEST(ChronoTest, FormatsSteadyClockUptime) {
   microfmt::buffer_sink<32> buffer;
   const std::chrono::steady_clock::time_point uptime{std::chrono::milliseconds{3723004}};

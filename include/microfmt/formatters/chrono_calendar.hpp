@@ -40,7 +40,8 @@ template <> struct formatter<std::chrono::year> {
     if (value < 0) {
       out.put('-');
     }
-    detail::put_padded(out, static_cast<uint64_t>(value < 0 ? -value : value), 4);
+    // NOLINTNEXTLINE(reloco-narrowing-flow): both casts see a non-negative value (value >= 0, or -(value + 1) for value < 0)
+    detail::put_padded(out, value < 0 ? static_cast<uint64_t>(-(value + 1)) + 1U : static_cast<uint64_t>(value), 4);
   }
 };
 
@@ -49,6 +50,7 @@ template <> struct formatter<std::chrono::month> {
   bool as_name{false};
   constexpr void parse(format_parse_context &ctx) noexcept { as_name = ctx.spec() == microfmt::string_view("s"); }
   void format(std::chrono::month m, const sink &out) const noexcept {
+    // NOLINTNEXTLINE(reloco-no-c-array): constant string table, indexed after a range check
     static constexpr microfmt::string_view names[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
     const unsigned value = static_cast<unsigned>(m);
@@ -75,6 +77,7 @@ template <> struct formatter<std::chrono::day> {
 template <> struct formatter<std::chrono::weekday> {
   constexpr void parse(format_parse_context &) noexcept {}
   void format(std::chrono::weekday wd, const sink &out) const noexcept {
+    // NOLINTNEXTLINE(reloco-no-c-array): constant string table, indexed after a range check
     static constexpr microfmt::string_view names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
     if (wd.ok()) {
       // index is range-checked by wd.ok() above

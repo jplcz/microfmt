@@ -30,6 +30,14 @@ struct MICROFMT_API_CLASS parsed_float_spec {
    */
   bool alt_form{false}; // '#' (force decimal point)
   /**
+   * @brief Zero-padding flag (`0`): pad with zeros after the sign up to @ref width.
+   */
+  bool zero_pad{false};
+  /**
+   * @brief Minimum field width (right-aligned), or `0` when not specified.
+   */
+  int width{0};
+  /**
    * @brief Explicit precision, or `-1` when not specified.
    */
   int precision{-1}; // -1 if not specified
@@ -64,6 +72,20 @@ inline constexpr parsed_float_spec parse_float_spec(microfmt::string_view spec) 
   // Alternate form: ['#']
   if (pos < len && spec[pos] == '#') {
     res.alt_form = true;
+    pos++;
+  }
+
+  // Zero padding: ['0']
+  if (pos < len && spec[pos] == '0') {
+    res.zero_pad = true;
+    pos++;
+  }
+
+  // Width: [width] (saturated so absurd values cannot overflow int)
+  while (pos < len && spec[pos] >= '0' && spec[pos] <= '9') {
+    if (res.width < 100000) {
+      res.width = res.width * 10 + (spec[pos] - '0');
+    }
     pos++;
   }
 
@@ -106,6 +128,12 @@ RELOCO_UNSAFE_BUFFER_USAGE inline size_t build_printf_float_format(char *dest, c
   if (spec.alt_form) {
     dest[idx++] = '#';
   }
+  if (spec.zero_pad) {
+    dest[idx++] = '0';
+  }
+  if (spec.width > 0) {
+    dest[idx++] = '*'; // dynamic width passed via argument
+  }
   if (spec.precision >= 0) {
     dest[idx++] = '.';
     dest[idx++] = '*'; // dynamic precision passed via argument
@@ -141,6 +169,10 @@ RELOCO_UNSAFE_BUFFER_USAGE inline void format_float_via_printf(T val, const pars
 
   char buf[128] = {};
   const auto print_float = [&spec, &fmt_buf, &val](char *dest, size_t size) noexcept {
+    if (spec.width > 0 && spec.precision >= 0)
+      return std::snprintf(dest, size, fmt_buf, spec.width, spec.precision, val);
+    if (spec.width > 0)
+      return std::snprintf(dest, size, fmt_buf, spec.width, val);
     if (spec.precision >= 0)
       return std::snprintf(dest, size, fmt_buf, spec.precision, val);
     return std::snprintf(dest, size, fmt_buf, val);

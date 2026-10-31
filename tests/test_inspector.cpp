@@ -456,6 +456,49 @@ static_assert(!std::is_constructible_v<microfmt::symbol_resolver_ref, scanner_sy
 static_assert(
     !std::is_constructible_v<microfmt::exception_frame_ref, test_exception_frame_tag, test_exception_frame_context &&>);
 
+struct blob_space_tag {};
+
+struct blob_space_context {
+  uintptr_t virtual_base;
+  const uint8_t *data;
+  size_t size;
+};
+
+// A target whose addresses are unrelated to the host's, so reading a host address through it always fails.
+template <> struct microfmt::address_space_traits<blob_space_tag> {
+  using context_type = blob_space_context;
+
+  static bool read_bytes(microfmt::value_ref<const context_type> context, uintptr_t address, void *destination,
+                         size_t size) noexcept {
+    if (!destination || address < context->virtual_base)
+      return false;
+    const uintptr_t offset = address - context->virtual_base;
+    if (offset > context->size || size > context->size - offset)
+      return false;
+    std::memcpy(destination, context->data + offset, size);
+    return true;
+  }
+
+  static bool read_string(microfmt::value_ref<const context_type>, uintptr_t, char *, size_t, size_t &,
+                          bool &) noexcept {
+    return false;
+  }
+};
+
+struct smart_pointer_holder {
+  uint32_t id;
+  microfmt::remote_unique_ptr<int> unique;
+  microfmt::remote_intrusive_ptr<int> intrusive;
+  microfmt::remote_shared_ptr<int> shared;
+};
+
+MICROFMT_REMOTE_STRUCT_BEGIN(smart_pointer_holder)
+MICROFMT_REMOTE_FIELD(id, uint32_t)
+MICROFMT_REMOTE_FIELD(unique, microfmt::remote_unique_ptr<int>)
+MICROFMT_REMOTE_FIELD(intrusive, microfmt::remote_intrusive_ptr<int>)
+MICROFMT_REMOTE_FIELD(shared, microfmt::remote_shared_ptr<int>)
+MICROFMT_REMOTE_STRUCT_END()
+
 namespace {
 
 template <typename T> uintptr_t address_of(const T &object) noexcept {
@@ -1661,6 +1704,40 @@ TEST(InspectorFrameUnwinder, StepsFrameRecordsAndRejectsInvalidRecords) {
   register_state.value = address_of(no_return_address);
   EXPECT_FALSE(
       microfmt::frame_unwinder_traits<tag>::step(const_owner.context(), register_context, 0, next_fp, next_pc));
+}
+
+TEST(RemoteSmartPointerTest, StructFieldsRenderPointeeFromForeignAddressSpace) {
+  struct blob {
+    smart_pointer_holder holder;
+    int unique_value;
+    int shared_value;
+    int control[2];
+    int intrusive_value;
+  };
+  constexpr uintptr_t base = 0x7000;
+  blob data{};
+  data.unique_value = 11;
+  data.intrusive_value = 22;
+  data.shared_value = 33;
+  data.control[0] = 4;
+  data.control[1] = 2;
+  data.holder.id = 7;
+  new (&data.holder.unique) microfmt::remote_unique_ptr<int>(base + offsetof(blob, unique_value));
+  new (&data.holder.intrusive) microfmt::remote_intrusive_ptr<int>(base + offsetof(blob, intrusive_value));
+  std::memcpy(&data.holder.shared, std::array<uintptr_t, 2>{base + offsetof(blob, shared_value),
+                                                           base + offsetof(blob, control)}.data(),
+              sizeof(uintptr_t) * 2);
+
+  const blob_space_context context{.virtual_base = base, .data = reinterpret_cast<const uint8_t *>(&data),
+                                   .size = sizeof(data)};
+  const microfmt::address_space_ref space(blob_space_tag{}, context);
+  alignas(std::max_align_t) std::byte scratch[512]{};
+  const microfmt::remote_object_view view(base, space, microfmt::type_tag<smart_pointer_holder>{}, scratch);
+
+  const auto result = microfmt::format<256>("{}", view);
+  EXPECT_NE(result.view().find("unique: 11"), microfmt::string_view::npos);
+  EXPECT_NE(result.view().find("intrusive_ptr(22, ref_count="), microfmt::string_view::npos);
+  EXPECT_NE(result.view().find("shared_ptr(33, use_count=4, weak_count=2)"), microfmt::string_view::npos);
 }
 
 } // namespace

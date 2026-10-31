@@ -60,6 +60,7 @@ template <size_t N> struct RELOCO_POINTER reg_descriptor {
   /**
    * @brief The @p N field descriptors.
    */
+  // NOLINTNEXTLINE(reloco-no-c-array): aggregate descriptor, brace-initialised by users
   reg_field fields[N];
 };
 

@@ -38,10 +38,10 @@ namespace microfmt {
 class RELOCO_POINTER token_stream {
 public:
   /** @param source Text to tokenize; must outlive the stream. @param rules Language description (copied). */
-  explicit constexpr token_stream(microfmt::string_view source RELOCO_LIFETIMEBOUND, const lexer_rules &rules) noexcept
+  explicit constexpr token_stream(microfmt::string_view source RELOCO_LIFETIMEBOUND, const lexer_rules &rules RELOCO_COPIES) noexcept
       : source_(source), lexer_(source, rules), first_(lexer_.next()), second_(lexer_.next()) {}
   template <typename S, std::enable_if_t<std::is_same_v<S, std::string>, int> = 0>
-  explicit token_stream(S &&, const lexer_rules &) = delete;
+  explicit token_stream(S &&source RELOCO_LIFETIMEBOUND, const lexer_rules &) = delete;
 
   /** Like the constructor above, and `strings` is where `intern`, `expect_name` and `expect_string` store text. */
   explicit constexpr token_stream(microfmt::string_view source RELOCO_LIFETIMEBOUND, const lexer_rules &rules,
@@ -55,7 +55,7 @@ public:
    * but token offsets are absolute (bytes since the start of the input) and `discard_consumed()` makes room.
    * The window must outlive the stream and every copy of it.
    */
-  explicit token_stream(window_ref window RELOCO_LIFETIMEBOUND, const lexer_rules &rules) noexcept
+  explicit token_stream(window_ref window RELOCO_LIFETIMEBOUND, const lexer_rules &rules RELOCO_COPIES) noexcept
       : source_(), lexer_(microfmt::string_view(), rules), window_(&window.state()),
         generation_(window.state().generation), margin_(stream_margin(rules)) {
     refill();
@@ -679,7 +679,8 @@ private:
     return reloco::nullopt;
   }
 
-  [[nodiscard]] reloco::expected<T, parse_error> parse_operand() noexcept {
+  // Tokens borrow the source text, not the stream, so `open` stays valid while `ts_` advances.
+  RELOCO_BORROW_EXEMPT [[nodiscard]] reloco::expected<T, parse_error> parse_operand() noexcept {
     if (const reloco::optional<mixfix_op> form = find_mixfix(ts_.peek()); form && make_mixfix_ != nullptr) {
       ts_.next();
       return (*make_mixfix_)(*form, ts_, *this);

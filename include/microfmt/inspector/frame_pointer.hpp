@@ -75,7 +75,7 @@ public:
      * @brief Advances one frame using register context.
      */
     bool (*step)(const void *ctx, register_context_ref reg_ctx, uintptr_t current_pc, uintptr_t &next_fp,
-                 uintptr_t &next_pc) noexcept;
+                 uintptr_t &next_pc) noexcept = nullptr;
   };
 
   /**
@@ -134,7 +134,7 @@ public:
    */
   [[nodiscard]] bool step(register_context_ref reg_ctx, uintptr_t current_pc, uintptr_t &next_fp,
                           uintptr_t &next_pc) const noexcept {
-    if (!vtbl_)
+    if (vtbl_ == nullptr)
       return false;
     return vtbl_->step(ctx_.get(), reg_ctx, current_pc, next_fp, next_pc);
   }
@@ -204,7 +204,7 @@ public:
  * @brief Forward-only cursor iterating over a stack walk backed by register
  * context.
  */
-class MICROFMT_API_CLASS frame_pointer_iterator {
+class MICROFMT_API_CLASS RELOCO_POINTER frame_pointer_iterator {
 public:
   constexpr frame_pointer_iterator() noexcept = default;
 
@@ -225,8 +225,14 @@ public:
       : unwinder_(unwinder), reg_ctx_(reg_ctx), frame_{0, initial_fp, initial_pc},
         is_valid_(initial_fp != 0 && initial_pc != 0) {}
 
-  [[nodiscard]] constexpr const stack_frame &operator*() const noexcept RELOCO_LIFETIMEBOUND { return frame_; }
-  [[nodiscard]] constexpr const stack_frame *operator->() const noexcept RELOCO_LIFETIMEBOUND { return &frame_; }
+  [[nodiscard]] RELOCO_CHECKED constexpr const stack_frame &operator*() const & noexcept RELOCO_LIFETIMEBOUND {
+    return frame_;
+  }
+  const stack_frame &operator*() const && = delete;
+  [[nodiscard]] RELOCO_CHECKED constexpr const stack_frame *operator->() const & noexcept RELOCO_LIFETIMEBOUND {
+    return &frame_;
+  }
+  const stack_frame *operator->() const && = delete;
 
   [[nodiscard]] constexpr bool has_value() const noexcept { return is_valid_; }
   [[nodiscard]] constexpr explicit operator bool() const noexcept { return is_valid_; }
@@ -253,7 +259,7 @@ public:
     return true;
   }
 
-  frame_pointer_iterator &operator++() noexcept {
+  frame_pointer_iterator &operator++() & noexcept {
     next();
     return *this;
   }
@@ -299,7 +305,7 @@ public:
    * @brief Returns the underlying frame cursor.
    * @return A copy of the @ref frame_pointer_iterator.
    */
-  [[nodiscard]] constexpr frame_pointer_iterator iterator() const noexcept { return iter_; }
+  [[nodiscard]] constexpr frame_pointer_iterator iterator() const noexcept { return frame_pointer_iterator(iter_); }
   /**
    * @brief Returns the symbol resolver handle.
    * @return Bound @ref symbol_resolver_ref.
@@ -342,7 +348,7 @@ template <> struct formatter<remote_backtrace_view> {
    * @param ctx Format parse context exposing the specifier text.
    */
   constexpr void parse(format_parse_context &ctx) noexcept {
-    auto spec = ctx.spec();
+    const auto spec = ctx.spec();
     if (!spec.empty() && spec.front() == '#') {
       mode = '#';
     }
@@ -358,7 +364,7 @@ template <> struct formatter<remote_backtrace_view> {
 
     bool first = true;
     cursor.for_each_frame(
-        [&](const stack_frame &frame) noexcept -> bool {
+        [this, &first, &out, &view](const stack_frame &frame) noexcept -> bool {
           if (!first) {
             out.write("\n");
           }
@@ -366,7 +372,7 @@ template <> struct formatter<remote_backtrace_view> {
 
           microfmt::format_to(out, "  #{:<2} fp={:#x}  pc=", frame.frame_index, frame.fp);
 
-          remote_fn_ptr fn_sym(frame.pc, view.resolver(), view.symbol_context());
+          const remote_fn_ptr fn_sym(frame.pc, view.resolver(), view.symbol_context());
           if (mode == '#') {
             microfmt::format_to(out, "{:#}", fn_sym);
           } else {
