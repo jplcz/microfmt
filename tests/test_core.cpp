@@ -42,7 +42,8 @@ TEST(CoreBintime, FormatsPicosecondPrecisionWithoutWideIntegers) {
 TEST(CoreFixType, CollapsesEquivalentIntegersAndPointers) {
   using microfmt::detail::fix_type_t;
   static_assert(std::is_same_v<fix_type_t<int>, int32_t>);
-  static_assert(std::is_same_v<fix_type_t<long long>, fix_type_t<long>>);
+  static_assert(std::is_same_v<fix_type_t<long long>, int64_t>);
+  static_assert(std::is_same_v<fix_type_t<long>, std::conditional_t<sizeof(long) == 8, int64_t, int32_t>>);
   static_assert(std::is_same_v<fix_type_t<unsigned>, uint32_t>);
   static_assert(std::is_same_v<fix_type_t<char>, char>);
   static_assert(std::is_same_v<fix_type_t<bool>, bool>);

@@ -1724,7 +1724,7 @@ TEST(RemoteSmartPointerTest, StructFieldsRenderPointeeFromForeignAddressSpace) {
   data.holder.id = 7;
   new (&data.holder.unique) microfmt::remote_unique_ptr<int>(base + offsetof(blob, unique_value));
   new (&data.holder.intrusive) microfmt::remote_intrusive_ptr<int>(base + offsetof(blob, intrusive_value));
-  std::memcpy(&data.holder.shared, std::array<uintptr_t, 2>{base + offsetof(blob, shared_value),
+  std::memcpy(static_cast<void *>(&data.holder.shared), std::array<uintptr_t, 2>{base + offsetof(blob, shared_value),
                                                            base + offsetof(blob, control)}.data(),
               sizeof(uintptr_t) * 2);
 
