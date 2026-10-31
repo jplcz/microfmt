@@ -1044,20 +1044,9 @@ struct MICROFMT_API_CLASS const_char_like {
   constexpr void parse(format_parse_context &) noexcept {}
 #endif
 
-  // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked
-  // here.
-  RELOCO_BEGIN_UNSAFE_CODE
-  void format(const char *val, const sink &out) const noexcept {
-    const microfmt::string_view sv = val != nullptr ? microfmt::string_view(val) : microfmt::string_view("(null)", 6);
-#ifndef MICROFMT_DISABLE_DEBUG_FLAG
-    if (debug) {
-      detail::write_debug_quoted(out, sv, '"');
-      return;
-    }
-#endif
-    out.write(sv);
-  }
-  RELOCO_END_UNSAFE_CODE
+  // Out-of-line (see microfmt.ipp): shared by formatter<const char *>, <char *> and <char[N]>, so
+  // MICROFMT_SHARED consumers don't each carry an inlined copy in every thunk.
+  MICROFMT_API void format(const char *val, const sink &out) const noexcept;
 };
 
 } // namespace detail
@@ -1495,7 +1484,7 @@ template <typename T> using microfmt_remove_cvref_t = std::remove_cv_t<std::remo
  * therefore binary size and compile time) across call sites using
  * differently-sized string literals.
  */
-template <typename T> struct fix_type {
+template <typename T, typename = void> struct fix_type {
   using type = T;
 };
 template <size_t N> struct fix_type<char[N]> {
@@ -1503,6 +1492,36 @@ template <size_t N> struct fix_type<char[N]> {
 };
 template <size_t N> struct fix_type<const char[N]> {
   using type = const char[1];
+};
+
+// Plain integers of the same width and signedness format identically (formatter<T> widens to
+// int64_t/uint64_t), so int/int32_t/signed int (and long vs long long, ...) share one thunk.
+// char, bool and wide characters keep their own formatters and are left alone.
+template <typename T>
+inline constexpr bool is_collapsible_int_v =
+    std::is_integral_v<T> && !std::is_same_v<T, bool> && !std::is_same_v<T, char> && !std::is_same_v<T, wchar_t> &&
+    !std::is_same_v<T, char16_t> && !std::is_same_v<T, char32_t> && sizeof(T) <= sizeof(uint64_t);
+
+template <size_t Size, bool Signed> struct sized_int;
+template <> struct sized_int<1, true> { using type = int8_t; };
+template <> struct sized_int<2, true> { using type = int16_t; };
+template <> struct sized_int<4, true> { using type = int32_t; };
+template <> struct sized_int<8, true> { using type = int64_t; };
+template <> struct sized_int<1, false> { using type = uint8_t; };
+template <> struct sized_int<2, false> { using type = uint16_t; };
+template <> struct sized_int<4, false> { using type = uint32_t; };
+template <> struct sized_int<8, false> { using type = uint64_t; };
+
+template <typename T> struct fix_type<T, std::enable_if_t<is_collapsible_int_v<T>>> {
+  using type = typename sized_int<sizeof(T), std::is_signed_v<T>>::type;
+};
+
+// Non-char pointers whose formatter is the stock raw_ptr_format one print just the address, so they
+// share a single `const void *` thunk. A user-specialized formatter<T *> is left untouched.
+template <typename T>
+struct fix_type<T *, std::enable_if_t<!std::is_same_v<std::remove_cv_t<T>, char> && has_formatter_v<T *> &&
+                                      std::is_base_of_v<raw_ptr_format, formatter<T *>>>> {
+  using type = const void *;
 };
 template <typename T> using fix_type_t = typename fix_type<T>::type;
 
@@ -1809,6 +1828,21 @@ template <typename Provider> struct compile_string_holder {
   [[nodiscard]] constexpr microfmt::string_view get() const && = delete;
 };
 
+// MICROFMT_COMPACT_STRING (opt-in, define before including microfmt): MICROFMT_STRING(s) validates
+// the format string at compile time but yields a plain microfmt::string_view instead of a
+// per-literal compile_string_holder<Provider>. Call sites then share the runtime vformat_to path
+// (no per-string format_to/print/log instantiations, no unrolled code), trading the unrolled
+// fast path for binary size. The check is a constexpr compile_format_string evaluation inside a
+// constexpr lambda, so it works in C++17 as well.
+#if defined(MICROFMT_COMPACT_STRING)
+#define MICROFMT_STRING(s)                                                                                             \
+  ([]() constexpr -> ::microfmt::string_view {                                                                         \
+    constexpr ::microfmt::string_view microfmt_sv{s, sizeof(s) - 1};                                                   \
+    constexpr auto microfmt_checked = ::microfmt::detail::compile_format_string<sizeof(s)>(microfmt_sv);               \
+    static_assert(microfmt_checked.count <= sizeof(s), "invalid microfmt format string");                              \
+    return microfmt_sv;                                                                                                \
+  }())
+#else
 // Creates a unique static provider for C++17 compatibility
 #define MICROFMT_STRING(s)                                                                                             \
   ([] {                                                                                                                \
@@ -1817,6 +1851,7 @@ template <typename Provider> struct compile_string_holder {
     };                                                                                                                 \
     return ::microfmt::compile_string_holder<str_provider>{};                                                          \
   }())
+#endif
 
 // Compile-time unrolled overload (Zero stack arg_ptrs, zero indirect thunks)
 //

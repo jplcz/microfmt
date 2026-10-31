@@ -227,6 +227,15 @@ microfmt::string_view format_from_configuration = "id={}";
 microfmt::format_to(output.as_sink(), format_from_configuration, id);
 ```
 
+If you want the compile-time *validation* of `MICROFMT_STRING` but not its
+per-literal code, define `MICROFMT_COMPACT_STRING` before including microfmt.
+`MICROFMT_STRING("...")` then checks the string during constant evaluation
+(an invalid string is a compile error) and yields a plain
+`microfmt::string_view`, so every call site shares the runtime `vformat_to`
+path. You give up the unrolled fast path in exchange for smaller binaries.
+Code that calls `.get()` on the result of `MICROFMT_STRING` must not use this
+mode.
+
 Core replacement fields consume arguments in order by default. Numeric
 positions can select or reuse zero-based arguments explicitly:
 

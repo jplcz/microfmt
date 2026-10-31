@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 #include <microfmt/formatters/ranges.hpp>
 #include <microfmt/microfmt.hpp>
+#include <vector>
 
 TEST(JoinTest, EmptyRange) {
   microfmt::buffer_sink<64> buf;
@@ -66,4 +67,12 @@ TEST(JoinTest, DirectFormatEmbedding) {
   auto res = microfmt::format<128>("Channels active: ({})", microfmt::join(channel_mask, ", "));
 
   EXPECT_EQ(res.view(), "Channels active: (1, 2, 4, 8)");
+}
+
+TEST(JoinViewSharing, ContiguousRangesShareOneInstantiation) {
+  const std::vector<int> v{1, 2, 3};
+  const std::array<int, 3> a{1, 2, 3};
+  static_assert(std::is_same_v<decltype(microfmt::join(v)), decltype(microfmt::join(a))>);
+  const auto r = microfmt::format<32>("{}", microfmt::join(a, "-"));
+  EXPECT_EQ(r.view(), "1-2-3");
 }

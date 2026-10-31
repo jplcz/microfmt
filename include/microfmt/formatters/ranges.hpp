@@ -8,6 +8,7 @@
 
 #include "../microfmt.hpp"
 #include <iterator>
+#include <utility>
 #include <string_view>
 #include <type_traits>
 
@@ -21,6 +22,45 @@ template <typename T>
 struct is_range<
     T, std::void_t<decltype(std::begin(std::declval<const T &>())), decltype(std::end(std::declval<const T &>()))>>
     : std::true_type {};
+
+// Contiguous ranges (C arrays, std::array, std::vector, std::span, ...) and raw pointer pairs are
+// normalised to a `const T *` pair so every iterator flavour over the same element type shares one
+// join_view/formatter instantiation instead of one per iterator type.
+template <typename T, typename = void> struct has_data_and_size : std::false_type {};
+template <typename T>
+struct has_data_and_size<T, std::void_t<decltype(std::data(std::declval<const T &>())),
+                                        decltype(std::size(std::declval<const T &>()))>> : std::true_type {};
+
+template <typename Range> constexpr auto join_bounds(const Range &range) noexcept {
+  using std::begin;
+  using std::end;
+  if constexpr (has_data_and_size<Range>::value) {
+    using Elem = std::remove_cv_t<std::remove_pointer_t<decltype(std::data(range))>>;
+    using Deref = std::remove_cv_t<std::remove_reference_t<decltype(*begin(range))>>;
+    if constexpr (std::is_same_v<Elem, Deref>) {
+      const Elem *first = std::data(range);
+      RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
+      const Elem *last = first + std::size(range);
+      RELOCO_END_UNSAFE_BUFFER_USAGE;
+      return std::pair<const Elem *, const Elem *>{first, last};
+    } else {
+      return std::pair{begin(range), end(range)};
+    }
+  } else {
+    return std::pair{begin(range), end(range)};
+  }
+}
+
+template <typename It, typename Sentinel> constexpr auto join_bounds(It first, Sentinel last) noexcept {
+  if constexpr (std::is_pointer_v<It> && std::is_pointer_v<Sentinel> &&
+                std::is_same_v<std::remove_cv_t<std::remove_pointer_t<It>>,
+                               std::remove_cv_t<std::remove_pointer_t<Sentinel>>>) {
+    using Elem = std::remove_cv_t<std::remove_pointer_t<It>>;
+    return std::pair<const Elem *, const Elem *>{first, last};
+  } else {
+    return std::pair<It, Sentinel>{first, last};
+  }
+}
 
 #if RELOCO_CXX20
 // Fixed string helper for compile-time format string & delimiter NTTPs
@@ -83,14 +123,14 @@ struct join_as_view {
 template <typename It, typename Sentinel,
           std::enable_if_t<!std::is_convertible_v<Sentinel, microfmt::string_view>, int> = 0>
 [[nodiscard]] constexpr auto join(It first, Sentinel last, microfmt::string_view delimiter = ", ") noexcept {
-  return join_view<It, Sentinel>{first, last, delimiter};
+  const auto [b, e] = detail::join_bounds(first, last);
+  return join_view<std::remove_cv_t<decltype(b)>, std::remove_cv_t<decltype(e)>>{b, e, delimiter};
 }
 
 template <typename Range, std::enable_if_t<detail::is_range<Range>::value, int> = 0>
 [[nodiscard]] constexpr auto join(const Range &range, microfmt::string_view delimiter = ", ") noexcept {
-  using std::begin;
-  using std::end;
-  return join_view<decltype(begin(range)), decltype(end(range))>{begin(range), end(range), delimiter};
+  const auto [b, e] = detail::join_bounds(range);
+  return join_view<std::remove_cv_t<decltype(b)>, std::remove_cv_t<decltype(e)>>{b, e, delimiter};
 }
 
 template <typename Range,
@@ -103,9 +143,8 @@ template <typename Range,
 template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "", typename Range,
           std::enable_if_t<detail::is_range<Range>::value, int> = 0>
 [[nodiscard]] constexpr auto join_as(const Range &range) noexcept {
-  using std::begin;
-  using std::end;
-  return join_as_view<decltype(begin(range)), decltype(end(range)), Delim, ElemSpec>{begin(range), end(range)};
+  const auto [b, e] = detail::join_bounds(range);
+  return join_as_view<std::remove_cv_t<decltype(b)>, std::remove_cv_t<decltype(e)>, Delim, ElemSpec>{b, e};
 }
 
 template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "", typename Range,
@@ -116,7 +155,8 @@ template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "", typena
 template <detail::fixed_string Delim, detail::fixed_string ElemSpec = "", typename It, typename Sentinel,
           std::enable_if_t<!std::is_convertible_v<Sentinel, microfmt::string_view>, int> = 0>
 [[nodiscard]] constexpr auto join_as(It first, Sentinel last) noexcept {
-  return join_as_view<It, Sentinel, Delim, ElemSpec>{first, last};
+  const auto [b, e] = detail::join_bounds(first, last);
+  return join_as_view<std::remove_cv_t<decltype(b)>, std::remove_cv_t<decltype(e)>, Delim, ElemSpec>{b, e};
 }
 #endif
 

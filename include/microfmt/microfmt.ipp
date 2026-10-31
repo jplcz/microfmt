@@ -24,6 +24,20 @@ namespace detail {
 
 // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
 RELOCO_BEGIN_UNSAFE_CODE
+MICROFMT_API void const_char_like::format(const char *val, const sink &out) const noexcept {
+  const microfmt::string_view sv = val != nullptr ? microfmt::string_view(val) : microfmt::string_view("(null)", 6);
+#ifndef MICROFMT_DISABLE_DEBUG_FLAG
+  if (debug) {
+    detail::write_debug_quoted(out, sv, '"');
+    return;
+  }
+#endif
+  out.write(sv);
+}
+RELOCO_END_UNSAFE_CODE
+
+// low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
+RELOCO_BEGIN_UNSAFE_CODE
 MICROFMT_API_CONSTEXPR void int_formatter_specs::parse(format_parse_context &ctx) noexcept {
   const microfmt::string_view spec = ctx.spec();
   if (spec.empty())

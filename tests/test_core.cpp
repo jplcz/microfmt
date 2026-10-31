@@ -39,6 +39,22 @@ TEST(CoreBintime, FormatsPicosecondPrecisionWithoutWideIntegers) {
 // Concrete Sink Implementations & Bounds Verification
 // ============================================================================
 
+TEST(CoreFixType, CollapsesEquivalentIntegersAndPointers) {
+  using microfmt::detail::fix_type_t;
+  static_assert(std::is_same_v<fix_type_t<int>, int32_t>);
+  static_assert(std::is_same_v<fix_type_t<long long>, fix_type_t<long>>);
+  static_assert(std::is_same_v<fix_type_t<unsigned>, uint32_t>);
+  static_assert(std::is_same_v<fix_type_t<char>, char>);
+  static_assert(std::is_same_v<fix_type_t<bool>, bool>);
+  static_assert(std::is_same_v<fix_type_t<double *>, const void *>);
+  static_assert(std::is_same_v<fix_type_t<const char *>, const char *>);
+
+  int v = 7;
+  long long big = -5;
+  const auto r = microfmt::format<32>("{} {} {}", v, big, static_cast<void *>(nullptr));
+  EXPECT_EQ(r.view(), "7 -5 0x0");
+}
+
 TEST(CoreSink, BufferSinkStorageAndReset) {
   microfmt::buffer_sink<32> buf;
   EXPECT_EQ(buf.size(), 0u);
