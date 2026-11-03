@@ -234,6 +234,20 @@ target_link_libraries(jplcz_microfmt INTERFACE jplcz_reloco::reloco)
 
 add_library(jplcz_microfmt::microfmt ALIAS jplcz_microfmt)
 
+# Compile-time log level: macros below it become no-ops (see docs/usage.md).
+set(JPLCZ_MICROFMT_ACTIVE_LEVEL "" CACHE STRING
+    "Compile-time log level: trace|debug|info|warn|error|critical|off (empty = keep all)")
+set_property(CACHE JPLCZ_MICROFMT_ACTIVE_LEVEL PROPERTY STRINGS
+    "" trace debug info warn error critical off)
+if(JPLCZ_MICROFMT_ACTIVE_LEVEL)
+    string(TOUPPER "${JPLCZ_MICROFMT_ACTIVE_LEVEL}" _microfmt_active_level)
+    if(NOT _microfmt_active_level MATCHES "^(TRACE|DEBUG|INFO|WARN|ERROR|CRITICAL|OFF)$")
+        message(FATAL_ERROR "Invalid JPLCZ_MICROFMT_ACTIVE_LEVEL '${JPLCZ_MICROFMT_ACTIVE_LEVEL}'")
+    endif()
+    target_compile_definitions(jplcz_microfmt INTERFACE
+        MICROFMT_ACTIVE_LEVEL=MICROFMT_LEVEL_${_microfmt_active_level})
+endif()
+
 # JPLCZ_MICROFMT_PORTING_HEADERS: copy microfmt_user_config.hpp and
 # default_log_sink.hpp (currently the only backend entry) when present in the
 # given directory into a staging tree (never into microfmt's own source include/ tree, so microfmt's own
@@ -644,6 +658,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_platform_log_sinks.cpp
         tests/test_pointer.cpp
         tests/test_logger_override.cpp
+        tests/test_log_active_level.cpp
         tests/test_extended_log.cpp
         tests/test_sbuf_sink.cpp
         tests/test_c_string_span_sink.cpp

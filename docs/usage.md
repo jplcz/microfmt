@@ -344,6 +344,31 @@ MICROFMT_LOGGER_INFO(logger, MICROFMT_STRING("sensor={} online"), 7);
 Define `MICROFMT_DEFAULT_LOGGER` before including `macros.hpp` to enable
 `MICROFMT_LOG_INFO(...)` and the related default-logger macros.
 
+### Compiling log calls out entirely
+
+Run-time filtering (`logger.set_level(...)`) still leaves every format string,
+file name and function name in the binary. On size-constrained targets
+(kernels, firmware) set the compile-time level `MICROFMT_ACTIVE_LEVEL` so the
+macros below it become `((void)0)`: arguments are not evaluated and no string
+literal is emitted. This works like spdlog's `SPDLOG_ACTIVE_LEVEL`.
+
+```cpp
+// Must be defined before <microfmt/log/macros.hpp> (or pass it on the
+// compiler command line, e.g. -DMICROFMT_ACTIVE_LEVEL=3, or configure with
+// -DJPLCZ_MICROFMT_ACTIVE_LEVEL=warn). Constants: MICROFMT_LEVEL_TRACE (0),
+// DEBUG, INFO, WARN, ERROR, CRITICAL, OFF (6). Default: TRACE (keep all).
+#define MICROFMT_ACTIVE_LEVEL MICROFMT_LEVEL_WARN
+#include <microfmt/log/macros.hpp>
+
+MICROFMT_LOGGER_INFO(logger, "boot step {}", expensive()); // no-op: not evaluated, string not emitted
+MICROFMT_LOGGER_ERROR(logger, "boot failed: {}", code);    // kept; still subject to logger.should_log()
+```
+
+Only the `MICROFMT_LOGGER_<LEVEL>` and `MICROFMT_LOG_<LEVEL>` macros are
+affected; calling `logger.info(...)` directly or `MICROFMT_LOGGER_LOG` with a
+run-time level is never removed. Unused-variable warnings for values only
+used in disabled log calls are the caller's concern.
+
 ## Platform and language support
 
 The core supports C++17 and later. C++20 and C++23 APIs are exposed only when

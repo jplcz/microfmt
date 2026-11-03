@@ -92,6 +92,12 @@
 //     Enable the process-wide built-in default logger, and/or name the
 //     logger expression used by the MICROFMT_LOG_* free-function macros.
 //
+// MICROFMT_ACTIVE_LEVEL
+//     Compile-time log level (MICROFMT_LEVEL_TRACE .. MICROFMT_LEVEL_OFF,
+//     i.e. 0..6; default trace). MICROFMT_LOG_* / MICROFMT_LOGGER_* macros
+//     below it expand to ((void)0), so their format strings and source
+//     locations are not compiled into the binary. See docs/usage.md.
+//
 // MICROFMT_DEFAULT_LOG_SINK_BACKEND_CUSTOM
 //     Replaces MICROFMT_ENABLE_DEFAULT_LOGGER's built-in stdout_color_sink
 //     backend with a fixed-path #include "detail/porting/
