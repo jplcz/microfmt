@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.5.1
+
 ### Added
 
 - Compile-time log level `MICROFMT_ACTIVE_LEVEL` (and CMake option `JPLCZ_MICROFMT_ACTIVE_LEVEL`): `MICROFMT_LOG_*`/`MICROFMT_LOGGER_*` macros below it become no-ops, so their format strings are not compiled into the binary.
