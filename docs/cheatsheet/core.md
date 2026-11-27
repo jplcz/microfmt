@@ -23,7 +23,8 @@ Part of the [formatter cheatsheet](../cheatsheet.md). All outputs below were pro
 | `{{` / `}}` | literal `{` / `}`: `"{{}} {{{}}}"`(1) -> `[{} {1}]` |
 | missing arg (`{5}`, or too few args) | writes `{MISSING}` (runtime path). With `MICROFMT_STRING` an out-of-range explicit `{N}` is a compile error (`std::get`). |
 | extra args | silently ignored |
-| non-numeric "index" (`{name}`, `{ }`, `{-1}`, `{ 0}`, `{x:5}`) | NOT an error: treated as an ordinary AUTO field (`{x:5}`(1) -> `[    1]`); text before `:` is ignored. No named args. |
+| identifier (`{name}`, `{name:5}`) | looked up among `ns::arg("name", v)` arguments at runtime; unknown name (or no named args) -> `{MISSING}`; does not advance the auto index; first duplicate wins |
+| other non-numeric "index" (`{ }`, `{-1}`, `{ 0}`) | NOT an error: treated as an ordinary AUTO field; text before `:` is ignored |
 | unclosed `{` (`"{"`, `"a{"`, `"{:5"`) | emitted literally; lone `}` is literal |
 | dynamic width/precision `{:{}}` | unsupported: spec is `{` (up to first `}`), remaining `}` printed literally: `"{:{}}"`(1,2) -> `[1}]` |
 | spec containing `}` | impossible (first `}` terminates the field) |
@@ -94,8 +95,10 @@ int v=255; ns::format<32>("{:x}", ns::as_debug(v))    // -> [ff]  (no Debug<int>
 | `ns::format_as<Container>(fmt, args...)` (e.g. `<std::string>`) | microfmt.hpp | uses `back_inserter`; may throw bad_alloc; runtime or `MICROFMT_STRING` |
 | `ns::format_args` / `ns::make_format_args(args...)` | microfmt.hpp | type‑erased, borrows args (must outlive use; only valid within the full expression for temporaries) |
 | `ns::vformat_args_to(sink, fmt, format_args)` / `vformat_args_as<Container>(fmt, args)` | microfmt.hpp | non-template boundary |
-| `ns::vformat_to(sink, fmt, span<const void*const>, span<const format_fn_t>)` | microfmt.hpp | raw engine |
-| `MICROFMT_STRING("...")` | microfmt.hpp | compile-time parse + unrolled dispatch for format_to/format/format_as/print/println; under `MICROFMT_SHARED` degrades to runtime. `{:?}` etc. identical. |
+| `ns::arg("name", value) -> named_arg<T>` | microfmt.hpp | labels an argument for `{name}`; borrows `value`; with `make_format_args` keep it in a variable |
+| `ns::dynamic_format_args<N>` | microfmt.hpp | allocation-free runtime-filled arg list: `push("name", lvalue) -> bool` (false when full; temporaries rejected), `push(lvalue)` unnamed; pass to `vformat_args_to` |
+| `ns::vformat_to(sink, fmt, span<const void*const>, span<const format_fn_t>, span<const string_view> names = {})` | microfmt.hpp | raw engine |
+| `MICROFMT_STRING("...")` | microfmt.hpp | compile-time parse + unrolled dispatch for format_to/format/format_as/print/println; under `MICROFMT_SHARED`, or when any argument is a `named_arg`, degrades to runtime. `{:?}` etc. identical. |
 | `ns::print / println(fmt, args...)` | `sinks/stdio.hpp` | stdout. Overloads taking first arg `std::FILE*`, `int fd` (POSIX), or `ns::sink`; `println()` / `println(sink)` / `println(FILE*)` / `println(fd)` emit only `\n`. (Does not flush.) |
 | `stdout_sink()`, `stderr_sink()`, `file_sink(FILE*)`, `fd_sink(int)` | `sinks/stdio.hpp` | return `ns::sink` |
 | `ns::format_to_container(c, fmt, args...)`, `format_as_container<C>`, `make_container_sink(c)`, `container_sink<C>` | `sinks/container_sink.hpp` | growable char containers (std::string, vectors, …); throws bad_alloc if exceptions on |

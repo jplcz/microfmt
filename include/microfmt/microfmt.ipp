@@ -85,7 +85,8 @@ RELOCO_END_UNSAFE_CODE
 // low-level formatting: raw character pointers and integer width conversions bounded by the buffer sizes checked here.
 RELOCO_BEGIN_UNSAFE_CODE
 MICROFMT_API void vformat_to(const sink &out, const microfmt::string_view fmt, const span<const void *const> arg_ptrs,
-                             const span<const format_fn_t> arg_fns) noexcept {
+                             const span<const format_fn_t> arg_fns,
+                             const span<const microfmt::string_view> arg_names) noexcept {
   size_t arg_idx = 0;
   size_t i = 0;
 
@@ -121,7 +122,18 @@ MICROFMT_API void vformat_to(const sink &out, const microfmt::string_view fmt, c
 
         size_t selected_arg = arg_idx;
         if (!detail::parse_positional_index(index, selected_arg)) {
-          ++arg_idx;
+          if (detail::is_identifier(index)) {
+            // a name that is not in the table selects nothing and prints {MISSING}
+            selected_arg = static_cast<size_t>(-1);
+            for (size_t n = 0; n < arg_names.size(); ++n) {
+              if (arg_names.unsafe_at(n) == index) {
+                selected_arg = n;
+                break;
+              }
+            }
+          } else {
+            ++arg_idx;
+          }
         }
 
         if (selected_arg < arg_ptrs.size() && selected_arg < arg_fns.size()) {

@@ -267,6 +267,66 @@ Both `rotating_file_sink` (through `rotating_file_ops`) and
 `journald_native_sink` (through a send function) accept replacement functions
 so they can be tested without touching the real file system or journal.
 
+## Named arguments
+
+Positional fields (`{0}`, `{1}`) break when a message is reworded, reordered
+or translated, because the argument order in the code no longer matches the
+text. Give an argument a name with `microfmt::arg` and refer to it as
+`{name}` instead; the order then no longer matters:
+
+```cpp
+using microfmt::arg;
+
+microfmt::format_to(output.as_sink(), "{user} logged in from {ip:15}",
+                    arg("user", name), arg("ip", address));
+
+// Positional and named arguments can be mixed; `{0}` is the first argument.
+microfmt::format_to(output.as_sink(), "{0} -> {target}", id, arg("target", path));
+```
+
+A name is a letter or underscore followed by letters, digits or underscores.
+Everything after the `:` is the normal format specification, so every
+existing formatter works unchanged. The name is looked up when the message is
+formatted, so the format text may come from a configuration file or a
+translation table.
+
+Rules worth knowing:
+
+- An unknown name prints `{MISSING}`, like an out-of-range index, because
+  formatting never throws.
+- If two arguments share a name, the first one wins.
+- A bare `{}` counts every argument in order, named ones included; a `{name}`
+  field does not advance that counter.
+- `arg` only borrows the value, so it is safe inside one `format_to` call. If
+  you build the arguments first with `make_format_args`, keep the result of
+  `arg(...)` in a variable (the compiler warns about a dangling temporary).
+- `MICROFMT_STRING` still validates the text, but a call that contains a named
+  argument is formatted by the runtime engine, since names are resolved at
+  runtime.
+
+### Building the argument list at runtime
+
+`format_to` needs the arguments written out in the source code. When they come
+from data instead (the fields of a log record, or the entries a configuration
+file asks for), fill a `dynamic_format_args<Capacity>` and pass it to
+`vformat_args_to`. It never allocates: `push` returns `false` and adds nothing
+once `Capacity` is reached.
+
+```cpp
+const microfmt::string_view user = "ann";
+const int count = 3;
+
+microfmt::dynamic_format_args<8> args;
+const bool ok = args.push("user", user) && args.push("count", count);
+
+microfmt::vformat_args_to(output.as_sink(), format_from_configuration, args);
+```
+
+The builder only borrows the values, so each one must outlive the formatting
+call. Pushing a temporary (`args.push("n", 3)`) is therefore rejected at
+compile time; store the value in a variable first. `args.push(value)` adds an
+unnamed argument that is reachable by position only.
+
 ## Compile-time format strings
 
 The runtime format string used throughout this guide is the default choice

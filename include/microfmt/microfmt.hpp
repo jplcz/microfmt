@@ -986,6 +986,57 @@ private:
 
 template <typename T, typename Enable = void> struct formatter;
 
+/**
+ * @brief An argument labelled with a name so a format string can say `{name}`.
+ *
+ * Why: positional fields (`{0}`, `{1}`) break when text is reordered or
+ * translated; names survive that. Create one with @ref arg and pass it to
+ * `format_to` like any other argument. It only borrows @p value, so it must
+ * not outlive the full expression that created it.
+ */
+template <typename T> class RELOCO_POINTER named_arg {
+public:
+  constexpr named_arg(microfmt::string_view name, const T &value RELOCO_LIFETIMEBOUND) noexcept
+      : name_(name), value_(value) {}
+
+  [[nodiscard]] constexpr microfmt::string_view name() const noexcept { return name_; }
+
+  [[nodiscard]] constexpr const T &value() const & noexcept RELOCO_LIFETIMEBOUND { return value_; }
+  [[nodiscard]] constexpr const T &value() const && = delete;
+
+private:
+  microfmt::string_view name_{};
+  const T &value_;
+};
+
+/** @brief Labels @p value with @p name for use as `{name}` in a format string. */
+template <typename T>
+[[nodiscard]] constexpr named_arg<T> arg(microfmt::string_view name, const T &value RELOCO_LIFETIMEBOUND) noexcept {
+  return named_arg<T>(name, value);
+}
+
+namespace detail {
+
+template <typename T> struct is_named_arg : std::false_type {};
+template <typename T> struct is_named_arg<named_arg<T>> : std::true_type {};
+template <typename T> inline constexpr bool is_named_arg_v = is_named_arg<T>::value;
+template <typename... Args> inline constexpr bool any_named_arg_v = (is_named_arg_v<Args> || ...);
+
+// The label of an argument; empty for positional ones.
+template <typename T> constexpr microfmt::string_view arg_label(const T &) noexcept { return {}; }
+template <typename T> constexpr microfmt::string_view arg_label(const named_arg<T> &a) noexcept { return a.name(); }
+
+} // namespace detail
+
+// A named argument formats exactly like the value it labels.
+template <typename T> struct formatter<named_arg<T>> {
+  formatter<T> inner{};
+
+  constexpr void parse(format_parse_context &ctx) noexcept { inner.parse(ctx); }
+
+  void format(const named_arg<T> &a, const sink &out) const noexcept { inner.format(a.value(), out); }
+};
+
 // ============================================================================
 // Built-in Formatter Specializations
 // ============================================================================
@@ -1589,6 +1640,22 @@ constexpr bool parse_positional_index(microfmt::string_view text, size_t &index)
 }
 RELOCO_END_UNSAFE_CODE
 
+// A field name: a letter or underscore followed by letters, digits or underscores.
+constexpr bool is_identifier(microfmt::string_view text) noexcept {
+  if (text.empty()) {
+    return false;
+  }
+  for (size_t i = 0; i < text.size(); ++i) {
+    const char c = text[i];
+    const bool alpha = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    const bool digit = c >= '0' && c <= '9';
+    if (!alpha && !(digit && i > 0)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Represents a pre-parsed action in the format string
 struct MICROFMT_API_CLASS RELOCO_POINTER compiled_piece {
   microfmt::string_view literal{}; // Static literal text to emit directly
@@ -1800,7 +1867,8 @@ template <typename T> struct formatter<detail::debug_view<T>> {
 // every microfmt header sees a consistent signature regardless of build
 // mode; the body itself lives in microfmt.ipp, included below.
 MICROFMT_API void vformat_to(const sink &out, const microfmt::string_view fmt, const span<const void *const> arg_ptrs,
-                             const span<const format_fn_t> arg_fns) noexcept;
+                             const span<const format_fn_t> arg_fns,
+                             const span<const microfmt::string_view> arg_names = {}) noexcept;
 
 #if MICROFMT_SHARED_PROVIDE_DEFINITIONS
 #include "microfmt.ipp"
@@ -1819,7 +1887,14 @@ RELOCO_CONSTEXPR20 inline void format_to(const sink &out, microfmt::string_view 
     const void *const arg_ptrs[] = {static_cast<const void *>(&args)...};
     constexpr auto thunks = detail::format_type_table<detail::fix_type_t<Args>...>::dynamic_span;
 
-    vformat_to(out, fmt, span<const void *const>(arg_ptrs, sizeof...(Args)), thunks);
+    if constexpr (detail::any_named_arg_v<Args...>) {
+      // NOLINTNEXTLINE(reloco-no-c-array): fixed-size name table for span APIs
+      const microfmt::string_view names[] = {detail::arg_label(args)...};
+      vformat_to(out, fmt, span<const void *const>(arg_ptrs, sizeof...(Args)), thunks,
+                 span<const microfmt::string_view>(names, sizeof...(Args)));
+    } else {
+      vformat_to(out, fmt, span<const void *const>(arg_ptrs, sizeof...(Args)), thunks);
+    }
   }
 }
 
@@ -1890,9 +1965,14 @@ RELOCO_CONSTEXPR20 inline void format_to(const sink &out, compile_string_holder<
 #if defined(MICROFMT_SHARED)
   format_to(out, StrProvider::get(), args...);
 #else
-  constexpr size_t num_pieces = detail::compiled_string_storage<StrProvider>::compiled.count;
+  if constexpr (detail::any_named_arg_v<Args...>) {
+    // the unrolled path resolves fields by position; names are resolved by the runtime engine
+    format_to(out, StrProvider::get(), args...);
+  } else {
+    constexpr size_t num_pieces = detail::compiled_string_storage<StrProvider>::compiled.count;
 
-  detail::unrolled_format_impl<StrProvider>(out, std::make_index_sequence<num_pieces>{}, args...);
+    detail::unrolled_format_impl<StrProvider>(out, std::make_index_sequence<num_pieces>{}, args...);
+  }
 #endif
 }
 
@@ -1955,6 +2035,7 @@ format_as(compile_string_holder<StrProvider> fmt, const Args &...args) {
 struct MICROFMT_API_CLASS RELOCO_POINTER format_args {
   span<const void *const> ptrs;
   span<const format_fn_t> fns;
+  span<const microfmt::string_view> names{}; ///< Empty, or one label per argument (empty label = positional only).
 };
 
 namespace detail {
@@ -1962,7 +2043,27 @@ namespace detail {
 /**
  * @brief Stack storage for type-erased argument pointers.
  */
-template <typename... Args> struct RELOCO_POINTER format_args_store {
+// Holds the per-argument labels only when at least one argument is named, so plain calls pay no stack.
+template <bool Any, size_t N> struct names_holder {
+  template <typename... A> constexpr explicit names_holder(const A &...) noexcept {}
+  [[nodiscard]] constexpr span<const microfmt::string_view> names() const & noexcept RELOCO_LIFETIMEBOUND { return {}; }
+  [[nodiscard]] constexpr span<const microfmt::string_view> names() const && = delete;
+};
+
+template <size_t N> struct names_holder<true, N> {
+  microfmt::array<microfmt::string_view, N> labels;
+
+  template <typename... A>
+  constexpr explicit names_holder(const A &...args) noexcept : labels{{detail::arg_label(args)...}} {}
+
+  [[nodiscard]] constexpr span<const microfmt::string_view> names() const & noexcept RELOCO_LIFETIMEBOUND {
+    return {labels.data(), labels.size()};
+  }
+  [[nodiscard]] constexpr span<const microfmt::string_view> names() const && = delete;
+};
+
+template <typename... Args>
+struct RELOCO_POINTER format_args_store : names_holder<any_named_arg_v<Args...>, sizeof...(Args)> {
   // Use size 1 for empty packs to avoid zero-length array compiler errors
   // NOLINTNEXTLINE(reloco-no-c-array): pack-sized fixed table; reloco::array is not available in this core header
   const void *const ptrs[sizeof...(Args) == 0 ? 1 : sizeof...(Args)];
@@ -1970,14 +2071,14 @@ template <typename... Args> struct RELOCO_POINTER format_args_store {
   // Captures pointers to `args`; the constructed object (and thus any
   // temporaries bound to `args`) must outlive its use, hence RELOCO_LIFETIMEBOUND.
   RELOCO_CONSTEXPR20 explicit format_args_store(const Args &...args RELOCO_LIFETIMEBOUND) noexcept
-      : ptrs{static_cast<const void *>(&args)...} {}
+      : names_holder<any_named_arg_v<Args...>, sizeof...(Args)>(args...), ptrs{static_cast<const void *>(&args)...} {}
 
   [[nodiscard]] RELOCO_CONSTEXPR20 format_args view() const noexcept RELOCO_LIFETIMEBOUND {
     if constexpr (sizeof...(Args) == 0) {
-      return {span<const void *const>{}, span<const format_fn_t>{}};
+      return {span<const void *const>{}, span<const format_fn_t>{}, span<const microfmt::string_view>{}};
     } else {
       return {span<const void *const>(ptrs, sizeof...(Args)),
-              detail::format_type_table<detail::fix_type_t<Args>...>::dynamic_span};
+              detail::format_type_table<detail::fix_type_t<Args>...>::dynamic_span, this->names()};
     }
   }
 
@@ -2011,6 +2112,62 @@ template <typename... Args>
 }
 
 /**
+ * @brief Fixed-capacity argument list that is filled at runtime, without allocation.
+ *
+ * Why: `format_to` needs the arguments listed in the source code. When they
+ * come from data (for example the fields of a log record, or the entries a
+ * configuration file asks for), use this builder, then pass it to
+ * `vformat_args_to` together with a format string whose `{name}` fields match.
+ * It only borrows the values, so each one must outlive the formatting call;
+ * pushing a temporary is therefore rejected at compile time.
+ */
+template <size_t Capacity> class RELOCO_POINTER dynamic_format_args {
+public:
+  dynamic_format_args() noexcept = default;
+
+  /** @brief Appends @p value labelled @p name; returns false (and adds nothing) when full. */
+  template <typename T>
+  [[nodiscard]] bool push(microfmt::string_view name, const T &value RELOCO_LIFETIMEBOUND) noexcept {
+    if (count_ >= Capacity) {
+      return false;
+    }
+    ptrs_[count_] = static_cast<const void *>(&value);
+    fns_[count_] = &detail::format_type_thunk<detail::microfmt_remove_cvref_t<detail::fix_type_t<T>>>;
+    names_[count_] = name;
+    ++count_;
+    return true;
+  }
+
+  /** @brief Appends an unnamed @p value (reachable by position only). */
+  template <typename T> [[nodiscard]] bool push(const T &value RELOCO_LIFETIMEBOUND) noexcept {
+    return push(microfmt::string_view{}, value);
+  }
+
+  template <typename T> bool push(microfmt::string_view, const T &&) = delete;
+  template <typename T> bool push(const T &&) = delete;
+
+  /** @brief Number of arguments added so far. */
+  [[nodiscard]] size_t size() const noexcept { return count_; }
+
+  /** @brief Type-erased view for `vformat_args_to`; valid while this object and the pushed values live. */
+  [[nodiscard]] format_args view() const & noexcept RELOCO_LIFETIMEBOUND {
+    return {span<const void *const>(ptrs_.data(), count_), span<const format_fn_t>(fns_.data(), count_),
+            span<const microfmt::string_view>(names_.data(), count_)};
+  }
+  [[nodiscard]] format_args view() const && = delete;
+
+  // NOLINTNEXTLINE(reloco-explicit-conversion): implicit by design so the builder passes straight to vformat_args_to
+  operator format_args() const & noexcept RELOCO_LIFETIMEBOUND { return view(); }
+  operator format_args() const && = delete;
+
+private:
+  microfmt::array<const void *, Capacity> ptrs_{};
+  microfmt::array<format_fn_t, Capacity> fns_{};
+  microfmt::array<microfmt::string_view, Capacity> names_{};
+  size_t count_{0};
+};
+
+/**
  * @brief Type-erased formatting engine entry point.
  *
  * Formats a string using a pre-compiled `format_args` block.
@@ -2022,7 +2179,7 @@ template <typename... Args>
  */
 inline void vformat_args_to(const sink &out, microfmt::string_view fmt, format_args args) noexcept {
   // Delegate to the internal core implementation that handles the unsafe buffer parsing
-  vformat_to(out, fmt, args.ptrs, args.fns);
+  vformat_to(out, fmt, args.ptrs, args.fns, args.names);
 }
 
 /**

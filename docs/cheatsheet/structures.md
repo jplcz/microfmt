@@ -8,7 +8,7 @@ SPDX-License-Identifier: BSD-2-Clause
 
 Part of the [formatter cheatsheet](../cheatsheet.md). All outputs below were produced by compiling and running real code (g++ 15, `-std=c++20`, Boost present,
 reloco from `/home/jarek/Projekty/reloco/include`) unless marked **(output unverified)**.
-Format-string reminders: `{}` auto index, `{N}`/`{N:spec}` zero-based positional, `{{ }}` escapes, no named/dynamic width.
+Format-string reminders: `{}` auto index, `{N}`/`{N:spec}` zero-based positional, `{{ }}` escapes, `{name}` with `arg("name", v)`, no dynamic width.
 
 ## Common rules for this group
 
