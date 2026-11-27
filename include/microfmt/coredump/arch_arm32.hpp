@@ -22,16 +22,32 @@
 
 namespace microfmt::coredump::detail {
 
-template <std::uint32_t PageSize, std::uint32_t StatusRegister, bool WithVfp> struct arm32_policy {
+template <bool WithVfp, bool WithTls, std::uint32_t Breakpoints, std::uint32_t Watchpoints>
+inline constexpr regset_list<4> arm32_sets = [] {
+  regset_list<4> list;
+  list.add({nt_arm_vfp, "LINUX", WithVfp ? 260U : 0U});
+  list.add({nt_arm_tls, "LINUX", WithTls ? 4U : 0U});
+  list.add({nt_arm_hw_break, "LINUX", hwdebug_state_size(Breakpoints, 8)});
+  list.add({nt_arm_hw_watch, "LINUX", hwdebug_state_size(Watchpoints, 8)});
+  return list;
+}();
+
+/** @brief Shared 32-bit ARM policy; `WithTls` adds the 32-bit thread pointer and the counts add hardware debug state.
+ */
+template <std::uint32_t PageSize, std::uint32_t StatusRegister, bool WithVfp, bool WithTls = false,
+          std::uint32_t Breakpoints = 0, std::uint32_t Watchpoints = 0>
+struct arm32_policy {
   static constexpr bool is_64bit = false;
   static constexpr bool little_endian = true;
   static constexpr std::uint16_t machine = 40;       // EM_ARM
   static constexpr std::uint32_t flags = 0x05000000; // EF_ARM_EABI_VER5
   static constexpr std::uint32_t page_size = PageSize;
   static constexpr std::size_t prstatus_size = 148;
-  static constexpr std::size_t regset_count = WithVfp ? 1 : 0;
+  static constexpr std::size_t regset_count = arm32_sets<WithVfp, WithTls, Breakpoints, Watchpoints>.count;
 
-  static constexpr core_regset regset(std::size_t) noexcept { return {nt_arm_vfp, "LINUX", 260}; }
+  static constexpr core_regset regset(std::size_t index) noexcept {
+    return arm32_sets<WithVfp, WithTls, Breakpoints, Watchpoints>.items[index];
+  }
 
   /** @brief Writes the body of an `NT_PRSTATUS` note (Linux ARM `elf_prstatus`) for @p thread. */
   template <typename Emitter> static void write_prstatus(Emitter &out, const core_thread &thread) noexcept {

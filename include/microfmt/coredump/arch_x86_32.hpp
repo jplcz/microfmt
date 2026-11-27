@@ -21,17 +21,29 @@
 
 namespace microfmt::coredump {
 
-template <bool WithFpu = false> struct arch_x86_32_t {
+namespace detail {
+template <bool WithFpu, std::uint32_t XsaveBytes>
+inline constexpr regset_list<3> x86_32_sets = [] {
+  regset_list<3> list;
+  list.add({nt_prfpreg, "CORE", WithFpu ? 108U : 0U});
+  list.add({nt_prxfpreg, "LINUX", WithFpu ? 512U : 0U});
+  list.add({nt_x86_xstate, "LINUX", XsaveBytes});
+  return list;
+}();
+} // namespace detail
+
+/** @brief i386 policy; see the file comment. A non-zero @p XsaveBytes adds an `NT_X86_XSTATE` set of that size. */
+template <bool WithFpu = false, std::uint32_t XsaveBytes = 0> struct arch_x86_32_t {
   static constexpr bool is_64bit = false;
   static constexpr bool little_endian = true;
   static constexpr std::uint16_t machine = 3; // EM_386
   static constexpr std::uint32_t flags = 0;
   static constexpr std::uint32_t page_size = 4096;
   static constexpr std::size_t prstatus_size = 144;
-  static constexpr std::size_t regset_count = WithFpu ? 2 : 0;
+  static constexpr std::size_t regset_count = detail::x86_32_sets<WithFpu, XsaveBytes>.count;
 
   static constexpr core_regset regset(std::size_t index) noexcept {
-    return index == 0 ? core_regset{nt_prfpreg, "CORE", 108} : core_regset{nt_prxfpreg, "LINUX", 512};
+    return detail::x86_32_sets<WithFpu, XsaveBytes>.items[index];
   }
 
   /** @brief Writes the body of an `NT_PRSTATUS` note (Linux i386 `elf_prstatus`) for @p thread. */

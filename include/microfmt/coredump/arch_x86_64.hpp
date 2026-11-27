@@ -23,20 +23,33 @@
 
 namespace microfmt::coredump {
 
+namespace detail {
+template <bool WithFpu, std::uint32_t XsaveBytes>
+inline constexpr regset_list<2> x86_64_sets = [] {
+  regset_list<2> list;
+  list.add({nt_prfpreg, "CORE", WithFpu ? 512U : 0U});
+  list.add({nt_x86_xstate, "LINUX", XsaveBytes});
+  return list;
+}();
+} // namespace detail
+
 /**
  * @brief x86-64 policy. With @p WithFpu it also writes the `NT_PRFPREG` register set (512-byte FXSAVE image:
- * x87 and SSE registers), which lets a debugger show `$xmm0` and friends.
+ * x87 and SSE registers), which lets a debugger show `$xmm0` and friends. A non-zero @p XsaveBytes adds
+ * `NT_X86_XSTATE`, the raw XSAVE area of that size (it depends on the CPU's AVX/AVX-512 support), for `$ymm0` etc.
  */
-template <bool WithFpu = false> struct arch_x86_64_t {
+template <bool WithFpu = false, std::uint32_t XsaveBytes = 0> struct arch_x86_64_t {
   static constexpr bool is_64bit = true;
   static constexpr bool little_endian = true;
   static constexpr std::uint16_t machine = 62; // EM_X86_64
   static constexpr std::uint32_t flags = 0;
   static constexpr std::uint32_t page_size = 4096;
   static constexpr std::size_t prstatus_size = 336;
-  static constexpr std::size_t regset_count = WithFpu ? 1 : 0;
+  static constexpr std::size_t regset_count = detail::x86_64_sets<WithFpu, XsaveBytes>.count;
 
-  static constexpr core_regset regset(std::size_t) noexcept { return {nt_prfpreg, "CORE", 512}; }
+  static constexpr core_regset regset(std::size_t index) noexcept {
+    return detail::x86_64_sets<WithFpu, XsaveBytes>.items[index];
+  }
   /** @brief Writes the body of an `NT_PRSTATUS` note (Linux `elf_prstatus`) for @p thread. */
   template <typename Emitter> static void write_prstatus(Emitter &out, const core_thread &thread) noexcept {
     detail::write_prstatus_prefix<true>(out, thread);

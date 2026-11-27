@@ -19,17 +19,37 @@
 
 namespace microfmt::coredump {
 
-template <bool WithFpu = false> struct arch_aarch64_t {
+namespace detail {
+template <bool WithFpu, bool WithTls, std::uint32_t Breakpoints, std::uint32_t Watchpoints>
+inline constexpr regset_list<4> aarch64_sets = [] {
+  regset_list<4> list;
+  list.add({nt_prfpreg, "CORE", WithFpu ? 528U : 0U});
+  list.add({nt_arm_tls, "LINUX", WithTls ? 8U : 0U});
+  list.add({nt_arm_hw_break, "LINUX", hwdebug_state_size(Breakpoints, 16)});
+  list.add({nt_arm_hw_watch, "LINUX", hwdebug_state_size(Watchpoints, 16)});
+  return list;
+}();
+} // namespace detail
+
+/**
+ * @brief AArch64 policy. Besides `NT_PRFPREG` (`WithFpu`), it can write `NT_ARM_TLS` (`WithTls`: the 64-bit
+ * `TPIDR_EL0` thread pointer) and the hardware debug state of @p Breakpoints / @p Watchpoints slots
+ * (`NT_ARM_HW_BREAK` / `NT_ARM_HW_WATCH`: an 8-byte header plus an address and control word per slot; 0 = off).
+ */
+template <bool WithFpu = false, bool WithTls = false, std::uint32_t Breakpoints = 0, std::uint32_t Watchpoints = 0>
+struct arch_aarch64_t {
   static constexpr bool is_64bit = true;
   static constexpr bool little_endian = true;
   static constexpr std::uint16_t machine = 183; // EM_AARCH64
   static constexpr std::uint32_t flags = 0;
   static constexpr std::uint32_t page_size = 4096;
   static constexpr std::size_t prstatus_size = 392;
-  static constexpr std::size_t regset_count = WithFpu ? 1 : 0;
+  static constexpr std::size_t regset_count = detail::aarch64_sets<WithFpu, WithTls, Breakpoints, Watchpoints>.count;
 
-  /** @brief `NT_PRFPREG`: v0-v31 (16 bytes each), then the 32-bit `fpsr` and `fpcr` status registers. */
-  static constexpr core_regset regset(std::size_t) noexcept { return {nt_prfpreg, "CORE", 528}; }
+  /** @brief `NT_PRFPREG` is v0-v31 (16 bytes each), then the 32-bit `fpsr` and `fpcr` status registers. */
+  static constexpr core_regset regset(std::size_t index) noexcept {
+    return detail::aarch64_sets<WithFpu, WithTls, Breakpoints, Watchpoints>.items[index];
+  }
 
   template <typename Emitter> static void write_prstatus(Emitter &out, const core_thread &thread) noexcept {
     detail::write_prstatus_prefix<true>(out, thread);

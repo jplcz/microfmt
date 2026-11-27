@@ -18,8 +18,10 @@
 
 namespace microfmt::coredump {
 
-template <bool WithVfp = false>
-using arch_arm_cortex_a_t = detail::arm32_policy<4096, static_cast<std::uint32_t>(dwarf::arm32::cpsr), WithVfp>;
+/** @brief Cortex-A policy; see `arm32_policy` for the optional `NT_ARM_TLS` and hardware debug sets. */
+template <bool WithVfp = false, bool WithTls = false, std::uint32_t Breakpoints = 0, std::uint32_t Watchpoints = 0>
+using arch_arm_cortex_a_t = detail::arm32_policy<4096, static_cast<std::uint32_t>(dwarf::arm32::cpsr), WithVfp, WithTls,
+                                                 Breakpoints, Watchpoints>;
 
 using arch_arm_cortex_a = arch_arm_cortex_a_t<false>;
 using arch_arm_cortex_a_vfp = arch_arm_cortex_a_t<true>;

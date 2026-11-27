@@ -39,6 +39,10 @@ inline constexpr std::uint32_t nt_prpsinfo = 3;
 inline constexpr std::uint32_t nt_auxv = 6;
 inline constexpr std::uint32_t nt_siginfo = 0x53494749; // "SIGI"
 inline constexpr std::uint32_t nt_arm_vfp = 0x400;
+inline constexpr std::uint32_t nt_arm_tls = 0x401;
+inline constexpr std::uint32_t nt_arm_hw_break = 0x402;
+inline constexpr std::uint32_t nt_arm_hw_watch = 0x403;
+inline constexpr std::uint32_t nt_x86_xstate = 0x202;
 inline constexpr std::uint32_t nt_prxfpreg = 0x46e62b7f;
 inline constexpr std::uint32_t nt_file = 0x46494c45; // "FILE"
 ///@}
@@ -61,6 +65,27 @@ inline constexpr std::uint32_t regset_index_base = 0x10000;
 
 /** @brief The register-context index under which the register set of note type @p note_type is read. */
 constexpr std::uint32_t regset_index(std::uint32_t note_type) noexcept { return regset_index_base + note_type; }
+
+namespace detail {
+
+/** @brief Compile-time list of the register sets an architecture policy enables; sets of size 0 are skipped. */
+template <std::size_t Capacity> struct regset_list {
+  microfmt::array<core_regset, Capacity> items{};
+  std::size_t count{0};
+
+  constexpr void add(core_regset set) noexcept {
+    if (set.size != 0 && count < Capacity)
+      items[count++] = set;
+  }
+};
+
+/** @brief Size of a Linux `user_hwdebug_state` (the `NT_ARM_HW_*` notes): an 8-byte header plus @p SlotBytes per slot.
+ */
+constexpr std::uint32_t hwdebug_state_size(std::uint32_t slots, std::uint32_t slot_bytes) noexcept {
+  return slots == 0 ? 0U : 8U + slots * slot_bytes;
+}
+
+} // namespace detail
 
 /** @brief A contiguous range of target memory that should be part of the dump. */
 struct core_region {

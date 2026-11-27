@@ -627,6 +627,34 @@ TEST(ElfCoreWriterRegset, CortexAUsesCpsrAndFourKiloBytePages) {
   EXPECT_EQ(load_le(out, body + 72 + 4 * 16, 4), 0U);
 }
 
+TEST(ElfCoreWriterRegset, DebugStateThreadPointerAndXstateSetsAreOptIn) {
+  cd::core_plan plan;
+  // Notes after NT_PRSTATUS, in order: FPU 528, TLS 8, hardware breakpoints 8 + 6 * 16, watchpoints 8 + 4 * 16.
+  const auto a64 = dump_wide<cd::arch_aarch64_t<true, true, 6, 4>>(plan);
+  EXPECT_EQ(plan.note_bytes, (20U + 392U) + (20U + 528U) + (20U + 8U) + (20U + 104U) + (20U + 72U));
+  EXPECT_EQ(a64.size(), plan.total_size);
+  const size_t tls = load_le(a64, 64 + 8, 8) + 20 + 392 + 20 + 528;
+  EXPECT_EQ(load_le(a64, tls + 4, 4), 8U);
+  EXPECT_EQ(load_le(a64, tls + 8, 4), 0x401U);
+  EXPECT_EQ(load_le(a64, tls + 20, 1), fake_regset_byte(cd::nt_arm_tls, 0));
+  EXPECT_EQ(load_le(a64, tls + 20 + 8 + 4, 4), 104U); // NT_ARM_HW_BREAK descriptor size
+  EXPECT_EQ(load_le(a64, tls + 20 + 8 + 8, 4), 0x402U);
+
+  // 32-bit ARM uses 8 bytes per hardware slot and a 4-byte thread pointer.
+  dump_wide<cd::arch_arm_cortex_a_t<false, true, 2, 1>>(plan);
+  EXPECT_EQ(plan.note_bytes, (20U + 148U) + (20U + 4U) + (20U + 24U) + (20U + 16U));
+
+  // An XSAVE area (AVX: 832 bytes) is just another blob whose size comes from the template argument.
+  const auto x86 = dump_wide<cd::arch_x86_64_t<false, 832>>(plan);
+  EXPECT_EQ(plan.note_bytes, (20U + 336U) + (20U + 832U));
+  const size_t xstate = load_le(x86, 64 + 8, 8) + 20 + 336;
+  EXPECT_EQ(load_le(x86, xstate + 8, 4), 0x202U);
+  EXPECT_EQ(load_le(x86, xstate + 20 + 831, 1), fake_regset_byte(cd::nt_x86_xstate, 831));
+
+  EXPECT_EQ(cd::arch_aarch64::regset_count, 0U);
+  EXPECT_EQ((cd::arch_aarch64_t<false, false, 0, 1>::regset_count), 1U);
+}
+
 TEST(ElfCoreWriterRegset, UnreadableSetIsZeroFilledAndKeepsSize) {
   cd::core_plan plan;
   cd::core_stats stats;

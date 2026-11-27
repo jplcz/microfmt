@@ -117,6 +117,8 @@ Each pass reads all memory once more to decide, so this trades time for size.
 | `arch_arm_cortex_a` / `arch_arm_cortex_a_vfp` | 32-bit, little-endian | Application cores: `r0`-`r15` and `cpsr` (current program status register), 4 KiB pages. |
 | `arch_x86_32` / `arch_x86_32_fpu` | 32-bit, little-endian | i386: 17 slots including `orig_eax`; FPU adds `NT_PRFPREG` (108 bytes) and `NT_PRXFPREG` (512 bytes). |
 | `arch_x86_64_fpu` | 64-bit, little-endian | Adds `NT_PRFPREG` (512 bytes, FXSAVE layout). |
+| `arch_x86_64_t<WithFpu, XsaveBytes>` | 64-bit, little-endian | A non-zero `XsaveBytes` adds `NT_X86_XSTATE`, the raw XSAVE area (832 bytes with AVX, 2696 with AVX-512), so a debugger can show `$ymm0`. Also available as `arch_x86_32_t`. |
+| `arch_aarch64_t<WithFpu, WithTls, Breakpoints, Watchpoints>` | 64-bit, little-endian | `WithTls` adds `NT_ARM_TLS` (the `TPIDR_EL0` thread pointer); non-zero slot counts add `NT_ARM_HW_BREAK` / `NT_ARM_HW_WATCH` (hardware breakpoint and watchpoint state). `arch_arm_cortex_a_t` takes the same extra parameters. |
 | `arch_aarch64_fpu` | 64-bit, little-endian | Adds `NT_PRFPREG` (528 bytes: `v0`-`v31`, `fpsr`, `fpcr`). |
 | `arch_riscv32_fpu` / `arch_riscv64_fpu` | 32/64-bit | Adds `NT_PRFPREG` (264 bytes: `f0`-`f31`, `fcsr`). |
 
