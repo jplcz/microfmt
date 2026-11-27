@@ -148,7 +148,8 @@ template <typename T> struct formatter<auto_unit_view<T>> {
     // Whole part
     detail::format_unsigned<detail::radix::decimal>(out, abs_val, false, 0);
 
-    const uint8_t prec = (parse_precision != 255) ? parse_precision : (auv.precision > 15 ? uint8_t{15} : auv.precision);
+    const uint8_t prec =
+        (parse_precision != 255) ? parse_precision : (auv.precision > 15 ? uint8_t{15} : auv.precision);
 
     // Fractional part via pure integer arithmetic
     if (prec > 0 && scale_idx > 0) {

@@ -66,8 +66,9 @@ TEST(LexerLanguagesTest, CHashMidLineIsNotADirective) {
 }
 
 TEST(LexerLanguagesTest, CppRawStringsDigitSeparatorsAndUserLiterals) {
-  const auto tokens = lex_all(R"src(auto s = R"x(a)" )y" "q)x"; int n = 1'000'000; auto d = 10_km + "s"_str + u8"t"; a::b <=> c;)src",
-                              microfmt::rules::cpp);
+  const auto tokens =
+      lex_all(R"src(auto s = R"x(a)" )y" "q)x"; int n = 1'000'000; auto d = 10_km + "s"_str + u8"t"; a::b <=> c;)src",
+              microfmt::rules::cpp);
   EXPECT_EQ(count_kind(tokens, token_kind::error), 0u);
   EXPECT_EQ(tokens[3].kind, token_kind::string);
   EXPECT_EQ(tokens[3].text, R"src(R"x(a)" )y" "q)x")src");
@@ -95,7 +96,8 @@ TEST(LexerLanguagesTest, CLikeAliasMatchesCpp) {
 }
 
 TEST(LexerLanguagesTest, LuaLongBracketsCommentsAndNumbers) {
-  const auto tokens = lex_all("--[==[ a ]] b ]==] x = [[l1\nl2]] .. a[b[1]] --[ not long\ny = 0x1p4 // 2", microfmt::rules::lua);
+  const auto tokens =
+      lex_all("--[==[ a ]] b ]==] x = [[l1\nl2]] .. a[b[1]] --[ not long\ny = 0x1p4 // 2", microfmt::rules::lua);
   EXPECT_EQ(count_kind(tokens, token_kind::error), 0u);
   EXPECT_EQ(count_kind(tokens, token_kind::string), 1u);
   EXPECT_EQ(tokens[2].text, "[[l1\nl2]]");
@@ -128,7 +130,8 @@ TEST(LexerLanguagesTest, SqlKeywordsAreCaseInsensitiveAndQuotesDouble) {
 }
 
 TEST(LexerLanguagesTest, IniAndConfigValuesAreBareWordsWithoutErrors) {
-  expect_no_errors("[core]\n; c1\n# c2\npath = /usr/local/bin\nip=192.168.0.1\nurl: http://x.y:80/a?b=1\n", microfmt::rules::ini);
+  expect_no_errors("[core]\n; c1\n# c2\npath = /usr/local/bin\nip=192.168.0.1\nurl: http://x.y:80/a?b=1\n",
+                   microfmt::rules::ini);
   expect_no_errors("server {\n  listen 80; # c\n  location ~ ^/(a|b)$ { proxy_pass http://127.0.0.1:8080; }\n}\n",
                    microfmt::rules::config);
   expect_no_errors("net.ipv4.ip_forward = 1\nPATH=/usr/bin:$PATH\n; c\nname = \"x y\"\n", microfmt::rules::config_kv);
@@ -140,10 +143,10 @@ TEST(LexerLanguagesTest, IniAndConfigValuesAreBareWordsWithoutErrors) {
 }
 
 TEST(LexerLanguagesTest, TomlStringsNumbersAndDates) {
-  const auto tokens = lex_all(
-      "a-b = 'C:\\x'\ns = \"\"\"l1\nl2\"\"\"\nr = '''\nraw\\'''\nd = 1979-05-27T07:32:00Z\nt = 07:32:00.5\nd2 = 1979-05-27 07:32:00+01:00\n"
-      "o = 0o17\nk = 2024-key\ni = 1_000\nf = +inf # c\n[[tbl]]",
-      microfmt::rules::toml);
+  const auto tokens = lex_all("a-b = 'C:\\x'\ns = \"\"\"l1\nl2\"\"\"\nr = '''\nraw\\'''\nd = 1979-05-27T07:32:00Z\nt = "
+                              "07:32:00.5\nd2 = 1979-05-27 07:32:00+01:00\n"
+                              "o = 0o17\nk = 2024-key\ni = 1_000\nf = +inf # c\n[[tbl]]",
+                              microfmt::rules::toml);
   EXPECT_EQ(count_kind(tokens, token_kind::error), 0u);
   EXPECT_EQ(count_kind(tokens, token_kind::datetime), 3u);
   EXPECT_EQ(tokens[2].kind, token_kind::string);
@@ -157,10 +160,10 @@ TEST(LexerLanguagesTest, ExistingPresetsStillAccept) {
 }
 
 TEST(LexerLanguagesTest, EveryPresetTilesInputAndTerminatesForAllBytes) {
-  const reloco::array<lexer_rules, 10> presets{microfmt::rules::c,   microfmt::rules::cpp,  microfmt::rules::lua,
-                                               microfmt::rules::sql, microfmt::rules::toml, microfmt::rules::ini,
-                                               microfmt::rules::config, microfmt::rules::config_kv,
-                                               microfmt::rules::json, microfmt::rules::shell};
+  const reloco::array<lexer_rules, 10> presets{
+      microfmt::rules::c,    microfmt::rules::cpp,  microfmt::rules::lua,    microfmt::rules::sql,
+      microfmt::rules::toml, microfmt::rules::ini,  microfmt::rules::config, microfmt::rules::config_kv,
+      microfmt::rules::json, microfmt::rules::shell};
   for (const lexer_rules &preset : presets) {
     lexer_rules r = preset;
     r.skip_whitespace = false;
@@ -175,8 +178,9 @@ TEST(LexerLanguagesTest, EveryPresetTilesInputAndTerminatesForAllBytes) {
       }
       EXPECT_EQ(covered, input.size());
     };
-    for (string_view input : {string_view{"R\"(x"}, string_view{"--[==[ x"}, string_view{"'''x"}, string_view{"[=[x"},
-                              string_view{"#a\\\n\\"}, string_view{"0x.p"}, string_view{"1979-05-27T"}, string_view{"'a''"}}) {
+    for (string_view input :
+         {string_view{"R\"(x"}, string_view{"--[==[ x"}, string_view{"'''x"}, string_view{"[=[x"},
+          string_view{"#a\\\n\\"}, string_view{"0x.p"}, string_view{"1979-05-27T"}, string_view{"'a''"}}) {
       check(input);
     }
     for (int byte = 0; byte < 256; ++byte) {

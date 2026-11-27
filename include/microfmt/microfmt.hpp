@@ -1204,7 +1204,8 @@ struct MICROFMT_API_CLASS int_formatter_specs {
   template <typename T> void format_int_impl(T val, const sink &out) const noexcept {
     RELOCO_BEGIN_UNSAFE_BUFFER_USAGE;
     constexpr size_t DEC_BUF_SIZE = (sizeof(T) <= 4) ? 12 : (sizeof(T) <= 8) ? 24 : 48;
-    constexpr size_t BUF_SIZE = DEC_BUF_SIZE > sizeof(T) * 8 ? DEC_BUF_SIZE : sizeof(T) * 8; // binary needs one slot per bit
+    constexpr size_t BUF_SIZE =
+        DEC_BUF_SIZE > sizeof(T) * 8 ? DEC_BUF_SIZE : sizeof(T) * 8; // binary needs one slot per bit
     char buffer[BUF_SIZE];
     char *end = buffer + BUF_SIZE;
     char *start = end;
@@ -1503,14 +1504,30 @@ inline constexpr bool is_collapsible_int_v =
     !std::is_same_v<T, char16_t> && !std::is_same_v<T, char32_t> && sizeof(T) <= sizeof(uint64_t);
 
 template <size_t Size, bool Signed> struct sized_int;
-template <> struct sized_int<1, true> { using type = int8_t; };
-template <> struct sized_int<2, true> { using type = int16_t; };
-template <> struct sized_int<4, true> { using type = int32_t; };
-template <> struct sized_int<8, true> { using type = int64_t; };
-template <> struct sized_int<1, false> { using type = uint8_t; };
-template <> struct sized_int<2, false> { using type = uint16_t; };
-template <> struct sized_int<4, false> { using type = uint32_t; };
-template <> struct sized_int<8, false> { using type = uint64_t; };
+template <> struct sized_int<1, true> {
+  using type = int8_t;
+};
+template <> struct sized_int<2, true> {
+  using type = int16_t;
+};
+template <> struct sized_int<4, true> {
+  using type = int32_t;
+};
+template <> struct sized_int<8, true> {
+  using type = int64_t;
+};
+template <> struct sized_int<1, false> {
+  using type = uint8_t;
+};
+template <> struct sized_int<2, false> {
+  using type = uint16_t;
+};
+template <> struct sized_int<4, false> {
+  using type = uint32_t;
+};
+template <> struct sized_int<8, false> {
+  using type = uint64_t;
+};
 
 template <typename T> struct fix_type<T, std::enable_if_t<is_collapsible_int_v<T>>> {
   using type = typename sized_int<sizeof(T), std::is_signed_v<T>>::type;

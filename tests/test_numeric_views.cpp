@@ -19,7 +19,8 @@ TEST(NumericViewsTest, GroupsThousands) {
 
 TEST(NumericViewsTest, HandlesNegativeAndExtremes) {
   microfmt::buffer_sink<64> buffer;
-  microfmt::format_to(buffer.as_sink(), "{} {}", microfmt::thousands(-1234), microfmt::thousands(std::numeric_limits<int64_t>::min()));
+  microfmt::format_to(buffer.as_sink(), "{} {}", microfmt::thousands(-1234),
+                      microfmt::thousands(std::numeric_limits<int64_t>::min()));
   EXPECT_EQ(buffer.view(), "-1,234 -9,223,372,036,854,775,808");
 
   buffer.reset();
@@ -29,6 +30,7 @@ TEST(NumericViewsTest, HandlesNegativeAndExtremes) {
 
 TEST(NumericViewsTest, CustomSeparatorAndGroupSize) {
   microfmt::buffer_sink<64> buffer;
-  microfmt::format_to(buffer.as_sink(), "{} {}", microfmt::thousands(1234567, '_'), microfmt::thousands(12345678, ' ', 4));
+  microfmt::format_to(buffer.as_sink(), "{} {}", microfmt::thousands(1234567, '_'),
+                      microfmt::thousands(12345678, ' ', 4));
   EXPECT_EQ(buffer.view(), "1_234_567 1234 5678");
 }

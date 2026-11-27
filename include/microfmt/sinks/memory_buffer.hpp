@@ -71,8 +71,8 @@ public:
     RELOCO_ASSERT(pos < size(), "Index out of bounds");
     return m_data[pos];
   }
-  RELOCO_CHECKED [[nodiscard]] constexpr const_reference operator[](size_type pos) const & noexcept
-      RELOCO_LIFETIMEBOUND {
+  RELOCO_CHECKED [[nodiscard]] constexpr const_reference
+  operator[](size_type pos) const & noexcept RELOCO_LIFETIMEBOUND {
     RELOCO_ASSERT(pos < size(), "Index out of bounds");
     return m_data[pos];
   }

@@ -151,10 +151,12 @@ public:
   }
 
   // Floating point and pointers would otherwise silently convert to bool.
-  template <typename T, typename std::enable_if<std::is_floating_point<T>::value ||
-                                                    (std::is_pointer<T>::value &&
-                                                     !std::is_same<typename std::remove_cv<typename std::remove_pointer<T>::type>::type, char>::value),
-                                                int>::type = 0>
+  template <typename T,
+            typename std::enable_if<
+                std::is_floating_point<T>::value ||
+                    (std::is_pointer<T>::value &&
+                     !std::is_same<typename std::remove_cv<typename std::remove_pointer<T>::type>::type, char>::value),
+                int>::type = 0>
   map_writer &kv(microfmt::string_view, T) = delete;
 
   // wire-format encoding: bytes are deliberately converted between char and unsigned byte.
@@ -291,10 +293,12 @@ public:
   }
 
   // Floating point and pointers would otherwise silently convert to bool.
-  template <typename T, typename std::enable_if<std::is_floating_point<T>::value ||
-                                                    (std::is_pointer<T>::value &&
-                                                     !std::is_same<typename std::remove_cv<typename std::remove_pointer<T>::type>::type, char>::value),
-                                                int>::type = 0>
+  template <typename T,
+            typename std::enable_if<
+                std::is_floating_point<T>::value ||
+                    (std::is_pointer<T>::value &&
+                     !std::is_same<typename std::remove_cv<typename std::remove_pointer<T>::type>::type, char>::value),
+                int>::type = 0>
   array_writer &val(T) = delete;
 
   // wire-format encoding: bytes are deliberately converted between char and unsigned byte.

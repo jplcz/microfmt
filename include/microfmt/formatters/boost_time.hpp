@@ -77,14 +77,11 @@ inline void format_boost_time_duration(const boost::posix_time::time_duration &d
   if (duration.is_negative()) {
     out.put('-');
   }
-  detail::format_unsigned<detail::radix::decimal>(
-      out, detail::magnitude_u64(duration.hours()), false, 2);
+  detail::format_unsigned<detail::radix::decimal>(out, detail::magnitude_u64(duration.hours()), false, 2);
   out.put(':');
-  detail::format_unsigned<detail::radix::decimal>(
-      out, detail::magnitude_u64(duration.minutes()), false, 2);
+  detail::format_unsigned<detail::radix::decimal>(out, detail::magnitude_u64(duration.minutes()), false, 2);
   out.put(':');
-  detail::format_unsigned<detail::radix::decimal>(
-      out, detail::magnitude_u64(duration.seconds()), false, 2);
+  detail::format_unsigned<detail::radix::decimal>(out, detail::magnitude_u64(duration.seconds()), false, 2);
   const auto fractional = duration.fractional_seconds();
   if (fractional != 0) {
     out.put('.');

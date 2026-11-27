@@ -8,9 +8,9 @@
 
 #include "../microfmt.hpp"
 #include <iterator>
-#include <utility>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 
 namespace microfmt {
 
@@ -28,8 +28,9 @@ struct is_range<
 // join_view/formatter instantiation instead of one per iterator type.
 template <typename T, typename = void> struct has_data_and_size : std::false_type {};
 template <typename T>
-struct has_data_and_size<T, std::void_t<decltype(std::data(std::declval<const T &>())),
-                                        decltype(std::size(std::declval<const T &>()))>> : std::true_type {};
+struct has_data_and_size<
+    T, std::void_t<decltype(std::data(std::declval<const T &>())), decltype(std::size(std::declval<const T &>()))>>
+    : std::true_type {};
 
 template <typename Range> constexpr auto join_bounds(const Range &range) noexcept {
   using std::begin;

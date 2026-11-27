@@ -64,9 +64,9 @@ const bytes kFrameInstructions = {0x41, 0x0e, 0x10, 0x9d, 0x02, 0x9e, 0x01, 0x41
 // .eh_frame CIE: augmentation "zR", FDE pointers pc-relative sdata4, code align 4, data align -8, lr = 30.
 bytes eh_cie() {
   bytes b;
-  put_u32(b, 0);     // length, patched below
-  put_u32(b, 0);     // CIE id
-  b.push_back(1);    // version
+  put_u32(b, 0);  // length, patched below
+  put_u32(b, 0);  // CIE id
+  b.push_back(1); // version
   b.push_back('z');
   b.push_back('R');
   b.push_back(0);    // augmentation string
@@ -190,11 +190,11 @@ TEST(DwarfCfiDecoder, DebugFrameUsesAbsolutePointersAndCieOffset) {
   bytes cie;
   put_u32(cie, 0);
   put_u32(cie, 0xFFFFFFFFu);
-  cie.push_back(4);  // version
-  cie.push_back(0);  // augmentation string
-  cie.push_back(8);  // address size
-  cie.push_back(0);  // segment size
-  cie.push_back(4);  // code alignment
+  cie.push_back(4); // version
+  cie.push_back(0); // augmentation string
+  cie.push_back(8); // address size
+  cie.push_back(0); // segment size
+  cie.push_back(4); // code alignment
   cie.push_back(0x78);
   cie.push_back(30);
   cie.push_back(0x0c);

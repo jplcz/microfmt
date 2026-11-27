@@ -13,7 +13,8 @@ int main() {
   auto port = microfmt::parse<std::uint16_t>("8080");
   auto big = microfmt::parse<std::uint8_t>("300");
   std::printf("port ok=%d value=%u\n", port.has_value(), port.has_value() ? port.value() : 0U);
-  std::printf("300 as u8: overflow=%d at offset %zu\n", !big.has_value() && big.error().code == microfmt::number_errc::overflow,
+  std::printf("300 as u8: overflow=%d at offset %zu\n",
+              !big.has_value() && big.error().code == microfmt::number_errc::overflow,
               big.has_value() ? 0U : big.error().offset);
 
   // Options: detect 0x/0b/0o prefixes and allow '_' separators (what the TOML lexer produces).

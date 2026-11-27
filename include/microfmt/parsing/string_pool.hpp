@@ -282,7 +282,8 @@ private:
     return result ? pool_result{result.value(), {}} : pool_result{string_id{}, result.error().message};
   }
 
-  [[nodiscard]] static reloco::string_view view_erased(const string_pool &pool RELOCO_LIFETIMEBOUND, string_id id) noexcept {
+  [[nodiscard]] static reloco::string_view view_erased(const string_pool &pool RELOCO_LIFETIMEBOUND,
+                                                       string_id id) noexcept {
     return pool.view(id);
   }
 

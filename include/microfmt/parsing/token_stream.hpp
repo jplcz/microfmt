@@ -38,7 +38,8 @@ namespace microfmt {
 class RELOCO_POINTER token_stream {
 public:
   /** @param source Text to tokenize; must outlive the stream. @param rules Language description (copied). */
-  explicit constexpr token_stream(microfmt::string_view source RELOCO_LIFETIMEBOUND, const lexer_rules &rules RELOCO_COPIES) noexcept
+  explicit constexpr token_stream(microfmt::string_view source RELOCO_LIFETIMEBOUND,
+                                  const lexer_rules &rules RELOCO_COPIES) noexcept
       : source_(source), lexer_(source, rules), first_(lexer_.next()), second_(lexer_.next()) {}
   template <typename S, std::enable_if_t<std::is_same_v<S, std::string>, int> = 0>
   explicit token_stream(S &&source RELOCO_LIFETIMEBOUND, const lexer_rules &) = delete;
@@ -90,9 +91,7 @@ public:
   [[nodiscard]] constexpr token previous() const noexcept { return previous_; }
 
   /** The text currently held: the whole input, or for a streaming stream the window contents. */
-  [[nodiscard]] constexpr microfmt::string_view source() const noexcept {
-    return window_ ? window_->text() : source_;
-  }
+  [[nodiscard]] constexpr microfmt::string_view source() const noexcept { return window_ ? window_->text() : source_; }
 
   /** Absolute offset of `source()[0]`: 0 unless the stream is streaming and has discarded input. */
   [[nodiscard]] constexpr size_t source_base() const noexcept { return window_ ? window_->base : 0; }
@@ -114,7 +113,8 @@ public:
   }
 
   /** Like `accept(kind)`, but the spelling must also equal `text` (e.g. `punctuation` `"{"`). */
-  [[nodiscard]] RELOCO_CONSTEXPR20 reloco::optional<token> accept(token_kind kind, microfmt::string_view text) noexcept {
+  [[nodiscard]] RELOCO_CONSTEXPR20 reloco::optional<token> accept(token_kind kind,
+                                                                  microfmt::string_view text) noexcept {
     if (!check(kind, text)) {
       return reloco::nullopt;
     }
@@ -140,8 +140,8 @@ public:
   }
 
   /** Consumes the next token if its kind matches, otherwise returns `parse_error{message, peek()}`. */
-  [[nodiscard]] RELOCO_CONSTEXPR20 reloco::expected<token, parse_error>
-  expect(token_kind kind, microfmt::string_view message) noexcept {
+  [[nodiscard]] RELOCO_CONSTEXPR20 reloco::expected<token, parse_error> expect(token_kind kind,
+                                                                               microfmt::string_view message) noexcept {
     if (!check(kind)) {
       return reloco::unexpected<parse_error>(error_here(message));
     }
@@ -165,7 +165,8 @@ public:
   /** The rules currently used to tokenize. */
   [[nodiscard]] constexpr const lexer_rules &rules() const noexcept RELOCO_LIFETIMEBOUND { return lexer_.rules(); }
 
-  /** Switches the rules and re-tokenizes the lookahead (`peek()`, `peek2()`) from the end of the last consumed token. */
+  /** Switches the rules and re-tokenizes the lookahead (`peek()`, `peek2()`) from the end of the last consumed token.
+   */
   constexpr void set_rules(const lexer_rules &rules) noexcept {
     lexer_.set_rules(rules);
     margin_ = stream_margin(rules);
@@ -503,12 +504,18 @@ struct detector<std::void_t<Op<Args...>>, Op, Args...> : std::true_type {};
 template <template <typename...> class Op, typename... Args>
 inline constexpr bool is_detected_v = detector<void, Op, Args...>::value;
 
-template <typename A, typename... X> using binary_call_t = decltype(std::declval<A &>().make_binary(std::declval<X>()...));
-template <typename A, typename... X> using prefix_call_t = decltype(std::declval<A &>().make_prefix(std::declval<X>()...));
-template <typename A, typename... X> using postfix_call_t = decltype(std::declval<A &>().make_postfix(std::declval<X>()...));
-template <typename A, typename... X> using ternary_call_t = decltype(std::declval<A &>().make_ternary(std::declval<X>()...));
-template <typename A, typename... X> using mixfix_call_t = decltype(std::declval<A &>().make_mixfix(std::declval<X>()...));
-template <typename A, typename... X> using paren_call_t = decltype(std::declval<A &>().make_paren(std::declval<X>()...));
+template <typename A, typename... X>
+using binary_call_t = decltype(std::declval<A &>().make_binary(std::declval<X>()...));
+template <typename A, typename... X>
+using prefix_call_t = decltype(std::declval<A &>().make_prefix(std::declval<X>()...));
+template <typename A, typename... X>
+using postfix_call_t = decltype(std::declval<A &>().make_postfix(std::declval<X>()...));
+template <typename A, typename... X>
+using ternary_call_t = decltype(std::declval<A &>().make_ternary(std::declval<X>()...));
+template <typename A, typename... X>
+using mixfix_call_t = decltype(std::declval<A &>().make_mixfix(std::declval<X>()...));
+template <typename A, typename... X>
+using paren_call_t = decltype(std::declval<A &>().make_paren(std::declval<X>()...));
 
 /** Forwards to `actions.make_paren`, or returns the inner value unchanged when the actions object has none. */
 template <typename T, typename Actions> struct RELOCO_POINTER paren_forwarder {
@@ -544,8 +551,8 @@ template <typename T, typename Primary, typename MakeBinary, typename MakePrefix
 class RELOCO_POINTER expression_parser {
 public:
   expression_parser(token_stream &ts, span<const binary_op> binary, span<const prefix_op> prefix,
-                    span<const postfix_op> postfix, const reloco::optional<ternary_op> &ternary RELOCO_LIFETIMEBOUND, Primary &primary,
-                    MakeBinary &make_binary, MakePrefix &make_prefix, MakePostfix &make_postfix,
+                    span<const postfix_op> postfix, const reloco::optional<ternary_op> &ternary RELOCO_LIFETIMEBOUND,
+                    Primary &primary, MakeBinary &make_binary, MakePrefix &make_prefix, MakePostfix &make_postfix,
                     MakeTernary &make_ternary, size_t max_depth, span<const mixfix_op> mixfix = {},
                     MakeMixfix *make_mixfix = nullptr, MakeParen *make_paren = nullptr) noexcept
       : ts_(ts), binary_(binary), prefix_(prefix), postfix_(postfix), mixfix_(mixfix), ternary_(ternary),
@@ -564,7 +571,8 @@ public:
     T value = std::move(left).value();
     int non_associative = -1; // precedence of the `none` operator just applied, or -1
     for (;;) {
-      if (const reloco::optional<postfix_op> post = find_postfix(ts_.peek()); post && post->precedence >= min_precedence) {
+      if (const reloco::optional<postfix_op> post = find_postfix(ts_.peek());
+          post && post->precedence >= min_precedence) {
         ts_.next();
         auto applied = make_postfix_(*post, std::move(value), ts_);
         if (!applied) {
@@ -757,8 +765,8 @@ parse_expression(token_stream &ts, span<const binary_op> binary, span<const pref
   detail::no_ternary<T> make_ternary{};
   const reloco::optional<ternary_op> no_ternary_op{};
   detail::expression_parser<T, Primary, MakeBinary, MakePrefix, detail::no_postfix<T>, detail::no_ternary<T>> parser{
-      ts, binary, prefix, span<const postfix_op>{}, no_ternary_op, primary, make_binary, make_prefix, make_postfix,
-      make_ternary, max_depth};
+      ts,           binary,       prefix,   span<const postfix_op>{}, no_ternary_op, primary, make_binary, make_prefix,
+      make_postfix, make_ternary, max_depth};
   return parser.parse(0);
 }
 
@@ -783,8 +791,8 @@ parse_expression(token_stream &ts, span<const binary_op> binary, span<const pref
   detail::no_ternary<T> make_ternary{};
   const reloco::optional<ternary_op> no_ternary_op{};
   detail::expression_parser<T, Primary, MakeBinary, MakePrefix, MakePostfix, detail::no_ternary<T>> parser{
-      ts, binary, prefix, postfix, no_ternary_op, primary, make_binary, make_prefix, make_postfix, make_ternary,
-      max_depth};
+      ts,          binary,      prefix,       postfix,      no_ternary_op, primary,
+      make_binary, make_prefix, make_postfix, make_ternary, max_depth};
   return parser.parse(0);
 }
 
@@ -802,9 +810,9 @@ template <typename T, typename Primary, typename MakeBinary, typename MakePrefix
           typename MakeTernary>
 [[nodiscard]] reloco::expected<T, parse_error>
 parse_expression(token_stream &ts, span<const binary_op> binary, span<const prefix_op> prefix,
-                 span<const postfix_op> postfix, const ternary_op &ternary, Primary &&primary,
-                 MakeBinary &&make_binary, MakePrefix &&make_prefix, MakePostfix &&make_postfix,
-                 MakeTernary &&make_ternary, size_t max_depth = 64) noexcept {
+                 span<const postfix_op> postfix, const ternary_op &ternary, Primary &&primary, MakeBinary &&make_binary,
+                 MakePrefix &&make_prefix, MakePostfix &&make_postfix, MakeTernary &&make_ternary,
+                 size_t max_depth = 64) noexcept {
   const reloco::optional<ternary_op> enabled{ternary};
   detail::expression_parser<T, Primary, MakeBinary, MakePrefix, MakePostfix, MakeTernary> parser{
       ts, binary, prefix, postfix, enabled, primary, make_binary, make_prefix, make_postfix, make_ternary, max_depth};
@@ -830,8 +838,8 @@ parse_expression(token_stream &ts, span<const binary_op> binary, span<const pref
  * A mixfix keyword takes priority over `primary`, so it cannot also be a variable name.
  */
 template <typename T, typename Actions>
-[[nodiscard]] reloco::expected<T, parse_error>
-parse_expression(token_stream &ts, const expression_grammar &grammar, Actions &actions, size_t max_depth = 64) noexcept {
+[[nodiscard]] reloco::expected<T, parse_error> parse_expression(token_stream &ts, const expression_grammar &grammar,
+                                                                Actions &actions, size_t max_depth = 64) noexcept {
   using result = reloco::expected<T, parse_error>;
   auto primary = [&actions](token_stream &s) noexcept -> result { return actions.primary(s); };
   auto make_binary = [&actions, &ts](const binary_op &op, T l, T r) noexcept -> result {
@@ -870,15 +878,15 @@ parse_expression(token_stream &ts, const expression_grammar &grammar, Actions &a
       return reloco::unexpected<parse_error>(ts.error_here("no make_ternary callback"));
     }
   };
-  using adapted_parser = detail::expression_parser<T, decltype(primary), decltype(make_binary), decltype(make_prefix),
-                                                   decltype(make_postfix), decltype(make_ternary),
-                                                   detail::mixfix_forwarder<T, Actions>,
-                                                   detail::paren_forwarder<T, Actions>>;
+  using adapted_parser =
+      detail::expression_parser<T, decltype(primary), decltype(make_binary), decltype(make_prefix),
+                                decltype(make_postfix), decltype(make_ternary), detail::mixfix_forwarder<T, Actions>,
+                                detail::paren_forwarder<T, Actions>>;
   detail::mixfix_forwarder<T, Actions> adapter{&actions, &ts};
   detail::paren_forwarder<T, Actions> paren_adapter{&actions};
-  adapted_parser parser{ts,       grammar.binary, grammar.prefix, grammar.postfix, grammar.ternary,
-                        primary,  make_binary,    make_prefix,    make_postfix,    make_ternary,
-                        max_depth, grammar.mixfix, &adapter, &paren_adapter};
+  adapted_parser parser{ts,        grammar.binary, grammar.prefix, grammar.postfix, grammar.ternary,
+                        primary,   make_binary,    make_prefix,    make_postfix,    make_ternary,
+                        max_depth, grammar.mixfix, &adapter,       &paren_adapter};
   return parser.parse(0);
 }
 
@@ -1038,7 +1046,8 @@ parse_left_recursive(token_stream &ts, Seed &&seed, Extend &&extend,
  * @param rule `expected<T, parse_error>(token_stream &)` (any non-void result type).
  */
 template <typename Rule>
-RELOCO_CONSTEXPR20 auto with_rules(token_stream &ts, const lexer_rules &rules, Rule &&rule) noexcept -> decltype(rule(ts)) {
+RELOCO_CONSTEXPR20 auto with_rules(token_stream &ts, const lexer_rules &rules, Rule &&rule) noexcept
+    -> decltype(rule(ts)) {
   const lexer_rules saved = lexer_rules(ts.rules());
   ts.set_rules(rules);
   auto result = rule(ts);
@@ -1152,7 +1161,7 @@ struct RELOCO_POINTER list_options {
  */
 template <typename Item>
 [[nodiscard]] reloco::expected<void, parse_error> parse_list(token_stream &ts, const list_options &opt,
-                                                              Item &&item) noexcept {
+                                                             Item &&item) noexcept {
   if (!opt.open.empty()) {
     if (auto open = ts.expect(token_kind::punctuation, opt.open, "expected opening bracket"); !open) {
       return reloco::unexpected<parse_error>(open.error());
@@ -1522,7 +1531,8 @@ expect_one_of(token_stream &ts, span<const token_kind> kinds, microfmt::string_v
  * @param rule `expected<T, parse_error>(token_stream &)`.
  */
 template <typename Rule>
-[[nodiscard]] RELOCO_CONSTEXPR20 auto attempt(token_stream &ts, Rule &&rule) noexcept -> std::decay_t<decltype(rule(ts))> {
+[[nodiscard]] RELOCO_CONSTEXPR20 auto attempt(token_stream &ts, Rule &&rule) noexcept
+    -> std::decay_t<decltype(rule(ts))> {
   const token_stream saved = ts;
   auto result = rule(ts);
   if (!result) {
@@ -1700,7 +1710,8 @@ parse_until(token_stream &ts, token_kind kind, microfmt::string_view text, Item 
   return result.id;
 }
 
-/** Consumes an identifier and returns its interned id; `message` (static) is the error when the next token is not one. */
+/** Consumes an identifier and returns its interned id; `message` (static) is the error when the next token is not one.
+ */
 [[nodiscard]] inline reloco::expected<string_id, parse_error> expect_name(token_stream &ts,
                                                                           microfmt::string_view message) noexcept {
   if (!ts.check(token_kind::identifier)) {
@@ -1715,7 +1726,8 @@ parse_until(token_stream &ts, token_kind kind, microfmt::string_view text, Item 
 
 namespace detail {
 
-// The text between the quotes of a string token (a prefix such as `u8` is skipped); text without a quote is returned as is.
+// The text between the quotes of a string token (a prefix such as `u8` is skipped); text without a quote is returned as
+// is.
 [[nodiscard]] inline microfmt::string_view string_body(const lexer_rules &rules, microfmt::string_view text) noexcept {
   size_t open = 0;
   while (open < text.size() && rules.quotes.find(text[open]) == microfmt::string_view::npos &&

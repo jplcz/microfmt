@@ -24,7 +24,8 @@ struct is_described_enum
     : std::integral_constant<bool, std::is_enum_v<E> && boost::describe::has_describe_enumerators<E>::value> {};
 
 // Lets reflection.hpp's automatic enum formatter yield to this one when both headers are included.
-template <typename E> struct enum_has_dedicated_formatter<E, std::enable_if_t<is_described_enum<E>::value>> : std::true_type {};
+template <typename E>
+struct enum_has_dedicated_formatter<E, std::enable_if_t<is_described_enum<E>::value>> : std::true_type {};
 
 } // namespace detail
 

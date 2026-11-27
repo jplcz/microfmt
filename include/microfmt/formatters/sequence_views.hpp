@@ -60,7 +60,8 @@ template <typename R1, typename R2,
 [[nodiscard]] constexpr auto zip(R1 &&, R2 &&, microfmt::string_view = ", ") noexcept = delete;
 
 namespace detail {
-template <typename Range> using range_value_t = std::remove_cv_t<std::remove_reference_t<decltype(*std::begin(std::declval<const Range &>()))>>;
+template <typename Range>
+using range_value_t = std::remove_cv_t<std::remove_reference_t<decltype(*std::begin(std::declval<const Range &>()))>>;
 } // namespace detail
 
 /** The element spec (`{:02x}`) is forwarded to every value. */

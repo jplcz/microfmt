@@ -782,8 +782,8 @@ struct microfmt::frame_unwinder_traits<microfmt::dwarf_unwinder_tag<AbiTraits, M
       if (!context->space.read_bytes(curr + 4, &id, 4))
         break;
       const bool isCie = ehFrame ? id == 0 : id == 0xFFFFFFFFu;
-      if (!isCie && decoder_type::execute_fde(reg_ctx, curr, img.debug_frame_start, ehFrame, fault_pc, next_fp,
-                                              next_pc, *context->dwarf_scratch)) {
+      if (!isCie && decoder_type::execute_fde(reg_ctx, curr, img.debug_frame_start, ehFrame, fault_pc, next_fp, next_pc,
+                                              *context->dwarf_scratch)) {
         return true;
       }
 

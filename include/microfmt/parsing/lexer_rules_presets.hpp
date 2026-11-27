@@ -18,36 +18,43 @@ namespace microfmt::rules {
 namespace detail {
 
 inline constexpr keyword_table c_keywords{
-    "_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic", "_Noreturn", "_Static_assert", "_Thread_local",
-    "alignas", "alignof", "auto", "bool", "break", "case", "char", "const", "constexpr", "continue", "default", "do",
-    "double", "else", "enum", "extern", "false", "float", "for", "goto", "if", "inline", "int", "long", "nullptr",
-    "register", "restrict", "return", "short", "signed", "sizeof", "static", "static_assert", "struct", "switch",
-    "thread_local", "true", "typedef", "typeof", "union", "unsigned", "void", "volatile", "while"};
+    "_Alignas",      "_Alignof",      "_Atomic",  "_Bool",    "_Complex",     "_Generic", "_Noreturn", "_Static_assert",
+    "_Thread_local", "alignas",       "alignof",  "auto",     "bool",         "break",    "case",      "char",
+    "const",         "constexpr",     "continue", "default",  "do",           "double",   "else",      "enum",
+    "extern",        "false",         "float",    "for",      "goto",         "if",       "inline",    "int",
+    "long",          "nullptr",       "register", "restrict", "return",       "short",    "signed",    "sizeof",
+    "static",        "static_assert", "struct",   "switch",   "thread_local", "true",     "typedef",   "typeof",
+    "union",         "unsigned",      "void",     "volatile", "while"};
 
 // std-interop-begin: the words catch/throw below are C++ keyword spellings, not exception use
 inline constexpr keyword_table cpp_keywords{
-    "alignas", "alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor", "bool", "break", "case", "catch", "char",
-    "char16_t", "char32_t", "char8_t", "class", "co_await", "co_return", "co_yield", "compl", "concept", "const",
-    "const_cast", "consteval", "constexpr", "constinit", "continue", "decltype", "default", "delete", "do", "double",
-    "dynamic_cast", "else", "enum", "explicit", "export", "extern", "false", "float", "for", "friend", "goto", "if",
-    "inline", "int", "long", "mutable", "namespace", "new", "noexcept", "not", "not_eq", "nullptr", "operator", "or",
-    "or_eq", "private", "protected", "public", "register", "reinterpret_cast", "requires", "return", "short", "signed",
-    "sizeof", "static", "static_assert", "static_cast", "struct", "switch", "template", "this", "thread_local",
-    "throw", "true", "try", "typedef", "typeid", "typename", "union", "unsigned", "using", "virtual", "void",
-    "volatile", "wchar_t", "while", "xor", "xor_eq"};
+    "alignas",     "alignof",  "and",        "and_eq",    "asm",       "auto",         "bitand",
+    "bitor",       "bool",     "break",      "case",      "catch",     "char",         "char16_t",
+    "char32_t",    "char8_t",  "class",      "co_await",  "co_return", "co_yield",     "compl",
+    "concept",     "const",    "const_cast", "consteval", "constexpr", "constinit",    "continue",
+    "decltype",    "default",  "delete",     "do",        "double",    "dynamic_cast", "else",
+    "enum",        "explicit", "export",     "extern",    "false",     "float",        "for",
+    "friend",      "goto",     "if",         "inline",    "int",       "long",         "mutable",
+    "namespace",   "new",      "noexcept",   "not",       "not_eq",    "nullptr",      "operator",
+    "or",          "or_eq",    "private",    "protected", "public",    "register",     "reinterpret_cast",
+    "requires",    "return",   "short",      "signed",    "sizeof",    "static",       "static_assert",
+    "static_cast", "struct",   "switch",     "template",  "this",      "thread_local", "throw",
+    "true",        "try",      "typedef",    "typeid",    "typename",  "union",        "unsigned",
+    "using",       "virtual",  "void",       "volatile",  "wchar_t",   "while",        "xor",
+    "xor_eq"};
 // std-interop-end
 
 // NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view c_operators[] = {
-    "<<=", ">>=", "...", "->", "++", "--", "<<", ">>", "<=", ">=", "==", "!=", "&&", "||", "+=", "-=", "*=", "/=",
-    "%=",  "&=",  "|=",  "^=", "+",  "-",  "*",  "/",  "%",  "&",  "|",  "^",  "~",  "!",  "<",  ">",  "=",  "?",
-    ":",   "."};
+    "<<=", ">>=", "...", "->", "++", "--", "<<", ">>", "<=", ">=", "==", "!=", "&&", "||", "+=", "-=", "*=", "/=", "%=",
+    "&=",  "|=",  "^=",  "+",  "-",  "*",  "/",  "%",  "&",  "|",  "^",  "~",  "!",  "<",  ">",  "=",  "?",  ":",  "."};
 
 // NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
-inline constexpr microfmt::string_view cpp_operators[] = {
-    "<=>", "->*", "<<=", ">>=", "...", "::", ".*", "->", "++", "--", "<<", ">>", "<=", ">=", "==", "!=", "&&", "||",
-    "+=",  "-=",  "*=",  "/=",  "%=",  "&=", "|=", "^=", "+",  "-",  "*",  "/",  "%",  "&",  "|",  "^",  "~",  "!",
-    "<",   ">",   "=",   "?",   ":",   "."};
+inline constexpr microfmt::string_view cpp_operators[] = {"<=>", "->*", "<<=", ">>=", "...", "::", ".*", "->", "++",
+                                                          "--",  "<<",  ">>",  "<=",  ">=",  "==", "!=", "&&", "||",
+                                                          "+=",  "-=",  "*=",  "/=",  "%=",  "&=", "|=", "^=", "+",
+                                                          "-",   "*",   "/",   "%",   "&",   "|",  "^",  "~",  "!",
+                                                          "<",   ">",   "=",   "?",   ":",   "."};
 
 // NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view c_string_prefixes[] = {"u8", "u", "U", "L"};
@@ -56,27 +63,26 @@ inline constexpr microfmt::string_view cpp_string_prefixes[] = {"u8R", "uR", "UR
 // NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view c_number_suffixes[] = {"u", "l", "ul", "lu", "ll", "ull", "llu", "f"};
 
-inline constexpr keyword_table lua_keywords{"and",   "break", "do",    "else", "elseif", "end",    "false",
-                                            "for",   "function", "goto", "if",   "in",     "local",  "nil",
-                                            "not",   "or",    "repeat", "return", "then", "true",   "until",
-                                            "while"};
+inline constexpr keyword_table lua_keywords{"and",      "break",  "do",   "else", "elseif", "end",  "false", "for",
+                                            "function", "goto",   "if",   "in",   "local",  "nil",  "not",   "or",
+                                            "repeat",   "return", "then", "true", "until",  "while"};
 // NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
-inline constexpr microfmt::string_view lua_operators[] = {"...", "..", "==", "~=", "<=", ">=", "//", "::", "<<", ">>",
-                                                          "+",   "-",  "*",  "/",  "%",  "^",  "#",  "&",  "~",  "|",
-                                                          "<",   ">",  "=",  ".",  ":"};
+inline constexpr microfmt::string_view lua_operators[] = {"...", "..", "==", "~=", "<=", ">=", "//", "::", "<<",
+                                                          ">>",  "+",  "-",  "*",  "/",  "%",  "^",  "#",  "&",
+                                                          "~",   "|",  "<",  ">",  "=",  ".",  ":"};
 
 // Lower-case on purpose: the SQL preset sets keywords_ignore_case.
 inline constexpr keyword_table sql_keywords{
-    "add", "all", "alter", "and", "as", "asc", "begin", "between", "by", "case", "check", "column", "commit",
-    "constraint", "create", "cross", "database", "default", "delete", "desc", "distinct", "drop", "else", "end",
-    "exists", "foreign", "from", "full", "group", "having", "in", "index", "inner", "insert", "into", "is", "join",
-    "key", "left", "like", "limit", "not", "null", "offset", "on", "or", "order", "outer", "primary", "references",
-    "rollback", "select", "set", "table", "then", "union", "unique", "update", "values", "view", "when", "where",
-    "with"};
+    "add",    "all",   "alter",    "and",     "as",         "asc",      "begin",  "between",  "by",
+    "case",   "check", "column",   "commit",  "constraint", "create",   "cross",  "database", "default",
+    "delete", "desc",  "distinct", "drop",    "else",       "end",      "exists", "foreign",  "from",
+    "full",   "group", "having",   "in",      "index",      "inner",    "insert", "into",     "is",
+    "join",   "key",   "left",     "like",    "limit",      "not",      "null",   "offset",   "on",
+    "or",     "order", "outer",    "primary", "references", "rollback", "select", "set",      "table",
+    "then",   "union", "unique",   "update",  "values",     "view",     "when",   "where",    "with"};
 // NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
-inline constexpr microfmt::string_view sql_operators[] = {"<>", "<=", ">=", "!=", "||", "::", "=", "<", ">", "+",
-                                                          "-",  "*",  "/",  "%",  "&",  "|",  "^", "~", "!", "?",
-                                                          ":"};
+inline constexpr microfmt::string_view sql_operators[] = {"<>", "<=", ">=", "!=", "||", "::", "=", "<", ">", "+", "-",
+                                                          "*",  "/",  "%",  "&",  "|",  "^",  "~", "!", "?", ":"};
 
 inline constexpr keyword_table toml_keywords{"false", "inf", "nan", "true"};
 // NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
@@ -92,7 +98,8 @@ inline constexpr microfmt::string_view kv_operators[] = {"="};
 
 inline constexpr keyword_table json_keywords{"false", "null", "true"};
 
-inline constexpr keyword_table shell_keywords{"case", "do", "done", "elif", "else", "esac", "fi", "for", "if", "in", "then", "while"};
+inline constexpr keyword_table shell_keywords{"case", "do",  "done", "elif", "else", "esac",
+                                              "fi",   "for", "if",   "in",   "then", "while"};
 // NOLINTNEXTLINE(reloco-no-c-array): constant table exposed to lexer_rules as a span
 inline constexpr microfmt::string_view shell_operators[] = {"&&", "||", ";;", ">>", "<<", "|", "&", ">", "<", "="};
 
@@ -242,7 +249,8 @@ inline constexpr microfmt::string_view shell_operators[] = {"&&", "||", ";;", ">
 /** C17/C23: line and block comments, `#` directive lines, `'c'` characters, `L/u/U/u8` prefixes, `u/l/f` suffixes. */
 inline constexpr lexer_rules c = detail::make_c();
 
-/** C++23: like `c` plus raw strings `R"d(...)d"`, `'` digit separators, user-defined literal suffixes and `::`/`<=>`. */
+/** C++23: like `c` plus raw strings `R"d(...)d"`, `'` digit separators, user-defined literal suffixes and `::`/`<=>`.
+ */
 inline constexpr lexer_rules cpp = detail::make_cpp();
 
 /** Source-compatible alias of `cpp` (it used to be a generic C-like preset). */

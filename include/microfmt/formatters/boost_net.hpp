@@ -18,7 +18,7 @@ namespace detail {
 inline void format_boost_address_v4(const boost::asio::ip::address_v4 &address, const sink &out) noexcept {
   const auto bytes = address.to_bytes();
   microfmt::format_to(out, "{}.{}.{}.{}", std::get<0>(bytes), std::get<1>(bytes), std::get<2>(bytes),
-                    std::get<3>(bytes));
+                      std::get<3>(bytes));
 }
 
 inline void format_boost_address_v6(const boost::asio::ip::address_v6 &address, const sink &out) noexcept {

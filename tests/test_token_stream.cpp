@@ -603,9 +603,8 @@ TEST(Chain, ReportsMissingItemsAndEnforcesTheLimit) {
 
 namespace {
 
-constexpr microfmt::bracket_pair kListBrackets[] = {
-    {token_kind::punctuation, "(", token_kind::punctuation, ")"},
-    {token_kind::punctuation, "[", token_kind::punctuation, "]"}};
+constexpr microfmt::bracket_pair kListBrackets[] = {{token_kind::punctuation, "(", token_kind::punctuation, ")"},
+                                                    {token_kind::punctuation, "[", token_kind::punctuation, "]"}};
 
 struct recovering_outcome {
   bool ok{false};
@@ -665,8 +664,8 @@ TEST(ListRecovery, SkipsNestedBracketsAsOneUnit) {
 }
 
 TEST(ListRecovery, HandlesEmptyElementsTrailingSeparatorsAndTheLastItem) {
-  EXPECT_EQ(recover_list("(, 1)").failed, 1u);   // empty first element
-  EXPECT_EQ(recover_list("(1, x)").failed, 1u);  // bad item right before the closer
+  EXPECT_EQ(recover_list("(, 1)").failed, 1u);  // empty first element
+  EXPECT_EQ(recover_list("(1, x)").failed, 1u); // bad item right before the closer
   const auto trailing = recover_list("(1, 2,)", true);
   EXPECT_TRUE(trailing.ok);
   EXPECT_EQ(trailing.failed, 0u);
@@ -945,9 +944,8 @@ TEST(LexerModes, WithRulesChangesTokenizationInsideAndRestoresAfter) {
   token_stream ts{"x 'b'", normal};
   EXPECT_EQ(ts.peek2().kind, token_kind::string);
 
-  const auto inside = microfmt::with_rules(ts, quote_is_punctuation, [](token_stream &s) {
-    return std::make_pair(s.peek2().kind, s.peek2().text == "'");
-  });
+  const auto inside = microfmt::with_rules(
+      ts, quote_is_punctuation, [](token_stream &s) { return std::make_pair(s.peek2().kind, s.peek2().text == "'"); });
   EXPECT_EQ(inside.first, token_kind::punctuation);
   EXPECT_TRUE(inside.second);
   EXPECT_EQ(ts.peek2().kind, token_kind::string);
@@ -1876,9 +1874,8 @@ struct chunk_reader {
   }
 };
 
-constexpr string_view kStreamCorpus =
-    "name = \"a\\nb\"; // note\n  x == 1.5; /* block */ y = u8\"tail\" ; "
-    "long_identifier_name_here = 0x2A; z != 7;\n";
+constexpr string_view kStreamCorpus = "name = \"a\\nb\"; // note\n  x == 1.5; /* block */ y = u8\"tail\" ; "
+                                      "long_identifier_name_here = 0x2A; z != 7;\n";
 
 lexer_rules stream_rules() {
   lexer_rules r = microfmt::rules::cpp;

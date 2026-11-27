@@ -70,7 +70,8 @@ public:
      * @brief Detects whether (fp, pc) sits at an exception trampoline. See
      * @ref exception_matcher_ref::match_trap_frame.
      */
-    bool (*match_trap_frame)(const void *ctx, uintptr_t fp, uintptr_t pc, uintptr_t &out_trap_frame_addr) noexcept = nullptr;
+    bool (*match_trap_frame)(const void *ctx, uintptr_t fp, uintptr_t pc,
+                             uintptr_t &out_trap_frame_addr) noexcept = nullptr;
   };
 
   /**

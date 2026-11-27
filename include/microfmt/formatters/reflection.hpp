@@ -64,8 +64,8 @@
 
 namespace microfmt::detail {
 
-template <typename E> inline constexpr bool is_reflect_formattable_enum_v =
-    std::is_enum_v<E> && !enum_has_dedicated_formatter<E>::value;
+template <typename E>
+inline constexpr bool is_reflect_formattable_enum_v = std::is_enum_v<E> && !enum_has_dedicated_formatter<E>::value;
 
 template <typename T>
 inline constexpr bool is_reflect_formattable_struct_v = std::is_class_v<T> && enable_reflect_format<T>::value;

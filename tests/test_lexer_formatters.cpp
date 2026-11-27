@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause
 
-
 #include <gtest/gtest.h>
 
 #include <reloco/string.hpp>

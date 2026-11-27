@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: BSD-2-Clause
 
-
 #include <gtest/gtest.h>
 
 #include <reloco/array.hpp>
@@ -14,9 +13,9 @@
 
 using microfmt::lexer;
 using microfmt::lexer_rules;
+using microfmt::string_view;
 using microfmt::token;
 using microfmt::token_kind;
-using microfmt::string_view;
 
 namespace {
 
@@ -73,10 +72,9 @@ TEST(LexerTest, SortedWordsFactoriesVerifyOrder) {
 
 TEST(LexerTest, LexesIdentifiersKeywordsNumbersAndOperators) {
   const auto tokens = lex_all("let x1 = 0x2A + 1_000 + 1.5e3 + .5", simple_rules());
-  const reloco::array<token_kind, 10> expected{token_kind::keyword, token_kind::identifier, token_kind::op,
-                                               token_kind::integer, token_kind::op,         token_kind::integer,
-                                               token_kind::op,      token_kind::floating,   token_kind::op,
-                                               token_kind::floating};
+  const reloco::array<token_kind, 10> expected{
+      token_kind::keyword, token_kind::identifier, token_kind::op,       token_kind::integer, token_kind::op,
+      token_kind::integer, token_kind::op,         token_kind::floating, token_kind::op,      token_kind::floating};
   ASSERT_EQ(tokens.size(), 10u);
   for (size_t i = 0; i < tokens.size(); ++i) {
     EXPECT_EQ(tokens[i].kind, expected[i]) << i;

@@ -57,7 +57,8 @@ template <typename T> struct int_traits_width<T, std::void_t<decltype(T::bit_wid
   static constexpr std::size_t value = T::bit_width;
 };
 
-template <typename T> inline constexpr bool is_parsable_int_v =
+template <typename T>
+inline constexpr bool is_parsable_int_v =
     (std::is_integral_v<T> && !std::is_same_v<T, bool> && !std::is_same_v<T, char>) ||
     std::is_same_v<T, reloco::fixed_int<int_traits_width<T>::value, true>> ||
     std::is_same_v<T, reloco::fixed_int<int_traits_width<T>::value, false>>;

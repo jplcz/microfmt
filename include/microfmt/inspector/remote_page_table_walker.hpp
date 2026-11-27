@@ -120,7 +120,8 @@ public:
       : storage_(storage) {}
 
   template <size_t N>
-  constexpr explicit remote_page_table_walk_trace(remote_page_table_walk_step (&storage RELOCO_LIFETIMEBOUND)[N]) noexcept
+  constexpr explicit remote_page_table_walk_trace(
+      remote_page_table_walk_step (&storage RELOCO_LIFETIMEBOUND)[N]) noexcept
       : storage_(storage, N) {}
 
   [[nodiscard]] constexpr span<const remote_page_table_walk_step> steps() const & noexcept {

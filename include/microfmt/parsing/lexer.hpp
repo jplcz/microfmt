@@ -77,13 +77,14 @@ public:
    * @param words Words in strictly ascending byte order; the storage must outlive the result.
    * A violation is a compile error in a constant expression and a RELOCO_ASSERT failure otherwise.
    */
-  [[nodiscard]] static constexpr sorted_words from_sorted(span<const microfmt::string_view> words
-                                                              RELOCO_LIFETIMEBOUND) noexcept {
+  [[nodiscard]] static constexpr sorted_words
+  from_sorted(span<const microfmt::string_view> words RELOCO_LIFETIMEBOUND) noexcept {
     RELOCO_ASSERT(is_strictly_sorted(words), "sorted_words::from_sorted requires strictly ascending words");
     return sorted_words(words);
   }
 
-  /** try_ tier: like `from_sorted` but returns an empty optional for unsorted or duplicate input (constexpr from C++20, since `reloco::optional` is not a literal type before). */
+  /** try_ tier: like `from_sorted` but returns an empty optional for unsorted or duplicate input (constexpr from C++20,
+   * since `reloco::optional` is not a literal type before). */
   [[nodiscard]] static RELOCO_CONSTEXPR20 reloco::optional<sorted_words>
   try_from_sorted(span<const microfmt::string_view> words RELOCO_LIFETIMEBOUND) noexcept {
     if (!is_strictly_sorted(words)) {
@@ -146,7 +147,9 @@ public:
 
 private:
   [[nodiscard]] static constexpr char fold(char ch) noexcept {
-    return (ch >= 'A' && ch <= 'Z') ? static_cast<char>((static_cast<unsigned>(static_cast<unsigned char>(ch)) | 0x20U) & 0x7FU) : ch;
+    return (ch >= 'A' && ch <= 'Z')
+               ? static_cast<char>((static_cast<unsigned>(static_cast<unsigned char>(ch)) | 0x20U) & 0x7FU)
+               : ch;
   }
 
   // Orders `stored` against `word` as if `word` were lower-case: <0 when stored sorts first.
@@ -215,7 +218,6 @@ public:
   }
   sorted_words view() const && = delete;
 
-
 private:
   reloco::array<microfmt::string_view, N> words_;
 };
@@ -229,8 +231,7 @@ template <typename... Words>
 #else
 [[nodiscard]] constexpr
 #endif
-    keyword_table<sizeof...(Words)>
-    make_keyword_table(Words... words) noexcept {
+    keyword_table<sizeof...(Words)> make_keyword_table(Words... words) noexcept {
   return keyword_table<sizeof...(Words)>(words...);
 }
 
@@ -262,26 +263,26 @@ struct RELOCO_POINTER lexer_rules {
   bool skip_comments{true};
 
   // --- Language extensions, all off by default ---
-  span<const microfmt::string_view> line_comments{};   ///< Extra line-comment markers (INI: `;` next to `#`).
-  bool line_continuation{false};                       ///< Backslash + newline continues line comments and directives.
-  bool long_bracket_comments{false};                   ///< Lua: a line-comment marker followed by `[==[` opens a long comment.
-  microfmt::string_view char_quotes{};                 ///< Quote bytes opening a character literal (`'` in C).
-  microfmt::string_view raw_quotes{};                  ///< Quote bytes whose strings have no escapes (TOML `'`).
-  bool doubled_quote_escape{false};                    ///< SQL: a doubled quote inside a string is a literal quote.
+  span<const microfmt::string_view> line_comments{}; ///< Extra line-comment markers (INI: `;` next to `#`).
+  bool line_continuation{false};                     ///< Backslash + newline continues line comments and directives.
+  bool long_bracket_comments{false};   ///< Lua: a line-comment marker followed by `[==[` opens a long comment.
+  microfmt::string_view char_quotes{}; ///< Quote bytes opening a character literal (`'` in C).
+  microfmt::string_view raw_quotes{};  ///< Quote bytes whose strings have no escapes (TOML `'`).
+  bool doubled_quote_escape{false};    ///< SQL: a doubled quote inside a string is a literal quote.
   microfmt::string_view multiline_triple_quotes{};     ///< Quote bytes allowing triple-quoted multi-line strings.
   microfmt::string_view multiline_quotes{};            ///< Quote bytes whose strings may contain raw newlines.
   bool long_bracket_strings{false};                    ///< Lua: `[[ ... ]]` and `[==[ ... ]==]`.
   span<const microfmt::string_view> string_prefixes{}; ///< `u8`, `L`, `R`, ... directly before a quote.
   bool cpp_raw_strings{false};                         ///< A prefix ending in `R` starts `R"delim( ... )delim"`.
   span<const microfmt::string_view> number_suffixes{}; ///< `u`, `ul`, `f`, ...; ASCII case-insensitive, longest wins.
-  bool user_defined_suffixes{false};                   ///< C++ UDLs: an identifier run after a number/string/char joins the token.
-  bool hex_float{false};                               ///< `0x1.8p3`.
-  bool decimal_trailing_dot{false};                    ///< `4.` is a float (not before a second `.`: `1..2`).
-  bool octal_prefix{false};                            ///< `0o17`.
-  bool numbers{true};                                  ///< false: digits start identifiers (INI/config values are bare words).
-  bool datetime_literals{false};                       ///< `1979-05-27`, `07:32:00`, `1979-05-27T07:32:00Z`.
-  bool keywords_ignore_case{false};                    ///< ASCII fold on lookup; the keyword table must be lower-case.
-  char directive_prefix{'\0'};                         ///< `#` makes a first-on-line `#...` a `directive` token.
+  bool user_defined_suffixes{false}; ///< C++ UDLs: an identifier run after a number/string/char joins the token.
+  bool hex_float{false};             ///< `0x1.8p3`.
+  bool decimal_trailing_dot{false};  ///< `4.` is a float (not before a second `.`: `1..2`).
+  bool octal_prefix{false};          ///< `0o17`.
+  bool numbers{true};                ///< false: digits start identifiers (INI/config values are bare words).
+  bool datetime_literals{false};     ///< `1979-05-27`, `07:32:00`, `1979-05-27T07:32:00Z`.
+  bool keywords_ignore_case{false};  ///< ASCII fold on lookup; the keyword table must be lower-case.
+  char directive_prefix{'\0'};       ///< `#` makes a first-on-line `#...` a `directive` token.
 };
 
 /** Checks that the rule fields are mutually consistent (comment markers paired, extras sane). */
@@ -362,7 +363,8 @@ struct RELOCO_POINTER lexer_rules {
 class RELOCO_POINTER lexer {
 public:
   /** @param source Text to tokenize; must outlive the lexer. @param rules Language description (copied). */
-  explicit constexpr lexer(microfmt::string_view source RELOCO_LIFETIMEBOUND, const lexer_rules &rules RELOCO_COPIES) noexcept
+  explicit constexpr lexer(microfmt::string_view source RELOCO_LIFETIMEBOUND,
+                           const lexer_rules &rules RELOCO_COPIES) noexcept
       : source_(source), rules_(rules) {}
   // Only an rvalue std::string is rejected; literals and lvalues still bind to string_view above.
   template <typename S, std::enable_if_t<std::is_same_v<S, std::string>, int> = 0>
@@ -446,7 +448,6 @@ public:
 private:
   using cursor = position;
 
-
   [[nodiscard]] constexpr char at(size_t index) const noexcept {
     return index < source_.size() ? source_[index] : '\0';
   }
@@ -465,7 +466,9 @@ private:
     return set.find(ch) != microfmt::string_view::npos;
   }
 
-  [[nodiscard]] static constexpr bool is_high_byte(char ch) noexcept { return (static_cast<unsigned char>(ch) & 0x80U) != 0U; }
+  [[nodiscard]] static constexpr bool is_high_byte(char ch) noexcept {
+    return (static_cast<unsigned char>(ch) & 0x80U) != 0U;
+  }
 
   [[nodiscard]] constexpr bool is_ident_start(char ch) const noexcept {
     return is_alpha(ch) || ch == '_' || is_high_byte(ch) || contains_byte(rules_.identifier_start_extra, ch) ||
@@ -570,7 +573,8 @@ private:
   // True when only blanks precede `index` on its line.
   [[nodiscard]] constexpr bool first_on_line(size_t index) const noexcept {
     size_t j = index;
-    while (j > 0 && (source_[j - 1] == ' ' || source_[j - 1] == '\t' || source_[j - 1] == '\v' || source_[j - 1] == '\f')) {
+    while (j > 0 &&
+           (source_[j - 1] == ' ' || source_[j - 1] == '\t' || source_[j - 1] == '\v' || source_[j - 1] == '\f')) {
       --j;
     }
     return j == 0 || source_[j - 1] == '\n';
@@ -647,8 +651,8 @@ private:
     const char quote = source_[index];
     const bool raw = contains_byte(rules_.raw_quotes, quote);
     const bool escapes = !raw && rules_.escape != '\0';
-    const bool triple = contains_byte(rules_.multiline_triple_quotes, quote) && at(index + 1) == quote &&
-                        at(index + 2) == quote;
+    const bool triple =
+        contains_byte(rules_.multiline_triple_quotes, quote) && at(index + 1) == quote && at(index + 2) == quote;
     const bool multiline = triple || contains_byte(rules_.multiline_quotes, quote);
     size_t i = index + (triple ? size_t{3} : size_t{1});
     terminated = false;
@@ -732,7 +736,8 @@ private:
     const char quote = source_[quote_index];
     bool terminated = false;
     size_t length = 0;
-    if (rules_.cpp_raw_strings && prefix != 0 && source_[quote_index - 1] == 'R' && contains_byte(rules_.quotes, quote)) {
+    if (rules_.cpp_raw_strings && prefix != 0 && source_[quote_index - 1] == 'R' &&
+        contains_byte(rules_.quotes, quote)) {
       length = scan_raw_string(quote_index, terminated);
     } else {
       length = scan_quoted(quote_index, terminated);
@@ -766,15 +771,19 @@ private:
   }
 
   [[nodiscard]] static constexpr char fold_lower(char ch) noexcept {
-    return (ch >= 'A' && ch <= 'Z') ? static_cast<char>((static_cast<unsigned>(static_cast<unsigned char>(ch)) | 0x20U) & 0x7FU) : ch;
+    return (ch >= 'A' && ch <= 'Z')
+               ? static_cast<char>((static_cast<unsigned>(static_cast<unsigned char>(ch)) | 0x20U) & 0x7FU)
+               : ch;
   }
 
-  // Length of the longest `number_suffixes` entry at `index` (ASCII case-insensitive) not followed by an identifier byte.
+  // Length of the longest `number_suffixes` entry at `index` (ASCII case-insensitive) not followed by an identifier
+  // byte.
   [[nodiscard]] constexpr size_t number_suffix_length(size_t index) const noexcept {
     size_t best = 0;
     for (size_t i = 0; i < rules_.number_suffixes.size(); ++i) {
       const microfmt::string_view suffix = rules_.number_suffixes[i];
-      if (suffix.size() <= best || index + suffix.size() > source_.size() || is_base_ident_continue(at(index + suffix.size()))) {
+      if (suffix.size() <= best || index + suffix.size() > source_.size() ||
+          is_base_ident_continue(at(index + suffix.size()))) {
         continue;
       }
       bool same = true;
@@ -1022,8 +1031,8 @@ private:
         }
         const size_t length = i - c.pos;
         const microfmt::string_view word = source_.substr(c.pos, length);
-        const bool is_keyword = rules_.keywords_ignore_case ? rules_.keywords.contains_ignore_case(word)
-                                                            : rules_.keywords.contains(word);
+        const bool is_keyword =
+            rules_.keywords_ignore_case ? rules_.keywords.contains_ignore_case(word) : rules_.keywords.contains(word);
         return emit(c, is_keyword ? token_kind::keyword : token_kind::identifier, length);
       }
 

@@ -40,7 +40,8 @@ template <> struct formatter<std::chrono::year> {
     if (value < 0) {
       out.put('-');
     }
-    // NOLINTNEXTLINE(reloco-narrowing-flow): both casts see a non-negative value (value >= 0, or -(value + 1) for value < 0)
+    // NOLINTNEXTLINE(reloco-narrowing-flow): both casts see a non-negative value (value >= 0, or -(value + 1) for value
+    // < 0)
     detail::put_padded(out, value < 0 ? static_cast<uint64_t>(-(value + 1)) + 1U : static_cast<uint64_t>(value), 4);
   }
 };

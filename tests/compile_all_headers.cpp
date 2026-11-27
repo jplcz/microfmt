@@ -12,22 +12,7 @@
 #include <microfmt/formatters/can.hpp>
 #include <microfmt/formatters/cbor.hpp>
 #include <microfmt/formatters/chrono.hpp>
-#include <microfmt/parsing/ast_pool.hpp>
-#include <microfmt/parsing/lexer.hpp>
-#include <microfmt/parsing/lexer_formatters.hpp>
-#include <microfmt/parsing/lexer_rules_presets.hpp>
-#include <microfmt/parsing/parse_error.hpp>
-#include <microfmt/parsing/stream_window.hpp>
-#include <microfmt/parsing/operator_table.hpp>
-#include <microfmt/parsing/string_pool.hpp>
-#include <microfmt/parsing/string_pool_ref.hpp>
-#include <microfmt/parsing/token_stream.hpp>
-#include <microfmt/parsing/token_stream_formatters.hpp>
-#include <microfmt/parsing/number_parse.hpp>
-#include <microfmt/parsing/number_parse_float.hpp>
 #include <microfmt/formatters/chrono_calendar.hpp>
-#include <microfmt/formatters/numeric_views.hpp>
-#include <microfmt/formatters/sequence_views.hpp>
 #include <microfmt/formatters/debug_float.hpp>
 #include <microfmt/formatters/errno.hpp>
 #include <microfmt/formatters/error.hpp>
@@ -47,6 +32,7 @@
 #include <microfmt/formatters/math.hpp>
 #include <microfmt/formatters/monad.hpp>
 #include <microfmt/formatters/net.hpp>
+#include <microfmt/formatters/numeric_views.hpp>
 #include <microfmt/formatters/pointer.hpp>
 #include <microfmt/formatters/posix_time.hpp>
 #include <microfmt/formatters/ranges.hpp>
@@ -55,10 +41,11 @@
 #include <microfmt/formatters/reloco_debug.hpp>
 #include <microfmt/formatters/repeated_view.hpp>
 #include <microfmt/formatters/semver.hpp>
+#include <microfmt/formatters/sequence_views.hpp>
 #include <microfmt/formatters/source_location.hpp>
 #include <microfmt/formatters/spi.hpp>
-#include <microfmt/formatters/std_debug.hpp>
 #include <microfmt/formatters/std_complex.hpp>
+#include <microfmt/formatters/std_debug.hpp>
 #include <microfmt/formatters/std_types.hpp>
 #include <microfmt/formatters/string.hpp>
 #include <microfmt/formatters/styled.hpp>
@@ -69,6 +56,19 @@
 #include <microfmt/inspector/address_translator.hpp>
 #include <microfmt/inspector/advanced_scanners.hpp>
 #include <microfmt/inspector/concrete_metadata_map.hpp>
+#include <microfmt/parsing/ast_pool.hpp>
+#include <microfmt/parsing/lexer.hpp>
+#include <microfmt/parsing/lexer_formatters.hpp>
+#include <microfmt/parsing/lexer_rules_presets.hpp>
+#include <microfmt/parsing/number_parse.hpp>
+#include <microfmt/parsing/number_parse_float.hpp>
+#include <microfmt/parsing/operator_table.hpp>
+#include <microfmt/parsing/parse_error.hpp>
+#include <microfmt/parsing/stream_window.hpp>
+#include <microfmt/parsing/string_pool.hpp>
+#include <microfmt/parsing/string_pool_ref.hpp>
+#include <microfmt/parsing/token_stream.hpp>
+#include <microfmt/parsing/token_stream_formatters.hpp>
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
 #include <microfmt/inspector/dl_elf_enumerator.hpp>
 #include <microfmt/inspector/dl_symbol_resolver.hpp>
@@ -121,10 +121,10 @@
 #include <microfmt/log/macros.hpp>
 #include <microfmt/sinks/android_log_sink.hpp>
 #include <microfmt/sinks/posix_fd_sink.hpp>
-#include <microfmt/sinks/socket_sink.hpp>
-#include <microfmt/sinks/win_debug_sink.hpp>
 #include <microfmt/sinks/ring_buffer_sink_protocol_sink.hpp>
+#include <microfmt/sinks/socket_sink.hpp>
 #include <microfmt/sinks/tizen_dlog_sink.hpp>
+#include <microfmt/sinks/win_debug_sink.hpp>
 #if defined(MICROFMT_COMPILE_WITH_SYSLOG)
 #include <microfmt/sinks/syslog_sink.hpp>
 #endif

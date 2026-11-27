@@ -60,7 +60,9 @@ public:
    * @return Pointer to the underlying null-terminated buffer, or a safe empty
    * static string if the initial span was empty.
    */
-  [[nodiscard]] constexpr const char *c_str() const noexcept RELOCO_LIFETIMEBOUND { return m_data != nullptr ? m_data : ""; }
+  [[nodiscard]] constexpr const char *c_str() const noexcept RELOCO_LIFETIMEBOUND {
+    return m_data != nullptr ? m_data : "";
+  }
 
   /**
    * @brief Returns a string view over the characters written (excluding null

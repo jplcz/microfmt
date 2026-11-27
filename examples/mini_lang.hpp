@@ -65,10 +65,10 @@ enum class function_id : uint8_t { abs, max, min };
 // errors are reported at (the literal, the variable, the divisor, the callee).
 struct RELOCO_POINTER node {
   node_kind kind{node_kind::number};
-  char op{0};                                         // binary: one of + - * / > <
-  function_id function{function_id::abs};             // call
-  size_t slot{0};                                     // variable: index in the variable table
-  int64_t value{0};                                   // number
+  char op{0};                             // binary: one of + - * / > <
+  function_id function{function_id::abs}; // call
+  size_t slot{0};                         // variable: index in the variable table
+  int64_t value{0};                       // number
   token at{};
   node_id<node> a{};                                  // operand / condition
   node_id<node> b{};                                  // right operand / then branch
@@ -94,7 +94,9 @@ constexpr int64_t wrap(uint64_t v) noexcept { return static_cast<int64_t>(v); }
  */
 class RELOCO_POINTER interpreter {
 public:
-  explicit interpreter(string_view source RELOCO_LIFETIMEBOUND) noexcept : source_{source} { declare_builtin_operators(); }
+  explicit interpreter(string_view source RELOCO_LIFETIMEBOUND) noexcept : source_{source} {
+    declare_builtin_operators();
+  }
 
   /** @return Number of statements that ran without error. */
   [[nodiscard]] size_t run() noexcept {

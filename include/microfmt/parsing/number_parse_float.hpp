@@ -53,10 +53,13 @@ RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
 // The C strto* functions need a NUL-terminated buffer; callers pass the bounded, terminated local buffer.
 [[nodiscard]] inline float strto_t(const char *s, char **end, float) noexcept { return std::strtof(s, end); }
 [[nodiscard]] inline double strto_t(const char *s, char **end, double) noexcept { return std::strtod(s, end); }
-[[nodiscard]] inline long double strto_t(const char *s, char **end, long double) noexcept { return std::strtold(s, end); }
+[[nodiscard]] inline long double strto_t(const char *s, char **end, long double) noexcept {
+  return std::strtold(s, end);
+}
 RELOCO_END_UNSAFE_BUFFER_USAGE
 
-template <typename T> inline constexpr bool is_parsable_float_v =
+template <typename T>
+inline constexpr bool is_parsable_float_v =
     std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, long double>;
 
 } // namespace detail
@@ -116,14 +119,16 @@ template <typename T, typename = std::enable_if_t<detail::is_parsable_float_v<T>
   if (negative)
     put('-');
 
-  const bool hex = opts.allow_hex && detail::byte_at(text, pos) == '0' &&
-                   detail::lower_ascii(detail::byte_at(text, pos + 1)) == 'x';
+  const bool hex =
+      opts.allow_hex && detail::byte_at(text, pos) == '0' && detail::lower_ascii(detail::byte_at(text, pos + 1)) == 'x';
   if (hex) {
     put('0');
     put('x');
     pos += 2;
   }
-  const auto is_digit_ch = [hex](char ch) noexcept { return hex ? detail::digit_value(ch) < 16 : (ch >= '0' && ch <= '9'); };
+  const auto is_digit_ch = [hex](char ch) noexcept {
+    return hex ? detail::digit_value(ch) < 16 : (ch >= '0' && ch <= '9');
+  };
 
   // Digit run with optional separators strictly between digits; returns digit count, advances pos.
   const auto digits = [&pos, &put, &is_digit_ch, text, &opts]() noexcept {
@@ -195,8 +200,7 @@ template <typename T, typename = std::enable_if_t<detail::is_parsable_float_v<T>
 
 /** @brief Parses all of @p text as one floating-point number; trailing text is `invalid_digit`. */
 template <typename T, typename = std::enable_if_t<detail::is_parsable_float_v<T>>>
-[[nodiscard]] reloco::expected<T, number_error> parse(microfmt::string_view text,
-                                                      const float_options &opts) noexcept {
+[[nodiscard]] reloco::expected<T, number_error> parse(microfmt::string_view text, const float_options &opts) noexcept {
   auto r = parse_prefix<T>(text, opts);
   if (!r.has_value())
     return reloco::unexpected<number_error>(r.error());

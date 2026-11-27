@@ -19,7 +19,8 @@ using calc_result = reloco::expected<int64_t, microfmt::parse_error>;
 constexpr microfmt::string_view kOperators[] = {"+", "-", "*", "/", "^"};
 
 // Higher precedence binds tighter; `^` is right associative so 2^3^2 == 2^(3^2).
-constexpr microfmt::binary_op kBinary[] = {{"+", 10}, {"-", 10}, {"*", 20}, {"/", 20}, {"^", 40, microfmt::assoc::right}};
+constexpr microfmt::binary_op kBinary[] = {
+    {"+", 10}, {"-", 10}, {"*", 20}, {"/", 20}, {"^", 40, microfmt::assoc::right}};
 
 // Unary minus binds tighter than `*` but looser than `^`, so -2^2 == -(2^2).
 constexpr microfmt::prefix_op kPrefix[] = {{"-", 30}};

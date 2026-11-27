@@ -154,8 +154,8 @@ template <> struct formatter<highlight_view> {
         break;
       }
       const ansi::style st = view.theme.style_for(tok.kind);
-      const bool plain = !ansi::style::colors_enabled || (st.fg == ansi::color::none && st.bg == ansi::color::none &&
-                                                          st.attr == ansi::attribute::none);
+      const bool plain = !ansi::style::colors_enabled ||
+                         (st.fg == ansi::color::none && st.bg == ansi::color::none && st.attr == ansi::attribute::none);
       if (plain) {
         out.write(tok.text);
       } else {

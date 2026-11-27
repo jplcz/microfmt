@@ -108,8 +108,8 @@ template <> struct formatter<error_report> {
     if (!rep.error.note.empty()) {
       out.put('\n');
       out.write("note: ");
-      detail::write_snippet(out, rep.source, rep.base, rep.error.note, rep.error.note_at.offset,
-                            rep.error.note_at.line, rep.error.note_at.column);
+      detail::write_snippet(out, rep.source, rep.base, rep.error.note, rep.error.note_at.offset, rep.error.note_at.line,
+                            rep.error.note_at.column);
     }
   }
 };
@@ -123,8 +123,8 @@ template <> struct formatter<stored_error_report> {
     if (!rep.error.note.empty()) {
       out.put('\n');
       out.write("note: ");
-      detail::write_snippet(out, rep.source, rep.base, rep.error.note, rep.error.note_at.offset,
-                            rep.error.note_at.line, rep.error.note_at.column);
+      detail::write_snippet(out, rep.source, rep.base, rep.error.note, rep.error.note_at.offset, rep.error.note_at.line,
+                            rep.error.note_at.column);
     }
   }
 };
