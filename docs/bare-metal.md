@@ -47,3 +47,43 @@ microfmt::format_to(semihosting.as_sink(), "Hello via semihosting\n");
 This sink requires a semihosting-capable debug host or emulator (for example
 `qemu-system-aarch64 -semihosting-config enable=on,target=native`) and is
 intended for early boot diagnostics rather than production output.
+
+## Debug-probe and generic UART sinks
+
+On a real board you often have no console at all, or a UART that differs from
+the PL011. These sinks cover that. All of them never block forever: when the
+destination is stuck they drop the unsent bytes and count them in
+`dropped_bytes()`, so a missing probe or unplugged cable cannot hang firmware.
+
+Abbreviations: RTT = SEGGER Real-Time Transfer; ITM = Instrumentation Trace
+Macrocell; SWO = Serial Wire Output (the trace pin); FIFO = first-in
+first-out queue; CDC = USB Communications Device Class (virtual serial port).
+
+| Sink | Header | What it is for |
+|---|---|---|
+| `rtt_sink<BufferSize>` | `microfmt/hw/rtt_sink.hpp` | Text over the debug probe through a ring buffer in RAM; no pins, tiny CPU cost. |
+| `itm_sink` | `microfmt/hw/itm_sink.hpp` | Cortex-M ITM stimulus port, captured from the SWO pin by the probe. |
+| `uart_sink` | `microfmt/hw/uart_sink.hpp` | Any polled UART; you supply "ready to send?" and "send byte" callbacks. |
+| `chunked_sink<ChunkSize>` | `microfmt/sinks/chunked_sink.hpp` | Packet transports such as USB CDC (64-byte packets); call `flush()` to send a short packet. |
+
+```cpp
+static microfmt::rtt_sink<1024> rtt; // must stay at a fixed RAM address
+microfmt::format_to(rtt.as_sink(), "adc={}\n", sample);
+
+microfmt::itm_sink itm(microfmt::itm_sink::port_address(0));
+microfmt::format_to(itm.as_sink(), "tick {}\n", ticks);
+```
+
+`rtt_sink` uses SEGGER's control-block layout (id `"SEGGER RTT"`), so J-Link
+tools find it by scanning RAM; keep it in static storage and never move it.
+`itm_sink` does not enable ITM/SWO itself: configure the trace clock and
+stimulus port mask in your startup code first.
+
+To feed the logging API from any of these, wrap the sink with
+`microfmt::log::sink_log_adapter<Capacity>` from `<microfmt/log/sink_adapter.hpp>`;
+it renders each record as one `[logger] payload` line:
+
+```cpp
+microfmt::log::sink_log_adapter<128> to_rtt(rtt.as_sink());
+auto log_sink = to_rtt.as_sink(); // a microfmt::log::log_sink
+```

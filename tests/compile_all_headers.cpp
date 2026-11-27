@@ -120,6 +120,11 @@
 #include <microfmt/log/logger.hpp>
 #include <microfmt/log/macros.hpp>
 #include <microfmt/sinks/android_log_sink.hpp>
+#include <microfmt/hw/itm_sink.hpp>
+#include <microfmt/hw/rtt_sink.hpp>
+#include <microfmt/hw/uart_sink.hpp>
+#include <microfmt/log/sink_adapter.hpp>
+#include <microfmt/sinks/chunked_sink.hpp>
 #include <microfmt/sinks/posix_fd_sink.hpp>
 #include <microfmt/sinks/ring_buffer_sink_protocol_sink.hpp>
 #include <microfmt/sinks/socket_sink.hpp>
