@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.5.2
+
 ### Fixed
 
 - DWARF CFI decoder (`dwarf_cfi_decoder`): parses the CIE and reads `.eh_frame` FDEs (pc-relative and other `DW_EH_PE_*` pointer encodings, `z` augmentation data). It also applies the CIE's `code_align`/`data_align` factors, the CIE initial instructions, `DW_CFA_restore`, and `restore_state` keeps the current location. Opcodes it cannot apply fail the FDE instead of desynchronising the stream.

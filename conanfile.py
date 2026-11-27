@@ -10,7 +10,7 @@ from conan.tools.files import copy
 
 class JplczMicrofmtConan(ConanFile):
     name = "jplcz_microfmt"
-    version = "0.5.1"
+    version = "0.5.2"
     package_type = "header-library"
     license = "BSD-2-Clause"
     url = "https://github.com/jplcz/microfmt"
