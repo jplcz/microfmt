@@ -165,6 +165,23 @@ public:
     uint8_t opcode = 0;
 
     while (stream.next_byte(opcode)) {
+      // 0xB2 uleb128: vsp = vsp + 0x204 + (uleb128 << 2). Large frames use it.
+      // The ULEB128 operand may continue into the next extab word, so its bytes
+      // are read through the stream.
+      if (opcode == 0xB2) {
+        uint32_t uleb = 0;
+        unsigned shift = 0;
+        uint8_t byte = 0;
+        do {
+          if (shift >= 32U || !stream.next_byte(byte))
+            return false;
+          uleb |= static_cast<uint32_t>(byte & 0x7FU) << shift;
+          shift += 7U;
+        } while ((byte & 0x80U) != 0U);
+        io_sp += 0x204U + (uleb << 2U);
+        continue;
+      }
+
       // 0xB0 = FINISH opcode (terminate unwinding bytecode block)
       if (opcode == 0xB0) {
         return true;

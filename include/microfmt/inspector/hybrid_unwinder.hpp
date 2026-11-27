@@ -233,10 +233,16 @@ public:
       return false;
 
     // Check if the current frame is an exception trampoline
+    // Trap frames lie on the stack, and an outer trap sits above the inner one the walk came from.
+    // A match at or below the last accepted trap is the same trap again: decoding it would reload
+    // the registers it saved and repeat the walk, so it is skipped.
     uintptr_t trap_frame_addr = 0;
-    if (matcher_ && matcher_.match_trap_frame(current_.fp, current_.pc, trap_frame_addr)) {
+    if (matcher_ && matcher_.match_trap_frame(current_.fp, current_.pc, trap_frame_addr) &&
+        (!has_trap_ || trap_frame_addr > last_trap_addr_)) {
       current_.trap = {};
       if (trap_decoder_ && trap_decoder_.decode(trap_frame_addr, current_.trap)) {
+        has_trap_ = true;
+        last_trap_addr_ = trap_frame_addr;
         // Synthesize a trap transition frame
         current_.frame_index++;
         current_.kind = frame_kind::trap_transition;
@@ -299,6 +305,10 @@ private:
   hybrid_frame current_{};
   /// Validity flag.
   bool is_valid_{false};
+  /// True once a trap frame has been decoded; @ref last_trap_addr_ is then valid.
+  bool has_trap_{false};
+  /// Address of the last decoded trap frame.
+  uintptr_t last_trap_addr_{0};
 };
 
 // ============================================================================

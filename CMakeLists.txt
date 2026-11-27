@@ -597,6 +597,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_gdb_protocol.cpp
         tests/test_gdb_registers.cpp
         tests/test_dwarf_registers.cpp
+        tests/test_dwarf_cfi_decoder.cpp
         tests/test_register_context_with.cpp
         tests/test_remote_layout_accessor.cpp
         tests/test_remote_basic_string.cpp

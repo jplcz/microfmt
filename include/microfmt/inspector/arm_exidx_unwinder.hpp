@@ -17,6 +17,20 @@
 
 namespace microfmt {
 
+/**
+ * @brief Writes CPSR.T (bit 5) of the register context to @p thumb.
+ *
+ * Failures are ignored: a context without a writable CPSR keeps its state, and
+ * the frame-pointer choice then falls back to R11.
+ */
+inline void set_caller_thumb_state(register_context_ref reg_ctx, uint32_t thumb) noexcept {
+  uint32_t cpsr = 0;
+  if (!reg_ctx.read(dwarf::arm32::cpsr, cpsr))
+    return;
+  cpsr = (thumb != 0U) ? (cpsr | 0x20U) : (cpsr & ~0x20U);
+  (void)reg_ctx.write_raw(dwarf::arm32::cpsr, &cpsr, sizeof(cpsr));
+}
+
 // ============================================================================
 // ARM EXIDX Table Entry Format
 // ============================================================================
@@ -112,7 +126,8 @@ template <typename AbiTraits> struct frame_unwinder_traits<arm_exidx_unwinder_ta
     img = {};
 
     // Query which loaded ELF module owns the faulting program counter
-    if (context->enumerator.find_by_pc(fault_pc, img) && img.has_exidx()) {
+    const bool exidx_found = context->enumerator.find_by_pc(fault_pc, img) && img.has_exidx();
+    if (exidx_found) {
       uintptr_t exidx_start = img.exidx_start;
       uintptr_t exidx_end = img.exidx_end;
       size_t num_entries = (exidx_end - exidx_start) / 8;
@@ -143,8 +158,14 @@ template <typename AbiTraits> struct frame_unwinder_traits<arm_exidx_unwinder_ta
         uint32_t raw_unwind_data = 0;
 
         if (context->space.read_bytes(word2_address, &raw_unwind_data, 4)) {
-          if (raw_unwind_data == 0x1)
-            return false;
+          // EXIDX_CANTUNWIND (`.cantunwind`): the function has no caller to restore, e.g. a
+          // thread-entry trampoline. The step succeeds with pc 0, so the chain ends here instead
+          // of falling through to the frame-pointer tier, which would invent a caller.
+          if (raw_unwind_data == 0x1) {
+            next_fp = 0;
+            next_pc = 0;
+            return true;
+          }
 
           // Per the ARM EHABI (#6.2 Generic Model / #6.3 Compact Model): bit
           // 31 SET means the unwind opcodes are packed inline in this very
@@ -173,6 +194,15 @@ template <typename AbiTraits> struct frame_unwinder_traits<arm_exidx_unwinder_ta
     if (!reg_ctx.write_raw(AbiTraits::sp_reg, &updated_sp, AbiTraits::pointer_size))
       return false;
 
+    typename AbiTraits::register_type updated_lr = 0;
+    if (!reg_ctx.read_raw(AbiTraits::ra_reg, &updated_lr, AbiTraits::pointer_size))
+      return false;
+
+    // The popped return address carries the caller's instruction set in bit 0
+    // (interworking). Move CPSR.T to that state before the frame-pointer register
+    // is chosen, so the caller's fp is read from R7 (Thumb) or R11 (ARM).
+    set_caller_thumb_state(reg_ctx, static_cast<uint32_t>(updated_lr) & 1U);
+
     // The frame-pointer register itself depends on the live ARM/Thumb
     // instruction-set state (R11 vs. R7); consult AbiTraits rather than
     // assuming R11, so Thumb-compiled frames report the correct value.
@@ -181,10 +211,6 @@ template <typename AbiTraits> struct frame_unwinder_traits<arm_exidx_unwinder_ta
     if (!reg_ctx.read_raw(fp_reg, &updated_fp, AbiTraits::pointer_size)) {
       updated_fp = updated_sp;
     }
-
-    typename AbiTraits::register_type updated_lr = 0;
-    if (!reg_ctx.read_raw(AbiTraits::ra_reg, &updated_lr, AbiTraits::pointer_size))
-      return false;
 
     next_fp = static_cast<uintptr_t>(updated_fp);
     next_pc = AbiTraits::normalize_pc(static_cast<uintptr_t>(updated_lr));

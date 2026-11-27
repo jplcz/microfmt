@@ -74,6 +74,24 @@ private:
         continue; // NOP / Padding byte
       }
 
+      // 0xB2 uleb128: vsp = vsp + 0x204 + (uleb128 << 2). Large frames (e.g. 848 bytes) use it.
+      // The ULEB128 operand follows the opcode in the same word; a continuation past the word is
+      // not decoded here, so the step fails instead of misreading the following bytes.
+      if (opcode == 0xB2) {
+        uint32_t uleb = 0;
+        unsigned shift = 0;
+        uint8_t byte = 0;
+        do {
+          if (idx >= 3 || shift >= 32U)
+            return false;
+          byte = bytes[idx++];
+          uleb |= static_cast<uint32_t>(byte & 0x7FU) << shift;
+          shift += 7U;
+        } while ((byte & 0x80U) != 0U);
+        io_sp += 0x204U + (uleb << 2U);
+        continue;
+      }
+
       // 0xB0 = FINISH opcode (terminate inline bytecode block)
       if (opcode == 0xB0) {
         return true;
@@ -101,7 +119,10 @@ private:
           if ((reg_mask & (1U << static_cast<unsigned>(i))) != 0) {
             uint32_t val = 0;
             if (space.read_bytes(io_sp, &val, 4)) {
-              uint32_t dwarf_reg = static_cast<uint32_t>(dwarf::arm32::r4) + static_cast<uint32_t>(i);
+              // Bit 11 is pc (r15). The value popped into it is the return address, which the
+              // unwinder reads from lr, so it goes to r14.
+              uint32_t dwarf_reg = (i == 11) ? static_cast<uint32_t>(dwarf::arm32::r14)
+                                             : static_cast<uint32_t>(dwarf::arm32::r4) + static_cast<uint32_t>(i);
               if (!reg_ctx.write(dwarf_reg, val))
                 return false;
               io_sp += 4;
