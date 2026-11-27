@@ -657,6 +657,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_container_sink.cpp
         tests/test_pmr_sink.cpp
         tests/test_platform_log_sinks.cpp
+        tests/test_byte_sinks.cpp
         tests/test_pointer.cpp
         tests/test_logger_override.cpp
         tests/test_log_active_level.cpp

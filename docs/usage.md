@@ -199,6 +199,35 @@ keeps the result null-terminated, reserving one byte for the terminator.
 adapter over a FreeBSD-style `struct sbuf *` that appends through
 `sbuf_bcat`; it has no hard dependency on `<sys/sbuf.h>` unless instantiated.
 
+### Descriptor, socket and debugger sinks
+
+Real output usually has to leave the process: into a file, over the network,
+or into a debugger. These sinks wrap the matching OS call so a signal, a full
+socket buffer or a long message does not silently lose or corrupt output.
+Each sink borrows what it writes to (it never opens or closes it), counts
+bytes it had to drop, and has a `*_log_sink` adapter that renders each record
+as one `[logger] payload` message for the logging API.
+
+| Sink | Header | Use it when |
+|---|---|---|
+| `posix_fd_sink` | `<microfmt/sinks/posix_fd_sink.hpp>` | Writing to a file, pipe or tty with `write(2)` and you need `EINTR`/short-write handling or `EAGAIN` policy (`drop` or `retry`). The stateless `fd_sink(fd)` helper in `stdio.hpp` is the minimal version without retries or accounting. |
+| `socket_sink` | `<microfmt/sinks/socket_sink.hpp>` | Sending to a connected UDP (`datagram` mode: one `write` is one packet) or TCP (`stream` mode: short sends are continued) socket. Uses `MSG_NOSIGNAL` so a closed peer does not raise `SIGPIPE`. |
+| `win_debug_sink<Capacity>` | `<microfmt/sinks/win_debug_sink.hpp>` | Showing output in the Visual Studio Output window or DebugView on Windows via `OutputDebugStringA`; long data is split into NUL-terminated chunks. |
+
+```cpp
+const int fd = ::open("app.log", O_WRONLY | O_APPEND | O_CREAT, 0644);
+microfmt::posix_fd_sink file(fd);
+microfmt::format_to(file.as_sink(), "boot {}\n", 1);
+
+microfmt::log::posix_fd_log_sink<> log_to_file(file);
+auto logger_sink = log_to_file.as_sink(); // a microfmt::log::log_sink
+```
+
+Every sink also accepts a custom write function (for example a test double),
+which is how the default OS call is replaced in unit tests. The default
+constructors that use the OS call exist only where that API does
+(`posix_fd_sink` and `socket_sink` off Windows, `win_debug_sink` on Windows).
+
 ## Compile-time format strings
 
 The runtime format string used throughout this guide is the default choice

@@ -120,6 +120,9 @@
 #include <microfmt/log/logger.hpp>
 #include <microfmt/log/macros.hpp>
 #include <microfmt/sinks/android_log_sink.hpp>
+#include <microfmt/sinks/posix_fd_sink.hpp>
+#include <microfmt/sinks/socket_sink.hpp>
+#include <microfmt/sinks/win_debug_sink.hpp>
 #include <microfmt/sinks/ring_buffer_sink_protocol_sink.hpp>
 #include <microfmt/sinks/tizen_dlog_sink.hpp>
 #if defined(MICROFMT_COMPILE_WITH_SYSLOG)

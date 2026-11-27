@@ -36,7 +36,9 @@ bool read_test_register(const void *opaque_state, microfmt::address_space_ref, u
     return false;
   if (value_size != sizeof(value))
     return false;
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   std::memcpy(out_value, &value, value_size);
+  RELOCO_END_UNSAFE_BUFFER_USAGE
   return true;
 }
 
@@ -108,8 +110,10 @@ eh_section make_eh_section(const bytes &insns) {
   s.func = s.base + 0x100;
   const bytes cie = eh_cie();
   const bytes fde = eh_fde(s.base + cie.size(), s.base, s.func, insns);
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   std::memcpy(s.mem.data(), cie.data(), cie.size());
   std::memcpy(s.mem.data() + cie.size(), fde.data(), fde.size());
+  RELOCO_END_UNSAFE_BUFFER_USAGE
   return s;
 }
 
@@ -125,7 +129,11 @@ bool run_fde(const eh_section &section, bool eh_frame, uintptr_t pc, const test_
   return decoder::execute_fde(registers, fde_addr, section.base, eh_frame, pc, fp, ra, scratch);
 }
 
-void store_u64(uintptr_t addr, uint64_t value) { std::memcpy(reinterpret_cast<void *>(addr), &value, sizeof(value)); }
+void store_u64(uintptr_t addr, uint64_t value) {
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
+  std::memcpy(reinterpret_cast<void *>(addr), &value, sizeof(value));
+  RELOCO_END_UNSAFE_BUFFER_USAGE
+}
 
 } // namespace
 
@@ -208,8 +216,10 @@ TEST(DwarfCfiDecoder, DebugFrameUsesAbsolutePointersAndCieOffset) {
   fde.insert(fde.end(), kFrameInstructions.begin(), kFrameInstructions.end());
   pad_to_4(fde);
   patch_u32(fde, 0, static_cast<uint32_t>(fde.size() - 4));
+  RELOCO_BEGIN_UNSAFE_BUFFER_USAGE
   std::memcpy(mem.data(), cie.data(), cie.size());
   std::memcpy(mem.data() + cie.size(), fde.data(), fde.size());
+  RELOCO_END_UNSAFE_BUFFER_USAGE
 
   std::vector<uint8_t> stack(256, 0);
   const uintptr_t sp = reinterpret_cast<uintptr_t>(stack.data()) + 0x40;

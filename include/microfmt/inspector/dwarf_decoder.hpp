@@ -139,7 +139,7 @@ public:
     frame_state current_state;
     /// Rules the CIE's initial instructions establish. DW_CFA_restore returns to these.
     frame_state initial_state;
-    frame_state state_stack[MaxStateStackDepth];
+    reloco::array<frame_state, MaxStateStackDepth> state_stack;
     size_t stack_depth{0};
 
     void reset(uintptr_t initial_loc) noexcept {
