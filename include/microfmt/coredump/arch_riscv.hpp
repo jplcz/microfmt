@@ -20,17 +20,26 @@
 
 namespace microfmt::coredump {
 
-template <bool Is64, bool WithFpu = false> struct arch_riscv_t {
+/**
+ * @brief RISC-V policy. Floating point (`WithFpu`) and, for a non-zero @p VlenBytes, the RVV (RISC-V Vector
+ * extension) registers as `NT_RISCV_VECTOR`: `vstart`, `vl`, `vtype`, `vcsr` and `vlenb` (one word each) followed
+ * by `v0`-`v31`, @p VlenBytes bytes each (the hardware's VLEN divided by 8).
+ */
+template <bool Is64, bool WithFpu = false, std::uint32_t VlenBytes = 0> struct arch_riscv_t {
   static constexpr bool is_64bit = Is64;
   static constexpr bool little_endian = true;
   static constexpr std::uint16_t machine = 243; // EM_RISCV
   static constexpr std::uint32_t flags = 0;
   static constexpr std::uint32_t page_size = 4096;
   static constexpr std::size_t prstatus_size = Is64 ? 376 : 204;
-  static constexpr std::size_t regset_count = WithFpu ? 1 : 0;
+  static constexpr std::size_t regset_count = (WithFpu ? 1U : 0U) + (VlenBytes != 0 ? 1U : 0U);
 
   /** @brief `NT_PRFPREG`: f0-f31 as 64-bit values (the "D" double-precision extension), then 32-bit `fcsr`. */
-  static constexpr core_regset regset(std::size_t) noexcept { return {nt_prfpreg, "CORE", 264}; }
+  static constexpr core_regset regset(std::size_t index) noexcept {
+    if (WithFpu && index == 0)
+      return {nt_prfpreg, "CORE", 264};
+    return {nt_riscv_vector, "LINUX", detail::rvv_regset_size(VlenBytes, Is64 ? 8U : 4U)};
+  }
 
   template <typename Emitter> static void write_prstatus(Emitter &out, const core_thread &thread) noexcept {
     detail::write_prstatus_prefix<Is64>(out, thread);

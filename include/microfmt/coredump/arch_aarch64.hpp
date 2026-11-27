@@ -20,13 +20,16 @@
 namespace microfmt::coredump {
 
 namespace detail {
-template <bool WithFpu, bool WithTls, std::uint32_t Breakpoints, std::uint32_t Watchpoints>
-inline constexpr regset_list<4> aarch64_sets = [] {
-  regset_list<4> list;
+template <bool WithFpu, bool WithTls, std::uint32_t Breakpoints, std::uint32_t Watchpoints, bool WithPac,
+          std::uint32_t SveBytes>
+inline constexpr regset_list<6> aarch64_sets = [] {
+  regset_list<6> list;
   list.add({nt_prfpreg, "CORE", WithFpu ? 528U : 0U});
   list.add({nt_arm_tls, "LINUX", WithTls ? 8U : 0U});
   list.add({nt_arm_hw_break, "LINUX", hwdebug_state_size(Breakpoints, 16)});
   list.add({nt_arm_hw_watch, "LINUX", hwdebug_state_size(Watchpoints, 16)});
+  list.add({nt_arm_pac_mask, "LINUX", WithPac ? 16U : 0U});
+  list.add({nt_arm_sve, "LINUX", sve_regset_size(SveBytes)});
   return list;
 }();
 } // namespace detail
@@ -35,20 +38,28 @@ inline constexpr regset_list<4> aarch64_sets = [] {
  * @brief AArch64 policy. Besides `NT_PRFPREG` (`WithFpu`), it can write `NT_ARM_TLS` (`WithTls`: the 64-bit
  * `TPIDR_EL0` thread pointer) and the hardware debug state of @p Breakpoints / @p Watchpoints slots
  * (`NT_ARM_HW_BREAK` / `NT_ARM_HW_WATCH`: an 8-byte header plus an address and control word per slot; 0 = off).
+ * `WithPac` adds `NT_ARM_PAC_MASK` (which address bits hold the pointer-authentication signature, so backtraces
+ * show clean return addresses). A non-zero @p SveBytes adds `NT_ARM_SVE` for a vector length of that many bytes
+ * (a multiple of 16: 16 for a 128-bit core, 32 for 256-bit, up to 256 for 2048-bit); the register reader must
+ * deliver the kernel's `user_sve_header` followed by the register payload (see `sve_regset_size`).
  */
-template <bool WithFpu = false, bool WithTls = false, std::uint32_t Breakpoints = 0, std::uint32_t Watchpoints = 0>
+template <bool WithFpu = false, bool WithTls = false, std::uint32_t Breakpoints = 0, std::uint32_t Watchpoints = 0,
+          bool WithPac = false, std::uint32_t SveBytes = 0>
 struct arch_aarch64_t {
+  static_assert(SveBytes % 16U == 0 && SveBytes <= 256U, "SVE vector length is a multiple of 16 bytes, at most 256");
+
   static constexpr bool is_64bit = true;
   static constexpr bool little_endian = true;
   static constexpr std::uint16_t machine = 183; // EM_AARCH64
   static constexpr std::uint32_t flags = 0;
   static constexpr std::uint32_t page_size = 4096;
   static constexpr std::size_t prstatus_size = 392;
-  static constexpr std::size_t regset_count = detail::aarch64_sets<WithFpu, WithTls, Breakpoints, Watchpoints>.count;
+  static constexpr std::size_t regset_count =
+      detail::aarch64_sets<WithFpu, WithTls, Breakpoints, Watchpoints, WithPac, SveBytes>.count;
 
   /** @brief `NT_PRFPREG` is v0-v31 (16 bytes each), then the 32-bit `fpsr` and `fpcr` status registers. */
   static constexpr core_regset regset(std::size_t index) noexcept {
-    return detail::aarch64_sets<WithFpu, WithTls, Breakpoints, Watchpoints>.items[index];
+    return detail::aarch64_sets<WithFpu, WithTls, Breakpoints, Watchpoints, WithPac, SveBytes>.items[index];
   }
 
   template <typename Emitter> static void write_prstatus(Emitter &out, const core_thread &thread) noexcept {

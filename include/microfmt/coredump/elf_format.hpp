@@ -42,6 +42,9 @@ inline constexpr std::uint32_t nt_arm_vfp = 0x400;
 inline constexpr std::uint32_t nt_arm_tls = 0x401;
 inline constexpr std::uint32_t nt_arm_hw_break = 0x402;
 inline constexpr std::uint32_t nt_arm_hw_watch = 0x403;
+inline constexpr std::uint32_t nt_arm_sve = 0x405;
+inline constexpr std::uint32_t nt_arm_pac_mask = 0x406;
+inline constexpr std::uint32_t nt_riscv_vector = 0x901;
 inline constexpr std::uint32_t nt_x86_xstate = 0x202;
 inline constexpr std::uint32_t nt_prxfpreg = 0x46e62b7f;
 inline constexpr std::uint32_t nt_file = 0x46494c45; // "FILE"
@@ -83,6 +86,27 @@ template <std::size_t Capacity> struct regset_list {
  */
 constexpr std::uint32_t hwdebug_state_size(std::uint32_t slots, std::uint32_t slot_bytes) noexcept {
   return slots == 0 ? 0U : 8U + slots * slot_bytes;
+}
+
+/**
+ * @brief Size of the `NT_ARM_SVE` blob (Linux `SVE_PT_SIZE` with full SVE registers) for a vector length of
+ * @p vl_bytes; 0 when SVE is off.
+ *
+ * Layout: a 16-byte header, `z0`-`z31` (32 x VL), `p0`-`p15` and `ffr` (17 x VL/8), then 32-bit `fpsr` and `fpcr`,
+ * with the register area rounded up to 16 bytes.
+ */
+constexpr std::uint32_t sve_regset_size(std::uint32_t vl_bytes) noexcept {
+  if (vl_bytes == 0)
+    return 0;
+  const std::uint32_t zregs = 32U * vl_bytes;
+  const std::uint32_t pregs = 17U * (vl_bytes / 8U);
+  const std::uint32_t fpsr = (16U + zregs + pregs + 15U) / 16U * 16U;
+  return (fpsr + 8U - 16U + 15U) / 16U * 16U + 16U;
+}
+
+/** @brief Size of the `NT_RISCV_VECTOR` blob: `vstart`, `vl`, `vtype`, `vcsr`, `vlenb` words then `v0`-`v31`. */
+constexpr std::uint32_t rvv_regset_size(std::uint32_t vlen_bytes, std::uint32_t word_bytes) noexcept {
+  return vlen_bytes == 0 ? 0U : 5U * word_bytes + 32U * vlen_bytes;
 }
 
 } // namespace detail

@@ -655,6 +655,31 @@ TEST(ElfCoreWriterRegset, DebugStateThreadPointerAndXstateSetsAreOptIn) {
   EXPECT_EQ((cd::arch_aarch64_t<false, false, 0, 1>::regset_count), 1U);
 }
 
+TEST(ElfCoreWriterRegset, PacMaskSveAndVectorSetsAreOptIn) {
+  cd::core_plan plan;
+  // PAC mask is two 64-bit words; SVE with a 16-byte vector is 592 bytes, with a 32-byte vector 1136.
+  const auto a64 = dump_wide<cd::arch_aarch64_t<false, false, 0, 0, true, 16>>(plan);
+  EXPECT_EQ(plan.note_bytes, (20U + 392U) + (20U + 16U) + (20U + 592U));
+  EXPECT_EQ(a64.size(), plan.total_size);
+  const size_t pac = load_le(a64, 64 + 8, 8) + 20 + 392;
+  EXPECT_EQ(load_le(a64, pac + 8, 4), 0x406U);
+  EXPECT_EQ(load_le(a64, pac + 20 + 15, 1), fake_regset_byte(cd::nt_arm_pac_mask, 15));
+  const size_t sve = pac + 20 + 16;
+  EXPECT_EQ(load_le(a64, sve + 4, 4), 592U);
+  EXPECT_EQ(load_le(a64, sve + 8, 4), 0x405U);
+  EXPECT_EQ(cd::detail::sve_regset_size(32), 1136U);
+  EXPECT_EQ(cd::detail::sve_regset_size(0), 0U);
+
+  // RVV: five words then 32 vector registers of VLEN/8 bytes; it follows the FPU set when both are enabled.
+  const auto rv64 = dump_wide<cd::arch_riscv_t<true, true, 16>>(plan);
+  EXPECT_EQ(plan.note_bytes, (20U + 376U) + (20U + 264U) + (20U + 552U));
+  const size_t rvv = load_le(rv64, 64 + 8, 8) + 20 + 376 + 20 + 264;
+  EXPECT_EQ(load_le(rv64, rvv + 4, 4), 552U);
+  EXPECT_EQ(load_le(rv64, rvv + 8, 4), 0x901U);
+  dump_wide<cd::arch_riscv_t<false, false, 16>>(plan);
+  EXPECT_EQ(plan.note_bytes, (20U + 204U) + (20U + 20U + 512U));
+}
+
 TEST(ElfCoreWriterRegset, UnreadableSetIsZeroFilledAndKeepsSize) {
   cd::core_plan plan;
   cd::core_stats stats;
