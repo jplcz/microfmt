@@ -35,7 +35,9 @@ inline constexpr std::uint32_t pf_w = 2;
 inline constexpr std::uint32_t pf_r = 4;
 inline constexpr std::uint32_t nt_prstatus = 1;
 inline constexpr std::uint32_t nt_prfpreg = 2;
+inline constexpr std::uint32_t nt_prpsinfo = 3;
 inline constexpr std::uint32_t nt_auxv = 6;
+inline constexpr std::uint32_t nt_siginfo = 0x53494749; // "SIGI"
 inline constexpr std::uint32_t nt_arm_vfp = 0x400;
 inline constexpr std::uint32_t nt_prxfpreg = 0x46e62b7f;
 inline constexpr std::uint32_t nt_file = 0x46494c45; // "FILE"
@@ -88,9 +90,37 @@ struct core_auxv_entry {
   std::uint64_t value{0};
 };
 
+/**
+ * @brief Describes the process as a whole for the `NT_PRPSINFO` note; `gdb` prints the name and arguments from it.
+ *
+ * Text longer than the note's fixed fields is truncated: @c name keeps 15 characters, @c args 79.
+ */
+struct RELOCO_POINTER core_process_info {
+  std::uint32_t pid{0};
+  std::uint32_t ppid{0};
+  std::uint32_t pgrp{0};
+  std::uint32_t sid{0};
+  std::uint32_t uid{0}; ///< Stored in 16 bits on 32-bit targets, as the Linux layout does.
+  std::uint32_t gid{0};
+  std::int8_t nice{0};
+  char state{'R'}; ///< Process state letter (`R` running, `S` sleeping, `Z` zombie, ...).
+  string_view name{};
+  string_view args{};
+};
+
+/** @brief The signal that ended the process, for the `NT_SIGINFO` note (a Linux `siginfo_t`). */
+struct core_siginfo {
+  std::int32_t signo{0};
+  std::int32_t errno_value{0};
+  std::int32_t code{0};           ///< `si_code`, for example `SEGV_MAPERR` (1).
+  std::uint64_t fault_address{0}; ///< `si_addr`: the faulting address for memory and illegal-instruction faults.
+};
+
 /** @brief Result of the planning pass: everything the headers need, in a few integers. */
 struct core_plan {
   bool valid{false};
+  bool process_info{false}; ///< An `NT_PRPSINFO` note will be written.
+  bool siginfo{false};      ///< An `NT_SIGINFO` note will be written.
   std::uint32_t load_segments{0};
   std::uint32_t threads{0};
   std::uint32_t files{0};
@@ -170,6 +200,57 @@ void write_note_header(Emitter &out, string_view name, std::uint64_t desc_size, 
   out.u32(type);
   out.bytes(name);
   out.zeros(((name_size + 3U) & ~std::size_t{3}) - name.size());
+}
+
+/** @brief Size of a Linux `elf_prpsinfo`: 136 bytes with 64-bit words, 124 with 32-bit words (16-bit uid/gid). */
+template <bool Is64> inline constexpr std::uint32_t prpsinfo_size = Is64 ? 136 : 124;
+
+/** @brief Size of a Linux `siginfo_t`, the same on every architecture. */
+inline constexpr std::uint32_t siginfo_size = 128;
+
+/** @brief Writes @p text truncated to @p field - 1 characters, then NUL padding up to @p field bytes. */
+template <typename Emitter> void write_fixed_text(Emitter &out, string_view text, std::size_t field) noexcept {
+  const std::size_t length = text.size() < field - 1U ? text.size() : field - 1U;
+  out.bytes(text.substr(0, length));
+  out.zeros(field - length);
+}
+
+/** @brief Writes the body of an `NT_PRPSINFO` note (`prpsinfo_size<Is64>` bytes). */
+template <bool Is64, typename Emitter> void write_prpsinfo(Emitter &out, const core_process_info &info) noexcept {
+  out.u8(0);                                     // pr_state (numeric); gdb reads the letter below
+  out.u8(static_cast<std::uint8_t>(info.state)); // pr_sname
+  out.u8(info.state == 'Z' ? 1 : 0);             // pr_zomb
+  // NOLINTNEXTLINE(reloco-narrowing-flow): nice is stored as the same 8 bits
+  out.u8(static_cast<std::uint8_t>(info.nice));
+  if constexpr (Is64) {
+    out.zeros(4); // alignment before pr_flag
+    out.u64(0);   // pr_flag
+    out.u32(info.uid);
+    out.u32(info.gid);
+  } else {
+    out.u32(0); // pr_flag
+    out.u16(static_cast<std::uint16_t>(info.uid & 0xFFFFU));
+    out.u16(static_cast<std::uint16_t>(info.gid & 0xFFFFU));
+  }
+  out.u32(info.pid);
+  out.u32(info.ppid);
+  out.u32(info.pgrp);
+  out.u32(info.sid);
+  write_fixed_text(out, info.name, 16);
+  write_fixed_text(out, info.args, 80);
+}
+
+/** @brief Writes the body of an `NT_SIGINFO` note: signal, errno, code, then the fault address in the union. */
+template <bool Is64, typename Emitter> void write_siginfo(Emitter &out, const core_siginfo &info) noexcept {
+  // NOLINTBEGIN(reloco-narrowing-flow): the signed fields are stored bit-for-bit
+  out.u32(static_cast<std::uint32_t>(info.signo));
+  out.u32(static_cast<std::uint32_t>(info.errno_value));
+  out.u32(static_cast<std::uint32_t>(info.code));
+  // NOLINTEND(reloco-narrowing-flow)
+  if constexpr (Is64)
+    out.zeros(4); // the union is 8-byte aligned
+  out.emit(info.fault_address, Is64 ? 8 : 4);
+  out.zeros(siginfo_size - (Is64 ? 24U : 16U));
 }
 
 /** @brief Marks a register slot that has no DWARF register number (stored as zero). */

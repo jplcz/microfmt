@@ -90,6 +90,13 @@ bool read_fake_register(const void *opaque, microfmt::address_space_ref, uint32_
   return true;
 }
 
+std::string text_at(const std::vector<char> &data, size_t offset, size_t length) {
+  std::string result;
+  for (size_t i = 0; i < length; ++i)
+    result.push_back(data.at(offset + i));
+  return result;
+}
+
 uint64_t load_le(const std::vector<char> &data, size_t offset, size_t bytes) {
   uint64_t value = 0;
   for (size_t i = 0; i < bytes; ++i)
@@ -105,6 +112,8 @@ struct core_fixture {
   std::vector<cd::core_thread> threads;
   std::vector<cd::core_mapped_file> files;
   std::vector<cd::core_auxv_entry> auxv;
+  std::vector<cd::core_process_info> process_info;
+  std::vector<cd::core_siginfo> siginfo;
   bool skip_zero_pages{false};
   microfmt::array<char, 1024> chunk{};
 
@@ -121,7 +130,7 @@ struct core_fixture {
 
   std::vector<char> dump(cd::core_plan &plan, cd::core_stats &stats, uint64_t budget = ~uint64_t{0}) {
     const microfmt::address_space<fake_core_tag> space(memory);
-    const cd::span_core_source source(regions, threads, files, auxv);
+    const cd::span_core_source source(regions, threads, files, auxv, process_info, siginfo);
     const cd::elf_core_writer<cd::arch_x86_64, cd::span_core_source> writer(source, space.ref(), chunk, budget,
                                                                             skip_zero_pages);
     plan = writer.plan();
@@ -468,6 +477,71 @@ TEST(ElfCoreWriter, AuxvNoteIsAppendedWithTerminator) {
   EXPECT_EQ(load_le(out, auxv + 44, 8), 0x7ffd0000U);
   EXPECT_EQ(load_le(out, auxv + 52, 8), 0U); // AT_NULL
   EXPECT_EQ(load_le(out, auxv + 60, 8), 0U);
+}
+
+TEST(ElfCoreWriter, ProcessAndSignalInfoNotesUseLinuxLayout) {
+  core_fixture fixture(false);
+  fixture.process_info = {{100, 1, 100, 100, 1000, 1001, -5, 'S', "a-very-long-program-name", "app --flag"}};
+  fixture.siginfo = {{11, 0, 1, 0xdeadbeef}};
+  cd::core_plan plan;
+  cd::core_stats stats;
+  const auto out = fixture.dump(plan, stats);
+  EXPECT_TRUE(plan.process_info);
+  EXPECT_TRUE(plan.siginfo);
+  EXPECT_EQ(out.size(), plan.total_size);
+  EXPECT_FALSE(stats.plan_mismatch);
+
+  const size_t notes = load_le(out, 64 + 8, 8);
+  EXPECT_EQ(load_le(out, notes + 4, 4), 136U);
+  EXPECT_EQ(load_le(out, notes + 8, 4), 3U); // NT_PRPSINFO
+  const size_t ps = notes + 20;
+  EXPECT_EQ(load_le(out, ps + 1, 1), static_cast<uint64_t>('S'));
+  EXPECT_EQ(load_le(out, ps + 3, 1), 0xFBU); // nice -5
+  EXPECT_EQ(load_le(out, ps + 16, 4), 1000U);
+  EXPECT_EQ(load_le(out, ps + 24, 4), 100U); // pid
+  EXPECT_EQ(load_le(out, ps + 28, 4), 1U);   // ppid
+  EXPECT_EQ(text_at(out, ps + 40, 15), "a-very-long-pro");
+  EXPECT_EQ(load_le(out, ps + 40 + 15, 1), 0U);
+  EXPECT_EQ(text_at(out, ps + 56, 10), "app --flag");
+
+  const size_t si = notes + plan.note_bytes - 128;
+  EXPECT_EQ(load_le(out, si - 20 + 4, 4), 128U);
+  EXPECT_EQ(load_le(out, si - 20 + 8, 4), 0x53494749U); // NT_SIGINFO
+  EXPECT_EQ(load_le(out, si, 4), 11U);
+  EXPECT_EQ(load_le(out, si + 8, 4), 1U);
+  EXPECT_EQ(load_le(out, si + 16, 8), 0xdeadbeefU);
+}
+
+TEST(ElfCoreWriter, ProcessAndSignalInfoUseNarrowFieldsOn32Bit) {
+  fake_core_memory memory;
+  const microfmt::address_space<fake_core_tag> space(memory);
+  int unused_state = 0;
+  std::byte register_scratch[8]{};
+  cd::core_thread threads[] = {{7, 4,
+                                microfmt::make_read_only_register_context_ref<read_fake_wide_register>(
+                                    unused_state, space.ref(), register_scratch)}};
+  cd::core_region regions[] = {{base_address, page, cd::pf_r}};
+  const cd::core_process_info process[] = {{9, 2, 3, 4, 0x12345, 6, 0, 'R', "x", "x y"}};
+  const cd::core_siginfo signal[] = {{4, 0, 2, 0x1234}};
+  const cd::span_core_source source(regions, threads, {}, {}, process, signal);
+  microfmt::array<char, 1024> chunk{};
+  const cd::elf_core_writer<cd::arch_arm_cortex_a, cd::span_core_source> writer(source, space.ref(), chunk);
+  const cd::core_plan plan = writer.plan();
+  std::vector<char> out;
+  auto append = [&out](microfmt::string_view text) { out.insert(out.end(), text.begin(), text.end()); };
+  microfmt::callback_sink<decltype(append)> callback(append);
+  EXPECT_FALSE(writer.write(callback.as_sink(), plan).plan_mismatch);
+  EXPECT_EQ(out.size(), plan.total_size);
+
+  const size_t notes = load_le(out, 52 + 4, 4);
+  EXPECT_EQ(load_le(out, notes + 4, 4), 124U);
+  const size_t ps = notes + 20;
+  EXPECT_EQ(load_le(out, ps + 8, 2), 0x2345U); // uid truncated to 16 bits
+  EXPECT_EQ(load_le(out, ps + 12, 4), 9U);     // pid
+  EXPECT_EQ(text_at(out, ps + 28, 1), "x");
+  const size_t si = notes + plan.note_bytes - 128;
+  EXPECT_EQ(load_le(out, si, 4), 4U);
+  EXPECT_EQ(load_le(out, si + 12, 4), 0x1234U);
 }
 
 TEST(ElfCoreWriter, ZeroPagesAreSkippedOnRequest) {

@@ -34,6 +34,8 @@
  *   template <class F> void for_each_mapped_file(F &&f) const;   // optional; f(const core_mapped_file &)
  *   template <class F> void for_each_auxv(F &&f) const;          // optional; f(std::uint64_t type, std::uint64_t
  * value)
+ *   template <class F> void for_each_process_info(F &&f) const;  // optional; f(const core_process_info &)
+ *   template <class F> void for_each_siginfo(F &&f) const;       // optional; f(const core_siginfo &)
  * @endcode
  * `span_core_source` adapts static tables.
  */
@@ -51,8 +53,20 @@ public:
   span_core_source(span<const core_region> regions RELOCO_LIFETIMEBOUND,
                    span<const core_thread> threads RELOCO_LIFETIMEBOUND,
                    span<const core_mapped_file> files RELOCO_LIFETIMEBOUND = {},
-                   span<const core_auxv_entry> auxv RELOCO_LIFETIMEBOUND = {}) noexcept
-      : regions_(regions), threads_(threads), files_(files), auxv_(auxv) {}
+                   span<const core_auxv_entry> auxv RELOCO_LIFETIMEBOUND = {},
+                   span<const core_process_info> process_info RELOCO_LIFETIMEBOUND = {},
+                   span<const core_siginfo> siginfo RELOCO_LIFETIMEBOUND = {}) noexcept
+      : regions_(regions), threads_(threads), files_(files), auxv_(auxv), process_info_(process_info),
+        siginfo_(siginfo) {}
+
+  template <typename F> void for_each_process_info(F &&visitor) const noexcept {
+    for (const core_process_info &info : process_info_)
+      visitor(info);
+  }
+  template <typename F> void for_each_siginfo(F &&visitor) const noexcept {
+    for (const core_siginfo &info : siginfo_)
+      visitor(info);
+  }
 
   template <typename F> void for_each_region(F &&visitor) const noexcept {
     for (const core_region &region : regions_)
@@ -76,6 +90,8 @@ private:
   span<const core_thread> threads_;
   span<const core_mapped_file> files_;
   span<const core_auxv_entry> auxv_;
+  span<const core_process_info> process_info_;
+  span<const core_siginfo> siginfo_;
 };
 
 namespace detail {
@@ -96,6 +112,23 @@ struct has_auxv<Source, std::void_t<decltype(std::declval<const Source &>().for_
     : std::true_type {};
 
 constexpr std::uint64_t align4(std::uint64_t value) noexcept { return (value + 3U) & ~std::uint64_t{3}; }
+
+/** @brief Stand-in visitors used only to test whether a source offers the optional process hooks. */
+struct process_info_probe {
+  void operator()(const core_process_info &) const noexcept {}
+};
+struct siginfo_probe {
+  void operator()(const core_siginfo &) const noexcept {}
+};
+template <typename Source, typename = void> struct has_process_info : std::false_type {};
+template <typename Source>
+struct has_process_info<
+    Source, std::void_t<decltype(std::declval<const Source &>().for_each_process_info(process_info_probe{}))>>
+    : std::true_type {};
+template <typename Source, typename = void> struct has_siginfo : std::false_type {};
+template <typename Source>
+struct has_siginfo<Source, std::void_t<decltype(std::declval<const Source &>().for_each_siginfo(siginfo_probe{}))>>
+    : std::true_type {};
 
 } // namespace detail
 
@@ -141,7 +174,13 @@ public:
       result.path_bytes += file.path.size() + 1U;
     });
     for_each_auxv([&result](std::uint64_t, std::uint64_t) { ++result.auxv_entries; });
+    for_each_process_info([&result](const core_process_info &) { result.process_info = true; });
+    for_each_siginfo([&result](const core_siginfo &) { result.siginfo = true; });
     result.note_bytes = result.threads * (note_overhead + detail::align4(Arch::prstatus_size) + regset_notes_size());
+    if (result.process_info)
+      result.note_bytes += note_overhead + detail::align4(detail::prpsinfo_size<Arch::is_64bit>);
+    if (result.siginfo)
+      result.note_bytes += note_overhead + detail::siginfo_size;
     if (result.files != 0)
       result.note_bytes += note_overhead + detail::align4(file_note_size(result.files, result.path_bytes));
     if (result.auxv_entries != 0)
@@ -216,6 +255,14 @@ private:
   template <typename F> void for_each_auxv(F &&visitor) const noexcept {
     if constexpr (detail::has_auxv<Source>::value)
       source_->for_each_auxv(visitor);
+  }
+  template <typename F> void for_each_process_info(F &&visitor) const noexcept {
+    if constexpr (detail::has_process_info<Source>::value)
+      source_->for_each_process_info(visitor);
+  }
+  template <typename F> void for_each_siginfo(F &&visitor) const noexcept {
+    if constexpr (detail::has_siginfo<Source>::value)
+      source_->for_each_siginfo(visitor);
   }
 
   [[nodiscard]] static std::uint64_t program_header_count(const core_plan &plan) noexcept {
@@ -364,6 +411,9 @@ private:
   bool write_notes(emitter_type &out, const core_plan &plan) const noexcept {
     const std::uint64_t start = out.count();
     std::uint32_t threads = 0;
+    bool consistent = true;
+    if (plan.process_info)
+      consistent &= write_process_info_note(out);
     source_->for_each_thread([this, &plan, &threads, &out](const core_thread &thread) {
       if (threads >= plan.threads)
         return;
@@ -375,7 +425,9 @@ private:
         write_regset(out, thread, Arch::regset(i));
       ++threads;
     });
-    bool consistent = threads == plan.threads;
+    consistent &= threads == plan.threads;
+    if (plan.siginfo)
+      consistent &= write_siginfo_note(out);
     if (plan.files != 0)
       consistent &= write_file_note(out, plan);
     if (plan.auxv_entries != 0)
@@ -397,6 +449,32 @@ private:
     else
       out.zeros(set.size);
     out.zeros(detail::align4(set.size) - set.size);
+  }
+
+  // Both notes describe the whole process, so only the first item the source offers is written.
+  bool write_process_info_note(emitter_type &out) const noexcept {
+    bool written = false;
+    for_each_process_info([&out, &written](const core_process_info &info) {
+      if (written)
+        return;
+      note_header(out, detail::prpsinfo_size<Arch::is_64bit>, nt_prpsinfo);
+      detail::write_prpsinfo<Arch::is_64bit>(out, info);
+      out.zeros(detail::align4(detail::prpsinfo_size<Arch::is_64bit>) - detail::prpsinfo_size<Arch::is_64bit>);
+      written = true;
+    });
+    return written;
+  }
+
+  bool write_siginfo_note(emitter_type &out) const noexcept {
+    bool written = false;
+    for_each_siginfo([&out, &written](const core_siginfo &info) {
+      if (written)
+        return;
+      note_header(out, detail::siginfo_size, nt_siginfo);
+      detail::write_siginfo<Arch::is_64bit>(out, info);
+      written = true;
+    });
+    return written;
   }
 
   bool write_auxv_note(emitter_type &out, const core_plan &plan) const noexcept {
