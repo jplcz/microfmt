@@ -124,8 +124,11 @@
 #include <microfmt/hw/rtt_sink.hpp>
 #include <microfmt/hw/uart_sink.hpp>
 #include <microfmt/log/sink_adapter.hpp>
+#include <microfmt/sinks/async_queue_sink.hpp>
 #include <microfmt/sinks/chunked_sink.hpp>
+#include <microfmt/sinks/journald_native_sink.hpp>
 #include <microfmt/sinks/posix_fd_sink.hpp>
+#include <microfmt/sinks/rotating_file_sink.hpp>
 #include <microfmt/sinks/ring_buffer_sink_protocol_sink.hpp>
 #include <microfmt/sinks/socket_sink.hpp>
 #include <microfmt/sinks/tizen_dlog_sink.hpp>

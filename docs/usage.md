@@ -228,6 +228,45 @@ which is how the default OS call is replaced in unit tests. The default
 constructors that use the OS call exist only where that API does
 (`posix_fd_sink` and `socket_sink` off Windows, `win_debug_sink` on Windows).
 
+### Queued, rotating and journald sinks
+
+Three more sinks solve common production problems:
+
+- **Slow output must not stall the caller.** `async_queue_sink<Capacity>` is a
+  fixed-size single-producer/single-consumer (SPSC: one writing thread, one
+  reading thread) byte queue. The hot thread formats into it with no locks or
+  allocation; another thread calls `drain(target, max_bytes)` to move the bytes
+  to a slow sink such as a file. When the queue is full the *newest* bytes are
+  dropped and counted in `dropped_bytes()`, so logging never blocks.
+  `Capacity` must be a power of two. Unlike `ring_buffer_sink`, which
+  overwrites old data for crash dumps, this queue keeps data until drained.
+- **Log files must not grow forever.** `rotating_file_sink<PathCapacity>`
+  writes to `app.log` and, before a write that would exceed `max_bytes`, renames
+  `app.log` to `app.log.1`, `app.log.1` to `app.log.2` and so on, keeping
+  `max_backups` generations (the oldest is overwritten). A single write larger
+  than the limit goes whole into a fresh file. It is not thread-safe; put it
+  behind `async_queue_sink` or a lock when several threads log.
+- **Linux services should log to the journal with structured fields.**
+  `microfmt::log::journald_native_sink<Capacity>` sends each record as one
+  datagram in journald's native protocol (`PRIORITY=`, `SYSLOG_IDENTIFIER=`,
+  `MESSAGE=`), so the severity is filterable with `journalctl -p`. Messages
+  containing newlines use the protocol's length-prefixed binary form. Long
+  messages are truncated to `Capacity`; failed sends are counted in
+  `dropped_records()`. Create the socket with `journald_native_open()`; the sink
+  borrows it.
+
+```cpp
+microfmt::async_queue_sink<4096> queue;
+microfmt::format_to(queue.as_sink(), "event {}\n", 1); // hot thread
+
+microfmt::rotating_file_sink<> file("app.log", 1 << 20, 3); // 1 MiB, 3 backups
+queue.drain(file.as_sink());                                 // writer thread
+```
+
+Both `rotating_file_sink` (through `rotating_file_ops`) and
+`journald_native_sink` (through a send function) accept replacement functions
+so they can be tested without touching the real file system or journal.
+
 ## Compile-time format strings
 
 The runtime format string used throughout this guide is the default choice
