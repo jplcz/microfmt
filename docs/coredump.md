@@ -1,0 +1,131 @@
+<!--
+SPDX-FileCopyrightText: 2026 Jarosław Pelczar <jarek@jpelczar.com>
+
+SPDX-License-Identifier: BSD-2-Clause
+-->
+
+# Streaming core dump writer
+
+## Why
+
+A *core dump* is a snapshot of a program's memory and CPU registers taken when
+it crashes. Debuggers such as `gdb` open it to show where and why the program
+died. On a small device there is usually no heap, no file system you can seek
+in, and the only way out may be a serial port. `microfmt::coredump` writes a
+standard ELF (Executable and Linking Format) core file **front to back, without
+allocating memory**, to any `microfmt::sink`: a file descriptor, a UART
+(Universal Asynchronous Receiver-Transmitter), a socket, a flash writer.
+
+## How it works
+
+The writer reads its input twice, so nothing has to be stored in between:
+
+1. **Plan** – `writer.plan()` walks the memory regions, probes each page to see
+   which ones are readable, and counts threads and mapped files. The result,
+   `core_plan`, is a few integers including the exact size of the finished
+   file.
+2. **Write** – `writer.write(sink, plan)` walks the same input again and emits
+   the ELF header, program headers, notes and memory contents in file order. The
+   sizes are already known, so no seeking or patching is needed.
+
+Everything CPU-specific (word size, byte order, machine number, register
+layout) is a compile-time *architecture policy*. `arch_x86_64` is provided.
+
+## Rules
+
+- **Halt the target.** No thread may run and no DMA (Direct Memory Access)
+  engine may change memory between `plan()` and the end of `write()`. If the
+  input changes anyway, the writer keeps the file the planned size by padding
+  with zeros and sets `core_stats::plan_mismatch`.
+- **The source must be re-readable**: it must yield the same regions, threads
+  and files in the same order in both passes.
+- Memory that cannot be read is skipped in the plan. If a read fails later, zeros
+  are written and `core_stats::read_failures` is incremented.
+- `max_bytes` limits memory contents only; headers and notes are always written.
+  Put the most important regions (stack) first in your source.
+- A sink gives no feedback, so a sink that can drop bytes must count its own
+  drops.
+
+## Example
+
+```cpp
+namespace cd = microfmt::coredump;
+
+cd::core_region regions[] = {{stack_base, stack_size, cd::pf_r | cd::pf_w}};
+cd::core_thread threads[] = {{/*id*/ 1, /*signal*/ 11, registers_ref}};
+cd::core_mapped_file files[] = {{0x400000, 0x401000, 0, "/bin/app"}};
+
+const cd::span_core_source source(regions, threads, files);
+microfmt::array<char, 512> scratch{};
+const cd::elf_core_writer<cd::arch_x86_64, cd::span_core_source> writer(
+    source, microfmt::address_space_ref(microfmt::local_space_tag{}), scratch);
+
+const cd::core_plan plan = writer.plan();
+const cd::core_stats stats = writer.write(my_sink, plan);
+```
+
+`registers_ref` is a `register_context_ref` giving the thread's registers by DWARF
+(debugging format) number; registers it cannot read are stored as zero.
+
+For a custom source (for example one that walks an RTOS thread list), provide
+`for_each_region`, `for_each_thread` and optionally `for_each_mapped_file`
+templated visitors; see `elf_core_writer.hpp`.
+
+## Notes written
+
+- `NT_PRSTATUS` per thread: signal, thread id and general registers.
+- `NT_FILE` (only when mapped files are supplied): lets `gdb` find the
+  executable and libraries the memory came from.
+- `NT_AUXV` (only when auxiliary vector entries are supplied): the `AT_*`
+  key/value pairs the kernel hands to a process (page size, entry point, ...).
+  Implement `for_each_auxv(f(type, value))` on your source, or pass a span as
+  the fourth argument of `span_core_source`. The terminating `AT_NULL` entry is
+  added for you.
+- `NT_ARM_VFP` per thread (only with `arch_arm_cortex_m_vfp`): the 32
+  double-precision floating-point registers.
+
+Open the result with `gdb -c core.bin` or inspect it with `readelf -n -l core.bin`.
+
+## Skipping zero pages
+
+Freshly cleared RAM (zeroed heaps, unused stacks) is often a large share of a
+dump and costs link time for no information. Pass `skip_zero_pages = true` as
+the fifth constructor argument to leave out every page that is entirely zero.
+The debugger then reports that memory as unavailable instead of showing zeros.
+Each pass reads all memory once more to decide, so this trades time for size.
+
+## Architectures
+
+| Policy | ELF class | Notes |
+| --- | --- | --- |
+| `arch_x86_64` | 64-bit, little-endian | Good for host testing. |
+| `arch_aarch64` | 64-bit, little-endian | `x0`-`x30`, `sp`, `pc` and `pstate` (processor state). |
+| `arch_riscv32` / `arch_riscv64` | 32/64-bit, little-endian | `pc` followed by `x1`-`x31` (RISC-V, "RV"). |
+| `arch_arm_cortex_m` | 32-bit, little-endian | `r0`-`r15` and `xPSR` (program status register). |
+| `arch_arm_cortex_m_vfp` | 32-bit, little-endian | Same plus the VFP (Vector Floating Point) note. |
+
+The architecture is chosen purely by the template argument. To support another
+CPU, write a policy with the same members (see the documentation in
+`elf_core_writer.hpp`): word size, byte order, machine number, page size, the
+`NT_PRSTATUS` layout and optional extra notes.
+
+## Sending a core over a serial or RTT link
+
+A raw ELF file cannot survive lost bytes, and a console link often carries log
+text too. `framed_sink` wraps the output in frames that each start with a marker
+and end with a checksum, followed by a final frame holding the total length:
+
+```cpp
+cd::framed_sink<200> framed(uart.as_sink()); // up to 200 payload bytes per frame
+writer.write(framed.as_sink(), plan);
+framed.finish();                              // always call last: sends the end frame
+```
+
+On the host, capture the link to a file and run:
+
+```sh
+scripts/coredump_unframe.py capture.bin core.elf
+```
+
+The tool skips unrelated text, verifies every checksum and exits non-zero if the
+dump is damaged or incomplete (it reports what it recovered).

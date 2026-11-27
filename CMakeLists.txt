@@ -661,6 +661,7 @@ if(JPLCZ_MICROFMT_BUILD_TESTS)
         tests/test_embedded_sinks.cpp
         tests/test_queue_file_sinks.cpp
         tests/test_named_args.cpp
+        tests/test_elf_core_writer.cpp
         tests/test_pointer.cpp
         tests/test_logger_override.cpp
         tests/test_log_active_level.cpp

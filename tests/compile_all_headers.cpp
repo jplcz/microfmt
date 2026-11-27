@@ -116,20 +116,31 @@
 #include <microfmt/sinks/tee_sink.hpp>
 
 #if MICROFMT_HEADER_CHECK_STANDARD >= 20
-#include <microfmt/log/extended_logger.hpp>
-#include <microfmt/log/logger.hpp>
-#include <microfmt/log/macros.hpp>
-#include <microfmt/sinks/android_log_sink.hpp>
+#include <microfmt/coredump/arch_aarch64.hpp>
+#include <microfmt/coredump/arch_arm32.hpp>
+#include <microfmt/coredump/arch_arm_cortex_a.hpp>
+#include <microfmt/coredump/arch_arm_cortex_m.hpp>
+#include <microfmt/coredump/arch_riscv.hpp>
+#include <microfmt/coredump/arch_x86_32.hpp>
+#include <microfmt/coredump/arch_x86_64.hpp>
+#include <microfmt/coredump/elf_core_writer.hpp>
+#include <microfmt/coredump/elf_format.hpp>
+#include <microfmt/coredump/framed_sink.hpp>
+#include <microfmt/coredump/register_sets.hpp>
 #include <microfmt/hw/itm_sink.hpp>
 #include <microfmt/hw/rtt_sink.hpp>
 #include <microfmt/hw/uart_sink.hpp>
+#include <microfmt/log/extended_logger.hpp>
+#include <microfmt/log/logger.hpp>
+#include <microfmt/log/macros.hpp>
 #include <microfmt/log/sink_adapter.hpp>
+#include <microfmt/sinks/android_log_sink.hpp>
 #include <microfmt/sinks/async_queue_sink.hpp>
 #include <microfmt/sinks/chunked_sink.hpp>
 #include <microfmt/sinks/journald_native_sink.hpp>
 #include <microfmt/sinks/posix_fd_sink.hpp>
-#include <microfmt/sinks/rotating_file_sink.hpp>
 #include <microfmt/sinks/ring_buffer_sink_protocol_sink.hpp>
+#include <microfmt/sinks/rotating_file_sink.hpp>
 #include <microfmt/sinks/socket_sink.hpp>
 #include <microfmt/sinks/tizen_dlog_sink.hpp>
 #include <microfmt/sinks/win_debug_sink.hpp>
