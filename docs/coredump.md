@@ -119,6 +119,11 @@ Each pass reads all memory once more to decide, so this trades time for size.
 | `arch_x86_64_fpu` | 64-bit, little-endian | Adds `NT_PRFPREG` (512 bytes, FXSAVE layout). |
 | `arch_x86_64_t<WithFpu, XsaveBytes>` | 64-bit, little-endian | A non-zero `XsaveBytes` adds `NT_X86_XSTATE`, the raw XSAVE area (832 bytes with AVX, 2696 with AVX-512), so a debugger can show `$ymm0`. Also available as `arch_x86_32_t`. |
 | `arch_aarch64_t<WithFpu, WithTls, Breakpoints, Watchpoints>` | 64-bit, little-endian | `WithTls` adds `NT_ARM_TLS` (the `TPIDR_EL0` thread pointer); non-zero slot counts add `NT_ARM_HW_BREAK` / `NT_ARM_HW_WATCH` (hardware breakpoint and watchpoint state). `arch_arm_cortex_a_t` takes the same extra parameters. |
+| `arch_aarch64_t<..., WithPac, SveBytes>` | 64-bit, little-endian | `WithPac` adds `NT_ARM_PAC_MASK` (16 bytes): which pointer bits hold the pointer-authentication (PAC) signature, so backtraces show clean return addresses. Keys are deliberately never dumped (they are secrets). A non-zero `SveBytes` (vector length in bytes: 16, 32, ... 256) adds `NT_ARM_SVE` (Scalable Vector Extension): 592 bytes for 16, 1136 for 32. |
+| `arch_riscv_t<Is64, WithFpu, VlenBytes>` | 32/64-bit | A non-zero `VlenBytes` (hardware VLEN / 8) adds `NT_RISCV_VECTOR` (RVV, RISC-V Vector extension): `vstart`, `vl`, `vtype`, `vcsr`, `vlenb` then `v0`-`v31`. |
+
+The vector length is a template argument because the plan pass must know every size without touching the
+target. If the CPU's real length differs, make the register reader return false and the set is zero-filled.
 | `arch_aarch64_fpu` | 64-bit, little-endian | Adds `NT_PRFPREG` (528 bytes: `v0`-`v31`, `fpsr`, `fpcr`). |
 | `arch_riscv32_fpu` / `arch_riscv64_fpu` | 32/64-bit | Adds `NT_PRFPREG` (264 bytes: `f0`-`f31`, `fcsr`). |
 
